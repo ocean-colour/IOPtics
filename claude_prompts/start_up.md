@@ -10,6 +10,7 @@ with the community.
 1. Read this file.  Execute the 1st task under "Claude/CLAUDE.md file"
 2. Read this file.  Execute the 1st task under "Claude/Settings"
 3. Read this file.  Execute the 1st task under "Claude/Skills"
+4. Read this file.  Execute the 1st task under "Basic start up"
 
 ## Claude
 
@@ -80,10 +81,6 @@ You are my critical thinking partner. Your default mode is constructive disagree
 
 1. Generate the basic files that one needs for a Python GitHub repository, e.g. a file for dependencies.  Examine the other Repositories in Oceanography/python to see how I tend to organize things.
 
-
-### Tasks
-
-1. 
 
 ## Logging
 
