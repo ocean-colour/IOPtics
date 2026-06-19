@@ -61,6 +61,10 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 
 2.  Oops, rename the document to IOPtics_design.md and store it in docs/design/.
 
+### Designing
+
+1. Read this doc.  Execute the 1st task under "Data/Tasks".
+
 ## Data
 
 The following will describe several of the inital datasets to be used in IOPtics.
@@ -86,6 +90,78 @@ These are real spectra with associated in-situ IOP measurements.
 ### What else?
 
 Please explore the Internet to see if you can find any other in-situ datasets that are relevant to the development of IOPtics.
+
+### Tasks
+
+1. Examine the datasets listed above (you will need to explore GLORIA on your own) and start a conversation with me about the datasets and how we will use them in IOPtics.  Write questions in the Conversation section below and I will then answer them.  Log your work.
+
+### Conversation
+
+#### Claude's questions (2026-06-17)
+
+I examined the three datasets via their `ocpy` modules and the literature. A quick
+summary of what each actually provides, then my questions.
+
+| Dataset | Source | Type | Rrs | Ground-truth IOPs | Notes |
+|---|---|---|---|---|---|
+| **L23** | Loisel et al. 2023 (Hydrolight) | Synthetic | yes | **full** `a, bb, aph, ...` (known truth) | `$OS_COLOR/Loisel2023`, `ocpy.hydrolight.loisel23`; X=inelastic scenario (1/2/4), Y=solar zenith (00/30/60) |
+| **PANAGEA** | Valente et al. 2022, V3 | In-situ (real) | yes (native + sat-bands) | `aph`, `acdom` (CDOM+detrital combined), `bbp`, `kd`, + `chla`, `tss` | `$OS_COLOR/PANAGEA/V3`, `ocpy.insitu.panagea`; ID-indexed; itself a compilation of MOBY/BOUSSOLE/AERONET-OC/SeaBASS/NOMAD/Tara/... |
+| **GLORIA** | Lehmann et al. 2023 | In-situ (real) | yes, **hyperspectral** 350–900 nm @1 nm, 7572 spectra | **none spectral** — only `Chla`, `TSS`, `aCDOM(440)`, Secchi | `ocpy.insitu.gloria`; **data not yet downloaded locally** (only a README pointer); heavily coastal/inland water types |
+
+**A. Naming / identity (need to confirm before I rely on it)**
+
+1. The Data section labels GLORIA as *"provided by Werdell+2013, aka G13."* That
+   looks like a mix-up: the GLORIA in `ocpy` is **Lehmann et al. 2023** (Nature
+   Sci. Data, PANGAEA 948492), and Werdell+2013 is the GIOP paper. Should I treat
+   GLORIA = Lehmann 2023, and is "G13" a label you still want to use (and for
+   which dataset)?
+
+**B. How we use each dataset**
+
+2. **L23** is the only source with full known-truth `a(λ)`/`bb(λ)`. I propose it
+   be our **primary validation/benchmarking** dataset (per-wavelength and
+   per-component error metrics). Agree? And which simulation scenarios do we
+   standardize on — `X=1` (elastic only) for first-pass, or also `X=2/4`
+   (Raman / + Chl-fluorescence)? Which solar zenith(s) `Y`?
+
+3. **GLORIA** has no spectral IOPs — only `aCDOM(440)`, `Chla`, `TSS`, Secchi.
+   So it can't validate full `a(λ)`/`bb(λ)` retrievals. How do you want to use
+   it? Options: (a) validate scalar/band products only (e.g. retrieved
+   `a_cdom(440)`); (b) **Rrs-space closure** (reconstructed vs. observed Rrs);
+   (c) representativeness / out-of-distribution testing of input Rrs (you already
+   have GLORIA UMAP/OOD notebooks in `ocpy`); (d) all of the above. Or do we
+   defer GLORIA for now?
+
+4. **PANAGEA** gives real co-located Rrs + `aph`/`acdom`/`bbp`. Note `acdom` is
+   the **combined CDOM+detrital** term (≈ `a_dg`), and `bbp` is a single
+   particulate term. Is matching algorithm output to that combined `a_dg` (rather
+   than separate CDOM vs. NAP) the right comparison, and at which wavelengths?
+
+**C. Cross-dataset consistency**
+
+5. The three datasets define IOP components differently (L23 full breakdown;
+   PANAGEA combined `a_dg`; GLORIA scalar only). Do you want a single canonical
+   component scheme that all algorithms report into (e.g. `a_w, a_ph, a_dg, bb_w,
+   bb_p`), with each dataset's truth mapped onto whatever subset it supports?
+
+6. Wavelength grids differ (L23 Hydrolight grid; PANAGEA native + sat-bands;
+   GLORIA 1 nm hyperspectral). What's the target convention — keep native per
+   dataset, or resample everything to a common grid / set of sensor bands
+   (PACE, MODIS, ...)? This drives the well-posedness (bands vs. unknowns) design.
+
+**D. Other datasets ("What else?")**
+
+7. Candidates I'd consider, with the caveat that **PANAGEA already absorbs many
+   of them** (it's the Valente V3 compilation):
+   - **IOCCG synthetic dataset** — forward-modeled Rrs↔IOP with optical closure;
+     a synthetic complement to L23 (simpler optics, no Raman/fluorescence).
+   - **NOMAD / SeaBASS** (NASA) — real IOPs+Rrs; largely *inside* PANAGEA already,
+     so probably redundant unless we want the raw archive.
+   - **Tara Oceans `ap`/`cp`** — you already have this locally (parquet); particle
+     absorption/attenuation, not Rrs-paired, so more of an IOP-shape reference.
+   - **PACE validation field data** (post-2024) — hyperspectral, forward-looking.
+
+   Which of these (if any) do you want in scope for the first version?
 
 ## Analysis
 
@@ -145,3 +221,32 @@ requested version (0.1), date (today), and authors.
 
 Per Prep prompt #2, renamed `docs/design/IOPtics_dashboard_design.md` to
 `docs/design/IOPtics_design.md`. Document contents unchanged.
+
+### 2026-06-17 (Designing #1 → Data/Tasks #1: examined datasets, opened conversation)
+
+Executed Designing prompt #1, which points to Data/Tasks #1. Examined the three
+datasets through their `ocpy` modules and the literature:
+
+- **L23** (`ocpy.hydrolight.loisel23`): synthetic Hydrolight; the only source
+  with full known-truth IOP spectra (`a, bb, aph`; Chl derivable from aph@440).
+  Files `Hydrolight{X}{Y}.nc` in `$OS_COLOR/Loisel2023`; X = inelastic scenario
+  (1/2/4), Y = solar zenith (00/30/60).
+- **PANAGEA** (`ocpy.insitu.panagea`): the Valente et al. 2022 V3 in-situ
+  compilation. Real co-located Rrs (native + sat-bands) with `aph`, `acdom`
+  (combined CDOM+detrital ≈ `a_dg`), `bbp`, `kd`, `chla`, `tss`. ID-indexed.
+  Itself aggregates MOBY/BOUSSOLE/AERONET-OC/SeaBASS/NOMAD/Tara/etc.
+- **GLORIA** (`ocpy.insitu.gloria`): Lehmann et al. 2023, hyperspectral Rrs
+  (350–900 nm @1 nm, 7572 spectra, 450 water bodies) but **no spectral IOPs** —
+  only `Chla`, `TSS`, `aCDOM(440)`, Secchi; coastal/inland-heavy. **Not yet
+  downloaded locally** (ocpy ships only a README pointing to PANGAEA 948492).
+
+Key learnings / flags: (1) the prompt's "GLORIA = Werdell+2013, aka G13" appears
+to be a mislabel — GLORIA is Lehmann 2023, Werdell 2013 is GIOP. (2) GLORIA can't
+validate full a(λ)/bb(λ) (scalar/band/closure/OOD use only). (3) datasets differ
+in component definitions and wavelength grids, which bears on uniform metrics and
+well-posedness. Web search confirmed GLORIA contents and that PANAGEA already
+subsumes most candidate in-situ archives; remaining distinct candidates are the
+IOCCG synthetic set, raw NOMAD/SeaBASS, Tara `ap`/`cp`, and PACE field data.
+
+Wrote 7 questions to the Conversation section (grouped: naming/identity, per-
+dataset use, cross-dataset consistency, other datasets) for JXP to answer.
