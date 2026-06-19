@@ -64,6 +64,8 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 ### Designing
 
 1. Read this doc.  Execute the 1st task under "Data/Tasks".
+2. Read this doc.  Execute the 2nd task under "Data/Tasks".
+3. Read this doc.  Execute the 3rd task under "Data/Tasks".
 
 ## Data
 
@@ -95,6 +97,15 @@ Please explore the Internet to see if you can find any other in-situ datasets th
 
 1. Examine the datasets listed above (you will need to explore GLORIA on your own) and start a conversation with me about the datasets and how we will use them in IOPtics.  Write questions in the Conversation section below and I will then answer them.  Log your work.
 
+2. See my answers to the questions in the Conversation section below.  Then proceed to:
+
+   - Add a Data section to the design document that lists the datasets and how we will use them.
+   - Ask me any new questions you have in the Conversation section below.
+   - Bump the version number of the design document 
+   - Log your work in the Logs section below.
+
+3. See my answers to the questions in the Conversation section below.  Edit the Data section to reflect the decisions.  Log your work.  If you have any new questions, write them in the Conversation section below.
+
 ### Conversation
 
 #### Claude's questions (2026-06-17)
@@ -116,6 +127,8 @@ summary of what each actually provides, then my questions.
    GLORIA = Lehmann 2023, and is "G13" a label you still want to use (and for
    which dataset)?
 
+Yes, GLORIA = Lehmann 2023, and we will use it for validation of the algorithms.
+
 **B. How we use each dataset**
 
 2. **L23** is the only source with full known-truth `a(λ)`/`bb(λ)`. I propose it
@@ -123,6 +136,8 @@ summary of what each actually provides, then my questions.
    per-component error metrics). Agree? And which simulation scenarios do we
    standardize on — `X=1` (elastic only) for first-pass, or also `X=2/4`
    (Raman / + Chl-fluorescence)? Which solar zenith(s) `Y`?
+
+Yes, L23 will be our primary validation/benchmarking dataset.  We will standardize on `X=1` (elastic only) for first-pass, and then `X=4` (Raman / + Chl-fluorescence).  We will use `Y=00` (0° solar zenith).
 
 3. **GLORIA** has no spectral IOPs — only `aCDOM(440)`, `Chla`, `TSS`, Secchi.
    So it can't validate full `a(λ)`/`bb(λ)` retrievals. How do you want to use
@@ -132,10 +147,14 @@ summary of what each actually provides, then my questions.
    have GLORIA UMAP/OOD notebooks in `ocpy`); (d) all of the above. Or do we
    defer GLORIA for now?
 
+Yes, we will validate the algorithms using the scalar/band products only.  We will not use the Rrs-space closure.  We will not use the representativeness / out-of-distribution testing of input Rrs.
+
 4. **PANAGEA** gives real co-located Rrs + `aph`/`acdom`/`bbp`. Note `acdom` is
    the **combined CDOM+detrital** term (≈ `a_dg`), and `bbp` is a single
    particulate term. Is matching algorithm output to that combined `a_dg` (rather
    than separate CDOM vs. NAP) the right comparison, and at which wavelengths?
+
+Yes, we will match the algorithm output to the combined `a_dg` term.  We will use the wavelengths provided in the PANAGEA dataset.
 
 **C. Cross-dataset consistency**
 
@@ -144,10 +163,14 @@ summary of what each actually provides, then my questions.
    component scheme that all algorithms report into (e.g. `a_w, a_ph, a_dg, bb_w,
    bb_p`), with each dataset's truth mapped onto whatever subset it supports?
 
+I am not sure at the moment.  Let's defer this decision.
+
 6. Wavelength grids differ (L23 Hydrolight grid; PANAGEA native + sat-bands;
    GLORIA 1 nm hyperspectral). What's the target convention — keep native per
    dataset, or resample everything to a common grid / set of sensor bands
    (PACE, MODIS, ...)? This drives the well-posedness (bands vs. unknowns) design.
+
+Keep the native per-dataset grids.
 
 **D. Other datasets ("What else?")**
 
@@ -162,6 +185,59 @@ summary of what each actually provides, then my questions.
    - **PACE validation field data** (post-2024) — hyperspectral, forward-looking.
 
    Which of these (if any) do you want in scope for the first version?
+
+Let's include the IOCCG synthetic dataset and the PACE validation field data.
+
+#### Claude's new questions (2026-06-19)
+
+Thanks — I added a **Data** section to `IOPtics_design.md` and bumped it to v0.2.
+A few new questions surfaced while writing it:
+
+8. **GLORIA download.** The data aren't local yet (only a README pointing to
+   PANGAEA 948492). Do you want me to download/unpack it now into the `ocpy`
+   GLORIA folder, or leave that to you (you run git/data ops)?
+
+I will find the GLORIA data and download it.  Proceed without it for now.
+
+9. **IOCCG synthetic dataset.** There are a few versions (e.g. the classic IOCCG
+   Report 5 / Lee 2006 synthetic set, and newer ones). Which specific IOCCG set
+   do you mean, where should it live (`$OS_COLOR/IOCCG`?), and is there an `ocpy`
+   loader for it yet or do we need to write one?
+
+I didn't realize how old these were.  Let's ignore them for now.
+
+10. **PACE field validation data.** Which source do you have in mind — NASA
+    SeaBASS PACE match-ups, a specific cruise/campaign, or the PACE validation
+    team's released product? This determines the loader and what truth variables
+    (spectral IOPs vs. AOPs) we get.
+
+Use the PACE validation field data from the PACE validation team's released product.
+
+11. **L23 scenario scope.** You chose `X=1` then `X=4`, `Y=00`. Do you also want
+    me to keep `X=2` (Raman only) available for an ablation (isolating Raman vs.
+    fluorescence), or strictly `X=1` and `X=4`?
+
+We will not use `X=2` (Raman only). 
+
+12. **GLORIA scalar metric.** For scalar validation, retrieved `a_dg(λ)` must be
+    reported at 440 nm to compare against GLORIA's `aCDOM(440)`. Note GLORIA's
+    truth is CDOM-only at 440 while algorithms typically retrieve combined
+    `a_dg` — do you want that comparison flagged as CDOM-vs-(CDOM+detritus)
+    mismatch, or is the 440 nm comparison acceptable as-is?
+
+Yes, we should flag it.
+
+#### Claude's new questions (2026-06-19, round 2)
+
+Applied all of your Q8–Q12 answers to the Data section. One follow-up:
+
+13. **PACE validation product specifics.** I'm not aware of a single consolidated
+    "released validation product" from the PACE validation team yet — PACE
+    field/validation data are usually distributed through NASA **SeaBASS** (and
+    OB.DAAC). When you have it, can you point me to the specific release / DOI /
+    SeaBASS query so I (or `ocpy`) can write the right loader and know which truth
+    variables (spectral `a`/`bb` vs. AOPs) we actually get? Marked TBD in the doc
+    for now.
 
 ## Analysis
 
@@ -250,3 +326,40 @@ IOCCG synthetic set, raw NOMAD/SeaBASS, Tara `ap`/`cp`, and PACE field data.
 
 Wrote 7 questions to the Conversation section (grouped: naming/identity, per-
 dataset use, cross-dataset consistency, other datasets) for JXP to answer.
+
+### 2026-06-19 (Designing #2 → Data/Tasks #2: added Data section, bumped to v0.2)
+
+Read JXP's answers to the 7 questions, then executed Data/Tasks #2. Decisions
+captured: GLORIA = Lehmann 2023 (validation); L23 is the primary benchmark,
+standardizing on X=1 (elastic) then X=4 (Raman+Chl-fluorescence), Y=00; GLORIA
+used for scalar/band-product validation only (no Rrs closure, no OOD); PANAGEA
+output matched to combined `a_dg` at native PANAGEA wavelengths; native
+wavelength grids kept per dataset; canonical component scheme deferred; added
+IOCCG synthetic and PACE field data to scope (NOMAD/SeaBASS dropped as subsumed
+by PANAGEA; Tara deferred).
+
+Added a **Data** section to `docs/design/IOPtics_design.md` (cross-dataset design
+decisions, a summary table, and per-dataset subsections) and a brief
+"Out of scope for now" note. Fixed a Preamble typo (`PANGAEA/PANGAEA` →
+`PANAGEA`). Bumped the document to **v0.2** and dated it 2026-06-19. Wrote 5 new
+follow-up questions (Q8–Q12: GLORIA download, which IOCCG set, which PACE source,
+X=2 ablation, GLORIA CDOM-vs-a_dg metric mismatch) to the Conversation section.
+
+### 2026-06-19 (Designing #3 → Data/Tasks #3: refined Data section per Q8–Q12)
+
+Read JXP's answers to Q8–Q12 and edited the Data section accordingly:
+- **GLORIA (Q8):** JXP will source/download the data; kept the "not yet
+  downloaded locally" note and proceeded without it.
+- **IOCCG (Q9):** dropped from scope (sets are dated) — removed its table row and
+  subsection; moved it to "Out of scope for now".
+- **PACE (Q10):** specified the source as the PACE validation team's released
+  validation product (updated table + subsection).
+- **L23 (Q11):** made the `X=2` (Raman-only) exclusion explicit in the L23
+  subsection.
+- **GLORIA metric (Q12):** added an explicit caveat that `aCDOM(440)` is CDOM-only
+  vs. retrieved combined `a_dg`, to be flagged in reports.
+
+Did **not** bump the version (task #3 didn't request it; these are same-day
+refinements to the v0.2 Data section — header stays v0.2, 2026-06-19). Wrote one
+new question (Q13: which specific PACE release/DOI/SeaBASS query, since I'm not
+aware of a single consolidated PACE validation product yet) to the Conversation.
