@@ -1,6 +1,6 @@
 # IOPtics Design Document
 
-**Version:** 0.11
+**Version:** 0.13
 **Date:** 2026-06-20
 **Authors:** JXP and Claude
 
@@ -36,7 +36,7 @@ IOPtics is expected to, at minimum:
   - primarily leveraging the **BING** package for the retrieval machinery.
 - Compare algorithm results against ground truth:
   - using simulated spectra (e.g., the Loisel et al. 2023 Hydrolight dataset),
-  - using in-situ measurements (e.g., PANAGEA, GLORIA).
+  - using in-situ measurements (e.g., PANGAEA, GLORIA).
 - Develop **metrics and diagnostics** that can be applied uniformly to all
   algorithms.
 - Share results (figures, reports, etc.) with the community via GitHub and
@@ -77,7 +77,7 @@ measurement uncertainty.
 - **A single canonical IOP-component scheme is deferred** (see Open Questions).
   Until decided, each dataset's truth is compared to algorithm output at the
   component granularity that dataset actually supports (e.g. combined `a_dg` for
-  PANAGEA, scalar products for GLORIA, full breakdown for L23).
+  PANGAEA, scalar products for GLORIA, full breakdown for L23).
 - Data loading is provided by the sibling **`ocpy`** package; IOPtics depends on
   it rather than re-implementing readers.
 
@@ -85,9 +85,9 @@ measurement uncertainty.
 
 | Dataset | Source | Type | Rrs | Ground-truth available | Role in IOPtics |
 |---|---|---|---|---|---|
-| **L23** | Loisel et al. 2023 (Hydrolight) | Synthetic | yes | **Full** spectral `a`, `bb`, `aph`, … (exact truth) | **Primary** validation / benchmarking |
-| **PANAGEA** | Valente et al. 2022 (V3) | In-situ | yes (native + sat-bands) | `aph`, `a_dg` (CDOM+detrital), `bbp`, `kd`, `chla`, `tss` | Real-world spectral IOP validation |
-| **GLORIA** | Lehmann et al. 2023 | In-situ | yes (hyperspectral, 350–900 nm @1 nm) | Scalar only: `aCDOM(440)`, `Chla`, `TSS`, Secchi | Scalar/band-product validation |
+| **L23** | Loisel et al. 2023 (Hydrolight) | Synthetic | yes | **Full** spectral `a`, `bb`, `a_ph`, … (exact truth) | **Primary** validation / benchmarking |
+| **PANGAEA** | Valente et al. 2022 (V3) | In-situ | yes (native + sat-bands) | `a_ph`, `a_dg` (CDOM+detrital), `bb_p`, `kd`, `chla`, `tss` | Real-world spectral IOP validation |
+| **GLORIA** | Lehmann et al. 2023 | In-situ | yes (hyperspectral, 350–900 nm @1 nm) | Scalar only: `a_cdom(440)`, `Chla`, `TSS`, Secchi | Scalar/band-product validation |
 
 ### L23 — Loisel et al. 2023 Hydrolight (primary benchmark)
 
@@ -101,21 +101,22 @@ per-component error metrics) against exact truth.
   inelastic processes — pure elastic); subsequent evaluation adds **`X=4`**
   (Raman scattering + chlorophyll-a fluorescence). `X=2` (Raman only) is **not**
   used. We use a single solar-zenith geometry, **`Y=00`** (0°).
-- **Provides:** `Rrs`, full `a`/`bb` and their components (`aph`, …); Chl is
-  derivable from `aph(440)`.
+- **Provides:** `Rrs`, full `a`/`bb` and their components (`a_ph`, …); Chl is
+  derivable from `a_ph(440)`.
 
-### PANAGEA — Valente et al. 2022 V3 (in-situ spectral IOPs)
+### PANGAEA — Valente et al. 2022 V3 (in-situ spectral IOPs)
 
 Real co-located Rrs and in-situ IOP measurements; itself a curated compilation of
 many archives (MOBY, BOUSSOLE, AERONET-OC, SeaBASS, NOMAD, Tara, …), so it
 subsumes most other public in-situ sources.
 
-- **Location / loader:** `$OS_COLOR/PANAGEA/V3`, via `ocpy.insitu.panagea`
+- **Location / loader:** `$OS_COLOR/PANGAEA/V3`, via `ocpy.insitu.pangaea`
   (ID-indexed tables; native-wavelength and satellite-band variants).
-- **Provides:** `Rrs`, `aph`, `acdom` (the **combined CDOM + detrital** term,
-  ≈ `a_dg`), `bbp` (single particulate term), `kd`, plus scalar `chla`, `tss`.
+- **Provides:** `Rrs`, `a_ph`, `a_dg` (the **combined CDOM + detrital** term;
+  the ocpy column is named `acdom`), `bb_p` (single particulate term), `kd`, plus
+  scalar `chla`, `tss`.
 - **Use:** algorithm output is matched to the **combined `a_dg`** term (not
-  separate CDOM vs. NAP), at the **native PANAGEA wavelengths**.
+  separate CDOM vs. NAP), at the **native PANGAEA wavelengths**.
 
 ### GLORIA — Lehmann et al. 2023 (scalar/band-product validation)
 
@@ -126,13 +127,13 @@ A globally representative **hyperspectral** in-situ Rrs dataset (7,572 spectra,
 - **Loader:** `ocpy.insitu.gloria`. **The data are not yet downloaded locally**
   (the package ships a README pointing to PANGAEA 948492); they must be fetched
   before use.
-- **Provides:** hyperspectral `Rrs`; scalar `aCDOM(440)`, `Chla`, `TSS`, Secchi.
+- **Provides:** hyperspectral `Rrs`; scalar `a_cdom(440)`, `Chla`, `TSS`, Secchi.
 - **Use:** **scalar / band-product validation only** (e.g. retrieved
   `a_cdom(440)`). We are **not** using GLORIA for Rrs-space closure or for
   out-of-distribution / representativeness testing at this stage.
-- **Caveat (flagged):** GLORIA's truth is `aCDOM(440)` — **CDOM only** — whereas
+- **Caveat (flagged):** GLORIA's truth is `a_cdom(440)` — **CDOM only** — whereas
   algorithms typically retrieve the **combined `a_dg`** (CDOM + detritus). When
-  comparing retrieved `a_dg(440)` against GLORIA's `aCDOM(440)`, this
+  comparing retrieved `a_dg(440)` against GLORIA's `a_cdom(440)`, this
   CDOM-vs-(CDOM+detritus) mismatch must be explicitly flagged in reports; the two
   are not strictly the same quantity.
 
@@ -145,7 +146,7 @@ A globally representative **hyperspectral** in-situ Rrs dataset (7,572 spectra,
 - **IOCCG synthetic dataset** — deferred; the standard sets are quite dated, so
   L23 serves as our synthetic benchmark for now.
 - **NOMAD / raw SeaBASS archive** — not treated as separate datasets, since
-  PANAGEA already incorporates them.
+  PANGAEA already incorporates them.
 - **Tara Oceans `ap`/`cp`** (particle absorption/attenuation, not Rrs-paired) —
   available locally but deferred as an IOP-shape reference rather than a
   validation set.
@@ -178,7 +179,7 @@ configuration behind every result — so the pipeline is reproducible end to end
 ### Data preparation
 
 IOPtics needs a defined **process to load and prepare the data for analysis**.
-For each dataset (L23, PANAGEA, GLORIA) it must read the `Rrs` spectra on that
+For each dataset (L23, PANGAEA, GLORIA) it must read the `Rrs` spectra on that
 dataset's **native wavelength grid** (per the Data decisions), attach an `Rrs`
 uncertainty / noise estimate, and assemble the inputs the retrieval requires. The
 prepared form is common across datasets and algorithms, so the same downstream
@@ -236,7 +237,7 @@ reproducible.
 
 Metrics are computed **uniformly per algorithm and dataset**, and stratified where
 meaningful (e.g. by trophic level). They include: comparison against truth (L23,
-and PANAGEA where in-situ IOPs exist; per-wavelength and per-component error),
+and PANGAEA where in-situ IOPs exist; per-wavelength and per-component error),
 scalar/band-product comparison (GLORIA — with the **flagged** CDOM-vs-`a_dg`
 caveat), internal `Rrs` closure, and physical-range quality-control flags to mark
 non-solutions. Diagnostics include Taylor and Target diagrams, residual spectra,
@@ -258,31 +259,30 @@ To compare IOP algorithms, IOPtics computes a common battery of metrics, applied
 **as uniformly as the algorithms and datasets allow**. True uniformity is not
 always achievable — some algorithms retrieve only a subset of the IOPs, datasets
 differ in the truth they carry (full spectra for L23; combined `a_dg` for
-PANAGEA; scalars for GLORIA), and information content varies with sensor and water
+PANGAEA; scalars for GLORIA), and information content varies with sensor and water
 type. The plan below therefore defines the metrics and the rules for applying them
 to partial cases. It is grounded in the practice of the BING paper (Prochaska &
 Frouin 2025) and Erickson et al. (2023).
 
 ### Conventions
 
-- **Log space.** IOPs and Chl are ~log-normally distributed, so accuracy metrics
-  are computed on **log10-transformed** quantities (following Erickson 2023 /
-  Seegers et al. 2018). Fit/closure statistics on `Rrs` are computed in linear
-  space.
+- **Log space.** IOPs and Chl are ~log-normally distributed, so the accuracy
+  metrics (MAE and bias — including the `Rrs`-closure MAE/bias) use the
+  **multiplicative, log10** form (following Erickson 2023 / Seegers et al. 2018).
+  The χ² cost functions are evaluated in linear `Rrs` space.
 - **Spectral and scalar.** Metrics are reported **per wavelength** across each
   dataset's native grid *and* summarized at reference wavelengths — **440/443 nm**
   for absorption, and **555 nm plus a redder band (670 nm)** for backscattering.
   This deliberately extends BING/Erickson, which report accuracy mainly at a
   single wavelength.
-- **Per component.** Computed for total `a(λ)` and `bb(λ)` and for each retrieved
-  component (`a_ph`, `a_dg`, `a_nw`, `bb_p`, `bb_nw`), matched to the truth the
-  dataset supports.
+- **Per component.** Computed for total `a(λ)` and `bb(λ)` and for the components
+  `a_ph`, `a_dg`, and `bb_p`, matched to the truth the dataset supports.
 - **Stratification.** Results are stratified by trophic level / Chl bins, water
   type (Case I/II), sensor/spectral sampling, and wavelength.
 
 ### 1. Retrieval accuracy vs. truth (IOP space)
 
-The primary comparison, applicable where truth IOPs exist (L23; PANAGEA for the
+The primary comparison, applicable where truth IOPs exist (L23; PANGAEA for the
 components it carries). The set below is the **initial standard battery and is
 expected to grow** as the comparison matures. Adopt the multiplicative, log-space
 definitions of Erickson 2023 (their Eqs. 13–14, after Seegers et al. 2018), with
@@ -306,8 +306,9 @@ Applicable to **every** dataset (all carry `Rrs`), including GLORIA:
   (Erickson Eq. 10; BING Eq. 4 likelihood).
 - **Reduced χ²ᵥ** as the headline single-fit diagnostic: ≈1 good; **<1 signals
   overfitting**; >1 underfitting (BING).
-- **Rrs MAE / bias** (same log-free closure form) with a **dual-sided acceptance
-  window** (Erickson): a good fit reproduces `Rrs` to ≈ the measurement
+- **Rrs MAE / bias** (the multiplicative log-space form of §1, applied to `Rrs`)
+  with a **dual-sided acceptance window** (Erickson): a good fit reproduces `Rrs`
+  to ≈ the measurement
   uncertainty (~5%), and a MAE *much below* the noise floor is also flagged as
   **fitting noise**. A QC failure bound (Erickson uses **>25% Rrs MAE**) marks
   non-solutions.
@@ -329,8 +330,9 @@ content (central to the BING analysis):
 
 Per the Analysis section, uncertainty is a first-class output; here it is *scored*:
 
-- **Credible / confidence intervals** (e.g. 68% and 99%) from the MCMC posterior,
-  or covariance-propagated intervals (`J⁻¹ S_R J⁻ᵀ`) for least-squares.
+- **Credible / confidence intervals** (e.g. 68% and 95%, matching the coverage
+  levels below) from the MCMC posterior, or covariance-propagated intervals
+  (`J⁻¹ S_R J⁻ᵀ`) for least-squares.
 - **Detection significance** — whether a component is detected at Nσ (e.g. the
   credible interval excludes ~zero); non-detections reported as **upper limits**
   (BING's treatment of `a_ph`).
@@ -369,8 +371,8 @@ These extend BING/Erickson (which use neither) and complement the scalar metrics
 Where an algorithm retrieves only a subset of IOPs, metrics are computed on the
 **common retrievable subset** and the **coverage** (which components/wavelengths
 were scored) is recorded alongside the result. Comparisons are mapped onto the
-truth the dataset supports — e.g. retrieved `a_dg` vs. PANAGEA's combined `a_dg`,
-and retrieved `a_dg(440)` vs. GLORIA's `aCDOM(440)` with the flagged
+truth the dataset supports — e.g. retrieved `a_dg` vs. PANGAEA's combined `a_dg`,
+and retrieved `a_dg(440)` vs. GLORIA's `a_cdom(440)` with the flagged
 CDOM-vs-(CDOM+detritus) caveat.
 
 *Full per-figure styling and table layouts are deferred to the Reporting section.*
@@ -468,8 +470,42 @@ are not lost. Items are resolved (and removed or struck) as the design matures.
 | 1 | **Canonical IOP-component scheme** | Deferred | Whether all algorithms report into one fixed component set (e.g. `a_w, a_ph, a_dg, bb_w, bb_p`). Until decided, each dataset's truth is compared at the granularity it supports. |
 | 2 | **PACE field validation dataset** | Deferred | No single consolidated "released" PACE validation product to point at yet; revisit once a concrete source/DOI is identified. (Distinct from the PACE *noise model*, which is adopted.) |
 | 3 | **IOCCG synthetic dataset** | Deferred | Standard sets are dated; L23 serves as the synthetic benchmark for now. |
-| 4 | **Metrics section** | Drafted (v0.8) | Initial battery from BING (Prochaska & Frouin 2025) and Erickson et al. (2023); log-space MAE/bias adopted, coverage test at 68%/95%, Taylor + Target diagrams added. Battery expected to grow. |
-| 5 | **Validation section** | Pending | Validation methods to be drafted under a dedicated prompt. |
-| 6 | **GLORIA data acquisition** | Pending | Data not yet downloaded locally (ocpy ships only a README → PANGAEA 948492); JXP to source. |
+| 4 | **Metrics section** | Drafted | Initial battery from BING (Prochaska & Frouin 2025) and Erickson et al. (2023); log-space MAE/bias adopted, coverage test at 68%/95%, Taylor + Target diagrams added. Battery expected to grow. |
+| 5 | **GLORIA data acquisition** | Pending | Data not yet downloaded locally (ocpy ships only a README → PANGAEA 948492); JXP to source. |
+
+---
+
+## References
+
+Works cited in this design document. A fuller scientific reference list is in
+[`docs/context.md`](../context.md).
+
+- Erickson, Z. K., McKinna, L., Werdell, P. J., Cetinić, I. (2023). "Bayesian
+  approach to a generalized inherent optical property model." *Optics Express*
+  31(14), 22790–22801. https://doi.org/10.1364/OE.486581
+- Jolliff, J. K., et al. (2009). "Summary diagrams for coupled hydrodynamic-
+  ecosystem model skill assessment." *J. Marine Systems* 76(1–2), 64–82.
+  https://doi.org/10.1016/j.jmarsys.2008.05.014
+- Lehmann, M. K., et al. (2023). "GLORIA – A globally representative hyperspectral
+  in situ dataset for optical sensing of water quality." *Scientific Data* 10, 100.
+  https://doi.org/10.1038/s41597-023-01973-y (PANGAEA 948492)
+- Loisel, H., et al. (2023). Hydrolight synthetic IOP/Rrs dataset ("L23").
+  https://doi.org/10.6076/D1630T
+- Prochaska, J. X., Frouin, R. (2025). "On the challenges of retrieving
+  phytoplankton properties from remote-sensing observations." *Biogeosciences*
+  22, 4705–4728. (the **BING** paper)
+- Seegers, B. N., et al. (2018). "Performance metrics for the assessment of
+  satellite data products: an ocean color case study." *Optics Express* 26(6),
+  7404–7422. https://doi.org/10.1364/OE.26.007404
+- Taylor, K. E. (2001). "Summarizing multiple aspects of model performance in a
+  single diagram." *J. Geophysical Research* 106(D7), 7183–7192.
+  https://doi.org/10.1029/2000JD900719
+- Valente, A., et al. (2022). "A compilation of global bio-optical in situ data for
+  ocean-colour satellite applications – version three" ("PANGAEA" V3). *Earth
+  System Science Data* 14, 5737–5770. https://doi.org/10.5194/essd-14-5737-2022
+- Werdell, P. J., et al. (2013). GIOP. *Applied Optics* 52(10), 2019–2037.
+- Werdell, P. J., et al. (2018). IOP retrieval review. *Progress in Oceanogra_phy*
+  160, 186–212.
+- Mobley, C. D. (ed.) (2022). *The Oceanic Optics Book*. IOCCG.
 
 ---

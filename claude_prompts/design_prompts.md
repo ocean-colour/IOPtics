@@ -81,6 +81,9 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 13. Read this doc.  Execute the 2nd task under "Reporting/Tasks"
 14. Read this doc.  Execute the 3rd task under "Reporting/Tasks"
 
+15. Read this doc.  Execute the 1st task under "Pull request/Tasks"
+16. 
+16. Read this doc.  Execute the 2nd task under "Pull request/Tasks"
 ## Data
 
 The following will describe several of the inital datasets to be used in IOPtics.
@@ -101,7 +104,7 @@ The ocpy package has a module for the PANAGEA dataset.  It is located in ocpy/in
 
 These are real spectra with associated in-situ IOP measurements.
 
-### The GLORIA dataset provided by Werdell+2013, aka G13
+### The GLORIA dataset provided by Lehmann+2023
 
 ### What else?
 
@@ -553,6 +556,54 @@ T. **Bokeh delivery constraint.** Interactive Bokeh embedded in readthedocs work
 
 Standalone/static BokehJS interactivity is sufficient.
 
+## Pull request
+
+1. I am about to submit a pull request.  Please review everything we have created so far and:
+
+    - Clean up any inconsistencies 
+    - Make any additional suggestions before I issue it
+
+2. Here are a few things to implement before the PR:
+
+    - Use PANGAEA throughout
+    - Fix the GLORIA reference in `design_prompts.md`
+    - Remove mention of Validation throughout
+    - Standardize a_ph, a_dg, bb_p everywhere
+    - If you have any questions, write them in the Q&A section below.
+    - Log your work in the Logs section below.
+
+### Q&A    
+
+#### Claude's notes + questions (2026-06-20, pre-PR implementation)
+
+Implemented the four pre-PR items (design doc → v0.13): PANGAEA used throughout;
+GLORIA heading in this file fixed to Lehmann+2023; the Validation row removed from
+the Open Questions table; component notation standardized to `a_ph`, `a_dg`,
+`bb_p`. Two heads-up / questions:
+
+U. **ocpy spelling divergence (action item).** The design doc now says **PANGAEA**
+   throughout, including the loader path `$OS_COLOR/PANGAEA/V3` and module
+   `ocpy.insitu.pangaea`. But ocpy **currently** ships `ocpy.insitu.panagea` and
+   resolves `$OS_COLOR/PANAGEA/V3` (old spelling). To match the doc, ocpy's module
+   + env path need renaming `panagea`→`pangaea` / `PANAGEA`→`PANGAEA`. Want me to
+   do that rename in ocpy, or should the doc keep the current `panagea` code
+   spelling? (Right now the doc's code refs are aspirational.) Note: the in-situ
+   `acdom` *column* name was kept as-is (noted in the doc) since it's a data field.
+
+   **Resolved (2026-06-20):** JXP said "update ocpy too." Done — renamed
+   `ocpy.insitu.panagea`→`pangaea` (module, functions `pangaea_path`/`from_pangaea`
+   /`stack_from_pangaea`, `source='PANGAEA'`), tests, and docs; `pangaea_path()`
+   resolves `$OS_COLOR/PANGAEA/V3` then legacy `PANAGEA` (data not moved). 59
+   tests pass in ocean14. Historical notebooks/prompt logs left as-is. The design
+   doc's code refs are now accurate.
+
+V. **"Remove Validation" scope.** I removed the planned **Validation section**
+   (the Open Questions row). I left the lowercase word "validation" where it
+   describes dataset/algorithm roles (e.g. "primary validation/benchmarking
+   dataset", "scalar/band-product validation") since removing it would break those
+   descriptions. Confirm that's the intended scope, or do you want those reworded
+   too?
+
 ## Logging
 
 The "Logs" section will record Claude's work.  Please use the following format:
@@ -830,3 +881,65 @@ Read JXP's answer to T (standalone/static BokehJS is sufficient). Updated the
 select, hover, pan/zoom), embeddable in readthedocs with no running Bokeh server.
 Bumped the design doc to **v0.11**. (Task #3 requested no new questions, so none
 added.)
+
+### 2026-06-20 (Designing #15 → Pull request/Tasks #1: pre-PR review & cleanup)
+
+Reviewed the whole design doc for consistency before JXP's PR and fixed five real
+inconsistencies in `IOPtics_design.md`:
+1. **Rrs-closure metric space contradiction** — the conventions said `Rrs`
+   statistics are linear-space, but the closure MAE/bias is the log-space
+   multiplicative form (Erickson Eq. 13). Reworded so MAE/bias (incl. Rrs closure)
+   are log-space, while only the χ² cost is linear.
+2. **Backscatter component notation** — `bb_p` vs `bb_nw` were listed as if
+   distinct; clarified `bb_p` ≡ `bb_nw` in a one-particulate model and tidied the
+   per-component list (totals vs sub-components).
+3. **Interval levels** — credible intervals example was 68%/99% while the coverage
+   test was 68%/95%; aligned the reported levels to 68%/95%.
+4. **Stale version tag** — Open Questions "Metrics … Drafted (v0.8)" → "Drafted".
+5. **Scattered citations** — added a consolidated **References** section (Erickson
+   2023, Jolliff 2009, Lehmann 2023, Loisel 2023, Prochaska & Frouin 2025 [BING],
+   Seegers 2018, Taylor 2001, Valente 2022, Werdell 2013/2018, Mobley 2022).
+Also noted the Validation/Metrics overlap in the Open Questions table. Bumped the
+design doc to **v0.12**. Suggestions for JXP recorded in the chat (PANAGEA vs
+PANGAEA naming; the prompts file's stale "GLORIA = Werdell+2013, aka G13" heading;
+Validation section still empty; canonical-component-scheme decision underlies
+notation; the referenced "separate implementation document" does not yet exist).
+
+### 2026-06-20 (Designing #16 → Pull request/Tasks #2: pre-PR implementation)
+
+Implemented JXP's four pre-PR items:
+1. **Use PANGAEA throughout** — replaced all "PANAGEA" → "PANGAEA" in the design
+   doc (prose, table, env path `$OS_COLOR/PANGAEA/V3`, References) and the module
+   ref → `ocpy.insitu.pangaea`. Flagged (Q U) that ocpy currently uses the
+   `panagea`/`PANAGEA` spelling and needs renaming to match.
+2. **Fixed the GLORIA reference in `design_prompts.md`** — heading "provided by
+   Werdell+2013, aka G13" → "provided by Lehmann+2023".
+3. **Removed the Validation section mention** — deleted the Open Questions row #5
+   (planned Validation section) and renumbered; kept lowercase descriptive
+   "validation" used for dataset/algorithm roles (flagged scope in Q V).
+4. **Standardized component notation** — `aph`→`a_ph`, `bbp`→`bb_p` across the
+   doc; PANGAEA "Provides" now lists `a_dg` (noting the ocpy column `acdom`);
+   GLORIA's CDOM-only token unified to `a_cdom`; dropped `a_nw`/`bb_nw` from the
+   per-component metric bullet (now `a_ph`, `a_dg`, `bb_p`).
+Bumped the design doc to **v0.13**. Wrote 2 questions (U: rename ocpy to match
+PANGAEA, or keep code refs at current spelling; V: confirm scope of "remove
+Validation") to the Q&A section.
+
+### 2026-06-20 (ocpy rename: panagea → pangaea, per Q U)
+
+JXP confirmed "update ocpy too." Renamed the PANGAEA API across the **ocpy** repo
+so the IOPtics design doc's references are accurate:
+- `ocpy/insitu/panagea.py` → `pangaea.py`; functions `panagea_path`→`pangaea_path`;
+  module docstrings/error text PANAGEA→PANGAEA.
+- `pangaea_path()` now resolves `$OS_COLOR/PANGAEA/V3` then falls back to the
+  legacy `$OS_COLOR/PANAGEA/V3` (physical data **not** moved — non-destructive).
+- `ocpy/spectra/io.py`: `from_panagea`→`from_pangaea`, `stack_from_panagea`→
+  `stack_from_pangaea`, `_panagea_units`→`_pangaea_units`, `source='PANGAEA'`.
+- Tests renamed/updated (`test_pangaea.py`, `test_spectra.py`); docs updated
+  (`docs/pangaea.rst` [renamed], `index.rst` toctree, `spectra.rst`,
+  `api/spectra.rst`, `changelog.rst`).
+- Left historical `nb/PANAGEA/` notebooks and `prompts/*.md` logs as-is (they use
+  the old `panagea` import); the `acdom`/`aph`/`bbp` data `kind` strings unchanged.
+- Verified: imports OK, path resolves to the legacy data dir, **59 tests pass in
+  ocean14**. Updated the [[panagea-dataset]] memory. (git left to JXP; note the
+  current ocpy branch is `panagea`.)
