@@ -77,6 +77,9 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 10. Read this doc.  Execute the 2nd task under "Metrics/Tasks".
 11. Read this doc.  Execute the 3rd task under "Metrics/Tasks".
 
+12. Read this doc.  Execute the 1st task under "Reporting/Tasks"
+13. Read this doc.  Execute the 2nd task under "Reporting/Tasks"
+
 ## Data
 
 The following will describe several of the inital datasets to be used in IOPtics.
@@ -483,14 +486,50 @@ P. **Taylor/Target decision.** Given the above, do you want either/both added to
 
 Yes, let's add both.
 
-## Validation
-
-We will develop a set of validation methods that can be applied uniformly to all algorithms.  These will include:
-
-
 ## Reporting
 
 We will generate reports and publications on the main findings.  This will include figures, tables, and text.  These will be shared via readthedocs.io which will neccesitate .rst files.
+
+### Tasks
+
+1. Based on your understanding of BING and especially the analysis performed in the `docs/PDFs/bing.pdf` and `docs/PDFs/erickson2023.pdf` papers, generate a plan for the Reporting.  Write the plan in the Reporting section of the design document.  If you have any questions, write them in the Q&A section below. Log your work.
+
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Reporting section to reflect the decisions.
+    - Include the following additions:
+      - Interactive Bokeh figures that allow the user to select an algorithm and inspect the results.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
+### Q&A
+
+#### Claude's questions (2026-06-20, Reporting)
+
+Wrote the Reporting section of `IOPtics_design.md` (v0.9): artifacts (results
+table + provenance, figures, tables), three report types (per-algorithm,
+cross-algorithm comparison, per-dataset), `.rst`/readthedocs + GitHub delivery,
+reproducibility stamping, and publications. Questions:
+
+Q. **Build automation.** Should reports rebuild automatically via CI (e.g. GitHub
+   Actions) on each sweep / commit, or be generated on demand? (Affects whether
+   readthedocs always reflects the latest sweep.)
+
+There should be a standard report generated, but only demand.
+
+R. **Single site vs. per-report.** One IOPtics readthedocs site that accumulates
+   all reports (with a comparison "dashboard" landing page), or separate
+   builds/pages per sweep? The repo name `IOPtics_dashboard_design.md` (original)
+   hinted at a dashboard — do you still want a dashboard-style landing page?
+
+One readthedocs site for all reports. 
+
+S. **Leaderboard.** For the cross-algorithm comparison, do you want a persistent
+   **leaderboard** (algorithms ranked by the headline metrics across datasets)
+   that updates as algorithms are added one-by-one, or just static per-sweep
+   comparison tables?
+
+I like that. Let's include a Leaderboard
 
 ## Logging
 
@@ -729,3 +768,19 @@ Read JXP's answer to P (add both). Added **Taylor (Taylor 2001)** and **Target
 Open Questions table (Metrics → Drafted v0.8, Taylor/Target now resolved) and
 bumped the design doc to **v0.8**. (Task #3 requested no new questions, so none
 added.)
+
+### 2026-06-20 (Designing #12 → Reporting/Tasks #1: drafted the Reporting section)
+
+Executed Reporting/Tasks #1. Drawing on the reporting practice in BING (Prochaska
+& Frouin 2025) and Erickson et al. (2023) — both already extracted in the Metrics
+work — wrote a new **Reporting** section in `IOPtics_design.md` (inserted after
+Metrics): artifacts (machine-readable results table + YAML/JSON provenance,
+the standard figure set incl. Taylor/Target and spatial maps, accuracy/QC tables);
+three report types (per-algorithm scorecard, cross-algorithm comparison as the
+headline deliverable, per-dataset); `.rst` → readthedocs + GitHub delivery;
+publication-ready figures; and reproducibility stamping (design-doc/registry/
+dataset/commit versions) so every report regenerates from one sweep. Kept it at
+design altitude (build automation, site layout, styling left to implementation).
+Bumped the design doc to **v0.9**. Wrote 3 questions (Q: CI auto-build vs.
+on-demand; R: single accumulating site / dashboard landing page vs. per-sweep; S:
+persistent leaderboard for the cross-algorithm comparison) to the Q&A section.

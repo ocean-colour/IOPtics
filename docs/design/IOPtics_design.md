@@ -1,6 +1,6 @@
 # IOPtics Design Document
 
-**Version:** 0.8
+**Version:** 0.9
 **Date:** 2026-06-20
 **Authors:** JXP and Claude
 
@@ -374,6 +374,65 @@ and retrieved `a_dg(440)` vs. GLORIA's `aCDOM(440)` with the flagged
 CDOM-vs-(CDOM+detritus) caveat.
 
 *Full per-figure styling and table layouts are deferred to the Reporting section.*
+
+---
+
+## Reporting
+
+IOPtics turns each analysis sweep into **shareable, reproducible reports** for the
+ocean-optics community. Reporting consumes the standardized results table and its
+provenance record (see Analysis) so that every output is regenerable from a single
+sweep and traceable to the exact configuration that produced it. The plan reflects
+the reporting practice of BING (Prochaska & Frouin 2025) and Erickson et al.
+(2023), generalized to many algorithms and datasets.
+
+### Outputs / artifacts
+
+Each sweep produces a consistent set of artifacts:
+
+- **Machine-readable results** — the results table (CSV / parquet) keyed by
+  `(dataset, obs_id, algorithm)`, plus the **provenance record** (YAML/JSON)
+  stored alongside it.
+- **Figures** — the standard diagnostic set defined in the Metrics section:
+  retrieved-vs-true scatter (log–log), ratio histograms, per-parameter posterior /
+  probability-distribution plots, residual / closure `Rrs` spectra (χ²ᵥ
+  annotated), retrieved IOP spectra with uncertainty bands, corner plots, ΔBIC
+  CDFs, and **Taylor** and **Target** diagrams. Spatial maps are produced where a
+  scene/gridded product applies (cf. Erickson Fig. 5).
+- **Tables** — per-variable accuracy summaries (`bias`, MAE, RMS, "wins"),
+  per-dataset and per-stratum (trophic level / water type), and QC summaries
+  (fraction flagged as non-solutions).
+
+### Report types
+
+- **Per-algorithm report** — one algorithm across datasets and strata; the
+  "scorecard" for a single algorithm.
+- **Cross-algorithm comparison report** — the headline IOPtics deliverable:
+  many algorithms ranked on common metrics and the summary diagrams, with the
+  caveats from "handling non-uniformity" surfaced.
+- **Per-dataset report** — all algorithms on one dataset, for dataset-focused
+  questions.
+
+### Format & delivery
+
+- Reports are authored as **reStructuredText (`.rst`)** and rendered on
+  **readthedocs.io**, with the source and artifacts shared via **GitHub**.
+- Figures are **publication-ready** (the BING/Erickson figure styles), so report
+  figures can flow directly into manuscripts.
+- **Reproducibility:** every report is generated programmatically from the results
+  table + provenance, and is stamped with the versions it depends on (design-doc
+  version, algorithm-registry entry, dataset version, and code commit), so a
+  reader can reconstruct exactly what was run.
+
+### Publications
+
+The reports are the substrate for manuscripts on the main findings: the
+cross-algorithm comparison, its figures, and its tables are assembled into
+community publications, with the same provenance ensuring the published results
+are reproducible.
+
+*Per-figure styling, the `.rst` site layout, and build automation are
+implementation details, addressed separately.*
 
 ---
 
