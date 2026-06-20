@@ -1,6 +1,6 @@
 # IOPtics Design Document
 
-**Version:** 0.13
+**Version:** 0.14
 **Date:** 2026-06-20
 **Authors:** JXP and Claude
 
@@ -53,7 +53,7 @@ foundational sources — the Oceanic Optics Book (Mobley 2022), Werdell et al.
 ### Conventions
 
 - This document avoids specific code recommendations; those will live in a
-  companion implementation document.
+  companion implementation document (forthcoming).
 - The authors welcome and will incorporate new design ideas as the work
   progresses.
 

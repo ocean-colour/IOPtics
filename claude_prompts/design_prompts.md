@@ -82,8 +82,10 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 14. Read this doc.  Execute the 3rd task under "Reporting/Tasks"
 
 15. Read this doc.  Execute the 1st task under "Pull request/Tasks"
-16. 
 16. Read this doc.  Execute the 2nd task under "Pull request/Tasks"
+17. Read this doc.  Execute the 3rd task under "Pull request/Tasks"
+18. Read this doc.  Execute the 4th task under "Pull request/Tasks"
+
 ## Data
 
 The following will describe several of the inital datasets to be used in IOPtics.
@@ -572,7 +574,52 @@ Standalone/static BokehJS interactivity is sufficient.
     - If you have any questions, write them in the Q&A section below.
     - Log your work in the Logs section below.
 
-### Q&A    
+3. I have issued a PR.   It is this one:
+
+https://github.com/ocean-colour/IOPtics/pull/1
+
+Please review it and transmit your comments onto GitHub.
+
+4. Please make edits to address the PR on GitHub.  List your changes in the Report below.  If you have any questions, write them in the Q&A section below.
+
+### Report
+
+#### Changes addressing PR #1 review (2026-06-20)
+
+Implemented the actionable items from the GitHub review:
+
+- **Dependencies (review item 1).**
+  - `requirements.txt`: added `emcee`, `corner`, `bokeh`, and the two sibling
+    packages as GitHub installs — `git+https://github.com/ocean-colour/ocpy` and
+    `git+https://github.com/ocean-colour/bing.git`.
+  - `setup.py`: added `emcee`, `corner`, `bokeh` to `install_requires`, with a
+    comment that BING/ocpy install from GitHub (not PyPI).
+- **README (review item 2).** Expanded `README.md` from one line into a real
+  README: what IOPtics does, install steps (incl. ocpy/BING from GitHub, `$OS_COLOR`
+  data note), status, authors, license.
+- **setup.py modernization (review item 3, partial).** Added
+  `python_requires='>=3.12'`. Kept `use_2to3`/`tests_require`/`setup_requires` to
+  match the house style in ocpy/bing (they only emit harmless deprecation
+  warnings) — see Q W.
+- **Package version (review item 5).** `ioptics/__init__.py` now has a docstring
+  and `__version__ = '0.0.dev0'` (matches `setup.py`).
+- **Design doc (review item 6).** Marked the referenced implementation document as
+  "(forthcoming)"; bumped the design doc to **v0.14**.
+
+Verified in `ocean14`: `python setup.py --name` → `ioptics`; `import ioptics;
+ioptics.__version__` → `0.0.dev0`. (Git commit/push left to JXP.)
+
+### Q&A
+
+W. **License (review item 4).** `setup.py` and `README.md` say **BSD**. BING is
+   MIT; ocpy — please confirm. Want IOPtics on BSD (left as-is), or switch to MIT
+   to match BING? I left BSD pending your call; also no `LICENSE` file exists yet —
+   want me to add one for the chosen license?
+
+X. **setup.py house-style cruft.** I kept `use_2to3` / `tests_require` /
+   `setup_requires=['pytest-runner']` to match ocpy/bing (harmless deprecation
+   warnings). Happy to strip them from all three repos for cleanliness if you'd
+   prefer — just say so.    
 
 #### Claude's notes + questions (2026-06-20, pre-PR implementation)
 
@@ -943,3 +990,40 @@ so the IOPtics design doc's references are accurate:
 - Verified: imports OK, path resolves to the legacy data dir, **59 tests pass in
   ocean14**. Updated the [[panagea-dataset]] memory. (git left to JXP; note the
   current ocpy branch is `panagea`.)
+
+### 2026-06-20 (Designing #17 → Pull request/Tasks #3: reviewed PR #1, posted to GitHub)
+
+Reviewed PR #1 (`design`→`main`, ocean-colour/IOPtics, 12 files, +2076) and posted
+a `--comment` review to GitHub (confirmed: COMMENTED by profxj). Verified the PR's
+design doc is at v0.13 with my cleanups (PANGAEA ×16), so the PR reflects current
+state. Review findings:
+- **Should fix:** (1) core deps missing from `setup.py`/`requirements.txt` —
+  no `bing`, `ocpy`, `emcee`, `bokeh` despite the design committing to them;
+  (2) no `README.md` (setup.py reads it; community repo needs one).
+- **Low priority:** setup.py cruft (`use_2to3` ignored-with-warning, `tests_require`
+  unknown-option warning, deprecated `setup_requires`/`requires`; suggest
+  `python_requires='>=3.12'`); `license='BSD'` confirm; empty `ioptics/__init__.py`
+  could carry `__version__`.
+- **Design-doc:** solid; flagged the not-yet-existing "implementation document"
+  reference and the still-open Open Questions (non-blocking).
+- Empirically verified the setup.py claims in ocean14 (setuptools 81 → `use_2to3
+  is ignored` warning, not an error) before posting, to keep comments accurate.
+Used `--comment` (not approve/request-changes) since it's JXP's own PR and he
+asked for comments.
+
+### 2026-06-20 (Designing #18 → Pull request/Tasks #4: addressed PR review comments)
+
+Implemented the actionable fixes from my own PR #1 review:
+- **Deps:** added `emcee`/`corner`/`bokeh` to `requirements.txt` + `setup.py`
+  install_requires; added the GitHub installs for `ocpy` and `bing` to
+  requirements.txt (they're not on PyPI); noted same in setup.py.
+- **README:** expanded the 1-line `README.md` into a proper one (purpose, install
+  incl. ocpy/BING from GitHub and `$OS_COLOR` data note, status, authors, license).
+- **setup.py:** added `python_requires='>=3.12'`; kept the house-style
+  `use_2to3`/`tests_require`/`setup_requires` (matches ocpy/bing; harmless
+  warnings) — raised Q X to offer stripping them everywhere.
+- **`ioptics/__init__.py`:** added docstring + `__version__ = '0.0.dev0'`.
+- **Design doc:** marked the implementation doc "(forthcoming)"; bumped to v0.14.
+Verified in ocean14 (`setup.py --name` → ioptics; `ioptics.__version__` →
+0.0.dev0). Wrote the change list to the Report section; raised Q W (license:
+BSD vs MIT + add a LICENSE file?) and Q X (setup.py cruft). Git left to JXP.
