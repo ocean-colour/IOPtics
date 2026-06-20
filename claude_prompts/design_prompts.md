@@ -67,6 +67,16 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 2. Read this doc.  Execute the 2nd task under "Data/Tasks".
 3. Read this doc.  Execute the 3rd task under "Data/Tasks".
 
+4. Read this doc.  Execute the 1st task under "Analysis/Tasks".
+5. Read this doc.  Execute the 2nd task under "Analysis/Tasks".
+6. Read this doc.  Execute the 3rd task under "Analysis/Tasks".
+7. Read this doc.  Execute the 4th task under "Analysis/Tasks".
+8. Read this doc.  Execute the 5th task under "Analysis/Tasks".
+
+9. Read this doc.  Execute the 1st task under "Metrics/Tasks".
+10. Read this doc.  Execute the 2nd task under "Metrics/Tasks".
+11. Read this doc.  Execute the 3rd task under "Metrics/Tasks".
+
 ## Data
 
 The following will describe several of the inital datasets to be used in IOPtics.
@@ -239,12 +249,15 @@ Applied all of your Q8–Q12 answers to the Data section. One follow-up:
     variables (spectral `a`/`bb` vs. AOPs) we actually get? Marked TBD in the doc
     for now.
 
+I don't know either.  I will ask around.  For now, let's not include this.
+
 ## Analysis
 
 We will develop a set of analysis methods that can be applied uniformly to all algorithms.  These will include:
+
 - Calculating the IOPs from the spectra
 - Calculating the uncertainties in the IOPs
-- Calculating the metrics and diagnostics
+- Calculating summary metrics and diagnostics
 - Generating figures and tables
 - Generating reports and publications
 
@@ -252,15 +265,228 @@ For this, we will primarily use the BING package.
 
 ### Tasks
 
-1. Please examine the BING package and generate a plan for the analysis methods.  Write the plan in the Planning document.  If you have any questions, write them in the Q&A section below. Log your work.
+1. Please examine the BING package and generate a plan for the analysis methods.  Write the plan in the Planning document in an Analysis section.  If you have any questions, write them in the Q&A section below. Log your work.
+
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Add the Analysis section to the design document.
+    - Make edits to the Analysis section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Bump the version number of the design document
+    - Log your work in the Logs section below.
+
+3. I have answered your new questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Analysis section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Add to the design doc:
+      - We must record the details of the model used, for provenance.
+      - This must include Priors for any Bayesian inference.
+    - Log your work in the Logs section below.
+
+4. I have answered your new questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Analysis section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
+5. I have answered your new questions in the Q&A section below.  Please proceed to: 
+
+    - Make edits to the Analysis section to reflect the decisions.
+    - Log your work in the Logs section below.
 
 ### Q&A
+
+#### Claude's questions (2026-06-20)
+
+I examined the BING package and wrote the analysis plan in a new Planning
+document, `docs/design/IOPtics_planning.md` (Analysis section). Questions:
+
+A. **Planning document location/name.** No Planning doc existed, so I created
+   `docs/design/IOPtics_planning.md` as the implementation-oriented companion to
+   the design doc. Is that the right home/name, or did you have a specific file
+   in mind?
+
+No, you should have used the IOPtics_design.md document.  Please do so and remove the Planning document.
+
+B. **Fitting method default.** BING offers both least-squares (`chisq_fit`) and
+   MCMC (`emcee`). MCMC gives the fullest uncertainties but is far more
+   expensive. For the first-pass L23 sweep across many algorithms × spectra,
+   should the default be least-squares (fast, gradient covariance) with MCMC
+   reserved for a subset, or MCMC throughout?
+
+Yes, for first pass use `chisq_fit` with MCMC reserved for a subset.
+
+C. **Algorithm set for v1.** BING ships standard combos `expb_pow`, `expbf_pow`,
+   `giop`, `gsm`, `k2b`. Which do you want in the first IOPtics comparison — all
+   of them, or a chosen subset? (This defines the initial algorithm registry.)
+
+We will build them out one by one.  The design document should reflect this.
+
+D. **`bing.fitting.l23` generalization.** My plan generalizes `prep_one_l23` into
+   a dataset-agnostic prep so PANAGEA/GLORIA feed the same engine. Do you want
+   that prep layer to live in IOPtics, or be contributed back upstream into BING
+   (e.g. a `prep_one` alongside `prep_one_l23`)?
+
+This is more about implementation than design.  For now, make it clear we will need a process to load and prepare the data for the analysis.
+
+E. **Metrics scope now vs. later.** I sketched the metrics in the plan but left
+   full definitions to the design doc's **Metrics** section (still empty). Should
+   I draft that Metrics section next, or wait for a dedicated prompt?
+
+Wait for a dedicated prompt.
+
+#### Claude's questions (2026-06-20, round 2)
+
+Moved the analysis content into `IOPtics_design.md` as a design-level **Analysis**
+section, removed the standalone Planning document, reflected the "one at a time"
+and "chisq first, MCMC for a subset" decisions, and bumped the design doc to v0.3.
+Two new questions:
+
+F. **First algorithm to build out.** Since algorithms are added one at a time,
+   which should be the seed? Natural candidates: BING's default `expb_pow`
+   (exponential a_dg + Bricaud a_ph + power-law bbp) or the community-standard
+   `giop`. I'd suggest starting with `expb_pow` (BING's best-exercised path) — agree?
+
+Yes, we will start with `expb_pow`.
+
+G. **L23 noise model for first-pass.** L23 is synthetic (effectively noiseless
+   truth). For the first-pass retrieval + uncertainty/closure metrics, what Rrs
+   uncertainty should we assume — a PACE-like sensor noise model, a fixed percent
+   of Rrs, or run noiseless first? This affects the uncertainty budget and ΔRrs
+   closure thresholds.
+
+Yes, we will assume a PACE-like sensor noise model.
+
+#### Claude's questions (2026-06-20, round 3)
+
+Applied F (seed = `expb_pow`) and G (PACE-like noise for L23 first-pass) to the
+Analysis section, and added a **Provenance & reproducibility** subsection (records
+the full algorithm config incl. priors for Bayesian inference). Two questions:
+
+H. **PACE noise model specifics.** BING's noise module supports named satellite
+   models (PACE/MODIS/SeaWiFS). For "PACE-like," do you want BING's built-in PACE
+   OCI noise model as-is, or a particular SNR/Rrs-uncertainty spec? (Affects the
+   uncertainty budget magnitude.)
+
+We will use the ocpy.satellites.pace noise model.
+
+I. **Provenance record format/location.** Should the provenance live alongside the
+   results table (e.g. a config record per run, plus a run-level manifest), and do
+   you want it human-readable (YAML/JSON) for sharing on GitHub? This is partly
+   implementation, but I want the design to state the intent if you have a
+   preference.
+
+Yes, we will use YAML/JSON for the provenance record and put it next to the results table.
+
+J. **Version bump policy.** Task #3 didn't ask for a version bump, so I left the
+   design doc at **v0.3** (these are same-day refinements). Want me to bump to
+   v0.4 given the new provenance requirement, or keep bumps only when you request
+   them?
+
+You should bump the version number of the design document whenever you consider it sensible.
+
+#### Claude's questions (2026-06-20, round 4)
+
+Applied H (use the `ocpy.satellites.pace` noise model), I (YAML/JSON provenance
+record stored next to the results table), and J (I'll bump the version whenever
+sensible — bumped to **v0.4** now). One question:
+
+K. **Consolidate deferred decisions?** Several items are now deferred (canonical
+   IOP-component scheme; PACE/IOCCG datasets; full Metrics/Validation sections).
+   Want me to add a short running **"Open questions / deferred decisions"** section
+   to the design doc so they're tracked in one place, or keep them inline where
+   they arise?
+
+Sure, do that.
+
+## Metrics
+
+To compare the various IOP algorithms, we will need to develop a set of metrics.  Ideally, these will be able to be applied uniformly to all algorithms.  However, some algorithms will retrieve only a subset of the IOPs and there will be other factors that make true uniformity difficult to achieve.  
+
+### Tasks
+
+1. Based on your understanding of BING and especially the analysis performed in the `docs/PDFs/bing.pdf` and `docs/PDFs/erickson2023.pdf` papers, generate a plan for the metrics.  Write the plan in the Metrics section of the design document.  If you have any questions, write them in the Q&A section below. Log your work.
+
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Metrics section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
+3. I have answered your new questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Metrics section to reflect the decisions.
+    - Log your work in the Logs section below.
+
+### Q&A
+
+#### Claude's questions (2026-06-20, Metrics)
+
+Wrote the Metrics section of `IOPtics_design.md` (v0.6), grounded in BING
+(Prochaska & Frouin 2025) and Erickson et al. (2023). Both papers' key choices and
+gaps shaped it; a few decisions are worth your call:
+
+L. **Primary accuracy metric convention.** I adopted Erickson's **multiplicative,
+   log-space MAE & bias** (Seegers et al. 2018) as the primary accuracy metrics
+   (BING reported unspecified % bias/MAE/RMS). OK to standardize on the
+   Seegers/Erickson log-space definitions across all algorithms?
+
+Yes, this is a fine start.  I am certain we will include more.
+
+M. **Taylor / Target diagrams.** Neither BING nor Erickson use them, but they're
+   common in the broader community (and noted in `context.md`). Include them in
+   the standard diagnostic set, or leave them out for now?
+
+What are these?  Point me to a few references and then I'll decide.
+
+N. **Uncertainty coverage test.** I proposed adding a *formal* coverage/calibration
+   test (fraction of truths inside the X% interval ≈ X%) — absent from both
+   papers. Confirm you want this as a first-class, comparable metric, and at which
+   level(s) (e.g. 68% and 95%)?
+
+Yes, that is a good idea. 
+
+O. **Reference wavelengths.** I set absorption summaries at 440/443 nm and
+   backscatter at 555 nm (matching the papers), in addition to full-spectrum
+   metrics. Are those the reference wavelengths you want, or a different set
+   (e.g. add 490, 670)?
+
+Let's include a redder wavelength for backscatter too.
+
+#### Claude's answers + new questions (2026-06-20, Metrics round 2)
+
+Applied your decisions to the Metrics section (v0.7): kept log-space MAE/bias as
+the **initial** battery (noted it will grow, per L); set the coverage test at the
+**68% and 95%** levels (N); added a **redder backscatter reference wavelength,
+670 nm**, alongside 555 nm (O). Taylor/Target left **out** pending your review (M).
+
+**Re M — what Taylor & Target diagrams are (references):**
+
+- **Taylor diagram** — a single polar plot that places each algorithm by three
+  linked statistics at once: correlation with truth (azimuth), normalized standard
+  deviation (radius), and centered RMS difference (distance to the "truth" point).
+  Great for ranking many algorithms on one figure.
+  - Taylor, K. E. (2001), *JGR* 106(D7), 7183–7192,
+    https://doi.org/10.1029/2000JD900719
+- **Target diagram** — a Cartesian plot of **bias** (y) vs. **unbiased RMSD** (x,
+  signed), so a point's distance from the origin is the total RMSD; it separates
+  systematic from random error at a glance.
+  - Jolliff et al. (2009), *J. Marine Systems* 76(1–2), 64–82,
+    https://doi.org/10.1016/j.jmarsys.2008.05.014
+- Both are used in ocean-color algorithm validation; `context.md` §6 also lists
+  them. They're complementary: Taylor for correlation+variance, Target for
+  bias+random error.
+
+P. **Taylor/Target decision.** Given the above, do you want either/both added to
+   the standard diagnostic set? (They're cheap to produce from the results table.)
+
+Yes, let's add both.
 
 ## Validation
 
 We will develop a set of validation methods that can be applied uniformly to all algorithms.  These will include:
 
-## Metrics
 
 ## Reporting
 
@@ -363,3 +589,143 @@ Did **not** bump the version (task #3 didn't request it; these are same-day
 refinements to the v0.2 Data section — header stays v0.2, 2026-06-19). Wrote one
 new question (Q13: which specific PACE release/DOI/SeaBASS query, since I'm not
 aware of a single consolidated PACE validation product yet) to the Conversation.
+
+### 2026-06-20 (Designing #4 → Analysis/Tasks #1: examined BING, wrote analysis plan)
+
+First applied JXP's Q13 answer (don't include PACE for now): removed PACE from
+the Data section's summary table and subsection, and added it under "Out of scope
+for now" in `IOPtics_design.md`.
+
+Then executed Analysis/Tasks #1. Mapped the BING package's analysis-relevant
+public API and end-to-end data flow (Rrs → models[anw,bbnw] → priors → RT[Gordon
++optional Raman/Chl-fl] → fit[chisq or MCMC/emcee] → reconstruct a/bb±unc →
+stats). Verified signatures directly: `models.anw/bbnw.init_model`, model
+registries (anw: Cst/Exp/ExpFix/Bricaud/ExpBricaud/.../GIOP/ExpNMF/GSM/Chase;
+bbnw: Cst/Every/Pow/GSM/Lee), `parameters.standard.{expb_pow,expbf_pow,giop,gsm,
+k2b}`, `rt.rrs.calc_Rrs` + `wave_dependent_gordon`, `fitting.chisq_fit.fit`,
+`fitting.inference.fit_one/fit_batch/run_emcee`, `evaluate.reconstruct_from_chains
+/reconstruct_chisq_fits/calc_stats`, `stats.calc_chisq/calc_ICs`, `noise.scale_
+noise/add_noise`. Key insight: `fitting.l23.prep_one_l23` is the canonical
+end-to-end example but is L23-specific; everything else is data-agnostic, so
+IOPtics' core job is generalizing that prep into a dataset-agnostic layer feeding
+the same engine.
+
+Created a new Planning document `docs/design/IOPtics_planning.md` (v0.1) with an
+**Analysis** section: A0 engine/seams table, A1 uniform AlgorithmSpec + registry,
+A2 retrieval (`run_algorithm`/sweep), A3 uniform uncertainties (MCMC percentiles
+vs. least-squares covariance + noise), A4 metrics/diagnostics/QC, A5 figures/
+tables, A6 reports, and a tentative module layout. Used an Explore subagent to
+accelerate the API mapping. Wrote 5 questions (A–E: planning doc location, default
+fit method, v1 algorithm set, where the generalized prep lives, whether to draft
+Metrics next) to the Q&A section.
+
+### 2026-06-20 (Designing #5 → Analysis/Tasks #2: moved Analysis into design doc, removed Planning doc)
+
+Read JXP's Q&A answers and executed Analysis/Tasks #2. Per answer A, the analysis
+content belongs in `IOPtics_design.md` (not a separate Planning doc), so I:
+- Added a design-level **Analysis** section to `docs/design/IOPtics_design.md`
+  (pipeline overview; data preparation; IOP retrieval; uncertainty quantification;
+  metrics & diagnostics; figures/tables/reports) — kept at the design altitude
+  with no code/function/module specifics, per the doc's no-code-recommendations
+  convention.
+- Reflected the decisions: first-pass uses least-squares with MCMC reserved for a
+  subset (answer B); algorithms are **built out one at a time** via a growing
+  registry (answer C); stated that a defined data load/prep **process** is needed
+  without specifying where it lives (answer D); deferred Metrics definitions
+  (answer E).
+- **Removed** the standalone `docs/design/IOPtics_planning.md` (answer A).
+- Bumped the design document to **v0.3**, dated 2026-06-20.
+- Wrote 2 new questions (F: which algorithm to seed the registry — I suggest
+  `expb_pow`; G: what Rrs noise model to assume for the synthetic L23 first-pass)
+  to the Q&A section.
+
+### 2026-06-20 (Designing #6 → Analysis/Tasks #3: reflected F/G, added provenance requirement)
+
+Read JXP's answers to F (start with `expb_pow`) and G (assume a PACE-like sensor
+noise model). Executed Analysis/Tasks #3 on `docs/design/IOPtics_design.md`:
+- IOP retrieval subsection now names **`expb_pow`** as the first algorithm built
+  out, with GIOP/GSM to follow.
+- Data preparation subsection now states the synthetic **L23 first-pass assumes a
+  PACE-like sensor noise model** so uncertainties/closure thresholds are realistic.
+- Added a new **Provenance & reproducibility** subsection (and a cross-cutting
+  note in the pipeline overview): every result must record the full algorithm
+  configuration — model choices, RT options, fitting method, noise model — **and
+  the priors for any Bayesian inference** — per JXP's requested additions.
+
+Did not bump the version (task #3 didn't request it; stays v0.3) and asked about
+it explicitly (Q J). Wrote 3 new questions (H: which PACE noise spec; I:
+provenance record format/location; J: version-bump policy) to the Q&A section.
+
+### 2026-06-20 (Designing #7 → Analysis/Tasks #4: reflected H/I/J)
+
+Read JXP's answers to H/I/J and executed Analysis/Tasks #4 on
+`docs/design/IOPtics_design.md`:
+- Data preparation now specifies the L23 first-pass noise model as the
+  **`ocpy.satellites.pace`** PACE model (answer H; verified the module exists at
+  `ocpy/satellites/pace.py`).
+- Provenance & reproducibility subsection now states the record is written in
+  **YAML/JSON** and stored **alongside the results table** (answer I).
+- Per answer J (bump whenever sensible), bumped the design doc to **v0.4**.
+- Wrote 1 new question (K: whether to add a consolidated "Open questions /
+  deferred decisions" section) to the Q&A. Also saved a feedback memory about the
+  version-bump policy.
+
+### 2026-06-20 (Designing #8 → Analysis/Tasks #5: added Open Questions section)
+
+Read JXP's answer to K (yes, consolidate). Added an **Open Questions & Deferred
+Decisions** section to `docs/design/IOPtics_design.md` — a table tracking the six
+postponed items in one place: (1) canonical IOP-component scheme, (2) PACE
+validation dataset, (3) IOCCG synthetic dataset, (4) Metrics section, (5)
+Validation section, (6) GLORIA data acquisition. This complements the existing
+inline "(see Open Questions)" reference in the Data section. Bumped the design doc
+to **v0.5**. (Task #5 did not request new questions, so none were added.)
+
+### 2026-06-20 (Designing #9 → Metrics/Tasks #1: drafted the Metrics section)
+
+Executed Metrics/Tasks #1. Read `docs/PDFs/bing.pdf` (Prochaska & Frouin 2025) and
+`docs/PDFs/erickson2023.pdf` (Erickson et al. 2023, "Bayesian approach to a
+generalized IOP model", Optics Express) via two parallel subagents to extract
+exactly which metrics each uses. Key takeaways folded into the plan:
+- BING: reduced χ²ᵥ as fit diagnostic (≈1 good, <1 overfit); AIC/BIC/ΔBIC model
+  selection (ΔBIC<0 favors complex; CDF over dataset); bias/MAE/RMS accuracy at a
+  single wavelength (aph(440), bb_nw(440)), log–log; 68%/99% credible intervals +
+  Nσ detection / upper limits; corner plots for degeneracy; **no Taylor/Target,
+  no r²/regression, no formal coverage test**.
+- Erickson: multiplicative **log-space MAE & bias** (Eqs. 13–14, Seegers 2018);
+  χ²_rel / χ²_Bayes objectives; **dual-sided fit-quality window** (reproduce Rrs
+  to ~5% measurement noise, but not below → overfitting; >25% MAE = QC fail);
+  ratio histograms; "wins" head-to-head ranking; per-variable/per-wavelength
+  stratification.
+
+Wrote a new **Metrics** section in `IOPtics_design.md` (conventions; 1 retrieval
+accuracy vs truth; 2 internal closure/fit quality; 3 model selection; 4
+uncertainty assessment incl. a *new* formal coverage test; 5 cross-algorithm
+comparison/wins; 6 diagnostic figures; handling non-uniformity). Improved on the
+papers by reporting metrics **spectrally** (not just one wavelength) and adding
+r²/regression and coverage. Updated the Open Questions table (Metrics → Drafted)
+and bumped the design doc to **v0.6**. Wrote 4 questions (L: adopt Seegers
+log-space MAE/bias; M: include Taylor/Target; N: formal coverage test + levels;
+O: reference wavelengths) to the Q&A section.
+
+### 2026-06-20 (Designing #10 → Metrics/Tasks #2: refined Metrics per L–O)
+
+Read JXP's answers (L–O) and edited the Metrics section of `IOPtics_design.md`:
+- L: noted the log-space MAE/bias battery is the **initial** set and will grow.
+- N: set the uncertainty **coverage test at 68% and 95%**.
+- O: added a **redder backscatter reference wavelength (670 nm)** alongside 555 nm
+  (absorption stays 440/443 nm).
+- M: JXP asked what Taylor/Target diagrams are before deciding — left them **out**
+  of the standard set, gave concise definitions + primary references (Taylor 2001
+  JGR; Jolliff et al. 2009 J. Mar. Sys.) in the Q&A, and asked Q P for the
+  decision.
+Updated the Open Questions table (Metrics row → Drafted v0.7; coverage/MAE
+adopted; Taylor/Target pending) and bumped the design doc to **v0.7**.
+
+### 2026-06-20 (Designing #11 → Metrics/Tasks #3: added Taylor + Target diagrams)
+
+Read JXP's answer to P (add both). Added **Taylor (Taylor 2001)** and **Target
+(Jolliff et al. 2009)** diagrams to the Metrics "Diagnostic figures" subsection of
+`IOPtics_design.md`, with one-line descriptions of what each conveys. Updated the
+Open Questions table (Metrics → Drafted v0.8, Taylor/Target now resolved) and
+bumped the design doc to **v0.8**. (Task #3 requested no new questions, so none
+added.)
