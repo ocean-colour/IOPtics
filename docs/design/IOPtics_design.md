@@ -1,6 +1,6 @@
 # IOPtics Design Document
 
-**Version:** 0.9
+**Version:** 0.10
 **Date:** 2026-06-20
 **Authors:** JXP and Claude
 
@@ -413,10 +413,30 @@ Each sweep produces a consistent set of artifacts:
 - **Per-dataset report** — all algorithms on one dataset, for dataset-focused
   questions.
 
+A **standard report** template covers these; reports are generated **on demand**
+(not auto-built by CI on every commit).
+
+### Leaderboard
+
+The cross-algorithm comparison is anchored by a **persistent leaderboard** that
+ranks algorithms by the headline metrics across datasets and strata. Because
+algorithms are added to the registry one at a time, the leaderboard **accumulates
+and updates** as each new algorithm is evaluated, giving the community a single,
+evolving view of relative performance.
+
+### Interactive figures
+
+In addition to static publication figures, IOPtics provides **interactive Bokeh
+figures** that let a user **select an algorithm (and dataset/stratum) and inspect
+its results** — e.g. browse retrieved-vs-true scatter, spectra with uncertainty
+bands, and the leaderboard interactively. These are embedded in the readthedocs
+site alongside the static reports.
+
 ### Format & delivery
 
-- Reports are authored as **reStructuredText (`.rst`)** and rendered on
-  **readthedocs.io**, with the source and artifacts shared via **GitHub**.
+- Reports are authored as **reStructuredText (`.rst`)** and rendered on a
+  **single, accumulating readthedocs.io site** that hosts all reports, with the
+  source and artifacts shared via **GitHub**.
 - Figures are **publication-ready** (the BING/Erickson figure styles), so report
   figures can flow directly into manuscripts.
 - **Reproducibility:** every report is generated programmatically from the results

@@ -531,6 +531,20 @@ S. **Leaderboard.** For the cross-algorithm comparison, do you want a persistent
 
 I like that. Let's include a Leaderboard
 
+#### Claude's questions (2026-06-20, Reporting round 2)
+
+Applied Q (standard report, generated on demand — not CI), R (single accumulating
+readthedocs site), S (added a persistent, accumulating **Leaderboard**), and added
+the requested **interactive Bokeh figures** (select algorithm/dataset to inspect
+results). Design doc → v0.10. One question:
+
+T. **Bokeh delivery constraint.** Interactive Bokeh embedded in readthedocs works
+   as **standalone/static HTML** (BokehJS, `output_file`/`components`) — full
+   server-backed callbacks (`bokeh serve`) won't run on readthedocs. Is
+   standalone-Bokeh interactivity (hover, select-from-dropdown via JS callbacks,
+   pan/zoom) sufficient, or do you envision a live server (which would need
+   separate hosting)?
+
 ## Logging
 
 The "Logs" section will record Claude's work.  Please use the following format:
@@ -784,3 +798,18 @@ design altitude (build automation, site layout, styling left to implementation).
 Bumped the design doc to **v0.9**. Wrote 3 questions (Q: CI auto-build vs.
 on-demand; R: single accumulating site / dashboard landing page vs. per-sweep; S:
 persistent leaderboard for the cross-algorithm comparison) to the Q&A section.
+
+### 2026-06-20 (Designing #13 → Reporting/Tasks #2: refined Reporting; added Leaderboard + Bokeh)
+
+Read JXP's answers (Q/R/S) and edited the Reporting section of `IOPtics_design.md`:
+- Q: reports are generated **on demand** via a standard report template (not CI
+  auto-built on every commit).
+- R: a **single, accumulating readthedocs.io site** hosts all reports.
+- S: added a **Leaderboard** subsection — persistent ranking by headline metrics
+  across datasets that accumulates/updates as algorithms are added one-by-one.
+- Requested addition: an **Interactive figures** subsection — interactive **Bokeh**
+  figures letting the user select an algorithm (and dataset/stratum) to inspect
+  results, embedded in the readthedocs site.
+Bumped the design doc to **v0.10**. Wrote 1 question (T: whether standalone/static
+BokehJS interactivity is sufficient given readthedocs can't run `bokeh serve`, vs.
+needing a live server with separate hosting) to the Q&A section.
