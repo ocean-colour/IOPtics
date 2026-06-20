@@ -79,6 +79,7 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 
 12. Read this doc.  Execute the 1st task under "Reporting/Tasks"
 13. Read this doc.  Execute the 2nd task under "Reporting/Tasks"
+14. Read this doc.  Execute the 3rd task under "Reporting/Tasks"
 
 ## Data
 
@@ -502,6 +503,11 @@ We will generate reports and publications on the main findings.  This will inclu
     - Ask me any new questions you have in the Q&A section below.
     - Log your work in the Logs section below.
 
+3. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Reporting section to reflect the decisions.
+    - Log your work in the Logs section below.
+
 ### Q&A
 
 #### Claude's questions (2026-06-20, Reporting)
@@ -544,6 +550,8 @@ T. **Bokeh delivery constraint.** Interactive Bokeh embedded in readthedocs work
    standalone-Bokeh interactivity (hover, select-from-dropdown via JS callbacks,
    pan/zoom) sufficient, or do you envision a live server (which would need
    separate hosting)?
+
+Standalone/static BokehJS interactivity is sufficient.
 
 ## Logging
 
@@ -813,3 +821,12 @@ Read JXP's answers (Q/R/S) and edited the Reporting section of `IOPtics_design.m
 Bumped the design doc to **v0.10**. Wrote 1 question (T: whether standalone/static
 BokehJS interactivity is sufficient given readthedocs can't run `bokeh serve`, vs.
 needing a live server with separate hosting) to the Q&A section.
+
+### 2026-06-20 (Designing #14 → Reporting/Tasks #3: pinned Bokeh to standalone/static)
+
+Read JXP's answer to T (standalone/static BokehJS is sufficient). Updated the
+**Interactive figures** subsection of the Reporting section to specify delivery as
+**standalone/static BokehJS** — self-contained HTML with JS callbacks (dropdown
+select, hover, pan/zoom), embeddable in readthedocs with no running Bokeh server.
+Bumped the design doc to **v0.11**. (Task #3 requested no new questions, so none
+added.)

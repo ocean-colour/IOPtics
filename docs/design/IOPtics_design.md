@@ -1,6 +1,6 @@
 # IOPtics Design Document
 
-**Version:** 0.10
+**Version:** 0.11
 **Date:** 2026-06-20
 **Authors:** JXP and Claude
 
@@ -429,8 +429,10 @@ evolving view of relative performance.
 In addition to static publication figures, IOPtics provides **interactive Bokeh
 figures** that let a user **select an algorithm (and dataset/stratum) and inspect
 its results** — e.g. browse retrieved-vs-true scatter, spectra with uncertainty
-bands, and the leaderboard interactively. These are embedded in the readthedocs
-site alongside the static reports.
+bands, and the leaderboard interactively. These are delivered as
+**standalone/static BokehJS** (self-contained HTML with JS callbacks — dropdown
+select, hover, pan/zoom), so they embed directly in the readthedocs site with no
+running Bokeh server.
 
 ### Format & delivery
 
