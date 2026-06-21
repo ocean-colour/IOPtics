@@ -1,6 +1,6 @@
 # IOPtics Implementation Document
 
-**Version:** 0.6
+**Version:** 0.10
 **Date:** 2026-06-21
 **Authors:** JXP and Claude
 
@@ -288,8 +288,9 @@ every dataset and every algorithm flow through unchanged:
   dataset supports, and a `meta` dict. The `truth` dict is deliberately *not* a
   fixed schema while the canonical component scheme stays open (design Open Q #1)
   — each dataset fills only the keys it has, and metrics score on the intersection
-  with what an algorithm retrieves. The output of `prep`; the input to `run`.
-  *(Full schema: Data preparation §.)*
+  with what an algorithm retrieves. Spectral truth is **pre-aligned onto `wave`**
+  by `prep` (with a per-component interpolation flag). The output of `prep`; the
+  input to `run`. *(Full schema: Data preparation §.)*
 - **`RetrievalResult`** — `(dataset, obs_id, algorithm)` key plus reconstructed
   `a(λ)`/`bb(λ)` and components with ± uncertainty, fit stats (χ²ᵥ, AIC/BIC), the
   fit method, and a pointer to its provenance. Flattened to the long/tidy table by
@@ -353,11 +354,352 @@ re-runnable stage-by-stage and self-documenting.
 
 ## Data preparation
 
-*(forthcoming — Data preparation / Tasks #1)*
+*Implements the design doc's **Data** section and Analysis §"Data preparation".
+Modules: `ioptics.datasets`, `ioptics.prep`, `ioptics.noise`, `ioptics.records`.*
+
+### What this generalizes (and the key refactor)
+
+BING's `bing.fitting.l23.prep_one_l23` is the canonical end-to-end prep, but it
+**entangles two concerns**: (a) loading/conditioning the *data* (read L23, pick a
+grid, attach `Rrs` noise, extract truth), and (b) configuring the *algorithm*
+(init models + priors, build the `rt_dict`, compute the Gordon forward `Rrs` and a
+least-squares initial guess). It is also L23-specific and **resamples to a
+satellite grid** via `convert_to_satwave`.
+
+IOPtics splits these:
+
+- **`ioptics.prep` keeps only concern (a)** — the dataset-agnostic data+noise+truth
+  step — and emits a `PreparedRecord`. It does **no** model/prior/RT work.
+- **Concern (b) moves to `ioptics.run`** (driven by an `AlgorithmSpec`), so the
+  same `PreparedRecord` feeds every algorithm unchanged.
+- **Native grids are preserved** (design decision): unlike `prep_one_l23`, prep
+  does *not* call `convert_to_satwave`. For L23 the PACE noise model is
+  **interpolated onto the native Hydrolight grid** instead of moving the data to
+  PACE bands.
+
+### Dataset adapters (`ioptics.datasets`)
+
+A registry maps a dataset name to a thin adapter over the ocpy loader. Each
+adapter knows how to enumerate observation ids and return one observation's
+`Rrs` + truth on the **native grid**. This is the *only* module (with `noise`)
+that imports ocpy.
+
+| `dataset` | ocpy loader | `obs_id` | Native grid | Truth provided (ocpy source → IOPtics key) |
+|---|---|---|---|---|
+| `L23` | `hydrolight.loisel23.load_ds(X, Y)` | row index `0..N-1` | Hydrolight `Lambda` | **full spectral**: `a`, `bb`; `aph`→`a_ph`, `ag+ad`→`a_dg`, `anw`, `bbnw`→`bb_p`, `a−anw`→`a_w`, `bb−bbnw`→`bb_w`; scalars `Chl` (from `aph(440)/0.05582`), `Y` (Lee 2002), `Sdg` (`functions.fit_Sdg`) |
+| `PANGAEA` | `insitu.pangaea.load(key)` + `.spectrum(df, id, kind)` | global `ID` | per-family native λ (each `kind` has its own λ set) | `aph`→`a_ph`, `acdom`→`a_dg` (combined CDOM+detrital), `bbp`→`bb_p`, `kd`; scalars `chla`, `tss` |
+| `GLORIA` | `insitu.gloria.load_gloria()` | global `ID` | hyperspectral 350–900 @1 nm | **scalar only**: `a_cdom440`, `Chla`, `TSS`, `Secchi` (flag `a_cdom440` is CDOM-only vs retrieved `a_dg`) |
+
+```python
+# ioptics/datasets.py
+ADAPTERS = {}                       # name -> Adapter
+
+def register_dataset(name, adapter):
+    ADAPTERS[name] = adapter
+
+def get_adapter(name):              # 'L23' | 'PANGAEA' | 'GLORIA'
+    return ADAPTERS[name]
+
+class Adapter(Protocol):
+    def obs_ids(self, **opts) -> list:                  ...   # enumerate observations
+    def load_obs(self, obs_id, **opts) -> "RawObs":     ...   # Rrs Spectrum + truth dict + meta
+```
+
+`RawObs` is an internal carrier (`wave`, `Rrs`, optional `Rrs_err`, a `truth`
+dict, and `meta`); `prep` turns it into the public `PreparedRecord`. L23 load
+options `X` (1 first-pass, 4 later; never 2) and `Y` (00) are adapter opts and
+are recorded in `meta`/provenance.
+
+### The prepared record (`ioptics.records.PreparedRecord`)
+
+The single common form fed to retrieval. Deliberately small so every dataset and
+algorithm flow through it unchanged.
+
+```python
+@dataclass
+class PreparedRecord:
+    dataset:     str                  # 'L23' | 'PANGAEA' | 'GLORIA'
+    obs_id:      int | str            # L23 row index, or PANGAEA/GLORIA global ID
+    wave:        np.ndarray           # native grid (nm), ascending — the fit grid
+    Rrs:         np.ndarray           # observed Rrs [sr^-1] on `wave`
+    varRrs:      np.ndarray           # Rrs variance σ² on `wave` (the fit weights)
+    Rrs_clean:   np.ndarray           # un-perturbed Rrs (== Rrs if no noise added; L23 truth)
+    truth:       dict                 # free-form; see below. {} when none (GLORIA → scalars only)
+    truth_interp: dict                # component -> bool: was it regridded onto `wave`?
+    noise_model: str                  # provenance tag: 'pace' | 'insitu' | 'pct:0.05'
+    noise_seed:  int | None           # RNG seed used to perturb Rrs (None if unperturbed)
+    meta:        dict = field(default_factory=dict)   # lat/lon/date/source/sensor; L23 X,Y; water type / trophic bin
+```
+
+- **`truth`** is the free-form dict (per Package-layout Q8, kept open until the
+  canonical component scheme is decided). Convention for its values:
+  - **spectral** components (`a`, `bb`, `a_ph`, `a_dg`, `bb_p`, `a_w`, `bb_w`, …)
+    are stored as ocpy **`Spectrum`** objects **pre-aligned to the record's
+    `wave`** (per Q10). Prep interpolates each truth component — which may arrive
+    on its own native λ set (notably PANGAEA's `a_ph`/`a_dg`/`bb_p`) — onto `wave`
+    so truth and retrieval share one grid and scoring is direct. Each component's
+    regrid status is recorded in **`truth_interp[component]`** (`True` if
+    interpolated; `False` when it was already on `wave`, e.g. all L23 spectral
+    truth). The original native grid is retained in the `Spectrum.metadata`
+    (`orig_wave`) so nothing is lost. Truth values outside a component's measured
+    λ range are left `NaN` (not extrapolated) and excluded by metrics.
+  - **scalar** components (`Chl`, `Y`, `Sdg`, `a_cdom440`, `TSS`, `Secchi`) are
+    plain floats (`truth_interp` is `False` for them).
+  - Metrics later score on the **intersection** of an algorithm's retrieved
+    components and the keys present here — now already on the common `wave`.
+- **`Rrs`/`varRrs`** are raw arrays on `wave` (what BING's fitters consume); they
+  can be viewed as a `Spectrum(wave, Rrs, errors=sqrt(varRrs))` for plotting.
+  **`Rrs_clean`** keeps the un-perturbed spectrum so a noise-added L23 fit can
+  still be compared against the noiseless input.
+
+### Noise attachment (`ioptics.noise`)
+
+Builds `varRrs` for a record; the choice is recorded as `noise_model` for
+provenance. Thin wrappers over ocpy / BING:
+
+```python
+def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None):
+    """Return (varRrs, Rrs_out, Rrs_clean, tag, seed_used).
+
+    model='pace'   -> sigma = ocpy.satellites.pace.gen_noise_vector(wave)   # interp to native grid
+                      varRrs = sigma**2
+    model='insitu' -> use the dataset's own measured Rrs errors (varRrs = err**2)
+    model='pct:X'  -> varRrs = (X * Rrs)**2                                 # e.g. 'pct:0.05'
+    If add_noise: Rrs_out = Rrs + N(0, sqrt(varRrs)) using `seed` (recorded for
+    reproducibility); Rrs_clean keeps the input. Else Rrs_out == Rrs_clean.
+    """
+```
+
+- **L23 first-pass** uses `model='pace'` **with `add_noise=True`** (per Q11):
+  the PACE per-band `Rrs` uncertainty (`ocpy.satellites.pace.gen_noise_vector`)
+  is evaluated **on the native L23 grid** (no resampling), used both as the
+  inverse-variance fit weight **and** to draw a **single noise realization** that
+  perturbs the otherwise-noiseless Hydrolight `Rrs` — so the fit sees a realistic
+  observation rather than perfect truth. The draw uses a **recorded `seed`**
+  (provenance) so the sweep is reproducible, and `Rrs_clean` retains the
+  noiseless input. (`bing.noise.scale_noise`/`add_noise` remain available for the
+  satellite-band conventions BING already encodes.)
+- **PANGAEA / GLORIA** use `model='insitu'` (the loader's measured `Rrs` errors;
+  `pct` fallback otherwise) with **`add_noise=False`** — the in-situ `Rrs` is
+  already a real, noisy observation, so no synthetic perturbation is added.
+
+### Prep API (`ioptics.prep`)
+
+```python
+def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
+             wv_min=None, wv_max=None, **load_opts) -> PreparedRecord:
+    """Generalizes prep_one_l23 (data+noise+truth only). Loads one observation via
+    the dataset adapter on its native grid, optionally trims to [wv_min, wv_max],
+    attaches varRrs via ioptics.noise, **pre-aligns each spectral truth component
+    onto `wave`** (flagging regridded components in truth_interp), and packs
+    scalar truth as floats. No model/prior/RT work — that is run's job.
+
+    Dataset-aware defaults (overridable):
+      noise:     'pace'  for L23 (synthetic);  'insitu' for PANGAEA/GLORIA.
+      add_noise:  True   for L23 (perturb the noiseless Rrs, seed recorded);
+                  False  for in-situ (Rrs is already a real observation)."""
+
+def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
+                 seed=None, n_cores=1, **opts) -> list[PreparedRecord]:
+    """Map prep_one over obs_ids (default: ALL with a usable Rrs — prep is
+    permissive (Q12); missing truth components are simply absent and metrics
+    report per-component coverage). Per-record seeds derive from `seed`+index so
+    each L23 realization is independent yet reproducible. Parallel via
+    ProcessPoolExecutor, mirroring bing.fitting.l23.batch_fit's pattern."""
+```
+
+`prep_dataset` is what a sweep's prep stage calls; the resulting
+`list[PreparedRecord]` is handed to `run` (next section). Records are picklable,
+so they cross the process pool and can be cached to disk between stages.
+
+For **PANGAEA** (Q12) prep returns *every* `ID` that has a usable `Rrs`, even if
+it lacks some truth components (not every ID carries all of `a_ph`/`a_dg`/`bb_p`);
+the per-component `truth` dict simply omits what's missing and the metrics layer
+reports coverage. No up-front completeness filter is applied.
+
+### Worked example
+
+```python
+from ioptics import prep
+
+# L23, first-pass: native Hydrolight grid; PACE noise both weights AND perturbs Rrs
+recs = prep.prep_dataset('L23', obs_ids=range(500), seed=1234, X=1, Y=0)
+r = recs[0]
+r.wave                 # Hydrolight wavelengths (native)
+r.Rrs                  # noise-perturbed Rrs (one PACE realization, seed recorded)
+r.Rrs_clean            # noiseless Hydrolight Rrs (for reference)
+r.varRrs               # PACE-derived variance on `wave`
+r.truth['a_ph']        # ocpy Spectrum on `wave` (L23: already native → truth_interp False)
+r.truth_interp['a_ph'] # False
+r.truth['Chl']         # float
+
+# PANGAEA: real in-situ Rrs (not perturbed); combined a_dg truth regridded onto wave
+precs = prep.prep_dataset('PANGAEA')           # noise='insitu', add_noise=False
+precs[0].truth['a_dg']         # Spectrum on `wave` (acdom = CDOM+detrital)
+precs[0].truth_interp['a_dg']  # True (interpolated from its native λ set)
+```
 
 ## Algorithm registry
 
-*(forthcoming — Algorithm registry / Tasks #1)*
+*Implements design doc Analysis §"IOP retrieval" — "an algorithm is a
+configuration." Module: `ioptics.algorithms` (`spec.py`, `registry.py`).*
+
+### What a BING algorithm actually is
+
+Reading `bing.parameters.standard`, every pre-wired combo (`expb_pow`, `giop`,
+`gsm`, …) is just a factory that fills one namedtuple — `bing.parameters.p_ntuple`
+`def_dict` — whose fields fully specify a retrieval:
+
+- **models:** `model_names = [anw_model, bbnw_model]` → resolved by
+  `bing.models.{anw,bbnw}.init_model` (a_nw registry: `Exp`, `Bricaud`,
+  `ExpBricaud`, `GIOP`, `GSM`, `ExpNMF`, …; bb_nw: `Pow`, `Lee`, `GSM`, `Cst`, …).
+- **priors:** `apriors`, `bpriors`, `othera_priors` — lists of BING prior dicts
+  (`{flavor, pmin, pmax}`), one per model parameter.
+- **RT options:** `variable_Gordon` (+`_G0`/`_bbp`), `include_Raman`,
+  `include_Chl_fl`, `phi_C`, `double_gaussian`.
+- **fixed slopes:** `set_Sdg`/`sSdg` (CDOM+detrital slope), `beta` (fixed bb slope).
+- **noise:** `scl_noise`/`satellite`; **MCMC:** `nsteps`, `nburn`, `nMC`.
+
+IOPtics' `AlgorithmSpec` is a **declarative, serializable mirror of exactly this**
+— so an algorithm round-trips losslessly to a BING `p` and to a YAML block, and
+nothing about the engine is re-implemented.
+
+### `AlgorithmSpec` (`ioptics.algorithms.spec`)
+
+```python
+@dataclass
+class RTOptions:
+    variable_Gordon:     bool = True
+    variable_Gordon_G0:  bool = False
+    variable_Gordon_bbp: bool = False
+    include_Raman:       bool = False     # elastic-only first pass (L23 X=1)
+    include_Chl_fl:      bool = False     # turned on with L23 X=4
+    phi_C:               float = 0.02
+    double_gaussian:     bool = True
+
+@dataclass
+class MCMCOptions:
+    nsteps: int = 40000
+    nburn:  int = 1000
+    nMC:    int | None = None
+
+@dataclass
+class AlgorithmSpec:
+    name:        str                       # registry key, e.g. 'expb_pow'
+    label:       str                       # human label, e.g. 'ExpB_Pow'
+    anw_model:   str                       # BING a_nw model name, e.g. 'ExpBricaud'
+    bbnw_model:  str                       # BING bb_nw model name, e.g. 'Pow'
+    apriors:     list[dict]                # BING prior dicts, one per a-param
+    bpriors:     list[dict]                # BING prior dicts, one per bb-param
+    othera_priors: list[dict] | None = None
+    rt:          RTOptions = field(default_factory=RTOptions)
+    set_Sdg:     bool = False
+    sSdg:        float = 0.002
+    beta:        float | None = None
+    fit_method:  str = 'chisq'             # 'chisq' (default) | 'mcmc'
+    mcmc:        MCMCOptions = field(default_factory=MCMCOptions)
+    noise_model: str = 'pace'              # provenance only — see note below
+
+    # --- BING interop -------------------------------------------------
+    def to_bing_p(self, **overrides):
+        """Build the BING parameter namedtuple via bing.parameters.p_ntuple.gen,
+        mapping spec fields → def_dict keys (model_names, apriors/bpriors/
+        othera_priors, the RTOptions flags, set_Sdg/sSdg/beta, nsteps/nburn/nMC).
+        `overrides` (e.g. satellite=..., wv_min=...) are passed through."""
+
+    @classmethod
+    def from_standard(cls, name, *, label=None, **overrides):
+        """Seed from bing.parameters.standard.<name>() — read back model_names and
+        a/b priors into a spec, applying any overrides. The lossless inverse of
+        to_bing_p for the shipped combos."""
+
+    def build_models(self, wave):
+        """models = bing.models.utils.init([anw_model, bbnw_model], wave,
+        (apriors, bpriors)); then bing.priors.set_standard_priors(models, p) and
+        append othera_priors. Returns the [a_model, bb_model] list run uses."""
+```
+
+**Noise-model note (sweep-level, not per-algorithm).** Although `AlgorithmSpec`
+carries a `noise_model` field (useful in provenance), `run` always fits against
+the **`record.varRrs`** produced by `prep`. The noise model is a **sweep-level
+constant held fixed across all algorithms** in a comparison (the design doc
+requires the method be fixed within a comparison) — so it is **not** a
+per-algorithm YAML override. `config` populates each spec's `noise_model` from the
+sweep's single noise choice (the same one `prep` applied), purely so the
+provenance is self-describing. Comparing one algorithm under two noise models is
+therefore *two sweeps*, by construction.
+
+### Registry (`ioptics.algorithms.registry`) — seeded with both in tandem
+
+```python
+REGISTRY: dict[str, AlgorithmSpec] = {}
+
+def register(spec):          REGISTRY[spec.name] = spec
+def get(name):               return REGISTRY[name]
+def available():             return sorted(REGISTRY)
+
+# --- the first two algorithms, built out together (design: in tandem) -----
+register(AlgorithmSpec.from_standard('expb_pow', label='ExpB_Pow'))
+register(AlgorithmSpec.from_standard('giop',     label='GIOP'))
+```
+
+Seeding **both** from the start is the point: the comparison tooling
+(metrics/diagnostics/leaderboard) is exercised on a genuine two-way contest from
+day one rather than on a single retrieval.
+
+### The two, side by side
+
+Resolved from `bing.parameters.standard` (verbatim priors):
+
+| Field | `expb_pow` (ExpB_Pow) | `giop` (GIOP) |
+|---|---|---|
+| `anw_model` | `ExpBricaud` (exp `a_dg` + Bricaud `a_ph`) | `GIOP` |
+| `bbnw_model` | `Pow` (power-law `bb_p`) | `Lee` |
+| `apriors` | 3 — `Adg` `log_uniform[-6,5]`; `Sdg` `uniform[0.01,0.02]`; `Aph` `log_uniform[-6,5]` | 2 — `Adg`,`Aph` `log_uniform[-6,5]` |
+| `bpriors` | 2 — `Bnw` `log_uniform[-6,5]`; `beta` `uniform[0,2]` | 1 — `Bnw` `log_uniform[-6,5]` |
+| **free params `k`** | **5** | **3** |
+| `set_Sdg` / `sSdg` | `False` / `0.002` | `False` / `0.002` |
+| `rt` | elastic Gordon (variable G); Raman/Chl-fl off first pass | same |
+
+The differing **`k` (5 vs 3)** is exactly what drives the AIC/BIC/ΔBIC model-
+selection metrics (Metrics §3) — the in-tandem pair gives the leaderboard a real
+complexity trade-off to score, not a formality.
+
+### Adding a third (e.g. GSM)
+
+One line, because `gsm` is already a `bing.parameters.standard` combo
+(`model_names=['GSM','GSM']`, 2 a-priors + 1 b-prior):
+
+```python
+register(AlgorithmSpec.from_standard('gsm', label='GSM'))
+```
+
+A genuinely new algorithm (not shipped by BING) is added by constructing an
+`AlgorithmSpec` directly with its `anw_model`/`bbnw_model` (must exist in BING's
+`init_model` registries, or be contributed to BING) and prior lists — no IOPtics
+core changes, just a `register(...)` call.
+
+### YAML surface (sweep config)
+
+Algorithms appear in the sweep YAML by registry name, with optional per-field
+overrides; `config` resolves each to an `AlgorithmSpec` (the Python API builds the
+identical object), honoring the "both" decision. **`fit_method` is overridable
+per algorithm** (Q15) — e.g. run `giop` with MCMC while the rest stay
+least-squares — but **`noise_model` is not** (Q14): it is a single sweep-level
+key that `config` stamps onto every spec.
+
+```yaml
+sweep_id: expb_giop_L23_v1
+datasets: [L23]
+noise_model: pace                 # sweep-level, fixed for ALL algorithms (Q14)
+algorithms:
+  - expb_pow                      # registry defaults (sweep fit_method)
+  - name: giop
+    fit_method: mcmc              # per-algorithm override (Q15)
+    mcmc: {nsteps: 40000, nburn: 1000}
+fit_method: chisq                 # sweep default (least-squares first pass)
+mcmc_subset: 200                  # # spectra to also run with MCMC
+```
 
 ## Retrieval & run
 

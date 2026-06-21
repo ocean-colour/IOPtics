@@ -88,8 +88,11 @@ Guidelines for the implementation document (`docs/design/IOPtics_implementation.
 6. Read this doc. Execute the 3rd task under "Package layout/Tasks".
 
 7. Read this doc. Execute the 1st task under "Data preparation/Tasks".
+8. Read this doc. Execute the 2nd task under "Data preparation/Tasks".
 
-4. Read this doc. Execute the 1st task under "Algorithm registry/Tasks".
+9. Read this doc. Execute the 1st task under "Algorithm registry/Tasks".
+10. Read this doc. Execute the 2nd task under "Algorithm registry/Tasks".
+
 5. Read this doc. Execute the 1st task under "Retrieval & run/Tasks".
 6. Read this doc. Execute the 1st task under "Metrics & diagnostics/Tasks".
 7. Read this doc. Execute the 1st task under "Reporting/Tasks".
@@ -290,7 +293,74 @@ Data preparation next.
    data structure (the common form fed to the retrieval). Note how truth IOPs are
    attached where available. Write it into the doc. Q&A. Log.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Data preparation section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Data preparation)
+
+Wrote the **Data preparation** section into `IOPtics_implementation.md` (v0.7).
+Grounded it in the real loaders (`loisel23.load_ds`/`calc_Chl`,
+`pangaea.load`/`spectrum` with families rrs/aph/acdom/bbp/kd,
+`gloria.load_gloria`, `pace.gen_noise_vector`) and `prep_one_l23`. Key design
+move: I **split `prep_one_l23`** into a data+noise+truth step (`ioptics.prep`,
+dataset-agnostic, emits `PreparedRecord`) and an algorithm-config step (models/
+priors/RT/initial-guess, moved to `ioptics.run`); native grids preserved (PACE σ
+interpolated onto the native L23 grid rather than resampling to PACE bands).
+Specified the dataset-adapter registry, the full `PreparedRecord` dataclass
+(spectral truth as ocpy `Spectrum` per component → handles PANGAEA's per-family
+grids; scalar truth as floats), `noise.attach_noise`, and the `prep_one`/
+`prep_dataset` API. Three questions:
+
+10. **L23 truth on its own grid vs. the Rrs grid.** I store each spectral truth
+    component as an ocpy `Spectrum` on its native grid and let **metrics**
+    interpolate truth→comparison grid at scoring time (keeps prep lossless). For
+    L23 the truth and Rrs share the Hydrolight grid anyway; for PANGAEA they
+    differ. OK to defer all truth/retrieval regridding to the metrics layer
+    (prep stays lossless), or would you rather prep pre-align truth to `wave`?
+
+We should pre-align truth to wave, and store a flag indicating that interpolation was performed.
+
+11. **Default L23 `Rrs` perturbation.** I default `add_noise=False` for L23 — fit
+    the clean Hydrolight `Rrs` using the PACE σ only as the inverse-variance
+    weight (cleanest truth-recovery), with `add_noise=True` reserved for explicit
+    Monte-Carlo. Agree that unperturbed-by-default is right, or do you want a
+    single noise realization added by default (closer to a "real" observation)?
+
+We need to perturb the spectrum by adding noise.
+
+12. **PANGAEA `obs_id` subsetting.** PANGAEA has many IDs with varying
+    completeness (not every ID has all of aph/acdom/bbp). For a first sweep,
+    should prep (a) return *all* IDs and let metrics handle missing truth per
+    component, or (b) filter to IDs that have a usable `Rrs` (+ at least one truth
+    component) up front? I lean (a) — prep is permissive, metrics report coverage.
+
+Let's use option (a).
+
+#### Claude's questions (2026-06-21, Data preparation round 2)
+
+Applied Q10/Q11/Q12 to the Data preparation section (impl doc → **v0.8**):
+- **Q10:** prep now **pre-aligns** each spectral truth component onto the record's
+  `wave` and records a per-component `truth_interp` flag (orig grid kept in the
+  `Spectrum.metadata`; out-of-range → NaN, not extrapolated).
+- **Q11:** L23 now defaults to **`add_noise=True`** — PACE σ both weights and
+  perturbs the Hydrolight Rrs (single realization, seed recorded); added
+  `Rrs_clean` to keep the noiseless input. In-situ stays unperturbed.
+- **Q12:** prep is **permissive** — returns all PANGAEA IDs with a usable Rrs;
+  missing truth components are simply absent and metrics report coverage.
+One follow-up:
+
+13. **Per-record noise seed bookkeeping.** I derive each L23 record's seed from a
+    sweep-level `seed` + obs index (independent but reproducible realizations),
+    and store `noise_seed` on the record + in provenance. Is a single sweep-level
+    seed (deterministically expanded per obs) the right granularity, or do you
+    want N independent Monte-Carlo realizations **per** spectrum (a `n_MC` knob,
+    as in BING's `nMC`) already in the first design? I've assumed one realization
+    per spectrum for now and left `n_MC` as a later extension.
 
 ## Algorithm registry
 
@@ -304,7 +374,52 @@ Data preparation next.
    tandem, and show how the two are configured side by side (and how a third,
    e.g. `gsm`, would be added). Write it into the doc. Q&A. Log.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Algorithm registry section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Algorithm registry)
+
+Wrote the **Algorithm registry** section into `IOPtics_implementation.md` (v0.9).
+Grounded it in the real BING surface: `parameters.p_ntuple.def_dict` (the full
+field set), `parameters.standard.{expb_pow,giop,gsm}` (verbatim priors),
+`models.{anw,bbnw}.init_model` registries, and `models.utils.init`. Designed
+`AlgorithmSpec` as a serializable mirror of the BING `p` namedtuple
+(`to_bing_p`/`from_standard`/`build_models`), a `register()`/`get()` registry
+**seeded with both `expb_pow` and `giop`**, an expb_pow-vs-giop side-by-side table
+(k=5 vs 3 → drives AIC/BIC), the one-line `gsm` addition, and the YAML surface.
+Two questions:
+
+14. **Noise model in `AlgorithmSpec` vs. on the record.** I kept `noise_model` as
+    a provenance-only field on `AlgorithmSpec` but made `run` always fit against
+    `record.varRrs`, treating the noise model as a **sweep-level constant held
+    fixed across algorithms** (for fair comparison per the design doc). Agree the
+    noise model should not vary per-algorithm within a sweep? (If you ever want to
+    compare an algorithm under two noise models, that'd be two sweeps.)
+
+That is correct, the noise model should not vary per-algorithm within a sweep.
+
+15. **`fit_method` per-algorithm vs. per-sweep.** I allow `fit_method` both as a
+    sweep default (`chisq` first pass) and as a per-algorithm override in YAML,
+    plus a separate `mcmc_subset: N` (run MCMC on N spectra in addition to the
+    least-squares pass). Is per-algorithm override useful, or would you rather
+    `fit_method` be strictly sweep-level with the MCMC subset chosen by spectrum
+    (not by algorithm)?
+
+Per-algorithm override makes sense.
+
+#### Claude's note (2026-06-21, Algorithm registry round 2)
+
+Both answers confirmed the v0.9 design. Tightened the wording: the noise-model
+note now states `noise_model` is **sweep-level and not a per-algorithm YAML
+override** (Q14), and the YAML example shows a single sweep-level `noise_model:`
+key alongside the per-algorithm `fit_method` override (Q15). Implementation doc →
+**v0.10**. No new questions — the Algorithm registry section is complete and seeds
+Retrieval & run next.
 
 ## Retrieval & run
 
@@ -506,3 +621,93 @@ required, author-chosen config field (not content-hashed) that names the sweep
 output directory `$OS_COLOR/IOPtics/runs/<sweep_id>/`. Bumped the implementation
 doc to **v0.6**. No new questions — the Package layout section is complete and
 seeds Data preparation next.
+
+### 2026-06-21 (Coding #7 → Data preparation/Tasks #1: designed the prep layer)
+
+Executed Data preparation/Tasks #1. Read the real ocpy loaders
+(`hydrolight.loisel23.{load_ds,calc_Chl}`; `insitu.pangaea.{file_catalog,load,
+spectrum}` with spectral families rrs/aph/acdom/bbp/kd on per-family native λ;
+`insitu.gloria.load_gloria`; `satellites.pace.{wave,gen_noise_vector}`) and
+re-read `bing.fitting.l23.{load_one_l23,prep_one_l23}` to see exactly what to
+generalize. Wrote the **Data preparation** section of `IOPtics_implementation.md`:
+- **Key refactor:** `prep_one_l23` entangles data-conditioning with
+  algorithm-config; IOPtics splits them — `ioptics.prep` does only data+noise+truth
+  and emits a dataset-agnostic `PreparedRecord`; model/prior/RT/initial-guess move
+  to `ioptics.run`. Native grids preserved (no `convert_to_satwave`); for L23 the
+  PACE σ is interpolated onto the native Hydrolight grid.
+- **Dataset adapters** (`ioptics.datasets`): a registry of thin ocpy wrappers
+  (L23/PANGAEA/GLORIA) with an `obs_ids`/`load_obs` Protocol; a table maps each
+  ocpy truth source to the IOPtics component key (e.g. L23 `ag+ad`→`a_dg`,
+  `bbnw`→`bb_p`; PANGAEA `acdom`→`a_dg`; GLORIA scalar `a_cdom440`).
+- **`PreparedRecord`** full dataclass: `dataset/obs_id/wave/Rrs/varRrs/truth/
+  noise_model/meta`; spectral truth stored as ocpy `Spectrum` per component (each
+  on its own native grid → handles PANGAEA), scalar truth as floats; `truth` left
+  free-form per the open component scheme.
+- **`ioptics.noise.attach_noise`** (`pace`|`insitu`|`pct:X`, optional add_noise)
+  and the **`prep_one`/`prep_dataset`** API (parallel via ProcessPoolExecutor,
+  picklable records), plus a worked L23/PANGAEA example.
+Bumped the implementation doc to **v0.7**. Wrote 3 questions (Q10: defer truth↔
+retrieval regridding to metrics vs pre-align in prep; Q11: L23 unperturbed-by-
+default vs one noise realization; Q12: permissive vs filtered PANGAEA obs_id
+subsetting) to the Data preparation Q&A.
+
+### 2026-06-21 (Coding #8 → Data preparation/Tasks #2: applied Q10–Q12)
+
+Read JXP's answers and edited the Data preparation section of
+`IOPtics_implementation.md`:
+- **Q10 (pre-align truth):** reversed the lossless-prep stance — prep now
+  interpolates each spectral truth component onto the record's `wave`, adds a
+  `truth_interp: dict[component→bool]` flag, keeps the original grid in
+  `Spectrum.metadata['orig_wave']`, and leaves out-of-range truth as NaN (no
+  extrapolation). Updated the `PreparedRecord` dataclass, the truth convention,
+  the example, and the Package-layout summary to match.
+- **Q11 (perturb Rrs):** flipped `attach_noise`/`prep` defaults so **L23 adds a
+  single PACE noise realization** (seed recorded for reproducibility) and added a
+  `Rrs_clean` field for the noiseless input; in-situ datasets stay unperturbed
+  (`add_noise=False`). Made `noise`/`add_noise` dataset-aware defaults.
+- **Q12 (permissive subsetting):** documented that `prep_dataset` returns all
+  PANGAEA IDs with a usable Rrs; missing truth components are absent and metrics
+  report coverage (no completeness filter).
+Bumped the implementation doc to **v0.8**. Wrote 1 new question (Q13: single
+sweep-level seed expanded per obs vs. an `n_MC` per-spectrum Monte-Carlo knob now)
+to the Data preparation Q&A.
+
+### 2026-06-21 (Coding #9 → Algorithm registry/Tasks #1: designed AlgorithmSpec + registry)
+
+Executed Algorithm registry/Tasks #1. Read the BING configuration surface in full
+— `parameters.p_ntuple.{def_dict,gen}` (every field a retrieval needs),
+`parameters.standard.{expb_pow,giop,gsm,k2b}` (the verbatim model_names + prior
+dicts), `models.anw.init_model` / `models.bbnw.init_model` registries, and
+`models.utils.init` — confirming a BING "algorithm" is exactly one filled
+namedtuple. Wrote the **Algorithm registry** section of
+`IOPtics_implementation.md`:
+- **`AlgorithmSpec`** dataclass mirroring the BING `p` losslessly: models
+  (`anw_model`/`bbnw_model`), prior lists, nested `RTOptions`/`MCMCOptions`,
+  Sdg/beta, `fit_method`, `noise_model`; with `to_bing_p()` (→ `p_ntuple.gen`),
+  `from_standard()` (← `parameters.standard`), and `build_models(wave)` (→
+  `models.utils.init` + `priors.set_standard_priors`).
+- **Registry** (`register`/`get`/`available`) **seeded with both `expb_pow` and
+  `giop`** via `from_standard`, with the in-tandem rationale.
+- A side-by-side table (expb_pow `ExpBricaud`+`Pow`, k=5 vs giop `GIOP`+`Lee`,
+  k=3) noting the k difference is what drives the AIC/BIC/ΔBIC metrics; the
+  one-line `gsm` addition; and the YAML sweep surface (algorithms by name +
+  per-field overrides), honoring the both-YAML-and-Python decision.
+- A **noise-model note**: the field is provenance-only on the spec; `run` fits
+  `record.varRrs`, with noise held fixed per-sweep for comparability.
+Bumped the implementation doc to **v0.9**. Wrote 2 questions (Q14: noise fixed
+per-sweep, not per-algorithm; Q15: `fit_method` per-algorithm override vs strictly
+sweep-level) to the Algorithm registry Q&A.
+
+### 2026-06-21 (Coding #10 → Algorithm registry/Tasks #2: applied Q14/Q15)
+
+Read JXP's answers — both confirmed the v0.9 design (Q14: noise model must not
+vary per-algorithm; Q15: per-algorithm `fit_method` override is wanted). Tightened
+`IOPtics_implementation.md`:
+- **Q14:** rewrote the noise-model note to state `noise_model` is a sweep-level
+  constant, **not** a per-algorithm YAML override; `config` stamps the single
+  sweep noise choice onto every spec for provenance. Added a top-level
+  `noise_model: pace` key to the YAML example.
+- **Q15:** affirmed `fit_method` is overridable per algorithm in the YAML surface
+  text and example.
+Bumped the implementation doc to **v0.10**. No new questions — the Algorithm
+registry section is complete and seeds Retrieval & run next.
