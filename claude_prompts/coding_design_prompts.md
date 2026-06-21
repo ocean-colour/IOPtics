@@ -93,13 +93,18 @@ Guidelines for the implementation document (`docs/design/IOPtics_implementation.
 9. Read this doc. Execute the 1st task under "Algorithm registry/Tasks".
 10. Read this doc. Execute the 2nd task under "Algorithm registry/Tasks".
 
-5. Read this doc. Execute the 1st task under "Retrieval & run/Tasks".
-6. Read this doc. Execute the 1st task under "Metrics & diagnostics/Tasks".
-7. Read this doc. Execute the 1st task under "Reporting/Tasks".
-8. Read this doc. Execute the 1st task under "Testing & CI/Tasks".
+11. Read this doc. Execute the 1st task under "Retrieval & run/Tasks".
+12. Read this doc. Execute the 2nd task under "Retrieval & run/Tasks".
 
-(Additional follow-up tasks will be appended to each section as the work
-proceeds, mirroring the workflow in `design_prompts.md`.)
+13. Read this doc. Execute the 1st task under "Metrics & diagnostics/Tasks".
+14. Read this doc. Execute the 2nd task under "Metrics & diagnostics/Tasks".
+
+15. Read this doc. Execute the 1st task under "Reporting/Tasks".
+16. Read this doc. Execute the 2nd task under "Reporting/Tasks".
+
+17. Read this doc. Execute the 1st task under "Testing & CI/Tasks".
+18. Read this doc. Execute the 2nd task under "Testing & CI/Tasks".
+
 
 ## Prep
 
@@ -432,7 +437,67 @@ Retrieval & run next.
    **YAML/JSON provenance record** (model config, RT options, fit method, noise
    model, priors). Write it into the doc. Q&A. Log.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Retrieval & run section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Retrieval & run)
+
+Wrote the **Retrieval & run** section into `IOPtics_implementation.md` (v0.11).
+Grounded in `chisq_fit.fit(items, models, rt_dict, bounds)`,
+`inference.{init_mcmc,fit_one}`, `evaluate.{reconstruct_from_chains,
+reconstruct_chisq_fits}`, `stats.{calc_chisq,calc_ICs}`, and
+`rt.defs.rt_dict_from_p`. Specified `run_algorithm`/`run_batch`/`run_sweep`
+(chisq over all + MCMC on `mcmc_subset`), the `RetrievalResult`/`ComponentFit`
+dataclasses, uncertainty via covariance-sampling (least-squares) and chain
+percentiles (MCMC) on the same percentile grid, the two long/tidy parquet schemas
+(`results_spectral`, `results_scalar`), and the `provenance.yaml` record (incl.
+priors). Three questions:
+
+16. **Truth-free initial guess (important).** `prep_one_l23` seeds the
+    least-squares `p0` from the *true* IOPs — fine for a demo, **circular for a
+    benchmark**. I specified a truth-free `initial_guess()` (prior-central values
+    refined by a QAA-style band inversion of the observed Rrs) and added a
+    truth-free `record.init = {Chl, Y}` (Lee-2002 Y; OC band-ratio Chl) to seed
+    BING's `init_other_bits`. Do you agree retrievals must never see truth (so I
+    build the QAA-style seed), or is a from-truth seed acceptable for the L23
+    first pass (faster to stand up, but not a fair benchmark)?
+
+Yes, best to not see truth.
+
+17. **Least-squares uncertainty by covariance sampling.** For the χ² path I draw
+    ~1000 samples from `N(ans, cov)` and push them through
+    `evaluate.reconstruct_chisq_fits` to get 68/95% bands matching the MCMC
+    treatment. Acceptable (consistent intervals, ~1000× forward evals per fit but
+    still cheap), or would you rather linearized propagation `J Σ Jᵀ` (faster, but
+    Gaussian-in-param-space and breaks the log/positivity of amplitudes)?
+
+Your approach is fine.  Should be fast enough.
+
+18. **MCMC chains: persist or discard?** `run_sweep` reduces each MCMC fit to
+    percentile bands in the tables. Should I **also** save the raw chains (NPZ, à
+    la `bing.fitting.l23.save_chains`) under `runs/<sweep_id>/chains/` for corner
+    plots / re-analysis, or is the reduced table enough (chains are large —
+    ~nsteps×nwalkers×nparam×4 bytes each)? I lean: persist chains only for the
+    `mcmc_subset` (it's small by design).
+
+Save the chains.
+
+#### Claude's note (2026-06-21, Retrieval & run round 2)
+
+Q16 (no truth) and Q17 (covariance sampling) confirmed the v0.11 design as
+written — no change. Q18 (save the chains) was the substantive edit: `run_sweep`
+now persists each MCMC posterior's raw chains to
+`runs/<sweep_id>/chains/<algorithm>_<obs_id>.npz` (BING `save_chains` convention),
+`results_scalar` gains a `chain_file` pointer, and the per-sweep directory layout
+(+ the `io` row and the sweep-output convention) now lists `chains/` and the two
+`results_{spectral,scalar}.parquet` tables. Implementation doc → **v0.12**. No new
+questions — the Retrieval & run section is complete and seeds Metrics &
+diagnostics next.
 
 ## Metrics & diagnostics
 
@@ -446,7 +511,65 @@ Retrieval & run next.
    (Taylor, Target, corner, residual/closure spectra, ΔBIC CDFs). Both consume the
    results table. Write it into the doc. Q&A. Log.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Metrics & diagnostics section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Metrics & diagnostics)
+
+Wrote the **Metrics & diagnostics** section into `IOPtics_implementation.md`
+(v0.13). Designed both modules as **pure table-in/table-out functions** of the
+persisted sweep artifacts (no BING/ocpy imports, no re-fitting): `metrics.compute`
+emits `metrics_{spectral,scalar,pairwise}.parquet`; the §1–5 primitives
+(log10 MAE/bias/RMS, median ratio, ratio-hist buckets, Type-II regression; Rrs
+closure with dual-sided window + QC; ΔBIC CDF; 68/95% coverage; wins/rankings) and
+the partial-retrieval rule (score the non-NaN intersection, record `n`+coverage,
+GLORIA `caveat` flag). `diagnostics` returns the arrays behind Taylor/Target/
+scatter/ratio-hist/residual/corner/ΔBIC-CDF figures (corner loads the saved
+chains). Three questions:
+
+19. **Reference-wavelength matching to native grids.** I summarize accuracy at
+    440/443 (abs) and 555/670 (bb), but native grids rarely hit those exactly
+    (L23 Hydrolight grid; PANGAEA bands). Do you want metrics to (a) use the
+    **nearest** native band within a tolerance (e.g. ±3 nm) and record the actual
+    λ used, or (b) **interpolate** retrieval+truth to the exact ref-λ? I lean (a)
+    (no extra interpolation of already-retrieved quantities; honest about the band
+    actually used).
+
+Use the nearest native band within a tolerance of ±3 nm.  Record it
+
+20. **Stratification bins.** The design calls for stratifying by trophic
+    level/Chl, water type (Case I/II), and S/N. For the L23+PANGAEA first pass,
+    which Chl bins do you want (e.g. oligo `<0.1`, meso `0.1–1`, eutro `>1`
+    mg m⁻³), and is Case I/II available/important now, or defer water-type
+    stratification until GLORIA/in-situ metadata is wired in?
+
+I like your 3 level stratification.
+
+21. **`abs_log_err` as the "wins" tie-breaker metric.** For head-to-head wins I
+    score each spectrum by `|log10(M/O)|` per component/ref-λ (closer wins). Is
+    absolute log-ratio the right per-contest metric, or do you want wins decided
+    on a different quantity (e.g. within-uncertainty agreement, or signed bias)?
+
+Use yours for now.  We will revist this
+
+#### Claude's note (2026-06-21, Metrics & diagnostics round 2)
+
+Applied Q19/Q20/Q21 (impl doc → **v0.14**):
+- **Q19:** ref-λ summaries use the **nearest native band within ±3 nm** and record
+  the actual λ in a `ref_match` column (ref row omitted if none within tolerance).
+- **Q20:** added a **Stratification** subsection with the 3-level Chl bins
+  (oligo `<0.1`, meso `0.1–1`, eutro `>1` mg m⁻³); Chl from truth else
+  `record.init`; S/N from the fixed noise model; Case I/II **deferred** until
+  in-situ metadata is wired (the `stratum` machinery already supports adding it).
+- **Q21:** marked `abs_log_err` (`|log10(M/O)|`) as the provisional wins metric,
+  flagged for revisit.
+No new questions — the Metrics & diagnostics section is complete and seeds
+Reporting next.
 
 ## Reporting
 
@@ -458,7 +581,65 @@ Retrieval & run next.
    figures (select algorithm/dataset to inspect). Specify how reports are stamped
    with provenance/versions for reproducibility. Write it into the doc. Q&A. Log.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Reporting section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Reporting)
+
+Wrote the **Reporting** section into `IOPtics_implementation.md` (v0.15). Designed
+`ioptics.report` as a pure consumer of the persisted sweep artifacts (results +
+metrics + chains + provenance): `plotting` static primitives (reusing
+`bing.plotting.{show_anw_fits,corner_plot,hist2d}`); `report.figures`/`tables` for
+the standard per-(algorithm,dataset) set (scatter, spectra±band, closure,
+Taylor/Target, corner, ΔBIC-CDF, accuracy/QC tables); a **persistent cross-sweep
+`leaderboard`** (`$OS_COLOR/IOPtics/leaderboard.parquet`, idempotent `update()`);
+**standalone BokehJS** (`file_html` + CustomJS, select algorithm/dataset);
+`report.rst`/`standard.build(sweep_id, kind=...)` for the three report types into
+one accumulating Sphinx/readthedocs tree with the leaderboard as landing page and
+provenance version stamps. Three questions:
+
+22. **Where the `.rst` site lives.** I put generated pages under
+    `docs/source/reports/<sweep_id>/` in the IOPtics repo Sphinx tree (committed,
+    so readthedocs builds them), while the heavy artifacts (parquet/chains) stay
+    under `$OS_COLOR/IOPtics/runs/`. Figures (PNG/PDF) and the Bokeh HTML get
+    **copied** into the docs tree at report-build time. Is committing generated
+    `.rst`+figures into the repo acceptable, or do you want the docs tree
+    git-ignored and built fresh (readthedocs runs `build` as part of its build)?
+
+That is good
+
+23. **Leaderboard headline metric & ranking.** The leaderboard needs a default
+    sort. I propose ranking primarily by **wins** then `|bias|`/MAE at the
+    reference wavelengths, per (dataset, component). Is "wins" the right headline
+    ranking, or would you rather lead with log-space **MAE** (more familiar) and
+    show wins as a column?
+
+Sure, that is fine.
+
+24. **Per-obs figure volume.** `figures.spectra_set`/`closure_set` are per-spectrum
+    — thousands for L23. I assume the standard report renders these only for a
+    **curated handful** (e.g. the MCMC subset + a few per trophic bin) and relies
+    on the interactive Bokeh + scatter/Taylor for the full population. Agree, or do
+    you want per-obs figures for all spectra (large, slow)?
+
+Agreed, only a handful.
+
+#### Claude's note (2026-06-21, Reporting round 2)
+
+All three answers confirmed the v0.15 design. Tightened the wording (impl doc →
+**v0.16**): Q22 — made the artifact split explicit (`.rst` + figure PNGs + Bokeh
+HTML committed into `docs/source/reports/<sweep_id>/`; parquet/chains stay under
+`$OS_COLOR/IOPtics/runs/`, copied at build time); Q23 — documented the default
+leaderboard ranking (wins, then `|bias|`/MAE at ref-λ per dataset/component, with
+MAE/bias/coverage as adjacent columns); Q24 — stated per-obs figures render only
+for a curated handful (MCMC subset + a few per trophic bin), full population via
+aggregate + Bokeh. No new questions — the Reporting section is complete and seeds
+Testing & CI (the final section) next.
 
 ## Testing & CI
 
@@ -470,7 +651,52 @@ Retrieval & run next.
    (noting the design decision that reports are generated on demand, not via CI).
    Write it into the doc. Q&A. Log.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Testing & CI section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Testing & CI)
+
+Wrote the **Testing & CI** section into `IOPtics_implementation.md` (v0.17) —
+completing all eight topic sections. Mirrored ocpy's `test_pangaea.py` two-tier
+pattern: a `conftest.py` with `needs_data`/`needs_l23`/`needs_pangaea` skip
+guards; **Tier 1** data-independent tests (always run, synthetic fixtures) for
+`algorithms`/`config`/`prep`/`noise`/`metrics`/`diagnostics`/`io`/`provenance`/
+`leaderboard` plus a fast synthetic-5-band end-to-end micro-test (prep→run
+chisq→evaluate→metrics, no $OS_COLOR, no MCMC); **Tier 2** skip-guarded tests on
+real L23/PANGAEA incl. a small real sweep + one tiny-nsteps MCMC. CI runs Tier-1
+`pytest` in `ocean14` on push/PR only (no sweeps, no report build — reports stay
+on demand), plus an import/smoke check. Two questions:
+
+25. **CI runner & the BING/ocpy GitHub installs.** Tier-1 CI needs `ocpy` and
+    `bing` importable (they're GitHub installs, not PyPI). On a GitHub Actions
+    runner, do you want the workflow to `pip install
+    git+https://github.com/ocean-colour/{ocpy,bing}` against their **main**
+    branches each run (simple, but a green IOPtics build then depends on upstream
+    main staying importable), or pin them to a commit/tag (reproducible, manual
+    bumps)? I lean pin-to-commit for a stable CI signal.
+
+Let's use their **main** branches.  It will be on me to update them.  It is on my TODO list to put them on PyPi
+
+26. **Coverage threshold / gating.** Do you want CI to enforce a coverage floor or
+    fail-on-warning, or keep it advisory (just run `pytest -q`, report pass/fail)
+    for now? I lean advisory at this stage — the package is young and the
+    interesting tests are data-dependent (skipped on CI anyway).
+
+Advisory is fine.
+
+#### Claude's note (2026-06-21, Testing & CI round 2)
+
+Applied Q25/Q26 (impl doc → **v0.18**): the CI workflow installs `ocpy`/`bing`
+from the tip of their **`main`** branches (`git+…@main`) — JXP maintains
+importability; PyPI release is on the TODO, after which these become version pins
+— and CI is **advisory** (pass/fail from `pytest -q`; no coverage floor, no
+fail-on-warning). No new questions — the Testing & CI section is complete, which
+completes the implementation document.
 
 ## Logging
 
@@ -711,3 +937,184 @@ vary per-algorithm; Q15: per-algorithm `fit_method` override is wanted). Tighten
   text and example.
 Bumped the implementation doc to **v0.10**. No new questions — the Algorithm
 registry section is complete and seeds Retrieval & run next.
+
+### 2026-06-21 (Coding #11 → Retrieval & run/Tasks #1: designed run/sweep, results schema, provenance)
+
+Executed Retrieval & run/Tasks #1. Read the BING fitting/eval/stats surface
+(`chisq_fit.fit`, `inference.{init_mcmc,fit_one,run_emcee}`,
+`evaluate.{reconstruct_from_chains,reconstruct_chisq_fits,calc_stats}`,
+`stats.{calc_chisq,calc_ICs}`, `rt.defs.rt_dict_from_p`,
+`models.utils.init_other_bits`). Wrote the **Retrieval & run** section of
+`IOPtics_implementation.md`:
+- **`run_algorithm(spec, record)`** wires BING **on the record's native grid**
+  (no `convert_to_satwave`): `spec.build_models(record.wave)`, `rt_dict_from_p`,
+  truth-free `init_other_bits` from `record.init`, a **truth-free initial guess**
+  (QAA-style, never from truth — a deliberate fix to `prep_one_l23`'s from-truth
+  seed), then `chisq_fit.fit` (default) or `inference.fit_one` (MCMC).
+- **Uncertainty (uniform across methods):** MCMC via `reconstruct_from_chains` +
+  `eval_anw`/`eval_bbnw` sub-components; least-squares via covariance sampling
+  (`N(ans,cov)` → `reconstruct_chisq_fits`) on the same 68/95% percentile grid;
+  χ²ᵥ/AIC/BIC via `stats`. Defined `RetrievalResult`/`ComponentFit`.
+- **Sweep layers** `run_batch` / `run_sweep` (chisq over all records + MCMC on
+  `cfg.mcmc_subset`), writing under `$OS_COLOR/IOPtics/runs/<sweep_id>/`.
+- **Results schema:** two long/tidy parquet files — `results_spectral`
+  (row per dataset/obs_id/algorithm/fit_method/component/wavelength with
+  value+68/95 bands+truth) and `results_scalar` (fit-quality + derived scalars ±
+  unc + truth). Reference wavelengths sliced by metrics, not pre-baked.
+- **`provenance.yaml`:** versions (ioptics/bing/ocpy commits, doc versions),
+  verbatim config copy, per-algorithm block with full priors (incl. for MCMC),
+  RT options, fit method, noise model; `provenance_id` links every result row.
+- Added a truth-free `init` field to `PreparedRecord` (Chl/Y from observed Rrs)
+  and noted it in the Data preparation section for consistency.
+Bumped the implementation doc to **v0.11**. Wrote 3 questions (Q16: enforce
+truth-free initial guess / build QAA seed; Q17: covariance-sampling vs linearized
+LSQ uncertainty; Q18: persist raw MCMC chains for the subset) to the Retrieval &
+run Q&A.
+
+### 2026-06-21 (Coding #12 → Retrieval & run/Tasks #2: applied Q16–Q18)
+
+Read JXP's answers: Q16 (no truth) and Q17 (covariance sampling) confirmed the
+v0.11 design unchanged; Q18 (save the chains) was the substantive edit. Updated
+`IOPtics_implementation.md`:
+- **Q18:** `run_sweep` now persists each MCMC posterior's raw chains to
+  `runs/<sweep_id>/chains/<algorithm>_<obs_id>.npz` (BING `save_chains`
+  convention: chains + obs_Rrs/varRrs/Chl/Y) so corner plots / coverage tests /
+  re-analysis need no re-fitting; added a `chain_file` column to
+  `results_scalar` (null for χ² rows); updated the per-sweep directory layout in
+  three places (Retrieval & run, the `io` module row, and the sweep-output
+  convention) to list `chains/` and the two `results_{spectral,scalar}.parquet`
+  tables.
+- **Q16/Q17:** no change — the truth-free initial guess and covariance-sampling
+  uncertainty stand as written.
+Bumped the implementation doc to **v0.12**. No new questions — the Retrieval &
+run section is complete and seeds Metrics & diagnostics next.
+
+### 2026-06-21 (Coding #13 → Metrics & diagnostics/Tasks #1: designed metrics + diagnostics)
+
+Executed Metrics & diagnostics/Tasks #1, implementing the design doc's Metrics
+§1–6 + "Handling non-uniformity". Wrote the **Metrics & diagnostics** section of
+`IOPtics_implementation.md`:
+- **Principle:** both modules are pure **table-in/table-out** functions of the
+  persisted results tables — no BING/ocpy imports, no re-fitting; a new algorithm
+  is scored merely by appearing in the table.
+- **`metrics.compute(sweep_id)`** → `metrics_{spectral,scalar,pairwise}.parquet`,
+  with primitives for §1 (log10 multiplicative MAE/bias, RMS/unbiased RMS, median
+  ratio, Erickson ratio-hist buckets, Type-II log–log regression + r²; per
+  component, per wavelength, summarized at 440/443 & 555/670), §2 (Rrs closure:
+  χ²ᵥ headline, log-space MAE/bias with the dual-sided window, `fit_noise` /
+  `Rrs_MAE>0.25` QC), §3 (ΔBIC `<0`→complex, CDF over dataset; expb_pow k=5 vs
+  giop k=3), §4 (68/95% **coverage** calibration test — the new metric — plus Nσ
+  detection/upper-limits), §5 (wins + per-variable rankings).
+- **Non-uniformity rule:** score only the non-NaN `(M,O)` intersection, record
+  `n`+coverage on every row, GLORIA `caveat='CDOM_vs_adg'` flag; partial-retrieval
+  algorithms are simply absent for unscored components.
+- **`diagnostics`** returns the arrays behind each standard figure (Taylor,
+  Target, scatter+guide-lines, ratio-hist, residual spectra, corner [loads saved
+  chains], ΔBIC CDF) — figures rendered later by `plotting`/`report`.
+Bumped the implementation doc to **v0.13**. Wrote 3 questions (Q19: nearest-band
+vs interpolate for ref-λ summaries; Q20: Chl/water-type stratification bins for
+the first pass; Q21: `abs_log_err` as the wins metric) to the Metrics &
+diagnostics Q&A.
+
+### 2026-06-21 (Coding #14 → Metrics & diagnostics/Tasks #2: applied Q19–Q21)
+
+Read JXP's answers and edited the Metrics & diagnostics section:
+- **Q19:** ref-λ accuracy summaries now use the **nearest native band within
+  ±3 nm** (no re-interpolation) and record the matched λ in a `ref_match` column
+  (omit the ref row if none within tolerance).
+- **Q20:** added a **Stratification** subsection — 3-level Chl bins
+  (oligotrophic `<0.1`, mesotrophic `0.1–1`, eutrophic `>1` mg m⁻³), Chl sourced
+  from truth then `record.init`; S/N from the fixed noise model; Case I/II water
+  type deferred (the `stratum` column supports adding it later, no schema change).
+- **Q21:** marked the wins metric `abs_log_err` = `|log10(M/O)|` provisional,
+  flagged for revisit.
+Bumped the implementation doc to **v0.14**. No new questions — the Metrics &
+diagnostics section is complete and seeds Reporting next.
+
+### 2026-06-21 (Coding #15 → Reporting/Tasks #1: designed the reporting subpackage)
+
+Executed Reporting/Tasks #1. Checked `bing.plotting` for reusable primitives
+(`show_anw_fits`, `corner_plot`, `hist2d`). Wrote the **Reporting** section of
+`IOPtics_implementation.md`:
+- **Regenerability contract:** `report` reads only the persisted sweep artifacts
+  (results + metrics + chains + provenance), so every report is on-demand and
+  provenance-stamped — no re-fitting.
+- **`plotting`** static primitives (scatter_log w/ 1:1/3:1 guides, ratio_hist,
+  spectra_band, residual_rrs, taylor, target, corner→`bing.plotting.corner_plot`,
+  dbic_cdf).
+- **`report.figures`/`tables`:** the uniform per-(algorithm,dataset) standard set
+  (scatter, spectra±band/decomposed, closure, Taylor+Target, corner for the MCMC
+  subset, ΔBIC-CDF; accuracy + QC tables) → `runs/<sweep_id>/figures/`.
+- **`report.leaderboard`:** persistent, **cross-sweep** — `update()` folds every
+  sweep's `metrics_scalar` into `$OS_COLOR/IOPtics/leaderboard.parquet`
+  (idempotent), `render()` for the landing page; grows as algorithms are added.
+- **`report.bokeh`:** standalone/static BokehJS (`file_html` + CustomJS, select
+  algorithm/dataset/stratum), embeddable in readthedocs, no server.
+- **`report.rst`/`standard.build(sweep_id, kind)`:** the three report types
+  (per_algorithm / cross_algorithm / per_dataset) into one accumulating Sphinx
+  tree, leaderboard as landing page, each page provenance/version-stamped; built
+  on demand (e.g. stage 3 of a `build_vN.py`), never by CI.
+Bumped the implementation doc to **v0.15**. Wrote 3 questions (Q22: commit
+generated .rst+figures vs git-ignore/build-fresh; Q23: leaderboard headline metric
+wins vs MAE; Q24: per-obs figures for a curated handful vs all spectra) to the
+Reporting Q&A.
+
+### 2026-06-21 (Coding #16 → Reporting/Tasks #2: applied Q22–Q24)
+
+All three answers confirmed the v0.15 design; tightened the wording in
+`IOPtics_implementation.md`:
+- **Q22:** made the artifact split explicit — `.rst` pages + figure PNGs + Bokeh
+  HTML committed into `docs/source/reports/<sweep_id>/`; parquet tables + raw
+  chains stay under `$OS_COLOR/IOPtics/runs/` (uncommitted), copied into the docs
+  tree by `standard.build` at report time.
+- **Q23:** documented the default leaderboard ranking (wins, then `|bias|`/MAE at
+  the reference wavelengths per dataset/component; MAE/bias/coverage shown as
+  adjacent columns).
+- **Q24:** stated per-obs figures (spectra/closure/corner) render only for a
+  curated handful (MCMC subset + a few per trophic bin); the full population is
+  covered by the aggregate figures + interactive Bokeh.
+Bumped the implementation doc to **v0.16**. No new questions — the Reporting
+section is complete and seeds Testing & CI (the final section) next.
+
+### 2026-06-21 (Coding #17 → Testing & CI/Tasks #1: designed the test strategy + CI)
+
+Executed Testing & CI/Tasks #1 — the **final topic section**. Read ocpy's
+`tests/test_pangaea.py` to mirror its skip-guard pattern (`_data_available()` +
+`pytest.mark.skipif`). Wrote the **Testing & CI** section of
+`IOPtics_implementation.md`:
+- **Two tiers:** Tier-1 data-independent tests **always run** on synthetic
+  fixtures (round-trip `AlgorithmSpec`↔BING `p`; registry seeding; YAML config
+  parse/validation; prep truth pre-alignment + flags; noise reproducibility;
+  metric primitives on hand-built (M,O) with known answers; io parquet round-trip;
+  provenance; leaderboard idempotency) plus a **synthetic-5-band end-to-end
+  micro-test** (prep→run chisq→evaluate→metrics, no `$OS_COLOR`, no MCMC).
+  Tier-2 `@needs_l23`/`@needs_pangaea` tests run only with the data tree (real
+  prep, a small real sweep, one tiny-`nsteps` MCMC to guard the chains path).
+- **`conftest.py`** skip guards keyed on `$OS_COLOR` / L23 / PANGAEA availability.
+- **CI deliberately light** (per the design's reports-on-demand decision): Tier-1
+  `pytest` in `ocean14` on push/PR (data tests skip → green & fast), an
+  import/smoke check; **no** sweeps/report builds in CI; readthedocs builds the
+  committed `.rst` independently.
+- No large fixtures in the repo; MCMC-in-tests always tiny `nsteps`.
+Bumped the implementation doc to **v0.17**. Wrote 2 questions (Q25: pin ocpy/bing
+GitHub installs to a commit vs track main in CI; Q26: coverage gating vs advisory)
+to the Testing & CI Q&A.
+
+**All eight topic sections of `IOPtics_implementation.md` are now drafted**
+(Preamble + Architecture Overview, Package layout, Data preparation, Algorithm
+registry, Retrieval & run, Metrics & diagnostics, Reporting, Testing & CI) — the
+companion implementation doc the design doc referenced now exists end to end.
+
+### 2026-06-21 (Coding #18 → Testing & CI/Tasks #2: applied Q25/Q26)
+
+Read JXP's answers and finalized the CI subsection of `IOPtics_implementation.md`:
+- **Q25:** CI installs `ocpy`/`bing` from the tip of their **`main`** branches
+  (`git+https://github.com/ocean-colour/{ocpy,bing}@main`); JXP keeps upstream
+  main importable, with a PyPI release on the TODO (after which these become
+  version pins in `requirements.txt`).
+- **Q26:** CI is **advisory** — pass/fail from `pytest -q`, no coverage floor or
+  fail-on-warning (data-dependent tests skip on CI anyway); a gate can be added
+  later.
+Bumped the implementation doc to **v0.18**. No new questions — Testing & CI is
+complete, which finishes the implementation document: all eight sections are
+drafted and every Q&A through Q26 is resolved except none outstanding.
