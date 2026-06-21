@@ -51,4 +51,4 @@ J. Xavier Prochaska (UC Santa Cruz) and Claude.
 
 ## License
 
-BSD.
+BSD 3-Clause — see [LICENSE](LICENSE).

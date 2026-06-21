@@ -86,6 +86,8 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 17. Read this doc.  Execute the 3rd task under "Pull request/Tasks"
 18. Read this doc.  Execute the 4th task under "Pull request/Tasks"
 
+19. Read this doc.  Execute the 1st task under "Code design"
+
 ## Data
 
 The following will describe several of the inital datasets to be used in IOPtics.
@@ -582,6 +584,10 @@ Please review it and transmit your comments onto GitHub.
 
 4. Please make edits to address the PR on GitHub.  List your changes in the Report below.  If you have any questions, write them in the Q&A section below.
 
+## Code design
+
+1. Read this doc.  Based on what you know so far, generate a new prompts file named IOPtics/claude_prompts/coding_design_prompts.md that will be used to create a doc that will guide the coding of the IOPtics package.
+
 ### Report
 
 #### Changes addressing PR #1 review (2026-06-20)
@@ -611,15 +617,19 @@ ioptics.__version__` → `0.0.dev0`. (Git commit/push left to JXP.)
 
 ### Q&A
 
-W. **License (review item 4).** `setup.py` and `README.md` say **BSD**. BING is
-   MIT; ocpy — please confirm. Want IOPtics on BSD (left as-is), or switch to MIT
-   to match BING? I left BSD pending your call; also no `LICENSE` file exists yet —
-   want me to add one for the chosen license?
+W. **License (review item 4).** ~~no `LICENSE` file exists yet~~ — **correction:**
+   a `LICENSE` file *does* exist and is **BSD 3-Clause** (Copyright 2026,
+   ocean-colour); it just wasn't in PR #1's diff (committed earlier, not part of
+   design→main). So the repo is consistent on BSD: `LICENSE` (BSD 3-Clause),
+   `setup.py` (`license='BSD'`), and `README.md` all agree. **Resolved — BSD,
+   nothing to add.** Updated the README license line to "BSD 3-Clause — see
+   LICENSE". (Switch to MIT only if you want to match BING; otherwise no action.)
 
-X. **setup.py house-style cruft.** I kept `use_2to3` / `tests_require` /
-   `setup_requires=['pytest-runner']` to match ocpy/bing (harmless deprecation
-   warnings). Happy to strip them from all three repos for cleanliness if you'd
-   prefer — just say so.    
+X. **setup.py house-style cruft.** ~~Kept to match ocpy/bing.~~ **Resolved
+   (2026-06-20):** JXP said strip them. Removed `use_2to3`, `setup_requires=
+   ['pytest-runner']`, `tests_require`, and the ineffective `requires` (superseded
+   by `python_requires='>=3.12'`) from IOPtics `setup.py`. `python setup.py --name`
+   now runs warning-free. (ocpy/bing left untouched — say the word to do those too.)    
 
 #### Claude's notes + questions (2026-06-20, pre-PR implementation)
 
@@ -1027,3 +1037,21 @@ Implemented the actionable fixes from my own PR #1 review:
 Verified in ocean14 (`setup.py --name` → ioptics; `ioptics.__version__` →
 0.0.dev0). Wrote the change list to the Report section; raised Q W (license:
 BSD vs MIT + add a LICENSE file?) and Q X (setup.py cruft). Git left to JXP.
+
+### 2026-06-20 (Designing #19 → Code design #1: created coding_design_prompts.md)
+
+Created `claude_prompts/coding_design_prompts.md`, a new prompts file (mirroring
+the structure of `design_prompts.md`) that will drive creation of the **coding /
+implementation design document** `docs/design/IOPtics_implementation.md` (the
+"companion implementation document (forthcoming)" the design doc references).
+Structure: Goals, Claude/Skills, Context (design doc + context.md + BING + ocpy +
+the BING/Erickson papers), Overview (the impl doc WILL include code specifics;
+versioned; traces back to each design-doc section; honors prior decisions), a
+`### Coding` driver list, and phased topic sections each with `### Tasks` +
+`### Q&A`: Prep, Package layout, Data preparation (generalize `prep_one_l23`),
+Algorithm registry (AlgorithmSpec, seed `expb_pow`), Retrieval & run (results-table
+schema + YAML/JSON provenance; chisq default + MCMC subset), Metrics & diagnostics,
+Reporting (leaderboard + standalone Bokeh + .rst site), Testing & CI; plus
+Logging. Baked in the standing decisions (native grids, PACE noise for L23,
+build-on-demand, component scheme left open). JXP can run it the same way
+("Execute the Nth prompt under Coding").

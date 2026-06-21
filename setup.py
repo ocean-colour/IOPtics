@@ -19,7 +19,6 @@ if os.path.exists('README.md'):
     with open('README.md') as readme:
         setup_keywords['long_description'] = readme.read()
 setup_keywords['provides'] = [setup_keywords['name']]
-setup_keywords['requires'] = ['Python (>=3.12.0)']
 setup_keywords['python_requires'] = '>=3.12'
 setup_keywords['install_requires'] = [
     'numpy', 'scipy', 'pandas', 'matplotlib', 'seaborn',
@@ -30,10 +29,7 @@ setup_keywords['install_requires'] = [
 # The sibling packages BING and ocpy are not on PyPI; install them from
 # source / GitHub via requirements.txt (git+https://github.com/ocean-colour/...).
 setup_keywords['zip_safe'] = False
-setup_keywords['use_2to3'] = False
 setup_keywords['packages'] = find_packages()
-setup_keywords['setup_requires'] = ['pytest-runner']
-setup_keywords['tests_require'] = ['pytest']
 
 if os.path.isdir('bin'):
     setup_keywords['scripts'] = [fname for fname in glob.glob(os.path.join('bin', '*'))
