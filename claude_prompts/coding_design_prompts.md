@@ -16,7 +16,9 @@ We expect the implementation to:
 
 - Wrap **BING** (retrieval engine) and **ocpy** (data loaders, noise models,
   Spectrum classes) as a thin, uniform layer — not re-implement them.
-- Run a growing registry of IOP algorithms through one pipeline (first: `expb_pow`).
+- Run a growing registry of IOP algorithms through one pipeline, developing the
+  first two — **`expb_pow` (ExpB_Pow)** and **`giop` (GIOP)** — **in tandem** so
+  the comparison tooling is exercised on a real two-way comparison from the start.
 - Emit a standardized results table + machine-readable provenance for every sweep.
 - Compute uniform metrics/diagnostics and generate reproducible reports
   (.rst → readthedocs, a persistent leaderboard, standalone Bokeh figures).
@@ -63,8 +65,10 @@ Guidelines for the implementation document (`docs/design/IOPtics_implementation.
 - Each section should **trace back to the design document** (e.g. "implements
   Analysis §IOP retrieval") so the two stay aligned.
 - Respect the design decisions already made: native wavelength grids per dataset;
-  `expb_pow` as the first algorithm, added one at a time; least-squares first-pass
-  with MCMC on a subset; PACE noise model (`ocpy.satellites.pace`) for L23;
+  `expb_pow` (ExpB_Pow) and `giop` (GIOP) developed **in tandem** as the first two
+  algorithms (to drive the comparison tooling), with more added incrementally;
+  least-squares first-pass with MCMC on a subset; PACE noise model
+  (`ocpy.satellites.pace`) for L23;
   provenance recorded in YAML/JSON beside the results table; single accumulating
   readthedocs site; persistent leaderboard; standalone/static BokehJS.
 - Keep the canonical IOP-component scheme question open (design Open Questions);
@@ -76,6 +80,8 @@ Guidelines for the implementation document (`docs/design/IOPtics_implementation.
 ### Coding
 
 1. Read this doc. Execute the 1st task under "Prep/Tasks".
+2. Read this doc. Execute the 2nd task under "Prep/Tasks".
+
 2. Read this doc. Execute the 1st task under "Package layout/Tasks".
 3. Read this doc. Execute the 1st task under "Data preparation/Tasks".
 4. Read this doc. Execute the 1st task under "Algorithm registry/Tasks".
@@ -98,7 +104,73 @@ proceeds, mirroring the workflow in `design_prompts.md`.)
    to the modules that will implement it, and states the BING/ocpy dependency
    boundary. Ask any questions in the Q&A section below. Log your work.
 
+2. I have answered your questions in the Q&A section below.  Please proceed to:
+
+    - Make edits to the Prep section to reflect the decisions.
+    - Ask me any new questions you have in the Q&A section below.
+    - Log your work in the Logs section below.
+
 ### Q&A
+
+#### Claude's questions (2026-06-21, Prep)
+
+Started `docs/design/IOPtics_implementation.md` (v0.1) with a **Preamble**
+(purpose, relationship to the design doc, version/date/authors, standing
+decisions honored) and an **Architecture Overview** (the BING/ocpy dependency
+boundary + a design-section → IOPtics-subsystem map). A few decisions worth your
+call before I write the concrete package layout (next task):
+
+1. **Top-level package name & namespacing.** I assume the package stays
+   `ioptics/` (matching the repo and `ioptics/__init__.py`) with plain
+   subpackages (`ioptics.prep`, `ioptics.registry`, `ioptics.run`,
+   `ioptics.metrics`, `ioptics.diagnostics`, `ioptics.report`,
+   `ioptics.provenance`). Any naming preferences before I commit them in Package
+   layout? (e.g. `algorithms` vs `registry`, `run` vs `sweep`.)
+
+Looks fine. I like algorithms and run.
+
+2. **Config surface for a sweep.** Do you want sweeps driven by a **YAML config
+   file** (declarative, shareable, pairs naturally with the YAML provenance), a
+   **Python API** (build `AlgorithmSpec` objects in a script), or **both** (YAML
+   as the user-facing entry, Python as the underlying API)? I lean toward both
+   with YAML as the headline interface.
+
+Both.
+
+3. **Results-table store.** The design doc says CSV/parquet keyed by
+   `(dataset, obs_id, algorithm)`. For the spectral, per-wavelength outputs
+   (`a(λ)`, `bb(λ)` ± unc) do you prefer a **long/tidy** table (one row per
+   `(obs, algorithm, component, wavelength)`) or a **wide** table with array-
+   valued cells / a companion NetCDF/`xarray` for the spectra? This shapes the
+   metrics layer. I lean long/tidy in parquet for the scalar table plus an
+   `xarray`/NetCDF sidecar for full spectra.
+
+I prefer the long/tidy table.
+
+4. **Where the generalized prep ultimately lives.** Per design Q&A item D you
+   said this is implementation, not design — for now I'm placing the generalized
+   `prep_one`-style layer **inside IOPtics** (`ioptics.prep`) rather than
+   contributing it upstream to BING. Confirm that's the intended home, or should
+   it be a BING contribution (`bing.fitting.prep_one`) that IOPtics calls?
+
+Yes, it should be inside IOPtics.
+
+#### Claude's questions (2026-06-21, Prep round 2)
+
+Applied all four answers to the implementation doc's **Architecture Overview**
+(new "Resolved conventions" subsection: `ioptics.algorithms` + `ioptics.run`
+naming; YAML-over-Python config; long/tidy parquet results table; prep inside
+IOPtics) and bumped it to **v0.2**. One new question before Package layout:
+
+5. **Sweep output directory layout.** Each sweep emits the long/tidy results
+   table + the YAML/JSON provenance + figures, all stamped with versions. Do you
+   have a preferred on-disk layout — e.g. a per-sweep directory
+   `runs/<sweep_id>/{results.parquet, provenance.yaml, figures/}` with a
+   stable/symlinked `latest/`, versus accumulating into a single growing table
+   keyed by `sweep_id`? I lean toward per-sweep directories (clean provenance,
+   easy to share one sweep) with the leaderboard aggregating across them. Where
+   should `runs/` live — in the repo, or under `$OS_COLOR`/a configurable
+   results root?
 
 ## Package layout
 
@@ -133,8 +205,9 @@ proceeds, mirroring the workflow in `design_prompts.md`.)
    description of one algorithm (absorption + backscattering model choices,
    priors, RT options incl. Raman/Chl-fluorescence toggles, fit method, noise
    model) mapping onto BING's `init_model` / `parameters.standard`. Seed the
-   registry with `expb_pow` and show how a second algorithm (e.g. `giop`) is
-   added. Write it into the doc. Q&A. Log.
+   registry with **both `expb_pow` (ExpB_Pow) and `giop` (GIOP)**, developed in
+   tandem, and show how the two are configured side by side (and how a third,
+   e.g. `gsm`, would be added). Write it into the doc. Q&A. Log.
 
 ### Q&A
 
@@ -204,3 +277,59 @@ The "Logs" section will record Claude's work. Please use the following format:
 ...
 
 ## Logs
+
+### 2026-06-21 (Coding #1 → Prep/Tasks #1: started the implementation document)
+
+Executed Coding prompt #1 (Prep/Tasks #1). Before drafting, re-read the design doc
+(`IOPtics_design.md` v0.15) and surveyed the two sibling packages to ground the
+dependency boundary accurately:
+- **BING** subpackages: `models.{anw,bbnw,functions}` (+ `init_model`),
+  `parameters.{standard,p_ntuple}` (combos `expb_pow`/`expbf_pow`/`giop`/`gsm`/
+  `k2b`), `rt.{rrs,raman,chl_fl,defs}`, `priors`, `fitting.{chisq_fit,inference,
+  l23}`, `evaluate`, `stats`, `noise`. Confirmed `fitting.l23.prep_one_l23` is the
+  L23-specific canonical example IOPtics must generalize.
+- **ocpy** modules: loaders `hydrolight.loisel23`, `insitu.pangaea`,
+  `insitu.gloria`; noise `satellites.pace` (+ modis/seawifs/sbg);
+  `spectra.{core,io,utils}` (`Spectrum`/`SpectrumStack`).
+
+Created `docs/design/IOPtics_implementation.md` (v0.1, 2026-06-21, authors JXP and
+Claude) with two sections:
+- **Preamble** — purpose (the *how* companion to the design doc's *what/why*; will
+  include code specifics), explicit relationship/traceability table to the design
+  doc, the standing decisions it honors (native grids; `expb_pow`+`giop` in
+  tandem; chisq-first + MCMC subset; `ocpy.satellites.pace` noise; YAML/JSON
+  provenance beside the results table; accumulating readthedocs; leaderboard;
+  standalone BokehJS; canonical component scheme left open), supporting material,
+  and conventions (`ocean14`; wrap-not-reimplement).
+- **Architecture Overview** — a diagram + an explicit **BING/ocpy dependency
+  boundary** (ocpy owns the data side: loaders, noise, Spectrum; BING owns the
+  retrieval side: models, parameters, rt, priors, fitting, evaluate, stats,
+  noise; IOPtics owns the uniform layer between), plus a **design-section →
+  IOPtics-subsystem map** (Data→prep, Analysis→registry/run, Metrics→metrics &
+  diagnostics, Reporting→reporting, +Testing & CI) naming each subsystem's
+  responsibility and what it wraps. Left the detailed file/module API to the next
+  task (Package layout) with `(forthcoming)` stubs for the remaining sections.
+
+Wrote 4 questions to the Prep Q&A (package naming, YAML-vs-Python sweep config,
+results-table store shape, and where the generalized prep lives).
+
+### 2026-06-21 (Coding #2 → Prep/Tasks #2: applied Prep Q&A decisions)
+
+Read JXP's answers to the four Prep questions and reflected them in
+`docs/design/IOPtics_implementation.md`:
+- **Q1 (naming):** module names fixed to **`ioptics.algorithms`** (registry) and
+  **`ioptics.run`** (run/sweep), per JXP, alongside `ioptics.prep`,
+  `ioptics.metrics`, `ioptics.diagnostics`, `ioptics.report`,
+  `ioptics.provenance`. Updated the section→module map to name each module.
+- **Q2 (config):** **both** — YAML config as the headline/shareable entry over a
+  Python `AlgorithmSpec` API, with YAML parsed into the same objects.
+- **Q3 (results table):** **long/tidy parquet** (row per
+  `(dataset, obs_id, algorithm, component, wavelength)`; scalar summaries keyed by
+  `(dataset, obs_id, algorithm)`); no wide/array layout.
+- **Q4 (prep home):** the generalized `prep_one`-style layer lives **inside
+  IOPtics** (`ioptics.prep`), not contributed upstream to BING.
+
+Added a **"Resolved conventions (Prep Q&A)"** subsection to the Architecture
+Overview capturing all four, so Package layout and downstream sections inherit
+them. Bumped the implementation doc to **v0.2**. Wrote 1 new question (Q5: per-
+sweep output directory layout + where the results root lives) to the Prep Q&A.

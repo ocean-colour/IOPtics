@@ -87,6 +87,7 @@ Guidelines for the design document which will be named IOPtics_design.md and wil
 18. Read this doc.  Execute the 4th task under "Pull request/Tasks"
 
 19. Read this doc.  Execute the 1st task under "Code design"
+20. Read this doc.  Execute the 2nd task under "Code design"
 
 ## Data
 
@@ -588,6 +589,10 @@ Please review it and transmit your comments onto GitHub.
 
 1. Read this doc.  Based on what you know so far, generate a new prompts file named IOPtics/claude_prompts/coding_design_prompts.md that will be used to create a doc that will guide the coding of the IOPtics package.
 
+2. Please make one significant edit to the coding design prompts file and the design doc:  We will want to develop two models in tandem, the `ExpB_Pow` and `GIOP` models.  This will allow us to build out the comparison tools.  Please update the docs accordingly.
+
+
+
 ### Report
 
 #### Changes addressing PR #1 review (2026-06-20)
@@ -1055,3 +1060,16 @@ Reporting (leaderboard + standalone Bokeh + .rst site), Testing & CI; plus
 Logging. Baked in the standing decisions (native grids, PACE noise for L23,
 build-on-demand, component scheme left open). JXP can run it the same way
 ("Execute the Nth prompt under Coding").
+
+### 2026-06-21 (Designing #20 → Code design #2: develop ExpB_Pow + GIOP in tandem)
+
+Per JXP, changed the plan from "one algorithm first (`expb_pow`)" to **developing
+`expb_pow` (ExpB_Pow) and `giop` (GIOP) in tandem** as the first two algorithms,
+so the comparison tooling (metrics/diagnostics/leaderboard) is exercised on a real
+two-way comparison from the start. Edits:
+- `docs/design/IOPtics_design.md`: rewrote the IOP-retrieval bullet (first two
+  algorithms in tandem, then incremental); aligned the Leaderboard wording (was
+  "one at a time"). Bumped to **v0.15**.
+- `claude_prompts/coding_design_prompts.md`: updated Goals, the Overview decisions
+  bullet, and the Algorithm-registry task to seed **both** `expb_pow` and `giop`
+  side by side (third, e.g. `gsm`, added later).

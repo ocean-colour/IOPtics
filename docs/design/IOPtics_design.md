@@ -1,7 +1,7 @@
 # IOPtics Design Document
 
-**Version:** 0.14
-**Date:** 2026-06-20
+**Version:** 0.15
+**Date:** 2026-06-21
 **Authors:** JXP and Claude
 
 ---
@@ -202,12 +202,14 @@ optional inelastic terms (Raman, chlorophyll-a fluorescence).
   spectral shapes, priors, and forward-model/RT options. IOPtics represents each
   algorithm as a uniform specification so that "run a wide range of IOP
   algorithms" reduces to running the same pipeline over a set of specifications.
-- **Algorithms are built out one at a time.** Rather than enabling all candidate
-  algorithms at once, IOPtics adds and validates them incrementally; the design
-  supports a growing registry of algorithms over time. The **first algorithm** is
-  `expb_pow` (exponential `a_dg` + Bricaud `a_ph` + power-law `bb_p`), BING's
-  best-exercised configuration; additional algorithms (e.g. GIOP, GSM) are added
-  thereafter.
+- **The first two algorithms are developed in tandem.** IOPtics begins with
+  **`expb_pow` (ExpB_Pow)** — exponential `a_dg` + Bricaud `a_ph` + power-law
+  `bb_p`, BING's best-exercised configuration — **and `giop` (GIOP)**, the
+  community-standard generalized model, built out *together*. Developing two
+  algorithms from the start exercises and validates the **comparison tooling**
+  (metrics, diagnostics, leaderboard) on a real two-way comparison rather than a
+  single retrieval. Further algorithms (e.g. GSM) are then added incrementally to
+  the growing registry.
 - **Two fitting modes** are supported: least-squares and Bayesian (MCMC).
   **First-pass analyses use least-squares** across the full sweep (fast), with
   **MCMC reserved for a subset** where full posterior distributions are warranted.
@@ -421,10 +423,10 @@ A **standard report** template covers these; reports are generated **on demand**
 ### Leaderboard
 
 The cross-algorithm comparison is anchored by a **persistent leaderboard** that
-ranks algorithms by the headline metrics across datasets and strata. Because
-algorithms are added to the registry one at a time, the leaderboard **accumulates
-and updates** as each new algorithm is evaluated, giving the community a single,
-evolving view of relative performance.
+ranks algorithms by the headline metrics across datasets and strata. Starting
+from the initial `expb_pow`/`giop` pair and growing as algorithms are added to the
+registry, the leaderboard **accumulates and updates** as each new algorithm is
+evaluated, giving the community a single, evolving view of relative performance.
 
 ### Interactive figures
 
