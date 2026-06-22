@@ -1,6 +1,6 @@
 # IOPtics Implementation Document
 
-**Version:** 0.18
+**Version:** 0.20
 **Date:** 2026-06-21
 **Authors:** JXP and Claude
 
@@ -1322,3 +1322,109 @@ deliberately light:
   the data-dependent tests skip on CI anyway). A coverage gate can be added later.
 - A lightweight **import/smoke** check (`import ioptics`, registry seeded) guards
   against breakage in the BING/ocpy dependency surface.
+
+---
+
+## Staged implementation plan
+
+*How to build the package described above. The order follows the dependency DAG
+of the Architecture Overview and is organized as **vertical slices**: rather than
+finishing each module in isolation, we get the in-tandem `expb_pow`+`giop`
+comparison running end-to-end as early as possible (design: develop the two in
+tandem to exercise the comparison tooling), then broaden. Each stage has a single
+**exit criterion** and ships with its tests (Testing & CI §).*
+
+### Stage 0 — Scaffolding & contracts
+
+- **Build:** the `ioptics/` skeleton (all module files as stubs), the two
+  load-bearing dataclasses in `records.py` (`PreparedRecord`, `RetrievalResult`,
+  `ComponentFit`), `config.py` (YAML ⇄ objects, `sweep_id`/validation), and
+  `tests/conftest.py` with the skip guards + the CI workflow.
+- **Exit:** `import ioptics` works; a sample sweep YAML round-trips to objects;
+  Tier-1 tests for `records`/`config` pass in `ocean14`; CI is green (all
+  data-tests skipped).
+- **Touches:** `records`, `config`, `tests`. **Design:** Package layout.
+
+### Stage 1 — Data in (L23 first)
+
+- **Build:** `datasets` (the registry + the **L23 adapter**), `noise.attach_noise`
+  (PACE on native grid; `pct`/`insitu`), and `prep.prep_one`/`prep_dataset` →
+  `PreparedRecord` with pre-aligned truth, `init` (Chl/Y), perturbed Rrs + seed.
+- **Exit:** `prep.prep_dataset('L23', range(50))` returns valid records (Tier-2
+  `@needs_l23`); Tier-1 synthetic-record tests pass.
+- **Touches:** `datasets`, `noise`, `prep`. **Design:** Data preparation.
+
+### Stage 2 — Engine wrap: the in-tandem vertical slice ★
+
+- **Build:** `algorithms.spec` + `algorithms.registry` (seed **both** `expb_pow`
+  and `giop`), `run.run_algorithm` (**χ² path**), `evaluate.from_chisq`
+  (covariance-sampled bands + `stats`), and `io` + `provenance` (write one
+  spectrum's results + `provenance.yaml`).
+- **Exit:** one L23 spectrum fit by **both** algorithms via least-squares →
+  two `RetrievalResult`s → rows in `results_{spectral,scalar}.parquet` +
+  provenance; the retrieval recovers planted IOPs within tolerance on the
+  synthetic micro-test. *This is the first real two-way comparison — the whole
+  point of the in-tandem decision.*
+- **Touches:** `algorithms`, `run`, `evaluate`, `io`, `provenance`.
+  **Design:** Algorithm registry, Retrieval & run.
+
+### Stage 3 — Sweep + MCMC
+
+- **Build:** `run.run_batch`/`run_sweep` (χ² over all records + MCMC on
+  `mcmc_subset`), the **MCMC path** (`inference.fit_one` → `evaluate.from_chains`),
+  and chain persistence to `runs/<sweep_id>/chains/`.
+- **Exit:** a full **L23 × {expb_pow, giop}** sweep driven by a
+  `runs/.../build_v1.py` (stage flag 1) writes the complete sweep directory; the
+  MCMC subset produces saved chains; tables validate.
+- **Touches:** `run`, `evaluate`, `io`. **Design:** Retrieval & run.
+
+### Stage 4 — Metrics & diagnostics
+
+- **Build:** `metrics.compute` (§1 accuracy, §2 Rrs closure, §3 ΔBIC, §4 coverage,
+  §5 wins; partial-retrieval intersection rule; ±3 nm ref bands; Chl strata) and
+  `diagnostics` (Taylor/Target/scatter/ratio-hist/residual/corner/ΔBIC-CDF arrays).
+- **Exit:** `metrics.compute(sweep_id)` emits `metrics_{spectral,scalar,pairwise}`
+  for the Stage-3 sweep; primitives match hand-computed values on toy `(M,O)`;
+  `expb_pow` vs `giop` ΔBIC and wins are populated.
+- **Touches:** `metrics`, `diagnostics`. **Design:** Metrics & diagnostics.
+
+### Stage 5 — Reporting
+
+- **Build:** `plotting` primitives, `report.figures`/`tables`, `report.leaderboard`
+  (cross-sweep), `report.bokeh` (standalone), `report.rst`/`standard.build`.
+- **Exit:** `standard.build(sweep_id, kind='cross_algorithm')` +
+  `leaderboard.update()` (stage flag 3) produce a provenance-stamped `.rst` page,
+  the standard figures/tables, a standalone Bokeh figure, and a leaderboard entry
+  ranking the two algorithms; the page renders in the Sphinx build.
+- **Touches:** `plotting`, `report`. **Design:** Reporting.
+
+### Stage 6 — Broaden: datasets & algorithms
+
+- **Build:** the **PANGAEA** and **GLORIA** adapters (with the `a_dg`/`a_cdom440`
+  truth mapping + caveat flag); add **`gsm`** to the registry (one line); enable
+  **L23 X=4** (Raman + Chl-fluorescence RT toggles).
+- **Exit:** sweeps run on all three datasets and ≥3 algorithms; the leaderboard
+  accumulates across them; GLORIA scalar comparison surfaces the CDOM-vs-`a_dg`
+  caveat.
+- **Touches:** `datasets`, `algorithms`, `run` (RT toggles). **Design:** Data,
+  Algorithm registry, Reporting (leaderboard).
+
+### Dependency / sequencing summary
+
+```
+Stage 0 (records, config, CI)
+   └─▶ Stage 1 (datasets·L23, noise, prep)
+          └─▶ Stage 2 ★ (algorithms+run·chisq+evaluate+io+provenance)  ← first expb_pow vs giop
+                 └─▶ Stage 3 (sweep + MCMC + chains)
+                        └─▶ Stage 4 (metrics + diagnostics)
+                               └─▶ Stage 5 (plotting + report + leaderboard + bokeh)
+                                      └─▶ Stage 6 (PANGAEA·GLORIA, gsm, L23 X=4)
+```
+
+Every stage is shippable and tested before the next begins; Stages 0–5 deliver the
+complete `expb_pow`/`giop` × L23 story (the design's first deliverable), and
+Stage 6 turns the cranks the architecture was built to turn.
+
+Each stage has a dedicated code-generation prompt doc,
+`claude_prompts/coding_prompts_stage<NN>.md`, with **one prompt per module** in
+that stage (run them the same way: "Execute the Nth task").

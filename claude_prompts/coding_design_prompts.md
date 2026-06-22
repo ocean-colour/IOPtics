@@ -105,6 +105,9 @@ Guidelines for the implementation document (`docs/design/IOPtics_implementation.
 17. Read this doc. Execute the 1st task under "Testing & CI/Tasks".
 18. Read this doc. Execute the 2nd task under "Testing & CI/Tasks".
 
+19. Read this doc. Execute the 1st task under "Finishing up".
+20. Read this doc. Execute the 2nd task under "Finishing up".
+
 
 ## Prep
 
@@ -698,6 +701,57 @@ importability; PyPI release is on the TODO, after which these become version pin
 fail-on-warning). No new questions — the Testing & CI section is complete, which
 completes the implementation document.
 
+## Finishing up
+
+1. Please generated a Staged implementation for the coding.  Add this to the `IOPtics_implementation.md` doc.  If you have any questions, add them to the Q&A section.
+
+2. I have answered your questions.  Please react to my answers and then generate a set of prompt docs `IOPtics/claude_prompts/coding_prompts_stageXX.md` that will guide the code generation.
+
+### Q&A
+
+#### Claude's questions (2026-06-21, Finishing up)
+
+Added a **Staged implementation plan** to `IOPtics_implementation.md` (v0.19): a
+7-stage build order (0 scaffolding/contracts → 1 data-in·L23 → 2 ★ engine wrap =
+first expb_pow vs giop χ² slice → 3 sweep+MCMC+chains → 4 metrics+diagnostics →
+5 reporting+leaderboard+bokeh → 6 broaden to PANGAEA/GLORIA, gsm, L23 X=4),
+following the dependency DAG as **vertical slices** so the in-tandem two-way
+comparison runs end-to-end as early as Stage 2; each stage has one exit criterion
+and ships with its tests, plus a sequencing diagram. Two questions:
+
+27. **L23-first build order.** I sequence Stage 1 around the **L23 adapter only**
+    (PANGAEA/GLORIA deferred to Stage 6), so the whole pipeline reaches a working
+    expb_pow-vs-giop comparison fastest on the dataset with full truth. Agree L23
+    should be the sole Stage-1 dataset, or do you want PANGAEA wired in alongside
+    it from the start?
+
+Yes. make L23 the sole Stage-1 dataset.
+
+28. **Granularity for `coding_prompts.md` (task #2).** The next task is a new
+    prompt doc to drive the actual coding. Do you want its prompts to track these
+    **7 stages one-to-one** (one prompt per stage, each a sizable chunk), or a
+    **finer breakdown** (e.g. one prompt per module within a stage) for smaller,
+    more reviewable increments? I lean one-prompt-per-stage with follow-up
+    sub-tasks appended as needed (mirroring how this design-prompts file grew).
+
+Let's do one one prompt module per stage.
+
+#### Claude's note (2026-06-21, Finishing up round 2)
+
+Reacted to the answers and generated the stage docs:
+- **Q27 (L23 sole Stage-1 dataset):** already reflected in the staged plan
+  (Stage 1 = L23 adapter only; PANGAEA/GLORIA in Stage 6). No change needed.
+- **Q28 (granularity):** read as **one prompt per module, in a per-stage doc**.
+  Created seven `claude_prompts/coding_prompts_stage<NN>.md` (00–06), each with a
+  Goal+exit-criterion, Context pointing at the matching
+  `IOPtics_implementation.md` sections, and a `### Coding` driver list with **one
+  prompt per module** in that stage (e.g. Stage 2: spec → registry → run(χ²) →
+  evaluate → io → provenance → micro-test). Added a pointer to these docs in the
+  implementation doc's Staged plan and bumped it to **v0.20**.
+
+No new questions — the design-prompts phase is complete; code generation now
+proceeds through the per-stage docs.
+
 ## Logging
 
 The "Logs" section will record Claude's work. Please use the following format:
@@ -1118,3 +1172,49 @@ Read JXP's answers and finalized the CI subsection of `IOPtics_implementation.md
 Bumped the implementation doc to **v0.18**. No new questions — Testing & CI is
 complete, which finishes the implementation document: all eight sections are
 drafted and every Q&A through Q26 is resolved except none outstanding.
+
+### 2026-06-21 (Coding #19 → Finishing up/Tasks #1: added the staged implementation plan)
+
+Executed the 1st Finishing-up task. Appended a **Staged implementation plan**
+section to `IOPtics_implementation.md`: a 7-stage build order derived from the
+Architecture Overview's dependency DAG, organized as **vertical slices** so the
+in-tandem `expb_pow`+`giop` comparison runs end-to-end as early as **Stage 2**
+(rather than finishing modules in isolation):
+- 0 scaffolding/contracts (records, config, CI) → 1 data-in (L23 adapter, noise,
+  prep) → **2 ★ engine wrap** (algorithms+registry seeded with both, run χ²,
+  evaluate, io, provenance = first two-way comparison) → 3 sweep+MCMC+chains →
+  4 metrics+diagnostics → 5 reporting+leaderboard+bokeh → 6 broaden (PANGAEA +
+  GLORIA adapters, gsm, L23 X=4).
+- Each stage lists modules touched, a single **exit criterion**, its tests, and
+  the design section it implements; included a sequencing diagram. Stages 0–5
+  deliver the complete expb_pow/giop × L23 story; Stage 6 turns the cranks the
+  architecture was built for.
+Bumped the implementation doc to **v0.19**. Wrote 2 questions (Q27: L23-only as
+the Stage-1 dataset vs PANGAEA alongside; Q28: `coding_prompts.md` granularity —
+one prompt per stage vs per module) to the Finishing-up Q&A. (Task #2 — generating
+`coding_prompts.md` — is the next prompt.)
+
+### 2026-06-21 (Coding #20 → Finishing up/Tasks #2: generated the per-stage coding prompt docs)
+
+Reacted to Q27 (L23 sole Stage-1 dataset — already in the plan) and Q28 (one
+prompt per module, per-stage docs), then generated the **seven** code-generation
+prompt docs `claude_prompts/coding_prompts_stage{00..06}.md`:
+- **00** Scaffolding & contracts (records, config, conftest+CI)
+- **01** Data in·L23 (datasets+L23 adapter, noise, prep)
+- **02 ★** Engine wrap (algorithms.spec, registry, run·χ², evaluate, io, provenance,
+  micro-test)
+- **03** Sweep + MCMC (run_batch, run_sweep+build_v1, MCMC path, chains, tests)
+- **04** Metrics & diagnostics (metrics §1–5, compute, diagnostics, tests)
+- **05** Reporting (plotting, figures/tables, leaderboard, bokeh, rst/standard)
+- **06** Broaden (PANGAEA + GLORIA adapters, gsm, L23 X=4, multi-everything sweep)
+
+Each doc carries a Goal + exit criterion (from the staged plan), Context pointing
+at the matching `IOPtics_implementation.md` sections, conventions (ocean14, the
+BING/ocpy import boundary, JXP-runs-git), a `### Coding` driver list with one
+prompt per module, and empty `### Q&A`/`## Logs` — runnable the same way
+("Execute the Nth task"). Added a pointer to these docs in the implementation
+doc's Staged plan; bumped the implementation doc to **v0.20**.
+
+This completes the coding-design phase: `IOPtics_implementation.md` (v0.20) is
+fully drafted, and the per-stage code-generation prompts are ready to drive
+building the package.
