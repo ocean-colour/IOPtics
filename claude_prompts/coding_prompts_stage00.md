@@ -33,6 +33,10 @@ module below.
 1. Execute the 1st task under "Modules/Tasks" (package skeleton + `records.py`).
 2. Execute the 2nd task under "Modules/Tasks" (`config.py`).
 3. Execute the 3rd task under "Modules/Tasks" (`tests/conftest.py` + CI + Tier-1 tests).
+4. Execute the 4th task under "Modules/Tasks" (Pull Request).
+5. Execute the 5th task under "Modules/Tasks" (Pull Request edits).
+6. Execute the 6th task under "Modules/Tasks" (readthedocs.io setup).
+7. Execute the 7th task under "Modules/Tasks" (modify `coding_prompts_stage01.md`).
 
 ## Modules
 
@@ -62,7 +66,13 @@ module below.
    `requirements.txt` + `ocpy`/`bing` from `@main`; run `pytest -q`; advisory, no
    coverage gate). Q&A. Log.
 
-4. **Pull Request.** 
+4. **Pull Request.**   I have issued a PR for this stage. Please review it and post it to GitHub.  Please log your work in the Logs section below.
+
+5. **Pull Request edits.** Please make any edits to the project that are needed to address the PR comments. Log your work.
+
+6. **readthedocs.io setup.** Please setup for providing the docs on readthedocs.io.  Generate all necessary files and directories.  Test it. Log your work.  
+
+7. **Modify `coding_prompts_stage01.md`.**  We are ready to proceed to Stage 1.  Please modify the `coding_prompts_stage01.md` file to reflect the changes you made during Stage 0.  Log your work.
 
 ### Q&A
 
@@ -240,3 +250,102 @@ Added the test-tier scaffolding and CI, closing out Stage 0.
   harmless parse quirk; GitHub Actions reads the raw file correctly. `$OS_COLOR`
   being *set but pointing at a missing dir* is a real local state, so guarding
   on `isdir` (not just the env var) matters.
+
+### 2026-06-22 (Task 4: review & post PR #3 "Stage 0")
+
+JXP opened **PR #3 "Stage 0"** (`stage-0` → `develop`, 31 files / +1428). Reviewed
+it and posted the review to GitHub.
+
+- **State checked.** All Stage-0 work was already committed (`72c4821 "go"`,
+  pushed to `origin/stage-0`); PR mergeable; **GitHub CI green** — the
+  `.github/workflows/ci.yml` I wrote ran on the runner, installing ocpy/bing
+  from their `main` branches and passing `pytest -q` (~2 min/job).
+- **Review pass.** Re-ran the suite locally (`ocean14` → **46 passed**),
+  re-confirmed the YAML round-trip and import smoke, and probed `config` edge
+  cases a reviewer would hit (empty file, bare-string `datasets`, non-name
+  algorithm entry → clear `ConfigError`; duplicate algorithm names pass through,
+  correctly deferred to the Stage-2 registry guard).
+- **Posted.** Submitted a substantive review via `gh pr review 3 --comment`
+  (GitHub blocks *approving* one's own PR — authed user is `profxj`, the author —
+  so a COMMENTED review is the correct vehicle). The review records the verified
+  exit criteria, strengths, and three non-blocking follow-ups (duplicate-name
+  guard → Stage 2; CI Python 3.12 vs `ocean14` 3.14, consider a matrix later;
+  "registry seeded" smoke half deferred to Stage 2).
+- **Learned.** `gh` is authenticated as `profxj`; self-approval is blocked by
+  GitHub, so reviews of JXP-authored PRs go in as comments. The base branch for
+  stage PRs is **`develop`**, not `main`.
+
+### 2026-06-23 (Task 5: PR-comment edits — CI Python matrix)
+
+Addressed the one actionable follow-up from the PR #3 review (the other two were
+intentional Stage-2 deferrals — duplicate-name guard, "registry seeded" smoke).
+
+- **Edit.** Converted `.github/workflows/ci.yml` to a **matrix over Python
+  `3.12` and `3.14`** (`fail-fast: false`), so CI now exercises both the
+  declared `setup.py` minimum and the actual `ocean14` dev-env version
+  (confirmed 3.14.5) rather than 3.12 alone.
+- **Verification (`ocean14`).** Suite green on 3.14 locally (**46 passed**); the
+  code is 3.12-safe (all unions are stringized via
+  `from __future__ import annotations`). The 3.12 leg runs on CI once pushed.
+- **Note.** The edit is in the working tree for JXP to commit/push; I did not
+  re-post a PR resolution comment (turn moved on to Task 6).
+
+### 2026-06-23 (Task 6: Read the Docs / Sphinx site)
+
+Set up the accumulating documentation site and verified it builds clean.
+
+- **RTD config.** `.readthedocs.yaml` (v2): build ubuntu-24.04 / Python 3.12,
+  `sphinx.configuration: docs/source/conf.py`, `fail_on_warning: false`
+  (advisory, mirroring CI); installs the package (`pip install .`) plus
+  `docs/requirements.txt`.
+- **Sphinx tree.** Honored the design doc's `docs/source/…` layout (keeping the
+  published site separate from `docs/design/` and `docs/PDFs/`):
+  `docs/source/{conf.py, index.rst, installation.rst, reports/index.rst,
+  api/index.rst, _static/}` + `docs/{Makefile, make.bat, requirements.txt}`.
+  `reports/index.rst` is the placeholder for the accumulating per-sweep pages
+  (Stage 5's `report.rst` will switch its toctree to a glob); `api/index.rst`
+  autodocs the whole package by subsystem.
+- **conf.py for modern Sphinx.** Targeted Sphinx 9.1 + `sphinx_rtd_theme` 3.1
+  (what `ocean14` ships): dropped the deprecated rtd-theme options
+  (`display_version`/`logo_only`) and the missing `sphinx-autodoc-typehints`
+  dep (used the built-in `autodoc_typehints = 'description'`). Mocked the heavy
+  / sibling imports (`bing`, `ocpy`, `bokeh`, `emcee`, `corner`, …) so the docs
+  build without the full stack. Version single-sourced from
+  `ioptics.__version__`.
+- **Tested.** `sphinx-build -b html -W --keep-going docs/source docs/build/html`
+  → **build succeeded, 0 warnings**. Fixed four RST title-underline issues and
+  one docstring glitch surfaced by `-W`: `config.py`'s module docstring had
+  ```` ``dump()``s ```` (closing backticks glued to `s`) → reworded. Confirmed
+  autodoc rendered all Stage-0 classes (`PreparedRecord`, `RetrievalResult`,
+  `ComponentFit`, `SweepConfig`, `AlgorithmConfig`); `pytest -q` still **46
+  passed**; `docs/build/` is gitignored (`build/`), source files are committable.
+- **Learned.** `sphinx_rtd_theme` 3.x removed several `html_theme_options` keys
+  ocpy's older conf.py still sets; on Sphinx 9 a minimal options dict is safest.
+  An empty `:glob:` toctree warns ("didn't match any documents"), so the
+  reports placeholder uses a plain (entry-less) toctree until sweeps exist.
+
+### 2026-06-23 (Task 7: update `coding_prompts_stage01.md` for Stage-0 reality)
+
+Revised the Stage-1 prompt so it builds on what Stage 0 actually shipped, and
+fixed a stale ocpy reference I verified against `ocean14`.
+
+- **Stage-0 carryover block (new in Context).** Spelled out that
+  `PreparedRecord` is implemented + top-level re-exported, with its **exact
+  field names** Stage 1 must populate — flagging the easy-to-miss ones:
+  `noise_seed` (not `seed`), `Rrs_clean`, `noise_model` tag, `init={'Chl','Y'}`,
+  and picklability. Noted the **conftest skip guards already exist** (import
+  `needs_l23`, don't redefine) and that `datasets`/`noise`/`prep` are
+  docstring-only stubs (with `RawObs` still to be defined).
+- **API accuracy.** Verified the referenced ocpy/bing entry points in `ocean14`:
+  all present except `ocpy.chl.band_ratios`, which is a **submodule** exposing
+  `oc4`/`oc2` (not a package attribute). Corrected the Context and Task 3 to
+  `ocpy.chl.band_ratios.oc4`.
+- **Conventions.** Added the env-interpreter test command (conda `activate`
+  fails non-interactively) and a docstring-must-be-RST-clean note (new public
+  APIs are autodoc'd via the Stage-0 `docs/source/api/index.rst`; avoid the
+  ```` ``x``s ```` closing-backtick glue that `-W` rejects).
+- **Tasks.** Reworded 1–4 to "fill the stub", mapped `attach_noise`'s return
+  tuple onto the `PreparedRecord` fields, required `prep` to populate every
+  field, and pointed tests at `ioptics/tests/test_{datasets,noise,prep}.py`
+  using the existing guard.
+- **Note.** Prompt-doc edit only — no package code changed; `pytest` unaffected.
