@@ -106,4 +106,55 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
 
 ### Q&A
 
+**Task 1 (`datasets.py` — registry + L23 adapter).**
+
+- *Q: The truth scalars `Y` (Lee 2002) and `Sdg` (`functions.fit_Sdg`) come from
+  bing helpers, but `datasets.py` must not import bing (boundary). How?*
+  Replicated both locally with comments citing the bing source:
+  `_lee2002_Y` (Gordon `rrs`, 440/555 ratio) and `_fit_Sdg` (least-squares of
+  `A·exp(-Sdg·(λ-440))` over 400–525 nm, matching `bing.models.functions.fit_Sdg`
+  /`exp_func`). `A_RRS`/`B_RRS = 0.52/1.7` mirror `bing.rt.rrs`. Verified `Sdg`
+  recovery to 1e-3 on a synthetic `a_dg` of known slope. So the data layer stays
+  **ocpy-only**.
+- *Q: When is ocpy imported?* **Lazily** — inside `L23Adapter._load_ds`, so
+  `import ioptics.datasets` stays cheap (no ocpy/data needed at import time; the
+  smoke test and CI are unaffected). The loaded dataset is cached per `(X, Y)`
+  so a batch reads the NetCDF once.
+- *Q: Which truth keys?* The canonical IOPtics set (design table / task): spectral
+  `a, bb, a_ph, a_dg, bb_p, a_w, bb_w`; scalars `Chl, Y, Sdg`. Dropped the
+  redundant `anw`/`bbnw` the design table also lists (`anw = a_ph+a_dg`,
+  `bbnw = bb_p`).
+- *Q: `meta['Y']` vs `truth['Y']`?* `meta['Y']` is the **solar-zenith load
+  option** (00/30/60); `truth['Y']` is the **Lee-2002 backscatter slope** —
+  documented inline so the two aren't confused. `X=2` (Raman-only) is guarded
+  with a `ValueError` per the design's "never 2".
+- *Note:* real-data `load_obs('L23', …)` is Tier-2 (`@needs_l23`) and is
+  exercised in Task 4; no L23 tree is mounted here, so Task 1 was verified on the
+  registry, `RawObs`, and the truth helpers with synthetic input.
+
 ## Logs
+
+### 2026-06-23 (Stage 1, Task 1: `datasets.py` — registry + L23 adapter)
+
+Filled the `datasets.py` stub with the dataset registry and the L23 adapter.
+
+- **Registry.** `ADAPTERS` dict + `register_dataset`/`get_adapter`/
+  `available_datasets`, and a `runtime_checkable` `Adapter` Protocol
+  (`obs_ids`, `load_obs`). New internal **`RawObs`** dataclass (`wave`, `Rrs`,
+  `truth`, `Rrs_err=None`, `meta={}`) — the carrier prep consumes.
+- **L23 adapter.** `L23Adapter` wraps `ocpy.hydrolight.loisel23.load_ds(X, Y)`
+  (imported lazily; ds cached per `(X, Y)`). `obs_ids` → `range(N)`; `load_obs`
+  returns native-grid `Rrs` + truth: spectral `a, bb, a_ph(=aph),
+  a_dg(=ag+ad), bb_p(=bbnw), a_w(=a-anw), bb_w(=bb-bbnw)` and scalars
+  `Chl(=aph(440)/0.05582), Y(Lee 2002), Sdg(exp fit)`. Registered as `'L23'`.
+- **Boundary kept.** Lee-2002 `Y` and `Sdg` are replicated locally (not imported
+  from bing), so `datasets.py` imports only ocpy — honoring the dependency
+  boundary.
+- **Verification (`ocean14`).** Registry seeds `['L23']`; adapter satisfies the
+  `Adapter` Protocol; `RawObs` defaults independent; helpers correct (`Sdg`
+  recovered to 1e-3 on synthetic input). Full suite **46 passed** (run from the
+  IOPtics repo root — note `pytest` will otherwise collect a sibling repo's
+  tests if the shell `cwd` drifted).
+- **Learned.** `bing.models.functions.fit_Sdg` fits over a fixed 400–525 nm
+  window with pivot 440 nm; replicating it (vs importing) is the clean way to
+  keep the data layer bing-free.
