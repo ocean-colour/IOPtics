@@ -24,8 +24,15 @@ concurrency:
 
 jobs:
   tests:
-    name: Tier-1 tests (pytest)
+    name: Tier-1 tests (pytest, py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.12 = the declared minimum (setup.py: >=3.12);
+        # 3.14 = the dev environment (the `ocean14` conda env runs 3.14).
+        python-version: ['3.12', '3.14']
 
     steps:
       - name: Check out the repository
@@ -34,7 +41,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'   # the declared minimum (setup.py: >=3.12)
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install dependencies (requirements.txt incl. ocpy/bing @ main)

@@ -5,7 +5,7 @@ sweep id, datasets, algorithms (registry names + per-algorithm overrides), the
 sweep-level noise model and fit method, and the MCMC subset (see
 ``docs/design/IOPtics_implementation.md`` §"Algorithm registry" / §"Driving a
 sweep"). This module parses that YAML into plain config objects, **validates**
-it, and ``dump()``s it back for the provenance copy.
+it, and ``dump()`` writes it back out for the provenance copy.
 
 The objects here are deliberately **neutral**: algorithms resolve to a
 ``(name, fit_method, overrides)`` carrier rather than to a fully-built
