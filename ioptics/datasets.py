@@ -1,10 +1,10 @@
-"""Dataset registry: thin adapters over ocpy loaders.
+"""Dataset registry: thin adapters over ocpy loaders (+ bing for L23 truth).
 
 Maps a dataset name (``'L23'`` | ``'PANGAEA'`` | ``'GLORIA'``) to an adapter
 that enumerates observation ids and returns one observation's ``Rrs`` + truth
-IOPs on the dataset's **native wavelength grid**. With :mod:`ioptics.noise`,
-this is the only module that imports ocpy; nothing downstream of
-:mod:`ioptics.prep` imports it.
+IOPs on the dataset's **native wavelength grid**. This module reads observations
+via ocpy and, for the synthetic L23 dataset, reuses bing's canonical truth
+extraction (``bing.fitting.l23.load_one_l23``) rather than re-deriving it.
 
 An adapter returns a lightweight :class:`RawObs` carrier (raw arrays + a truth
 dict + metadata). :mod:`ioptics.prep` turns that into the public
@@ -22,11 +22,6 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 import numpy as np
-
-# --- Gordon Rrs <-> rrs relation (Lee et al. 2002 / Gordon et al. 1988) ------
-# Mirrors bing.rt.rrs.{A_Rrs, B_Rrs}. Replicated here (rather than importing
-# bing) so the data layer stays ocpy-only per the dependency boundary.
-A_RRS, B_RRS = 0.52, 1.7
 
 
 @dataclass
@@ -97,50 +92,30 @@ class Adapter(Protocol):
         ...
 
 
-# --- truth helpers (replicated from bing, see module note) ------------------
-
-def _lee2002_Y(wave, Rrs):
-    """Backscatter spectral slope ``Y`` via the Lee et al. (2002) band ratio.
-
-    Generalizes the prescription in ``bing.fitting.l23.load_one_l23``: convert
-    ``Rrs`` to subsurface ``rrs`` (Gordon) and form the 440/555 ratio.
-    """
-    rrs = Rrs / (A_RRS + B_RRS * Rrs)
-    i440 = int(np.argmin(np.abs(wave - 440.)))
-    i555 = int(np.argmin(np.abs(wave - 555.)))
-    return float(2.2 * (1.0 - 1.2 * np.exp(-0.9 * rrs[i440] / rrs[i555])))
-
-
-def _fit_Sdg(wave, a_dg, wv_min=400., wv_max=525., pivot=440.):
-    """Spectral slope ``Sdg`` of dissolved+detrital absorption.
-
-    Replicates ``bing.models.functions.fit_Sdg``: a least-squares fit of
-    ``A * exp(-Sdg * (wave - pivot))`` to ``a_dg`` over ``[wv_min, wv_max]``.
-    Returns ``Sdg`` (or ``nan`` if the fit fails).
-    """
-    from scipy.optimize import curve_fit
-
-    def _exp(x, A, S):
-        return A * np.exp(-S * (x - pivot))
-
-    cut = (wave > wv_min) & (wave < wv_max)
-    ipiv = int(np.argmin(np.abs(wave - pivot)))
-    try:
-        ans, _ = curve_fit(_exp, wave[cut], a_dg[cut], p0=[a_dg[ipiv], 0.015])
-        return float(ans[1])
-    except Exception:
-        return float('nan')
-
-
 # --- L23 adapter ------------------------------------------------------------
+
+# bing's load_one_l23 returns these dict keys; map them onto IOPtics truth keys.
+_L23_TRUTH_MAP = {
+    'a':    'a',
+    'bb':   'bb',
+    'aph':  'a_ph',
+    'adg':  'a_dg',
+    'bbnw': 'bb_p',
+    'aw':   'a_w',
+    'bbw':  'bb_w',
+    'Chl':  'Chl',     # scalar
+    'Y':    'Y',       # scalar (Lee 2002 backscatter slope)
+    'Sdg':  'Sdg',     # scalar
+}
+
 
 class L23Adapter:
     """Adapter for the Loisel et al. (2023) synthetic Hydrolight dataset.
 
-    Wraps ``ocpy.hydrolight.loisel23.load_ds(X, Y)`` and returns each row's
-    ``Rrs`` plus full spectral + scalar truth on the native Hydrolight grid.
-    The loaded dataset is cached per ``(X, Y)`` so a batch over many rows reads
-    the NetCDF once.
+    Loads the dataset via ``ocpy.hydrolight.loisel23.load_ds(X, Y)`` (cached per
+    ``(X, Y)`` so a batch reads the NetCDF once) and extracts each row's ``Rrs``
+    + full truth using bing's canonical ``bing.fitting.l23.load_one_l23`` on the
+    native Hydrolight grid.
 
     The ``X``/``Y`` load options (``X``: 1 = elastic first pass, 4 = +Raman/Chl
     fluorescence, never 2; ``Y``: solar-zenith index 00/30/60) are adapter
@@ -167,39 +142,26 @@ class L23Adapter:
 
     def load_obs(self, obs_id, X=1, Y=0, **opts):
         """Load L23 row ``obs_id`` as a :class:`RawObs` on the native grid."""
+        from bing.fitting import l23 as bing_l23
+
         ds = self._load_ds(X, Y)
         idx = int(obs_id)
 
-        wave = ds.Lambda.data
-        Rrs = ds.Rrs.data[idx]
-        a = ds.a.data[idx]
-        bb = ds.bb.data[idx]
-        aph = ds.aph.data[idx]
-        a_dg = ds.ag.data[idx] + ds.ad.data[idx]
-        anw = ds.anw.data[idx]
-        bbnw = ds.bbnw.data[idx]
+        # bing's canonical L23 extraction (native grid; full spectral + scalar
+        # truth incl. Chl, Lee-2002 Y, and the a_dg slope Sdg).
+        odict = bing_l23.load_one_l23(idx, ds=ds)
 
-        i440 = int(np.argmin(np.abs(wave - 440.)))
-        truth = {
-            # spectral components (arrays on the native grid)
-            'a':    a,
-            'bb':   bb,
-            'a_ph': aph,
-            'a_dg': a_dg,
-            'bb_p': bbnw,
-            'a_w':  a - anw,
-            'bb_w': bb - bbnw,
-            # scalar components
-            'Chl':  float(aph[i440] / 0.05582),     # L23 convention
-            'Y':    _lee2002_Y(wave, Rrs),          # Lee et al. 2002
-            'Sdg':  _fit_Sdg(wave, a_dg),           # exp slope of a_dg
-        }
+        truth = {ipt_key: odict[bkey] for bkey, ipt_key in _L23_TRUTH_MAP.items()}
+        # scalars as plain floats
+        for s in ('Chl', 'Y', 'Sdg'):
+            truth[s] = float(truth[s])
+
         # meta['Y'] is the solar-zenith *load option*, distinct from truth['Y']
         # (the Lee-2002 backscatter slope).
         meta = {'dataset': 'L23', 'obs_id': idx, 'X': X, 'Y': Y}
 
-        return RawObs(wave=np.asarray(wave, dtype=float),
-                      Rrs=np.asarray(Rrs, dtype=float),
+        return RawObs(wave=np.asarray(odict['wave'], dtype=float),
+                      Rrs=np.asarray(odict['Rrs'], dtype=float),
                       truth=truth, Rrs_err=None, meta=meta)
 
 
