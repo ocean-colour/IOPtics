@@ -74,3 +74,16 @@ def test_bad_pct_raises():
     wave, Rrs = _synthetic()
     with pytest.raises(ValueError, match="pct"):
         attach_noise(wave, Rrs, model='pct:abc')
+
+
+def test_pace_model_native_grid():
+    # The PACE model reads ocpy's bundled PACE_error.csv (package data, not the
+    # $OS_COLOR tree), so it is data-independent.
+    wave, Rrs = _synthetic()
+    varRrs, Rrs_out, Rrs_clean, tag, seed_used = attach_noise(
+        wave, Rrs, model='pace', add_noise=True, seed=7)
+    assert tag == 'pace'
+    assert varRrs.shape == wave.shape       # evaluated on the native grid
+    assert np.all(varRrs > 0)
+    assert seed_used == 7
+    assert not np.array_equal(Rrs_out, Rrs_clean)
