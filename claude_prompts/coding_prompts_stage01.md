@@ -71,6 +71,11 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
 4. Execute the 4th task (`prep.py`).
 5. Execute the 5th task (Q&A).
 6. Execute the 6th task (tests).
+7. Execute the 7th task (Q&A).
+
+### Pull Request
+
+1. I have issued a PR for this stage. Please review it and post it to GitHub.  Please log your work in the Logs section below.
 
 ## Modules
 
@@ -118,6 +123,8 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
    needs_l23`) and mark `prep_dataset('L23', range(5))` smoke (shapes, varRrs>0,
    truth keys, `noise_seed` recorded). Q&A. Log.
 
+7. **Q&A**. I have answered your Q&A and fixed the CI issue.  Please see my answers.  Make any needed changes to the code to reflect the answers.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -134,6 +141,7 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
   `Chl, Y, Sdg`. I dropped the redundant `anw`/`bbnw` (`anw=a_ph+a_dg`,
   `bbnw=bb_p`) — keep them dropped?
   A. Yes drop them
+
 - `meta` carries `{dataset, obs_id, X, Y}`, where `meta['Y']` is the solar-zenith
   load option vs `truth['Y']` the Lee-2002 slope — keep both under these names?
   A. Yes keep both under these names.
@@ -170,6 +178,7 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
 - Spectral truth `Spectrum` objects are tagged `units='1/m'` for all components
   (a, bb, a_ph, a_dg, bb_p, a_w, bb_w). Right for every one?
   A. Yes right for every one.
+
 - `_build_truth` aligns every spectral component from the single `RawObs.wave`
   (so L23 `truth_interp` is always `False`). PANGAEA truth arrives on per-family
   grids — should `RawObs` carry per-component `(wave, vals)`, generalized in
@@ -194,6 +203,7 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
   > over ALL obs with a usable Rrs) and the caller already controls scope — the
   > Stage-1 exit explicitly calls `prep_dataset('L23', range(50))`. A silent cap
   > would be a surprising truncation; if anything, a sweep config sets the range.
+  A. That is fine
 
 **Task 5 (new questions).**
 
@@ -201,9 +211,70 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
   sanity check** (e.g. retrieved-free `init['Chl']` within ~0.5 dex of
   `truth['Chl']` on a clear-water row), or keep Tier-2 as pure smoke (shapes,
   keys, `varRrs>0`, `noise_seed` recorded)?
+  A. Yes, add the light test
 - `truth['Sdg']` can come back `NaN` if bing's exp fit fails on some L23 rows.
   prep stores it as-is and metrics will skip `NaN` later. OK for Stage 1, or
   should `prep_one` flag/quarantine records with `NaN` scalar truth?
+  A. Yes, this is OK for Stage 1.
+
+**Task 6 (new question).**
+
+- The L23 data tree is now mounted, so all three Tier-2 `@needs_l23` tests
+  **run and pass** here (not just on your machine) — including the truth-vs-init
+  Chl check (median < 0.5 dex on real L23). Stage 1's exit criterion is met. Do
+  you want a Stage-1 PR + readthedocs check (as in Stage 0), or proceed straight
+  to Stage 2?
+  A. We want a Stage-1 PR + readthedocs check
+
+**PR review (PR #4) — needs your confirmation.**
+
+- I had to **reverse the Task-5 decision** (build a Lee `bbnw` model for
+  `init['Y']`): constructing any `bbnw` model runs `bbNWModel.init_bbw`, which
+  loads L23 `Hydrolight400.nc`, so it coupled prep of *every* dataset to the L23
+  tree and broke CI. I reverted to the inline Lee-2002 formula (identical value,
+  data-free; still uses bing's `Rrs_to_rrs`). Confirm this reversal is OK?
+  A. Explain further.  What was the problem?
+  > Explanation. `init['Y']` is the truth-free backscatter-slope **seed** for the
+  > fit, computed from the observed `Rrs`. Task 5 asked me to compute it by
+  > building a bing Lee `bbnw` model and calling `compute_Y`. The problem is a
+  > hidden side effect in the **constructor**: `bbNWLee.__init__` →
+  > `bbNWModel.__init__` → `init_bbw()`, and `init_bbw()` runs
+  > `ocpy.hydrolight.loisel23.load_ds(4, 0)` — it **reads the L23
+  > `Hydrolight400.nc` file** to set pure-water backscattering `bb_w` (bing's
+  > analytic `betasw_ZHH2009` path is commented out). So just to get one scalar
+  > slope, `prep_one` would load the L23 X=4 dataset — for **every** dataset, even
+  > non-L23, and even with no fit happening. Wherever that file isn't mounted
+  > (fresh checkout, **CI**, a PANGAEA-only run) `prep_one` dies with
+  > `FileNotFoundError: Hydrolight400.nc`. That's exactly what broke the Tier-1
+  > fake-adapter prep tests once the L23 tree was unmounted. The inline Lee-2002
+  > line (`Y = 2.2*(1 − 1.2·exp(−0.9·rrs₄₄₀/rrs₅₅₅))`, `rrs` from bing's
+  > `Rrs_to_rrs`) is the **same formula** `bbNWLee.compute_Y` uses (verified
+  > bit-identical: Y=1.4127 both ways) but needs no model and no data. This only
+  > affected prep's truth-free init; when Stage 2's `run`/`evaluate` build models
+  > for a real L23 fit, that L23 load is expected and fine. Reverted unless you
+  > object.
+
+- CI for PR #4 is **red for an upstream reason**: the ocpy installed from
+  `git+…@main` lacks `ocpy.spectra` and the bundled `PACE_error.csv` — both live
+  on your local ocpy `panagea` branch (~30 commits ahead of `main`). Do you want
+  to merge ocpy `panagea`→`main` (and package the data files), or should I pin
+  `requirements.txt` to `ocpy@panagea` as a stopgap so IOPtics CI goes green?
+  A. I have fixed this.
+  > Status. Thanks. Confirmed `ocpy.spectra` imports here, and `requirements.txt`
+  > is unchanged (no `@panagea` pin needed — your upstream fix is the right call).
+  > Two things still gate a green PR #4, both needing a commit + CI re-run (I
+  > don't run git): (1) the `prep.py` inline-`Y` fix is in the **working tree,
+  > uncommitted** — without it CI still dies on `Hydrolight400.nc`; (2) PR #4's
+  > shown checks are the **stale** failed runs from before the fixes. Once the
+  > `prep.py` fix is committed/pushed and CI re-runs against the fixed ocpy, I
+  > expect green (Tier-1 pass on 3.12/3.14, Tier-2 skip on the runner).
+
+**Task 7 (new question).**
+
+- Both fixes (your ocpy update + my `prep.py` revert) need to land on the
+  `stage-1` branch and CI re-run to confirm green. Do you want me to **verify
+  PR #4 CI is green** (and re-post a short approving review note) after you push,
+  or are we treating Stage 1 as done and moving to Stage 2?
 
 ## Logs
 
@@ -339,3 +410,77 @@ JXP answered the open Q&A; applied the answers in code and added info/recos.
 - **New questions** raised for Task 6: whether Tier-2 L23 tests should include a
   light truth-vs-`init` sanity check, and how to handle `NaN` `truth['Sdg']` from
   occasional failed exp fits.
+
+### 2026-06-25 (Stage 1, Task 6: tests — Stage 1 complete)
+
+Added the dataset/noise/prep test modules; Stage-1 exit criterion met.
+
+- **`test_datasets.py`** (6 Tier-1 + 1 Tier-2): registry seeded with L23,
+  `Adapter` protocol, register/retrieve round-trip, `RawObs` default
+  independence, the L23 truth-key map (anw/bbnw absent), and the `X=2` guard
+  (rejects before any load). Tier-2 `@needs_l23`: `load_obs(0)` — native
+  ascending grid, `Rrs` aligned, all 10 truth keys (spectral arrays on grid,
+  scalar floats), `meta` X/Y.
+- **`test_prep.py`** (9 Tier-1 + 2 Tier-2): `_align_truth` (exact grid, subset
+  not-a-regrid, off-grid interp with NaN edges); `prep_one` populates every
+  field, truth as `Spectrum` on `wave` (+`orig_wave`, `truth_interp` False),
+  truth-free finite `init`, trim, **picklable**; `prep_dataset` per-record seeds
+  `seed+i`. Tier-2 `@needs_l23`: `prep_dataset('L23', range(5))` smoke
+  (shapes, `varRrs>0`, truth keys, `noise_seed` recorded) + the light
+  truth-vs-`init` Chl check JXP approved (median `|log10(init/truth)| < 0.5` dex).
+- **`test_noise.py`**: added a Tier-1 `pace` test (bundled CSV, native grid).
+- **Verification (`ocean14`).** Full suite **72 passed**. The L23 tree is now
+  mounted, so the 3 Tier-2 `@needs_l23` tests **ran and passed against real
+  data** (not skipped) — including the init-vs-truth Chl check, which validates
+  the OC4 `init` Chl tracks truth within 0.5 dex on real L23.
+- **Stage-1 exit criterion MET:** `prep.prep_dataset('L23', range(50))` returns
+  valid `PreparedRecord`s (Tier-2, real data) and the Tier-1 synthetic-record
+  tests pass in `ocean14`.
+
+### 2026-06-25 (PR review: PR #4 "Stage 1" — found CI-red, fixed one bug)
+
+Reviewed PR #4 (`stage-1` → **`main`**, 49 files; folds Stage 0 + Stage 1) and
+posted a COMMENTED review to GitHub (self-approval blocked).
+
+- **CI is RED** — all 4 Tier-1 jobs (py3.12/3.14) failed. From the run logs, two
+  upstream-ocpy causes: `ModuleNotFoundError: ocpy.spectra` (prep/datasets truth
+  `Spectrum`) and `FileNotFoundError: ocpy/.../PACE_error.csv` (pace noise). The
+  ocpy installed from `git+…@main` lacks both; they live on the local ocpy
+  **`panagea`** branch (~30 commits ahead of `origin/main`). Resolution is
+  upstream: merge ocpy `panagea`→`main` + package the data files (or pin
+  `requirements.txt` to `@panagea`). Flagged; **do not merge until CI is green.**
+- **IOPtics bug found & fixed.** `prep._init_from_rrs` built a bing Lee `bbnw`
+  model for `init['Y']` (Task-5 choice), but `bbNWModel.init_bbw` loads L23
+  `Hydrolight400.nc` — coupling prep of *any* dataset to the L23 tree and
+  breaking it where absent (incl. CI). **Reverted to the inline Lee-2002
+  formula** (identical value, data-free; still uses bing's `Rrs_to_rrs`). This
+  reverses the Task-5 Q&A decision — surfaced for JXP's confirmation. After the
+  fix: **69 passed + 3 skipped** with no L23 tree (CI-equivalent), **72 passed**
+  with it; `sphinx-build -W` clean.
+- **Learned.** A green local suite can mask two independent gaps: (1) a complete
+  *local* ocpy that the CI `@main` install doesn't match, and (2) a bing model
+  ctor with a hidden data-load side effect. The unmounting of the L23 tree this
+  turn is what exposed both — worth running the suite **without** `$OS_COLOR`
+  (CI-equivalent) before declaring a data-layer stage done.
+
+### 2026-06-26 (Stage 1, Task 7: apply PR-review Q&A answers)
+
+JXP answered the PR-review Q&A (asked me to explain the bug further; fixed the
+ocpy CI issue upstream). Responded and re-verified.
+
+- **Explanation provided** (in Q&A) for the Lee-model problem: building any bing
+  `bbnw` model runs `bbNWModel.init_bbw` → `loisel23.load_ds(4, 0)`, reading
+  `Hydrolight400.nc`, so the Task-5 init-`Y` approach pulled the L23 X=4 data
+  load into prep for every dataset and crashed wherever that file is absent
+  (fresh checkout / CI / PANGAEA-only). The inline Lee-2002 line is the identical
+  formula (Y=1.4127 both ways), data-free.
+- **Code state:** the `prep.py` revert (inline `Y`) stands — JXP didn't object,
+  asked to understand. No new code change needed this task. `requirements.txt`
+  unchanged (JXP fixed ocpy upstream, so no `@panagea` pin).
+- **Re-verified.** CI-equivalent run (`env -u OS_COLOR pytest`) → **69 passed,
+  3 skipped** (Tier-2 `@needs_l23` skip). `sphinx-build -W` docs build clean
+  (readthedocs check, per the Task-6 answer). `ocpy.spectra` imports.
+- **Flagged (needs JXP, who runs git):** the `prep.py` fix is uncommitted in the
+  working tree and PR #4's shown checks are the stale pre-fix failures — both
+  fixes (ocpy upstream + this `prep.py` revert) must land on `stage-1` and CI
+  re-run before #4 is green/mergeable. Posed as the Task-7 new question.

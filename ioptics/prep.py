@@ -71,24 +71,26 @@ def _init_from_rrs(wave, Rrs):
     """Truth-free model-init values from the *observed* ``Rrs``.
 
     ``Chl`` via the OC4 band ratio (``ocpy.chl.band_ratios.oc4``) and ``Y`` via
-    bing's Lee (2002) ``bbnw`` model: convert ``Rrs`` to subsurface ``rrs``
-    (``bing.rt.rrs.Rrs_to_rrs``) and let ``bbNWLee.compute_Y`` evaluate the
-    440/555 backscatter slope, so the prescription stays in lock-step with bing
-    (rather than duplicating the formula here). These seed the least-squares
-    starting guess at run time without peeking at truth.
+    the Lee (2002) backscatter-slope prescription: convert ``Rrs`` to subsurface
+    ``rrs`` (``bing.rt.rrs.Rrs_to_rrs``) and apply the 440/555 ratio. These seed
+    the least-squares starting guess at run time without peeking at truth.
+
+    The formula matches bing's ``bbNWLee.compute_Y`` exactly, but we apply it
+    directly rather than constructing the model: building any ``bbnw`` model runs
+    ``bbNWModel.init_bbw``, which loads the L23 ``Hydrolight400.nc`` dataset for
+    pure-water backscattering. Going through the model would therefore make prep
+    of *any* dataset require the L23 data tree (and break CI, which has none) —
+    so the one-liner stays here, data-free.
     """
     from ocpy.chl import band_ratios
     from bing.rt.rrs import Rrs_to_rrs
-    from bing.models import bbnw
 
     Chl = float(band_ratios.oc4(wave, Rrs))
 
     rrs = np.asarray(Rrs_to_rrs(Rrs), dtype=float)
     i440 = int(np.argmin(np.abs(wave - 440.)))
     i555 = int(np.argmin(np.abs(wave - 555.)))
-    lee = bbnw.init_model('Lee', np.asarray(wave, dtype=float), prior_dicts=None)
-    lee.compute_Y(rrs[i440], rrs[i555])      # sets lee.Y (Lee et al. 2002)
-    Y = float(lee.Y)
+    Y = float(2.2 * (1.0 - 1.2 * np.exp(-0.9 * rrs[i440] / rrs[i555])))
 
     return {'Chl': Chl, 'Y': Y}
 
