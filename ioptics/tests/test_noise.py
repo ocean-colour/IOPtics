@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from ioptics.noise import attach_noise
+from ioptics.tests.conftest import needs_pace
 
 
 def _synthetic():
@@ -76,9 +77,10 @@ def test_bad_pct_raises():
         attach_noise(wave, Rrs, model='pct:abc')
 
 
+@needs_pace
 def test_pace_model_native_grid():
-    # The PACE model reads ocpy's bundled PACE_error.csv (package data, not the
-    # $OS_COLOR tree), so it is data-independent.
+    # The PACE model reads ocpy's bundled PACE_error.csv. Some ocpy installs
+    # don't package it (e.g. CI's pip-from-git), so this skips when absent.
     wave, Rrs = _synthetic()
     varRrs, Rrs_out, Rrs_clean, tag, seed_used = attach_noise(
         wave, Rrs, model='pace', add_noise=True, seed=7)

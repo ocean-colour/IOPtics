@@ -75,7 +75,8 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
 
 ### Pull Request
 
-1. I have issued a PR for this stage. Please review it and post it to GitHub.  Please log your work in the Logs section below.
+1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
+
 
 ## Modules
 
@@ -484,3 +485,40 @@ ocpy CI issue upstream). Responded and re-verified.
   working tree and PR #4's shown checks are the stale pre-fix failures — both
   fixes (ocpy upstream + this `prep.py` revert) must land on `stage-1` and CI
   re-run before #4 is green/mergeable. Posed as the Task-7 new question.
+
+### 2026-06-26 (PR #4: investigate + fix remaining CI failures)
+
+JXP committed the earlier fixes (`c6efea3`) and CI re-ran — `ocpy.spectra` now
+imports, but **2 new failure causes** surfaced, both from CI installing
+`bing`/`ocpy` at `git@main` (behind the local dev copies):
+
+- **6× `test_prep`** — `ImportError: Rrs_to_rrs` not in `bing.rt.rrs@main`
+  (prep used it for the `init['Y']` rrs conversion).
+- **1× `test_noise::test_pace_model_native_grid`** — ocpy's install lacks
+  `data/satellites/PACE_error.csv`.
+
+**Fixes (IOPtics-side, committable):**
+1. **Inlined the Gordon `Rrs→rrs`** in `prep._init_from_rrs`
+   (`rrs = Rrs/(0.52 + 1.7·Rrs)`, constants mirroring `bing.rt.rrs`), dropping
+   the `bing.rt.rrs.Rrs_to_rrs` import. `prep` is now **bing-free** and robust to
+   the bing version; `init['Y']` is bit-identical (verified Y=1.4127 on the
+   synthetic Rrs). The only remaining bing import is the lazy `load_one_l23` in
+   the L23 adapter — Tier-2 only, skipped on CI.
+2. **Added `needs_pace`** skip guard (`conftest`) probing
+   `ocpy.satellites.pace.gen_noise_vector`; applied to the pace test so it skips
+   where ocpy doesn't ship the CSV (still runs locally).
+
+**Verification.** CI-equivalent (`env -u OS_COLOR pytest`) → **69 passed,
+3 skipped**; prep is bing-free (grep clean). On the runner I expect Tier-1 green
+(prep passes, pace skips, L23 Tier-2 skips).
+
+**Posted** a follow-up review on PR #4 with the investigation, the two fixes, and
+**upstream follow-ups** (publish `Rrs_to_rrs` to bing `main`; package
+`PACE_error.csv` in ocpy via `package_data`/`MANIFEST`). Needs commit+push to
+`stage-1` + CI re-run to confirm green (JXP runs git).
+
+**Learned.** The CI-vs-local gap recurs per dependency: after ocpy `spectra` was
+fixed, the *same class* of gap appeared for bing (`Rrs_to_rrs`) and ocpy data
+packaging. Making IOPtics robust to the **released** bing/ocpy (inline trivial
+formulas, skip-guard bundled-data tests) is more reliable than tracking unmerged
+upstream branches.

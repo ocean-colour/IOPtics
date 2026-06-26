@@ -67,27 +67,32 @@ def _build_truth(raw, wave):
     return truth, truth_interp
 
 
+# Gordon Rrs <-> subsurface rrs relation (mirrors bing.rt.rrs A_Rrs / B_Rrs).
+_A_RRS, _B_RRS = 0.52, 1.7
+
+
 def _init_from_rrs(wave, Rrs):
     """Truth-free model-init values from the *observed* ``Rrs``.
 
     ``Chl`` via the OC4 band ratio (``ocpy.chl.band_ratios.oc4``) and ``Y`` via
     the Lee (2002) backscatter-slope prescription: convert ``Rrs`` to subsurface
-    ``rrs`` (``bing.rt.rrs.Rrs_to_rrs``) and apply the 440/555 ratio. These seed
-    the least-squares starting guess at run time without peeking at truth.
+    ``rrs`` (Gordon) and apply the 440/555 ratio. These seed the least-squares
+    starting guess at run time without peeking at truth.
 
-    The formula matches bing's ``bbNWLee.compute_Y`` exactly, but we apply it
+    The Lee formula matches bing's ``bbNWLee.compute_Y`` exactly, but we apply it
     directly rather than constructing the model: building any ``bbnw`` model runs
     ``bbNWModel.init_bbw``, which loads the L23 ``Hydrolight400.nc`` dataset for
-    pure-water backscattering. Going through the model would therefore make prep
-    of *any* dataset require the L23 data tree (and break CI, which has none) —
-    so the one-liner stays here, data-free.
+    pure-water backscattering — that would make prep of *any* dataset require the
+    L23 tree (and break CI, which has none). The Gordon ``Rrs->rrs`` conversion
+    is inlined for the same reason (``bing.rt.rrs.Rrs_to_rrs`` is not in every
+    released bing), so prep stays data-free and version-robust.
     """
     from ocpy.chl import band_ratios
-    from bing.rt.rrs import Rrs_to_rrs
 
+    Rrs = np.asarray(Rrs, dtype=float)
     Chl = float(band_ratios.oc4(wave, Rrs))
 
-    rrs = np.asarray(Rrs_to_rrs(Rrs), dtype=float)
+    rrs = Rrs / (_A_RRS + _B_RRS * Rrs)
     i440 = int(np.argmin(np.abs(wave - 440.)))
     i555 = int(np.argmin(np.abs(wave - 555.)))
     Y = float(2.2 * (1.0 - 1.2 * np.exp(-0.9 * rrs[i440] / rrs[i555])))
