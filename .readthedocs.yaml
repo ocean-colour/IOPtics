@@ -1,0 +1,26 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details.
+#
+# Builds the IOPtics Sphinx site (rooted at docs/source/) on every push.
+# The accumulating per-sweep report pages land under docs/source/reports/ and
+# are picked up automatically by the toctree there (design doc §Reporting).
+
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"          # IOPtics requires Python >= 3.12 (setup.py)
+
+sphinx:
+  configuration: docs/source/conf.py
+  builder: html
+  fail_on_warning: false    # advisory, mirroring the CI policy
+
+python:
+  install:
+    # Install IOPtics itself so autodoc can import the package.
+    - method: pip
+      path: .
+    # Documentation build dependencies (Sphinx + theme).
+    - requirements: docs/requirements.txt
