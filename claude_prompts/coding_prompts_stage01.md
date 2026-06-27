@@ -77,6 +77,10 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
 
 1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
 
+2. Please read the PR and make any needed changes to the code to address the comments.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
+
+3. Please explain further what you mean by "package ocpy's
+  `PACE_error.csv` via `package_data`/`MANIFEST`.".  Maybe generate a prompt for me that I can execute on that package.
 
 ## Modules
 
@@ -276,6 +280,38 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
   `stage-1` branch and CI re-run to confirm green. Do you want me to **verify
   PR #4 CI is green** (and re-post a short approving review note) after you push,
   or are we treating Stage 1 as done and moving to Stage 2?
+
+**PR prompt 2 (new questions).**
+
+- PR #4 is now **green and MERGEABLE/CLEAN** (you committed the fixes in
+  `9ae5cd5`), with **no outstanding review comments** to address — my own review
+  is fully actioned, and there are no other comments. So I made no code changes
+  this task. Anything specific you wanted addressed that I'm not seeing?
+- The only items still open are the two **upstream** follow-ups from my review:
+  publish `bing.rt.rrs.Rrs_to_rrs` to bing `main`, and package ocpy's
+  `PACE_error.csv` via `package_data`/`MANIFEST`. Those live in the bing/ocpy
+  repos — do you want me to prepare those changes there, or are they yours? (Not
+  blocking #4; IOPtics is robust to their absence.)
+- Otherwise: merge #4 and proceed to **Stage 2** (engine wrap: algorithms +
+  run·chisq + evaluate + io + provenance)?
+
+**PR prompt 3 — explanation: "package ocpy's `PACE_error.csv`".**
+
+- What I meant: a pip-installed Python package ships **only `.py` files** unless
+  you explicitly declare data files. `gen_noise_vector` loads
+  `importlib.resources.files('ocpy').joinpath('data/satellites/PACE_error.csv')`,
+  but ocpy's `setup.py` uses `find_packages()` with **no `package_data`, no
+  `include_package_data`, and no `MANIFEST.in`** — and `ocpy/data/` has no
+  `__init__.py`, so `find_packages()` skips it. Result: none of the 34
+  `ocpy/data/**` files land in the install, so a fresh `pip install` of ocpy
+  can't find `PACE_error.csv` (the CI failure). "Package it via
+  `package_data`/`MANIFEST`" = the two standard knobs that tell setuptools to
+  **include those data files in the wheel/sdist**.
+- I wrote a ready-to-run prompt for the ocpy repo:
+  [`claude_prompts/ocpy_package_data_fix.md`](ocpy_package_data_fix.md) — it has
+  the root cause, the exact `setup.py` + `MANIFEST.in` edits (covers **all** of
+  `ocpy/data`, not just PACE), and a verification that builds the wheel and
+  confirms the data file is inside + the reader works. Run it in `ocpy`.
 
 ## Logs
 
@@ -522,3 +558,43 @@ fixed, the *same class* of gap appeared for bing (`Rrs_to_rrs`) and ocpy data
 packaging. Making IOPtics robust to the **released** bing/ocpy (inline trivial
 formulas, skip-guard bundled-data tests) is more reliable than tracking unmerged
 upstream branches.
+
+### 2026-06-27 (PR #4: read comments / address — nothing to change)
+
+Re-read PR #4 after JXP committed the CI fixes (`9ae5cd5`).
+
+- **CI is green** — all 4 Tier-1 jobs (py3.12/3.14) pass. PR is **OPEN,
+  MERGEABLE, mergeStateStatus CLEAN**.
+- **No outstanding comments to address.** Inline review comments: none; issue
+  comments: none; reviews: only my own (`profxj COMMENTED`), already fully
+  actioned (the two CI fixes are now committed). So **no code changes were
+  needed** this task — confirmed the working tree has no non-prompt drift and
+  the CI-equivalent suite is **69 passed, 3 skipped**.
+- The only still-open items are the two **upstream** follow-ups my review raised
+  (publish bing `Rrs_to_rrs` to `main`; package ocpy `PACE_error.csv`) — bing/
+  ocpy repo work, not IOPtics; surfaced as questions for JXP. PR #4 doesn't
+  depend on them (IOPtics is robust to their absence).
+- Did **not** fabricate changes for a clean PR; reported state instead.
+
+### 2026-06-27 (PR prompt 3: explain ocpy data-packaging; write fix prompt)
+
+JXP asked what "package ocpy's `PACE_error.csv` via `package_data`/`MANIFEST`"
+means and for a prompt to run on ocpy.
+
+- **Diagnosed ocpy's packaging.** `setup.py` = `find_packages()` only; **no**
+  `package_data`, `include_package_data`, or `MANIFEST.in`, and `ocpy/data/`
+  isn't a package (no `__init__.py`). Confirmed `find_packages()` returns no
+  data package and that all **34** `ocpy/data/**` files are excluded from an
+  install — which is why `importlib.resources.files('ocpy')/.../PACE_error.csv`
+  is missing on a fresh pip install (the CI `pace` failure).
+- **Explanation** added to Q&A (the `.py`-only default + the two setuptools knobs
+  that include data files).
+- **Wrote a standalone, runnable prompt** for the ocpy repo:
+  `claude_prompts/ocpy_package_data_fix.md` — root cause, exact edits
+  (`MANIFEST.in: recursive-include ocpy/data *`; setup.py
+  `include_package_data=True` + `package_data={'ocpy': ['data/**/*']}`; optional
+  removal of obsolete `use_2to3`/`pytest-runner`), and a verification that builds
+  the wheel, checks `PACE_error.csv` is inside, installs clean, and runs
+  `gen_noise_vector`. Scoped to **all** of `ocpy/data` (MODIS/SeaWiFS/water/
+  phytoplankton/COASTLOOC), not just PACE.
+- No IOPtics code changed (this was an explanation + an external-repo prompt).
