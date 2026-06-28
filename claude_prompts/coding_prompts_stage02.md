@@ -86,6 +86,7 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 
 1. Perform the first task under "Modules".
 2. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 2nd task under "Modules".
+3. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 3rd task under "Modules".
 
 ## Modules
 
@@ -142,18 +143,22 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
   lags (as `Rrs_to_rrs` did in Stage 1) these reds CI. Is bing `main` current
   with `parameters.standard.{expb_pow,giop}`, or should I guard the test? (This
   is the CI caveat from the prompt — flagging before it bites.)
+
   A. BING `main` is current
 - `AlgorithmSpec` has **no `add_noise` field** (per the design — noise is a
   prep/sweep concern, and `run` fits against `record.varRrs`). So `from_standard`
   →`to_bing_p` round-trips `add_noise` only for combos that leave it default
   (expb_pow/giop = False); `gsm` (sets `add_noise=True`) wouldn't. OK to keep it
   off the spec?
+
   A. Yes keep it off the spec.
 - `build_models` follows bing's `prep_one_l23` pattern — `models.utils.init`
   **without** prior_dicts, then `set_standard_priors(models, p)`, then append
   `othera_priors` — rather than the design-doc sketch's
   `init(..., (apriors, bpriors))`. The end priors are identical; I matched the
   live bing reference. Good?
+
+  A. Good
 
 **Task 2 (`algorithms/registry.py`).**
 
@@ -163,9 +168,28 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
   bing present it seeds normally and the Tier-1 tests assert it. Acceptable, or
   would you rather not mock bing in the docs (pip-install it on RTD) and seed
   unconditionally?
+
+  A. That looks fine.  Add to your memory, it is BING and not bing.
+
 - `register(spec, *, overwrite=False)` takes a spec (per the design) and raises
   `ValueError` on a duplicate name unless `overwrite=True`; `get` raises
   `KeyError` for unknown names. OK with those exception types?
+
+**Task 3 (`run.py`).**
+
+- The truth-free `initial_guess` is a **QAA-style inversion of the observed
+  Rrs** using BING's Gordon coefficients + the models' own `a_w`/`bb_w`, anchored
+  at ~670 nm (`a ≈ a_w`). It gives χ²ᵥ ≈ 1.3–1.5 starts that the fit refines
+  cleanly. OK, or do you want a specific QAA variant / anchor band?
+- Found a **type gotcha**: `record.init['Chl']` is a Python `float`, but BING's
+  `set_aph` does `len(Chla.shape)` — works only for a numpy scalar (BING's own
+  L23 path passes `np.float64`). I now pass `np.asarray(Chl, float)` in
+  `_prepare`. Should `prep` instead store `init['Chl']` as a numpy scalar so the
+  whole codebase sees the BING-expected type? (I kept the fix in `run` for now.)
+- Closure is asserted via **reduced χ²** (`< 5`; actuals 1.35 / 1.54), not raw
+  relative Rrs error — the latter is meaningless in the red where Rrs→0 (noise
+  floor). Good metric for the run test?
+
   A. Good
 
 ## Logs
@@ -217,3 +241,32 @@ Implemented the algorithm registry (replacing the stub).
   `-u OS_COLOR`) **81 passed, 3 skipped** (+5). Crucially, `sphinx-build -W`
   **still succeeds** despite registry's import-time seeding (the mocked-bing
   guard works).
+
+### 2026-06-28 (Stage 2, Task 3: `run.py` — chisq path)
+
+Implemented the least-squares fit driver (replacing the stub). Also applied the
+Q&A answers from Tasks 1–2 (all confirmed; only action: capitalize **BING** in
+prose — added to memory; the package import stays lowercase).
+
+- **`run_algorithm(spec, record, *, fit_method=None, perc=…)`** — chisq default;
+  `mcmc` → `NotImplementedError` (Stage 3). Internals: `_prepare` (build models
+  on the native grid → `init_var_gordon` on the a-model when `variable_Gordon` →
+  `rt_dict_from_p` → truth-free `init_other_bits` from `record.init`),
+  `initial_guess` (truth-free QAA), `fit_chisq` (prior-bounds + `chisq_fit.fit`).
+- **Truth-free `initial_guess`.** QAA-style inversion of the observed `Rrs`:
+  Gordon `u` from `G1/G2_STANDARD`, red-anchor `a≈a_w` at 670 nm, propagate with
+  the `init['Y']` slope, subtract the models' `a_w`/`bb_w`, then each model's
+  `init_guess` (amplitudes log10'd, clipped into prior bounds). No ocpy, no truth.
+- **Two BING-wiring fixes** found via the real fit: (1) the a-model needs
+  `init_var_gordon(...)` set for `variable_Gordon` (forward model reads
+  `models[0].G1/G2`); (2) `init_other_bits` needs `Chl` as a numpy scalar
+  (`set_aph` does `len(Chla.shape)`) — pass `np.asarray(Chl, float)`.
+- **Tests** (`test_run.py`, Tier-2 `@needs_l23` — model build loads
+  `Hydrolight400.nc`): `initial_guess` sized + in-bounds + finite;
+  `fit_chisq` for **both** algorithms returns finite `ans`/`cov` and closes on
+  the observed Rrs at **χ²ᵥ = 1.35 / 1.54** (asserted `< 5`); `mcmc` raises.
+- **Verification.** Run tests **3 passed** (L23 present). Full suite
+  CI-equivalent (`-u OS_COLOR`) **81 passed, 6 skipped** (the 3 run tests skip
+  without L23 — CI-safe). `sphinx-build -W` clean.
+- **Note.** `run_algorithm`'s final hop calls `evaluate.from_chisq` (Task 4); the
+  Task-3 tests exercise the fit core via `fit_chisq`, so they don't depend on it.
