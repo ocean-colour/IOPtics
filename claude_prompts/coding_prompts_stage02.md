@@ -85,6 +85,7 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 ## Prompts
 
 1. Perform the first task under "Modules".
+2. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 2nd task under "Modules".
 
 ## Modules
 
@@ -141,16 +142,31 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
   lags (as `Rrs_to_rrs` did in Stage 1) these reds CI. Is bing `main` current
   with `parameters.standard.{expb_pow,giop}`, or should I guard the test? (This
   is the CI caveat from the prompt — flagging before it bites.)
+  A. BING `main` is current
 - `AlgorithmSpec` has **no `add_noise` field** (per the design — noise is a
   prep/sweep concern, and `run` fits against `record.varRrs`). So `from_standard`
   →`to_bing_p` round-trips `add_noise` only for combos that leave it default
   (expb_pow/giop = False); `gsm` (sets `add_noise=True`) wouldn't. OK to keep it
   off the spec?
+  A. Yes keep it off the spec.
 - `build_models` follows bing's `prep_one_l23` pattern — `models.utils.init`
   **without** prior_dicts, then `set_standard_priors(models, p)`, then append
   `othera_priors` — rather than the design-doc sketch's
   `init(..., (apriors, bpriors))`. The end priors are identical; I matched the
   live bing reference. Good?
+
+**Task 2 (`algorithms/registry.py`).**
+
+- The registry **seeds expb_pow + giop at import time** via `from_standard`
+  (which imports bing). I wrapped the seeding in `try/except` so the Sphinx docs
+  build — which **mocks** bing — imports the module without crashing; with real
+  bing present it seeds normally and the Tier-1 tests assert it. Acceptable, or
+  would you rather not mock bing in the docs (pip-install it on RTD) and seed
+  unconditionally?
+- `register(spec, *, overwrite=False)` takes a spec (per the design) and raises
+  `ValueError` on a duplicate name unless `overwrite=True`; `get` raises
+  `KeyError` for unknown names. OK with those exception types?
+  A. Good
 
 ## Logs
 
@@ -180,3 +196,24 @@ Implemented the algorithm-spec layer (replacing the stub).
 - **Note.** `build_models` is exercised for real in Task 3 (Tier-2, `@needs_l23`
   — model construction loads `Hydrolight400.nc`); Task 1's CI coverage is the
   model-free round-trip.
+
+### 2026-06-27 (Stage 2, Task 2: `algorithms/registry.py`)
+
+Implemented the algorithm registry (replacing the stub).
+
+- **API.** `REGISTRY` dict + `register(spec, *, overwrite=False)` (duplicate name
+  → `ValueError` unless `overwrite`), `get(name)` (unknown → `KeyError` with the
+  available list), `available()` (sorted names).
+- **Seeded in tandem.** `expb_pow` (label `ExpB_Pow`) and `giop` (`GIOP`) via
+  `AlgorithmSpec.from_standard`, at import time. The seeding is wrapped in
+  `try/except` so a **mocked bing** (the docs build) imports the module cleanly;
+  with real bing it seeds and the tests assert it (so a genuine seeding failure
+  still surfaces in the suite, not silently).
+- **Tier-1 tests** (`test_registry.py`): both seeded with right models/labels;
+  `available()` sorted; unknown→`KeyError`; duplicate→`ValueError` (+`overwrite`
+  allowed); register/retrieve a fresh spec (model-free `AlgorithmSpec`) with
+  cleanup.
+- **Verification.** Registry tests **5 passed**; full suite (CI-equivalent,
+  `-u OS_COLOR`) **81 passed, 3 skipped** (+5). Crucially, `sphinx-build -W`
+  **still succeeds** despite registry's import-time seeding (the mocked-bing
+  guard works).
