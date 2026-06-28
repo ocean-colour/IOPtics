@@ -82,6 +82,8 @@ Implements **Data preparation** and the **Staged plan / Stage 1** of
 3. Please explain further what you mean by "package ocpy's
   `PACE_error.csv` via `package_data`/`MANIFEST`.".  Maybe generate a prompt for me that I can execute on that package.
 
+4. Update the prompt file `coding_prompts_stage02.md` to reflect the changes in this stage.
+
 ## Modules
 
 ### Tasks
@@ -598,3 +600,33 @@ means and for a prompt to run on ocpy.
   `gen_noise_vector`. Scoped to **all** of `ocpy/data` (MODIS/SeaWiFS/water/
   phytoplankton/COASTLOOC), not just PACE.
 - No IOPtics code changed (this was an explanation + an external-repo prompt).
+
+### 2026-06-27 (PR prompt 4: update `coding_prompts_stage02.md` for Stage-1 reality)
+
+Revised the Stage-2 prompt so it builds on what Stage 1 actually delivered and
+warns about the constraints Stage 1 surfaced.
+
+- **Conventions rewritten.** Q&A = questions-only; run via the env interpreter
+  and **without `$OS_COLOR`** (CI-equivalent) before declaring done; relaxed the
+  stale "BING only in spec/run/evaluate" rule to the real boundary
+  (metrics/diagnostics/report stay engine-free; use bing freely); docstrings
+  RST-clean for autodoc.
+- **Added a "Stage 0–1 carryover" block:** `PreparedRecord` is now real and is
+  `run_algorithm`'s input (documented the exact fields, esp. `init={'Chl','Y'}`
+  truth-free and `truth` as ocpy `Spectrum` — for scoring, not the fit); `config`
+  neutral objects exist; conftest guards (`needs_l23`/`needs_pace`/`needs_data`)
+  exist; verified the referenced bing symbols are present locally.
+- **Added a "⚠ Known constraints" block** — the two big Stage-1 lessons that hit
+  Stage 2 hard: (1) **building any BING model loads `Hydrolight400.nc`**, so
+  `run`/`evaluate` and the **end-to-end micro-test are Tier-2 (`@needs_l23`)**,
+  not data-free (revised Tasks 3 & 7 and the exit criterion accordingly; kept
+  spec/io/provenance round-trips as Tier-1 so CI still has coverage); (2) **CI's
+  bing/ocpy `@main` lag local**, so Tier-1 tests must only rely on *released*
+  bing symbols (or bing `main` needs pushing) — else CI reds like Stage 1's
+  `Rrs_to_rrs`.
+- Verified (informing the prompt): all referenced bing symbols
+  (`parameters.standard.{expb_pow,giop}`, `p_ntuple`, `init_model`,
+  `models.utils.{init,init_other_bits}`, `rt.defs.rt_dict_from_p`,
+  `chisq_fit.fit`, `evaluate.reconstruct_chisq_fits`, `stats.calc_chisq`) exist
+  in the local bing; model construction reads `Hydrolight400.nc` as expected.
+- Prompt-doc edit only — no IOPtics package code changed.
