@@ -91,6 +91,7 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 5. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 5th task under "Modules".
 6. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 6th task under "Modules".
 7. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 7th task under "Modules".
+8. Execute the 8th task under "Modules".
 
 ## Modules
 
@@ -135,6 +136,8 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
    models loads `Hydrolight400.nc` (so it can't be data-free). Keep the
    model-free checks (spec/io/provenance round-trips) as separate **Tier-1**
    tests so CI still exercises the non-engine surface. Q&A. Log.
+
+8. **Finishing up.** I have issued a PR for this stage. Please review it and post it to GitHub.  Also make sure the docs are all up-to-date. Please log your work in the Logs section below.
 
 ### Q&A
 
@@ -474,3 +477,27 @@ end-to-end test. (JXP remounted the L23 tree locally under
   two `RetrievalResult`s → rows in `results_{spectral,scalar}.parquet` +
   `provenance.yaml`, recovering planted IOPs within tolerance. The first real
   `expb_pow`-vs-`giop` two-way comparison runs end to end.
+
+### 2026-06-29 (Stage 2, Task 8: PR #5 review + docs refresh)
+
+JXP opened **PR #5 "Stage 2"** (`stage-2` → `main`, 15 files / +1811/−60).
+Reviewed it, refreshed the docs, and posted the review.
+
+- **State checked.** PR MERGEABLE / mergeStateStatus CLEAN; **CI green** — all 4
+  Tier-1 jobs (py3.12 + py3.14) pass. No working-tree code drift. (`conftest`'s
+  `needs_pace` isn't in the diff — already on `main` from the merged Stage-1 PR.)
+- **Re-verified locally.** Full suite **99 passed** with L23 mounted; **90
+  passed, 9 skipped** CI-equivalent (`-u OS_COLOR`). `sphinx-build -W` clean.
+- **Docs refresh.** Updated the readthedocs landing-page status note from
+  "Stage 0 — scaffolding" to the Stage-2 vertical slice (contracts + config →
+  L23 prep → algorithm registry → run/evaluate engine → io/provenance). The
+  `api/index.rst` already autodocs every now-implemented module, so the API
+  reference is current; rebuilt `-W` clean. (Edit is in the working tree for JXP
+  to commit/push so RTD reflects it.)
+- **Posted** a substantive COMMENTED review (`gh pr review 5 --comment` — GitHub
+  blocks self-approval; gh = `profxj`): verified items, strengths, the two
+  BING-wiring fixes (`init_var_gordon`, numpy-scalar `Chl`), and non-blocking
+  follow-ups (AIC/BIC-vs-`calc_ICs`; real-L23 recovery vs synthetic-5-band;
+  upstream analytic `init_bbw`).
+- **Stage 2 ★ ships:** the in-tandem `expb_pow`/`giop` engine wrap is complete,
+  green on CI, and documented.
