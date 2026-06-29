@@ -93,6 +93,7 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 7. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 7th task under "Modules".
 8. Execute the 8th task under "Modules".
 9. Execute the 9th task under "Modules".
+10. Execute the 10th task under "Modules".
 
 ## Modules
 
@@ -141,6 +142,8 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 8. **Finishing up.** I have issued a PR for this stage. Please review it and post it to GitHub.  Also make sure the docs are all up-to-date. Please log your work in the Logs section below.
 
 9. **PR**. Read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
+
+10. **Stage 3**.  Modify the prompt file `coding_prompts_stage03.md` to reflect the changes in this stage.
 
 ### Q&A
 
@@ -531,3 +534,28 @@ Re-read PR #5 after JXP pushed the docs commit (`066eb77 "ok"`).
 - The only open threads are the non-blocking follow-ups from my review
   (AIC/BIC-vs-`calc_ICs`, synthetic-5-band variant, upstream analytic
   `init_bbw`) — surfaced as Q&A, none blocking the merge.
+
+### 2026-06-29 (Stage 2, Task 10: update `coding_prompts_stage03.md`)
+
+Revised the Stage-3 prompt so it builds on Stage-2 reality.
+
+- **Conventions** brought in line with the working agreements (Q&A
+  questions-only; env-interpreter + CI-equivalent runs; ocpy/bing first-class;
+  native-grid / truth-free; capitalize BING; RST-clean docstrings).
+- **Added "Stage 0–2 carryover"**: the whole χ² slice exists — esp.
+  `run_algorithm` **already dispatches on method** (chisq done; `mcmc` raises
+  `NotImplementedError` for Stage 3 to fill), `evaluate._component_fit` is the
+  shared band-assembly helper `from_chains` should reuse, `io` already has the
+  `chain_file` column + `sweep_dir`/`runs_root`, and `provenance.{build,write,
+  provenance_id}` exist (run_sweep should stamp the id).
+- **Added "⚠ Known constraints"**: model construction loads L23 → run_batch/
+  run_sweep/MCMC tests are **Tier-2**, with the model-free table/chain/IO paths
+  kept Tier-1 via synthetic `RetrievalResult`s; `reconstruct_from_chains` returns
+  only total a/bb (so `from_chains` computes sub-components over the chain like
+  `from_chisq`); the CI-vs-released-bing caveat (verified the inference/chain
+  symbols exist locally).
+- **Refined Tasks** 1–3 & 5 for the correct tiering and to reuse existing code
+  (run_batch wraps run_algorithm; MCMC replaces the NotImplementedError branch;
+  run_sweep stamps provenance_id + writes via io/provenance; tests split
+  Tier-1 model-free vs Tier-2 fitting).
+- Prompt-doc edit only — no package code changed.

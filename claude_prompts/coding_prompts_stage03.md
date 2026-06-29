@@ -5,7 +5,8 @@
 Scale the single fit to full sweeps and add the Bayesian path. **Exit criterion:**
 a full **L23 × {expb_pow, giop}** sweep driven by a `runs/.../build_v1.py` (stage
 flag 1) writes the complete sweep directory; the MCMC subset produces saved
-chains; the tables validate.
+chains; the tables validate. (This sweep builds BING models, so it runs where the
+L23 tree is available — the model-free table/chain/IO paths stay Tier-1.)
 
 Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged plan
 / Stage 3** of `docs/design/IOPtics_implementation.md`. One prompt per module.
@@ -13,6 +14,18 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
 ## Conventions
 
 - `ocean14`; docstrings; JXP runs git; after each module run `pytest -q`, Q&A, Log.
+- **Q&A holds open questions for JXP** — pose them, do **not** self-answer (JXP
+  answers before the next task; decisions/rationale go in the Logs).
+- Run tests via the env interpreter directly
+  (`/home/xavier/miniforge3/envs/ocean14/bin/python -m pytest -q`); `conda
+  activate` fails non-interactively. **Run the suite without `$OS_COLOR`**
+  (CI-equivalent) before declaring a task done — a mounted L23 tree masks CI
+  failures.
+- **ocpy and bing are both first-class dependencies — use bing freely.** The
+  boundary that holds: `metrics`/`diagnostics`/`report` stay engine-free; nothing
+  downstream of `prep` imports ocpy. Build models on the **native grid**; **never**
+  seed the fit from truth. Capitalize **BING** in prose (the package imports
+  lowercase). Keep docstrings RST-clean so `sphinx-build -W` stays green.
 - MCMC in tests always uses a **tiny `nsteps`** (correctness, not convergence).
 
 ## Context
@@ -22,48 +35,169 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
   `chain_file` column), §Driving a sweep (`build_vN.py`, integer-flag stages,
   `$OS_COLOR/IOPtics/runs/<sweep_id>/`).
 - bing: `fitting.inference.{init_mcmc,fit_one}`,
-  `evaluate.reconstruct_from_chains`, `fitting.l23.save_chains` (chain NPZ convention).
+  `evaluate.reconstruct_from_chains`, `fitting.l23.save_chains` (chain NPZ
+  convention). All verified present in the local bing (2026-06-29) — but see the
+  CI caveat below.
+
+### Stage 0–2 carryover (what already exists — build on it, don't recreate)
+
+- **The whole χ² vertical slice is implemented and green.** Build on these, do
+  not rewrite:
+  - `records` (`PreparedRecord`/`RetrievalResult`/`ComponentFit`), `config`
+    (`SweepConfig`/`AlgorithmConfig`, with the per-algorithm `fit_method`
+    override already parsed).
+  - `datasets`/`noise`/`prep` (L23 → `PreparedRecord`); `prep.prep_dataset(...)`
+    already maps over records with per-record seeds via `ProcessPoolExecutor`.
+  - `algorithms.spec` (`AlgorithmSpec.{from_standard,to_bing_p,build_models}`) +
+    `algorithms.registry` (seeded `expb_pow`/`giop`).
+  - **`run`**: `run_algorithm(spec, record, *, fit_method=None, perc=...)`
+    **already dispatches on method** — the `chisq` path is done; the `mcmc`
+    branch currently raises `NotImplementedError` (Stage 3 fills it). Reusable
+    internals: `_prepare` (builds models on the native grid, `init_var_gordon`,
+    truth-free `init_other_bits`), truth-free `initial_guess`, `fit_chisq`.
+  - **`evaluate`**: `from_chisq` + the `_component_fit(wave, samples, perc)`
+    helper that turns ``(n_samples, n_wave)`` draws into a `ComponentFit` (median
+    + 68/95 bands). `from_chains` should **reuse `_component_fit`** so MCMC and χ²
+    intervals are assembled identically.
+  - **`io`**: `write_results(sweep_id, pairs, *, root=None)` /
+    `read_results`, `results_to_frames`, `sweep_dir(create=True)` (makes
+    `chains/`+`figures/`), `runs_root` (`$OS_COLOR/IOPtics/runs` or `root=`). The
+    `results_scalar` schema already has a **`chain_file`** column (currently
+    `None` for χ² rows).
+  - **`provenance`**: `build(sweep_id, cfg, specs, *, datasets, created)`,
+    `write(...)`, and `provenance_id(sweep, algo)` = `"<sweep>#<algo>"`. So far
+    `run`/`evaluate` emit `provenance_id=''` and it's stamped by the caller;
+    **`run_sweep` should stamp it** on every result.
+
+### ⚠ Known constraints — read before writing tests
+
+- **Building any BING model loads L23 data** (`bbNWModel.init_bbw` →
+  `loisel23.load_ds(4,0)`). So `run_algorithm`/`run_batch`/`run_sweep` and the
+  MCMC path all need the L23 tree — their tests are **Tier-2 (`@needs_l23`)**,
+  not the "synthetic records" the tasks below loosely say. Keep the **model-free**
+  parts Tier-1 by feeding **synthetic `RetrievalResult`s** (no fitting): the
+  results-table flatten/write, the chain-NPZ save/load round-trip, and the
+  `build_vN.py` flag dispatch can all be exercised data-free.
+- **`reconstruct_from_chains` returns only total `a`/`bb` (+ `Rrs`) bands**, not
+  the sub-components. `from_chains` must compute `a_ph`/`a_dg`/`bb_p` over the
+  chain itself (via `eval_anw(retsub_comps=True)` / `eval_bbnw`), exactly as
+  `from_chisq` does over its covariance samples — then assemble with
+  `_component_fit`. It also burn/thins the chain, so feed it a real emcee chain
+  (shape `(nsteps, nwalkers, nparam)`), not arbitrary samples.
+- **CI installs bing/ocpy from `git@main`.** JXP confirmed BING `main` is current
+  as of Stage 2, but re-confirm `inference.{init_mcmc,fit_one}` /
+  `reconstruct_from_chains` / `l23.save_chains` exist in the *released* bing
+  before relying on them in any **Tier-1** test (Tier-2 tests skip on CI anyway).
 
 ## Prompts
 
 ### Coding
 
 1. `run.run_batch`.
-2. `run.run_sweep` + the `runs/.../build_v1.py` skeleton.
-3. MCMC path: `run_algorithm(method='mcmc')` + `evaluate.from_chains`.
-4. Chain persistence in `io` (`chains/`, `chain_file`).
-5. Tests.
+1. I have answered your Q&A.  Please review them and let's discuss further.
+1. I have answered your Q&A.  Please address my responses.
+1. `run.run_sweep` + the `runs/.../build_v1.py` skeleton.
+1. MCMC path: `run_algorithm(method='mcmc')` + `evaluate.from_chains`.
+1. Chain persistence in `io` (`chains/`, `chain_file`).
+1. Tests.
 
 ## Modules
 
 ### Tasks
 
 1. **`run.run_batch`.** One algorithm over many records via `ProcessPoolExecutor`
-   (chunked, mirroring `bing.fitting.l23.batch_fit`); returns `list[RetrievalResult]`.
-   Tier-1 on a few synthetic records. Q&A. Log.
+   (chunked, mirroring `bing.fitting.l23.batch_fit`); wraps the existing
+   `run_algorithm`; returns `list[RetrievalResult]`. Since it builds models it
+   needs L23 → **Tier-2 (`@needs_l23`)** on a few real `prep.prep_one('L23', i)`
+   records. Q&A. Log.
 
-2. **`run.run_sweep` + build script.** Implement `run_sweep(cfg)`: χ² over all
-   records per algorithm, then re-run `cfg.mcmc_subset` with MCMC; flatten to
-   tables; write provenance. Add `ioptics/runs/prototypes/expb_giop/build_v1.py`
-   (integer-flag stages: 1=run, 2=metrics [stub until Stage 4], 3=report [stub
-   until Stage 5]) + `run_v1.yaml` (the L23 expb_pow/giop config). Q&A. Log.
+2. **`run.run_sweep` + build script.** Implement `run_sweep(cfg)`: resolve
+   algorithm names via `registry`; χ² over all records per algorithm, then re-run
+   `cfg.mcmc_subset` with MCMC (honoring any per-algorithm `fit_method` override);
+   **stamp `provenance.provenance_id(cfg.sweep_id, algo)` on each result**;
+   flatten via `io.write_results` and write `provenance.build(...)` →
+   `provenance.write(...)` under `runs_root(cfg.results_root)`. Add
+   `ioptics/runs/prototypes/expb_giop/build_v1.py` (integer-flag stages: 1=run,
+   2=metrics [stub until Stage 4], 3=report [stub until Stage 5]) + `run_v1.yaml`
+   (the L23 expb_pow/giop config). The full sweep is **Tier-2 (`@needs_l23`)**;
+   the table/provenance flatten+write is Tier-1 (feed synthetic results). Q&A. Log.
 
-3. **MCMC path.** Extend `run_algorithm` for `method='mcmc'` (`init_mcmc` →
-   `fit_one`, idx-keyed Chl/Y) and implement `evaluate.from_chains`
-   (`reconstruct_from_chains` + sub-components on the chain) → `RetrievalResult`
-   on the same 68/95% percentile grid as the χ² path. Tier-1 with tiny `nsteps`.
-   Q&A. Log.
+3. **MCMC path.** Replace the `NotImplementedError` in `run_algorithm`'s
+   `method='mcmc'` branch (`init_mcmc` → `fit_one`, idx-keyed Chl/Y; reuse
+   `_prepare`/`initial_guess` for the walker centroid) and implement
+   `evaluate.from_chains` → `RetrievalResult` reusing `_component_fit` so the
+   68/95 bands match the χ² path. Compute sub-components (`a_ph`/`a_dg`/`bb_p`)
+   over the chain directly (see ⚠ Known constraints — `reconstruct_from_chains`
+   gives only total `a`/`bb`). **Tier-2 (`@needs_l23`)**, tiny `nsteps`. Q&A. Log.
 
 4. **Chain persistence in `io`.** Save each MCMC posterior to
    `runs/<sweep_id>/chains/<algorithm>_<obs_id>.npz` (chains + obs_Rrs/varRrs/Chl/Y,
    `save_chains` convention); set the `chain_file` column on `results_scalar`
    (null for χ² rows); add a loader for `diagnostics`/`report`. Q&A. Log.
 
-5. **Tests.** Tier-1: `run_batch` over synthetic records; `run_sweep` on a tiny
-   synthetic dataset writes the full directory; tiny-`nsteps` MCMC round-trip +
-   chain file present. Tier-2 `@needs_l23`: a small real `run_sweep` (both algos,
-   χ², a handful of spectra) validates schema + coverage accounting. Q&A. Log.
+5. **Tests.** Tier-1 (data-free, model-free): chain-NPZ save/load round-trip and
+   `chain_file` wiring on **synthetic** `RetrievalResult`s; `build_v1.py` flag
+   dispatch. Tier-2 `@needs_l23`: `run_batch` over a few L23 records; a small real
+   `run_sweep` (both algos, χ² over a handful of spectra + a 1–2 record MCMC
+   subset, tiny `nsteps`) writes the full sweep directory and validates the
+   tables/provenance + that the MCMC rows carry a saved `chain_file`. Q&A. Log.
 
 ### Q&A
 
+> Open questions for JXP (posed, not self-answered).
+
+**Task 1 (`run.run_batch`).**
+
+- `run_batch` wraps each fit in `try/except` so a failure becomes a
+  `fit_failed` `RetrievalResult` (a sweep over ~3320 L23 spectra survives a bad
+  fit; the row's `status` surfaces it). OK, or do you prefer **fail-fast**
+  (propagate) during development?
+> A. I prefer fail fast during development.  Let's remember to fix this later (modify the design docs, if necessary).
+- Parallelism mirrors `prep_dataset`: `ProcessPoolExecutor` + `ex.map` (order
+  preserved). Each worker process reloads L23 once into its own
+  `L23Adapter` cache. Fine for now, or want chunking / a shared dataset later?
+> A. Keep what we have.
+
 ## Logs
+
+### 2026-06-29 (Stage 3, Task 1: `run.run_batch`)
+
+Added `run_batch` (one algorithm over many records) to `run.py`.
+
+- **API.** `run_batch(spec, records, *, fit_method=None, n_cores=1, perc=...)`
+  → `list[RetrievalResult]`. Wraps the existing `run_algorithm`; serial or a
+  `ProcessPoolExecutor` (`ex.map`, order-preserving) via a top-level
+  `_run_one_star` worker (picklable), mirroring `prep_dataset` /
+  `bing.fitting.l23.batch_fit`.
+- **Robust.** Each fit goes through `_run_one_safe` — on any exception it emits
+  a `fit_failed` `RetrievalResult` (`_failed_result`) so one bad spectrum can't
+  abort a sweep. (Added `from ioptics.records import RetrievalResult` at the top
+  of `run.py`.)
+- **Tests** (`test_run.py`, Tier-2 `@needs_l23` — builds models): `run_batch`
+  over 3 real L23 records, **serial and `n_cores=2`** — both return 3 `ok`
+  results in input order, and the parallel point estimate matches serial
+  (deterministic fit).
+- **Verification.** run tests **4 passed** (L23 present). Full suite **100
+  passed** (L23) / **90 passed, 10 skipped** CI-equivalent (`-u OS_COLOR` — the
+  new Tier-2 test skips). `sphinx-build -W` clean.
+
+### 2026-06-29 (Stage 3, Tasks 1b/1c: discuss + apply Q&A — `strict` flag)
+
+Discussed the Task-1 Q&A and applied JXP's decisions.
+
+- **Q1 → fail-fast for now.** Added a `strict` flag to `run_batch` (and its pool
+  worker): `strict=True` (**default**) propagates a fit error (fail-fast, so dev
+  bugs surface with a traceback); `strict=False` catches → `fit_failed`
+  `RetrievalResult` (the production mode — failures become flagged rows +
+  reduced coverage). JXP: "remember to fix this later" → recorded the TODO to
+  flip the default to robust, in the design doc + memory
+  [[ioptics-run-error-policy-todo]].
+- **Q2 → keep the parallelism.** No change (ex.map over records; per-worker L23
+  reload is negligible vs fit cost).
+- **Design doc.** Added an "Error policy (`strict`)" note to §"Sweep layers" +
+  the updated `run_batch` signature; bumped implementation doc **0.21 → 0.22**.
+- **Tests.** Added a Tier-1 **data-free** strict-toggle test (monkeypatch
+  `run_algorithm` to raise): `strict=True` propagates `RuntimeError`;
+  `strict=False` yields one `fit_failed` result.
+- **Verification.** run tests **5 passed** (L23 present); full suite
+  CI-equivalent **91 passed, 10 skipped** (+1 Tier-1). `sphinx-build -W` clean.

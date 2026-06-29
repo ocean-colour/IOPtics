@@ -1,7 +1,7 @@
 # IOPtics Implementation Document
 
-**Version:** 0.21
-**Date:** 2026-06-23
+**Version:** 0.22
+**Date:** 2026-06-29
 **Authors:** JXP and Claude
 
 ---
@@ -804,10 +804,21 @@ class RetrievalResult:
 
 ### Sweep layers
 
+**Error policy (`strict`).** `run_batch`/`run_sweep` take a `strict` flag.
+`strict=True` (the current **development** default) fails fast — a fit error
+propagates with its traceback so bugs surface. `strict=False` is the intended
+**production** mode: a failed fit becomes a `status='fit_failed'`
+`RetrievalResult` and the sweep continues (failures show up as flagged rows +
+reduced coverage, per the Metrics partial-retrieval rules). **TODO:** flip the
+default to robust (`strict=False`) for production sweeps once the engine is
+exercised at scale.
+
 ```python
-def run_batch(spec, records, *, fit_method=None, n_cores=1) -> list[RetrievalResult]:
+def run_batch(spec, records, *, fit_method=None, n_cores=1,
+              strict=True) -> list[RetrievalResult]:
     """One algorithm over many records (ProcessPoolExecutor), mirroring
-    bing.fitting.l23.batch_fit's chunked parallelism."""
+    bing.fitting.l23.batch_fit's chunked parallelism. strict: fail-fast (dev)
+    vs fit_failed-and-continue (production)."""
 
 def run_sweep(cfg) -> SweepResult:
     """All algorithms × all records. For each algorithm: run_batch with the sweep

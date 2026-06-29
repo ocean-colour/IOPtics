@@ -67,3 +67,52 @@ def test_run_algorithm_mcmc_not_yet():
     import pytest
     with pytest.raises(NotImplementedError):
         run.run_algorithm(spec, record, fit_method='mcmc')
+
+
+def test_run_batch_strict_toggle(monkeypatch):
+    # Data-free: patch run_algorithm to raise, so no models are built.
+    from ioptics import run
+    from ioptics.algorithms.spec import AlgorithmSpec
+    from ioptics.records import PreparedRecord
+
+    rec = PreparedRecord(
+        dataset='X', obs_id=0, wave=np.array([1.0]), Rrs=np.array([1.0]),
+        varRrs=np.array([1.0]), Rrs_clean=np.array([1.0]), truth={},
+        truth_interp={}, init={}, noise_model='pct:0.05', noise_seed=None)
+    spec = AlgorithmSpec(name='x', label='x', anw_model='', bbnw_model='',
+                         apriors=[], bpriors=[])
+
+    def boom(spec, record, **kw):
+        raise RuntimeError('fit blew up')
+    monkeypatch.setattr(run, 'run_algorithm', boom)
+
+    # strict=True (default) -> fail-fast (propagates)
+    import pytest
+    with pytest.raises(RuntimeError):
+        run.run_batch(spec, [rec])
+    # strict=False -> robust: a fit_failed result, batch continues
+    results = run.run_batch(spec, [rec], strict=False)
+    assert len(results) == 1
+    assert results[0].status == 'fit_failed'
+    assert results[0].algorithm == 'x'
+
+
+@needs_l23
+def test_run_batch_serial_and_parallel():
+    from ioptics import prep, run
+    from ioptics.algorithms.spec import AlgorithmSpec
+
+    records = prep.prep_dataset('L23', obs_ids=range(3), seed=1234)
+    spec = AlgorithmSpec.from_standard('expb_pow')
+
+    serial = run.run_batch(spec, records, n_cores=1)
+    parallel = run.run_batch(spec, records, n_cores=2)
+
+    for results in (serial, parallel):
+        assert len(results) == 3
+        assert all(r.algorithm == 'expb_pow' for r in results)
+        assert all(r.status == 'ok' for r in results)
+        assert [r.obs_id for r in results] == [0, 1, 2]   # order preserved
+    # serial and parallel give the same point estimate (deterministic fit)
+    np.testing.assert_allclose(serial[0].components['a'].med,
+                               parallel[0].components['a'].med, rtol=1e-6)

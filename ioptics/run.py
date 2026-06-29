@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from ioptics.records import RetrievalResult
+
 
 def _prior_bounds(models):
     """Lower/upper parameter bounds from the models' priors (a then bb)."""
@@ -154,3 +156,67 @@ def run_algorithm(spec, record, *, fit_method=None,
     if method == 'mcmc':
         raise NotImplementedError("the MCMC path lands in Stage 3")
     raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
+
+
+def _failed_result(spec, record, fit_method):
+    """A minimal ``fit_failed`` result so one bad fit doesn't kill a batch."""
+    return RetrievalResult(
+        dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
+        fit_method=fit_method or spec.fit_method, status='fit_failed')
+
+
+def _run_one_safe(spec, record, fit_method, perc):
+    """``run_algorithm`` wrapped so a fit failure becomes a ``fit_failed`` row."""
+    try:
+        return run_algorithm(spec, record, fit_method=fit_method, perc=perc)
+    except Exception:
+        return _failed_result(spec, record, fit_method)
+
+
+def _run_one_star(record, spec, fit_method, perc, strict):
+    """Top-level worker for :func:`run_batch`'s process pool (picklable)."""
+    if strict:
+        return run_algorithm(spec, record, fit_method=fit_method, perc=perc)
+    return _run_one_safe(spec, record, fit_method, perc)
+
+
+def run_batch(spec, records, *, fit_method=None, n_cores=1, strict=True,
+              perc=((16, 84), (2.5, 97.5))):
+    """Run one algorithm over many records -> ``list[RetrievalResult]``.
+
+    Mirrors ``bing.fitting.l23.batch_fit``'s parallelism (a
+    ``ProcessPoolExecutor`` when ``n_cores > 1``); records are picklable so they
+    cross the pool.
+
+    Parameters
+    ----------
+    spec : AlgorithmSpec
+        The algorithm to run.
+    records : iterable of PreparedRecord
+        The observations to fit.
+    fit_method : str or None, optional
+        Override the spec's fit method (``'chisq'`` | ``'mcmc'``).
+    n_cores : int, optional
+        Parallel workers (default 1 = serial).
+    strict : bool, optional
+        If ``True`` (default), a fit failure **propagates** (fail-fast — the
+        development default, so bugs surface with a traceback). If ``False``, a
+        failed fit becomes a ``fit_failed`` :class:`RetrievalResult` and the
+        batch continues — the intended **production** mode for large sweeps
+        (failures show up as ``status='fit_failed'`` rows + reduced coverage).
+        *TODO (per JXP): make robust the default for production sweeps.*
+    perc : tuple, optional
+        Credible/confidence percentiles passed through to ``evaluate``.
+    """
+    records = list(records)
+    if n_cores and n_cores > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        from functools import partial
+        fn = partial(_run_one_star, spec=spec, fit_method=fit_method,
+                     perc=perc, strict=strict)
+        with ProcessPoolExecutor(max_workers=n_cores) as ex:
+            return list(ex.map(fn, records))
+    if strict:
+        return [run_algorithm(spec, record, fit_method=fit_method, perc=perc)
+                for record in records]
+    return [_run_one_safe(spec, record, fit_method, perc) for record in records]
