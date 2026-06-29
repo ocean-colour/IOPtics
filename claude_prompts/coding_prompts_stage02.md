@@ -92,6 +92,7 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 6. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 6th task under "Modules".
 7. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 7th task under "Modules".
 8. Execute the 8th task under "Modules".
+9. Execute the 9th task under "Modules".
 
 ## Modules
 
@@ -138,6 +139,8 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
    tests so CI still exercises the non-engine surface. Q&A. Log.
 
 8. **Finishing up.** I have issued a PR for this stage. Please review it and post it to GitHub.  Also make sure the docs are all up-to-date. Please log your work in the Logs section below.
+
+9. **PR**. Read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
 ### Q&A
 
@@ -290,6 +293,17 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
   literal synthetic-5-band variant too, or is the real-L23 recovery enough?
 - **Stage 2 is complete** — ready for a Stage-2 PR + CI/readthedocs check (as in
   Stage 0/1)?
+
+**Task 9 (PR comments).**
+
+- PR #5 has **no outstanding comments to address** — the only review is my own
+  (fully actioned: you committed the docs landing-page update in `066eb77`).
+  Made no code changes this task; verified no working-tree drift and the
+  CI-equivalent suite still **90 passed, 9 skipped**, docs `-W` clean. Anything
+  specific you wanted addressed that I'm not seeing?
+- CI re-ran after the docs-only push and is finishing; it should stay green (the
+  Stage-2 code already passed; only `index.rst` changed). Merge #5 and start
+  **Stage 3** (sweep + MCMC subset + chain persistence)?
 
 ## Logs
 
@@ -501,3 +515,19 @@ Reviewed it, refreshed the docs, and posted the review.
   upstream analytic `init_bbw`).
 - **Stage 2 ★ ships:** the in-tandem `expb_pow`/`giop` engine wrap is complete,
   green on CI, and documented.
+
+### 2026-06-29 (Stage 2, Task 9: PR #5 comments — nothing to change)
+
+Re-read PR #5 after JXP pushed the docs commit (`066eb77 "ok"`).
+
+- **No outstanding comments.** Inline review comments: none; issue comments:
+  none; reviews: only my own COMMENTED one, already fully actioned (the docs
+  landing-page update is committed; no working-tree drift). So **no code changes
+  were needed** — reported the state rather than fabricating edits (same as the
+  analogous Stage-1 task).
+- **Re-verified.** CI-equivalent suite **90 passed, 9 skipped**; `sphinx-build
+  -W` clean. CI re-ran on the docs-only push and is finishing — expected green
+  (Stage-2 code already passed; only `index.rst` changed).
+- The only open threads are the non-blocking follow-ups from my review
+  (AIC/BIC-vs-`calc_ICs`, synthetic-5-band variant, upstream analytic
+  `init_bbw`) — surfaced as Q&A, none blocking the merge.
