@@ -97,6 +97,7 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
 1. I have answered your Q&A.  Please review them and let's discuss further.
 1. I have answered your Q&A.  Please address my responses.
 1. `run.run_sweep` + the `runs/.../build_v1.py` skeleton.
+1. I have answered your Q&A.  Please address my responses and then move on to the next task.
 1. MCMC path: `run_algorithm(method='mcmc')` + `evaluate.from_chains`.
 1. Chain persistence in `io` (`chains/`, `chain_file`).
 1. Tests.
@@ -158,6 +159,42 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
   `L23Adapter` cache. Fine for now, or want chunking / a shared dataset later?
 > A. Keep what we have.
 
+**Task 2 (`run.run_sweep` + build script).**
+
+- `run_sweep` currently runs **χ² over all records + MCMC over the subset for
+  *every* algorithm** (the design's "for each algorithm: chisq all, then re-run
+  the subset with mcmc"). The per-algorithm `fit_method` override (e.g.
+  `giop: mcmc`, Q15) is **not yet honored** as a per-algorithm difference. How
+  should `ac.fit_method='mcmc'` behave — MCMC over **all** records for that algo
+  (skipping χ²), or just guarantee it's in the MCMC subset? (Posing before I
+  bake it in.)
+  > A. We will not use MCMC for some methods. Allow for that.
+
+- `run_v1.yaml` ships `mcmc_subset: 0` so the build script's flag-1 stage runs
+  today (χ²-only, MCMC lands next task). Bump it to ~200 once the MCMC path is in?
+  > A. Good, let's do that.
+- `run_sweep(cfg, *, obs_ids=None, …)` takes `obs_ids` (cfg carries no obs
+  selection) for tests / partial sweeps. Keep that, or should the sweep config
+  grow an explicit obs-selection field?
+  > A. Keep that.
+
+**Task 3 (MCMC path).**
+
+- `from_chains` and `from_chisq` now share one `_assemble` (samples come from the
+  chain vs from `MVN(ans, cov)`), so components/params/scalars/stats are built
+  identically. I unified **`params`** to the *sample* median ± std for both
+  methods (χ² previously used `ans` ± `sqrt(diag cov)` — numerically the same for
+  MVN draws). OK?
+- The MCMC path uses BING's **idx-keyed `Chl`/`Y`** (`pdict['Chl'] =
+  zeros(obs_id+1); [obs_id] = Chl`), which assumes an **integer `obs_id`** (true
+  for L23). PANGAEA/GLORIA string IDs will need a different keying — flagging for
+  Stage 6.
+- `from_chains` burns `spec.mcmc.nburn` capped at `nsteps//2` so a tiny-`nsteps`
+  test never discards the whole chain. Reasonable?
+- Per the per-algorithm-MCMC answer, `run_v1.yaml` now sets `giop: {fit_method:
+  mcmc}` + `mcmc_subset: 200` (giop = χ²-all + MCMC-subset; expb_pow = χ² only) —
+  the design's example. Good?
+
 ## Logs
 
 ### 2026-06-29 (Stage 3, Task 1: `run.run_batch`)
@@ -201,3 +238,56 @@ Discussed the Task-1 Q&A and applied JXP's decisions.
   `strict=False` yields one `fit_failed` result.
 - **Verification.** run tests **5 passed** (L23 present); full suite
   CI-equivalent **91 passed, 10 skipped** (+1 Tier-1). `sphinx-build -W` clean.
+
+### 2026-06-29 (Stage 3, Task 2: `run.run_sweep` + build script)
+
+Added the sweep driver and the staged build-script skeleton.
+
+- **`run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None)`.** Preps
+  records per dataset (`prep.prep_dataset` with the sweep noise model + seed),
+  resolves each algorithm via `registry.get`, runs **χ² over all records** +
+  (when `cfg.mcmc_subset`) **MCMC over the subset** per algorithm via
+  `run_batch`, stamps `provenance_id` on every result (`_tag_pairs`), then writes
+  the tables (`io.write_results`) and `provenance.yaml` (`provenance.build`/
+  `write`) under `cfg.results_root`/`root`/`$OS_COLOR`. Returns paths + counts.
+  (The MCMC branch is wired but only exercised once Task 3 lands the MCMC path;
+  `mcmc_subset=0` skips it.)
+- **Build script.** `ioptics/runs/prototypes/expb_giop/{build_v1.py, run_v1.yaml}`
+  — integer-flag stages (1=run, 2=metrics [Stage-4 stub], 4=report [Stage-5
+  stub]); `run_v1.yaml` is the L23 `expb_pow`/`giop` config (`mcmc_subset: 0`
+  for now). `runs/` is build-scripts, not a package, so `find_packages` skips it.
+- **Tests** (`test_sweep.py`): Tier-1 **data-free** — load `build_v1.py` via
+  importlib, confirm `run_v1.yaml` parses (sweep_id/datasets/algorithms) and
+  `main(0)` dispatches nothing. Tier-2 `@needs_l23` — a small χ² sweep
+  (`obs_ids=range(3)`, both algos) writes the sweep dir: 6 scalar rows, 6×6×nwave
+  spectral rows, `provenance.yaml` present, `provenance_id` stamped, all `ok`.
+- **Verification.** sweep tests **2 passed** (L23 present). Full suite **103
+  passed** (L23) / **92 passed, 11 skipped** CI-equivalent (`-u OS_COLOR`).
+  `sphinx-build -W` clean.
+
+### 2026-06-29 (Stage 3, Tasks 2-Q&A + 3: per-algo MCMC + the MCMC path)
+
+Applied the Task-2 answers and implemented the MCMC retrieval path.
+
+- **Per-algorithm MCMC (Q&A "not all methods use MCMC").** `run_sweep` now zips
+  `cfg.algorithms` with their specs and only MCMCs an algorithm when its
+  **effective `fit_method`** (`ac.fit_method or cfg.fit_method`) is `'mcmc'` —
+  χ² still runs over all records for every algorithm. `run_v1.yaml` updated to
+  the design example (`giop: {fit_method: mcmc}`, `mcmc_subset: 200`; expb_pow
+  χ²-only). `obs_ids=` kept.
+- **MCMC path.** `run.fit_mcmc` (mirrors `bing.fitting.l23.fit_one`):
+  `_prepare` → truth-free `initial_guess` walker centroid →
+  `inference.init_mcmc` → idx-keyed `pdict['Chl']/['Y']` → `inference.fit_one
+  (chains_only=True)`. `run_algorithm`'s `mcmc` branch now calls it →
+  `evaluate.from_chains`.
+- **`evaluate` refactor.** Extracted **`_assemble`** shared by `from_chisq`
+  (MVN samples) and the new **`from_chains`** (burn/thin the emcee chain via
+  `thin_burn_chains`, burn = `nburn` capped at `nsteps//2`; posterior median as
+  the point estimate). Both reuse `_component_fit`, so MCMC and χ² intervals are
+  built identically. `params` unified to sample median ± std.
+- **Tests.** Added a Tier-2 `@needs_l23` tiny-`nsteps` (200/50) MCMC round-trip
+  (`fit_method='mcmc'`, all 6 components on the native grid, ordered 68/95 bands,
+  k=3, status ok). Removed the obsolete `mcmc_not_yet` placeholder.
+- **Smoke (L23 present).** giop MCMC → χ²ᵥ ≈ 1.54 (matches its χ² fit), bands
+  ordered, status ok. Full suite **103 passed** (L23) / **92 passed, 11 skipped**
+  CI-equivalent. `sphinx-build -W` clean.

@@ -140,11 +140,42 @@ def fit_chisq(spec, record):
     return models, rt_dict, ans, cov
 
 
+def fit_mcmc(spec, record):
+    """MCMC fit of one record; returns ``(models, rt_dict, chains)``.
+
+    Builds models truth-free (``_prepare``), seeds the walkers from the same
+    truth-free :func:`initial_guess`, and runs emcee via
+    ``bing.fitting.inference.{init_mcmc, fit_one}``. ``Chl``/``Y`` are passed in
+    BING's idx-keyed form (an array indexed by the record's integer ``obs_id``),
+    mirroring ``bing.fitting.l23.fit_one``.
+    """
+    from bing.fitting import inference as bing_inf
+
+    _, models, rt_dict = _prepare(spec, record)
+    p0 = initial_guess(models, record)
+
+    pdict = bing_inf.init_mcmc(models, nsteps=spec.mcmc.nsteps,
+                               nburn=spec.mcmc.nburn)
+    idx = int(record.obs_id)                       # BING idx-keyed Chl/Y lookup
+    pdict['Chl'] = np.zeros(idx + 1)
+    pdict['Chl'][idx] = float(record.init.get('Chl', 0.0))
+    pdict['Y'] = np.zeros(idx + 1)
+    pdict['Y'][idx] = float(record.init.get('Y', 0.0))
+
+    items = (np.asarray(record.Rrs, dtype=float),
+             np.asarray(record.varRrs, dtype=float), p0, idx)
+    chains, _ = bing_inf.fit_one(items, models=models, pdict=pdict,
+                                 chains_only=True, rt_dict=rt_dict)
+    return models, rt_dict, chains
+
+
 def run_algorithm(spec, record, *, fit_method=None,
                   perc=((16, 84), (2.5, 97.5))):
     """Fit one record with ``spec`` and return a ``RetrievalResult``.
 
-    Least-squares is the default; the MCMC path arrives in Stage 3.
+    Dispatches on ``fit_method`` (or ``spec.fit_method``): ``'chisq'``
+    (least-squares, default) or ``'mcmc'`` (emcee). Both paths reconstruct the
+    same components with 68/95 bands via :mod:`ioptics.evaluate`.
     """
     from ioptics import evaluate
 
@@ -154,7 +185,9 @@ def run_algorithm(spec, record, *, fit_method=None,
         return evaluate.from_chisq(spec, record, models, rt_dict, ans, cov,
                                    perc=perc)
     if method == 'mcmc':
-        raise NotImplementedError("the MCMC path lands in Stage 3")
+        models, rt_dict, chains = fit_mcmc(spec, record)
+        return evaluate.from_chains(spec, record, models, rt_dict, chains,
+                                    perc=perc)
     raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
 
 
@@ -220,3 +253,83 @@ def run_batch(spec, records, *, fit_method=None, n_cores=1, strict=True,
         return [run_algorithm(spec, record, fit_method=fit_method, perc=perc)
                 for record in records]
     return [_run_one_safe(spec, record, fit_method, perc) for record in records]
+
+
+def _tag_pairs(results, records, sweep_id, algorithm):
+    """Stamp ``provenance_id`` on each result and pair it with its record."""
+    from ioptics import provenance
+    pid = provenance.provenance_id(sweep_id, algorithm)
+    pairs = []
+    for res, rec in zip(results, records):
+        res.provenance_id = pid
+        pairs.append((res, rec))
+    return pairs
+
+
+def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
+    """Run a full sweep (all algorithms × all records) and write the outputs.
+
+    For each algorithm: a least-squares (χ²) fit over **all** records, then —
+    when ``cfg.mcmc_subset`` is set — an MCMC fit over the first ``mcmc_subset``
+    records. Every result is stamped with its ``provenance_id``; the results are
+    flattened to ``results_{spectral,scalar}.parquet`` and a ``provenance.yaml``
+    is written under ``$OS_COLOR/IOPtics/runs/<sweep_id>/`` (or ``root=``).
+
+    Parameters
+    ----------
+    cfg : SweepConfig
+        The sweep config (``sweep_id``, ``datasets``, ``algorithms``,
+        ``noise_model``, ``mcmc_subset``, ``seed``, ``results_root``).
+    obs_ids : iterable or None, optional
+        Restrict the prep to these observation ids (default: all). Handy for
+        tests / partial sweeps.
+    n_cores : int, optional
+        Parallel workers for prep and fitting.
+    strict : bool, optional
+        Fail-fast (default) vs robust ``fit_failed`` — see :func:`run_batch`.
+    root : str or None, optional
+        Output root override; falls back to ``cfg.results_root`` then ``$OS_COLOR``.
+
+    Returns
+    -------
+    dict
+        ``{sweep_id, n_results, spectral, scalar, provenance}`` paths/counts.
+    """
+    from ioptics import io, prep, provenance
+    from ioptics.algorithms import registry
+
+    out_root = root if root is not None else cfg.results_root
+
+    # Prep records per dataset (native grid, sweep-level noise model + seed).
+    records, datasets_info = [], {}
+    for dataset in cfg.datasets:
+        recs = prep.prep_dataset(dataset, obs_ids=obs_ids,
+                                 noise=cfg.noise_model, seed=cfg.seed,
+                                 n_cores=n_cores)
+        records.extend(recs)
+        datasets_info[dataset] = {'n_obs': len(recs)}
+
+    specs = [registry.get(ac.name) for ac in cfg.algorithms]
+
+    pairs = []
+    for ac, spec in zip(cfg.algorithms, specs):
+        # χ² over all records (the sweep's fast first pass; every algorithm).
+        chisq = run_batch(spec, records, fit_method='chisq', n_cores=n_cores,
+                          strict=strict)
+        pairs.extend(_tag_pairs(chisq, records, cfg.sweep_id, spec.name))
+        # MCMC over the subset — only for algorithms that opt in (effective
+        # fit_method == 'mcmc'); not every method uses MCMC.
+        uses_mcmc = (ac.fit_method or cfg.fit_method) == 'mcmc'
+        if uses_mcmc and cfg.mcmc_subset:
+            subset = records[:int(cfg.mcmc_subset)]
+            mcmc = run_batch(spec, subset, fit_method='mcmc', n_cores=n_cores,
+                            strict=strict)
+            pairs.extend(_tag_pairs(mcmc, subset, cfg.sweep_id, spec.name))
+
+    paths = io.write_results(cfg.sweep_id, pairs, root=out_root)
+    prov = provenance.build(cfg.sweep_id, cfg, specs, datasets=datasets_info)
+    ppath = provenance.write(cfg.sweep_id, prov, root=out_root)
+
+    return {'sweep_id': cfg.sweep_id, 'n_results': len(pairs),
+            'spectral': paths['spectral'], 'scalar': paths['scalar'],
+            'provenance': ppath}
