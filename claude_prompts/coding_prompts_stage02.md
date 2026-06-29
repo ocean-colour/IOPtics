@@ -87,6 +87,10 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 1. Perform the first task under "Modules".
 2. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 2nd task under "Modules".
 3. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 3rd task under "Modules".
+4. Execute the 4th task under "Modules".
+5. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 5th task under "Modules".
+6. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 6th task under "Modules".
+7. I have answered your Q&A.  Please review them and modify the code to reflect the answers.  Then move on to the 7th task under "Modules".
 
 ## Modules
 
@@ -192,6 +196,98 @@ Stage 2** of `docs/design/IOPtics_implementation.md`. One prompt per module.
 
   A. Good
 
+**Task 4 (`evaluate.py`).**
+
+- I use `bing.stats.calc_chisq` (with `noise_term=√varRrs`) for χ², but compute
+  **AIC/BIC with BING's own formulas inline** (`2k+χ²`, `k·ln(n)+χ²`) rather than
+  `bing.stats.calc_ICs` — because `calc_ICs` re-derives `model_Rrs` via
+  `reconstruct_chisq_fits` **without** `rt_dict`, so it'd ignore variable-Gordon
+  and mismatch our fit. OK, or would you rather I push a bing fix so `calc_ICs`
+  takes `rt_dict`?
+  
+  A. Yes, that is ok.
+- **Bands** are covariance-propagated: draw `n_samples=1000` from
+  `MVN(ans, cov)` (with `check_valid='ignore'` for near-singular cov) and take
+  16/84 + 2.5/97.5 percentiles — the same percentile machinery the MCMC path
+  will use. Seeded `seed=1234` so bands are reproducible. OK, or derive the seed
+  from `record.noise_seed`?
+
+  A. Good
+- **Scalars** for Stage 2 = `a_cdom440` (from the `a_dg(440)` posterior) plus
+  `Sdg`/`beta` when they're free params. `Chl` and other derived scalars are
+  deferred. Enough for now?
+
+  A. Yes, that is enough for now.
+- **`params`** are reported in **fit space** (log10 for the amplitude params,
+  linear for `Sdg`/`beta`), as `{pname: (median, sigma)}`. Should `io`/`metrics`
+  convert amplitudes to linear downstream, or should `evaluate` emit linear?
+
+  A. Yes, convert amplitudes to linear downstream.
+
+**Task 5 (`io.py`).**
+
+- On "convert amplitudes to linear downstream": the **designed tables already
+  carry only linear physical quantities** — `results_spectral` values are
+  `a`/`bb`/`a_ph`/`a_dg`/`bb_p` (1/m) + `Rrs_model` (1/sr) straight from
+  `eval_anw`/`eval_bbnw`, and `results_scalar` has `a_cdom440`/`Sdg`/`beta`
+  (all linear). The raw log10 fit amplitudes (`Adg`/`Aph`/`Bnw`) are **not
+  surfaced** in either table, so there's nothing to convert in Stage-2 `io`. If
+  you want the raw fit params persisted too (e.g. a `params` table or a
+  provenance block), I'll 10**-convert the log-flavored ones there. Sound right?
+
+  A. Yes, that is right.
+
+- `Rrs_model`'s `truth` column is set to **`record.Rrs_clean`** (the noiseless
+  Rrs) as the closure reference. OK, or leave it NaN like the other model-only
+  components?
+
+  A. Yes, leave it NaN like the other model-only components.
+
+- `results_root` defaults to `$OS_COLOR/IOPtics/runs` and is overridable via
+  `root=` (tests pass `tmp_path`). Keep that resolution, or read it from the
+  sweep config's `results_root` when present?
+
+  A. Keep that resolution.
+
+**Task 6 (`provenance.py`).**
+
+- `versions()` reads **git commits** via `subprocess git -C <repo> rev-parse
+  --short HEAD` for ioptics/bing/ocpy (repo = the installed package's dir
+  parent), falling back to `None` when not a git checkout (e.g. a pip/wheel
+  install). Doc versions are parsed from `**Version:**` in the design `.md`s.
+  OK, or would you prefer reading commits another way (e.g. importlib metadata)?
+
+  A. OK
+
+- The provenance record is **plain dict → YAML** (`build()` then `dump()`/
+  `write()`), with `config` as the verbatim `cfg.to_dict()`. Each algorithm
+  block carries models + full priors + RT + set_Sdg/sSdg/beta + fit_method +
+  noise_model (a bit more than the design's terse example). Keep the fuller
+  block, or trim to exactly the doc's fields?
+
+  A. Keep the fuller block.
+
+- `provenance_id = "<sweep_id>#<algorithm>"`. `run`/`evaluate` currently emit
+  `provenance_id=''`; I'll stamp it in the Task-7 micro-test (and `run_sweep` in
+  Stage 3). Want `run_algorithm` to take an optional `provenance_id=` now?
+
+  A. No, I will stamp it in the Task-7 micro-test. If you remind me. :)
+
+**Task 7 (end-to-end micro-test).**
+
+- **Reminder (as requested):** the micro-test stamps `provenance_id` itself —
+  `res.provenance_id = provenance.provenance_id(SWEEP_ID, spec.name)` after each
+  `run_algorithm`, before `io.write_results` — and asserts it lands in the
+  `results_scalar` table as `"<sweep>#<algo>"`. (run/evaluate still emit `''`.)
+- I implemented the micro-test as a **real L23 spectrum × both algorithms** with
+  recovery checked against **L23 truth** (a(440)/bb(555) within ~3%; asserted a
+  factor-2 band), rather than the literal "synthetic 5-band from a known forward
+  model." Rationale: L23 is mounted, real-truth recovery is more meaningful, and
+  a self-generated 5-band would test the inverter against itself. Want the
+  literal synthetic-5-band variant too, or is the real-L23 recovery enough?
+- **Stage 2 is complete** — ready for a Stage-2 PR + CI/readthedocs check (as in
+  Stage 0/1)?
+
 ## Logs
 
 ### 2026-06-27 (Stage 2, Task 1: `algorithms/spec.py`)
@@ -270,3 +366,111 @@ prose — added to memory; the package import stays lowercase).
   without L23 — CI-safe). `sphinx-build -W` clean.
 - **Note.** `run_algorithm`'s final hop calls `evaluate.from_chisq` (Task 4); the
   Task-3 tests exercise the fit core via `fit_chisq`, so they don't depend on it.
+
+### 2026-06-28 (Stage 2, Task 4: `evaluate.py` — from_chisq)
+
+Implemented the least-squares → `RetrievalResult` assembly (replacing the stub).
+The Task-3 Q&A was confirmed (closure metric "Good"); the two unanswered Task-3
+questions left as-is.
+
+- **`from_chisq(spec, record, models, rt_dict, ans, cov, *, perc, n_samples,
+  seed)`.** Covariance-propagated uncertainty: draw `MVN(ans, cov)` (1000
+  samples, `check_valid='ignore'`), forward-model via
+  `bing.evaluate.calc_Rrs_from_models` (batched) + `eval_anw(retsub_comps=True)`
+  → `(a_dg, a_ph)` + `eval_bbnw`, then percentiles (16/84, 2.5/97.5) into a
+  `ComponentFit` per component (`a, bb, a_ph, a_dg, bb_p, Rrs_model`). Same
+  percentile approach the MCMC path will reuse, so intervals are comparable.
+- **Stats.** χ² via `bing.stats.calc_chisq(noise_term=√varRrs)`; χ²ᵥ, AIC=`2k+χ²`,
+  BIC=`k·ln(n)+χ²` (BING's `calc_ICs` formulas, but computed on our
+  variable-Gordon point `model_Rrs` since `calc_ICs` re-derives Rrs without
+  `rt_dict`). `params` = `{pname:(med,σ)}` in fit space; `scalars` = `a_cdom440`
+  (+`Sdg`/`beta`); `status` = `ok`/`fit_failed`.
+- **Fix.** Point-estimate forward pass needs params as `(1, nparam)` — a 1-D
+  `ans[:na]` was misread as N one-param samples (`calc_chisq` then got a vector).
+  Reshape + squeeze.
+- **Tests** (`test_evaluate.py`): Tier-1 `_component_fit` band-ordering
+  (lo95≤lo68≤med≤hi68≤hi95, data-free); Tier-2 `@needs_l23` full `from_chisq`
+  for both algorithms (component keys, native-grid bands, k=5/3, χ²ᵥ∈(0,5),
+  finite AIC/BIC, `a_cdom440` present) + `run_algorithm` end-to-end.
+- **Verification.** Evaluate tests **3 passed** (L23 present). Full suite
+  CI-equivalent (`-u OS_COLOR`) **82 passed, 8 skipped** (+1 Tier-1; the 2 new
+  Tier-2 skip without L23). `sphinx-build -W` clean. `run_algorithm` now returns
+  a complete `RetrievalResult` end-to-end.
+
+### 2026-06-29 (Stage 2, Task 5: `io.py` — long/tidy parquet tables)
+
+Implemented the results-table writer/reader (replacing the stub). Applied the
+Task-4 Q&A (all confirmed): AIC/BIC inline OK, band seed OK, scalars enough, and
+"convert amplitudes to linear downstream" — which is already satisfied because
+the designed tables carry only linear physical quantities (the log10 fit
+amplitudes are never surfaced); confirmed and noted in Q&A.
+
+- **API.** `write_results(sweep_id, pairs, *, root=None)` /
+  `read_results(...)` over `[(RetrievalResult, PreparedRecord), …]`;
+  `results_to_frames`, `sweep_dir`, `runs_root`. Owns the layout
+  `<runs_root>/<sweep_id>/{results_spectral.parquet, results_scalar.parquet,
+  chains/, figures/}`; `runs_root` = `$OS_COLOR/IOPtics/runs` or `root=`.
+- **Schemas (per design).** `results_spectral`: one row per
+  `(dataset,obs_id,algorithm,fit_method,component,wavelength)` with
+  `value/lo68/hi68/lo95/hi95/truth/truth_interp/unit`. Truth pulled from the
+  record's `Spectrum` per component (NaN where absent); `Rrs_model` truth =
+  `Rrs_clean`. `results_scalar`: one keyed row with `chi2/chi2_nu/AIC/BIC/
+  n_bands/k`, `Chl/a_cdom440/Sdg/beta` (+`sig_`), `*_truth`, `status`,
+  `chain_file` (null for χ²), `provenance_id`. Pure pandas/pyarrow (no BING/ocpy).
+- **Tests** (`test_io.py`, Tier-1, data-free — synthetic record/result):
+  sweep-dir layout; spectral round-trip (6×nwave rows, component set, a_dg truth
+  from the Spectrum, Rrs_model truth = Rrs_clean, missing-truth → NaN, units);
+  scalar schema + truth columns.
+- **Verification.** io tests **3 passed**; full suite CI-equivalent
+  (`-u OS_COLOR`) **85 passed, 8 skipped** (+3 Tier-1). `sphinx-build -W` clean.
+
+### 2026-06-29 (Stage 2, Task 6: `provenance.py`)
+
+Implemented the provenance record (replacing the stub). Applied the Task-5 Q&A:
+tables stay linear-physical (confirmed); **`Rrs_model` truth → NaN** (changed
+`io._truth_spectrum` + its test, dropping the `Rrs_clean` reference); kept the
+`results_root` resolution.
+
+- **API.** `build(sweep_id, cfg, specs, *, datasets, created)` → a plain
+  YAML-serializable dict: `sweep_id`, `created`, `versions()`, verbatim `config`
+  (`cfg.to_dict()`), `datasets`, and a per-algorithm `algorithm_block`. Plus
+  `dump()` (YAML text), `write()` (→ `<sweep>/provenance.yaml` via
+  `io.sweep_dir`), and `provenance_id(sweep, algo)` = `"<sweep>#<algo>"`.
+- **`versions()`.** ioptics/bing/ocpy `{commit, version}` — commit via
+  `git -C <repo> rev-parse --short HEAD` (None on a non-git/wheel install),
+  version from the package — plus `design_doc`/`implementation_doc` parsed from
+  the `**Version:**` line of the design `.md`s. Stdlib + PyYAML only.
+- **`algorithm_block`.** models + full priors + RT block + set_Sdg/sSdg/beta +
+  fit_method + noise_model (per the design's per-algorithm block).
+- **Tests** (`test_provenance.py`, Tier-1, data-free — specs built directly, no
+  BING): `provenance_id` format; `versions()` shape; serializable algorithm
+  block; full record structure (verbatim config copy, dataset block, per-algo
+  fit_method); YAML write/read round-trip equals the built record.
+- **Verification.** provenance **5 passed** (+ io still 3); full suite
+  CI-equivalent (`-u OS_COLOR`) **90 passed, 8 skipped** (+5 Tier-1).
+  `sphinx-build -W` clean. Only Task 7 (end-to-end micro-test) remains in Stage 2.
+
+### 2026-06-29 (Stage 2, Task 7: end-to-end micro-test — Stage 2 complete)
+
+Applied the Task-6 Q&A (all confirmed; no code change) and wrote the headline
+end-to-end test. (JXP remounted the L23 tree locally under
+`$OS_COLOR/Loisel2023/`, so Tier-2 runs here this turn.)
+
+- **`test_micro.py`** (Tier-2 `@needs_l23`): one real L23 spectrum (obs 0) fit by
+  **both** `expb_pow` and `giop` (χ²) → two `RetrievalResult`s → `io.write_results`
+  → `provenance.write`. Asserts: each result `status='ok'`, components on the
+  native grid, χ²ᵥ∈(0,5); **recovers planted IOPs** — retrieved a(440)/bb(555)
+  within a factor-2 band of L23 truth (actuals ~3%); the tables carry both
+  algorithms (2 scalar rows, 2×6×nwave spectral rows); `provenance.yaml` reloads
+  with both algorithm blocks + verbatim config + versions.
+- **`provenance_id` stamped** in the test (the reminder JXP asked for) and
+  verified to flow into `results_scalar` as `"<sweep>#<algo>"`.
+- Chose **real-L23 truth recovery** over the literal synthetic-5-band (more
+  meaningful; avoids testing the inverter against itself) — flagged in Q&A.
+- **Verification.** Micro-test **1 passed**. Full suite **99 passed** with L23
+  present; **90 passed, 9 skipped** CI-equivalent (`-u OS_COLOR` — the 9 Tier-2
+  skip). `sphinx-build -W` clean.
+- **Stage-2 exit criterion MET:** a single L23 spectrum × both algorithms (χ²) →
+  two `RetrievalResult`s → rows in `results_{spectral,scalar}.parquet` +
+  `provenance.yaml`, recovering planted IOPs within tolerance. The first real
+  `expb_pow`-vs-`giop` two-way comparison runs end to end.
