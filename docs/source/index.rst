@@ -13,13 +13,17 @@ optics community.
 
 .. note::
 
-   IOPtics is in early development (**Stage 0** — scaffolding & contracts). The
-   package skeleton, the load-bearing data contracts
-   (:class:`~ioptics.records.PreparedRecord`,
+   IOPtics is in active development. Through **Stage 2** the vertical slice runs
+   end to end: the data contracts (:class:`~ioptics.records.PreparedRecord`,
    :class:`~ioptics.records.RetrievalResult`,
-   :class:`~ioptics.records.ComponentFit`), and the YAML sweep-config surface
-   (:mod:`ioptics.config`) are in place; the data, retrieval, metrics, and
-   reporting layers are being built out stage by stage.
+   :class:`~ioptics.records.ComponentFit`) and YAML sweep config
+   (:mod:`ioptics.config`); the dataset-agnostic prep over L23
+   (:mod:`ioptics.datasets`, :mod:`ioptics.noise`, :mod:`ioptics.prep`); the
+   declarative algorithm registry (:mod:`ioptics.algorithms`, seeded with
+   ``expb_pow`` and ``giop``); the least-squares run/evaluate engine wrapping
+   BING (:mod:`ioptics.run`, :mod:`ioptics.evaluate`); and the long/tidy results
+   tables + provenance (:mod:`ioptics.io`, :mod:`ioptics.provenance`). The MCMC
+   subset, metrics, diagnostics, and reporting layers are next.
 
 What IOPtics does
 -----------------
