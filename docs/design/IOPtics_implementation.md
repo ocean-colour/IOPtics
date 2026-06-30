@@ -1,7 +1,7 @@
 # IOPtics Implementation Document
 
-**Version:** 0.20
-**Date:** 2026-06-21
+**Version:** 0.22
+**Date:** 2026-06-29
 **Authors:** JXP and Claude
 
 ---
@@ -241,7 +241,7 @@ ioptics/
 |---|---|---|---|
 | `config` | Parse a YAML sweep file into the same objects the Python API builds (datasets, algorithm names/overrides, fit method, MCMC subset, output root); validate; dump back for provenance. | — | Analysis (provenance) |
 | `records` | The two data structures that flow through the pipeline: **`PreparedRecord`** (one obs ready to fit) and **`RetrievalResult`** (one algorithm's output for one obs). Plain dataclasses, serialization-friendly. | — | Data / Analysis |
-| `datasets` | A **dataset registry** mapping `dataset` name → loader adapter returning observations as ocpy `Spectrum`/`SpectrumStack` plus any truth IOPs, on the **native grid**. One adapter per source. | ocpy `hydrolight.loisel23`, `insitu.pangaea`, `insitu.gloria`; `spectra` | Data |
+| `datasets` | A **dataset registry** mapping `dataset` name → loader adapter returning observations as ocpy `Spectrum`/`SpectrumStack` plus any truth IOPs, on the **native grid**. One adapter per source. | ocpy `hydrolight.loisel23`, `insitu.pangaea`, `insitu.gloria`, `spectra`; bing `fitting.l23.load_one_l23` (L23 truth) | Data |
 | `prep` | The **dataset-agnostic prep layer** — generalizes `bing.fitting.l23.prep_one_l23` to any dataset: take a loaded observation, attach `Rrs` uncertainty, assemble the `PreparedRecord` (obs `Rrs`+σ on native grid; truth where available). No model/prior init here (that is the algorithm's job at run time). | reads ocpy loaders via `datasets`; calls `noise` | Data prep |
 | `noise` | Build the `Rrs` variance vector for a record. L23 first-pass uses **`ocpy.satellites.pace`** (`gen_noise_vector`); in-situ datasets carry their own `errors`. Thin wrapper so the noise model is a provenance-recorded choice. | ocpy `satellites.pace` (+ modis/seawifs/sbg); BING `noise.scale_noise` | Data prep |
 | `algorithms.spec` | **`AlgorithmSpec`** — the declarative description of one algorithm (a_nw + bb_nw model names, priors, RT toggles incl. Raman/Chl-fl, fit method, noise model). `.to_bing_p()` emits the BING parameter namedtuple; `.from_standard(name)` seeds from `bing.parameters.standard`. | BING `parameters.standard`, `parameters.p_ntuple`, `priors` | Analysis (IOP retrieval) |
@@ -303,8 +303,11 @@ every dataset and every algorithm flow through unchanged:
 - **ocpy is imported only by** `datasets` and `noise` (loaders, `Spectrum`,
   satellite noise). Nothing downstream of `prep` imports ocpy — once a
   `PreparedRecord` exists, the pipeline is data-source-agnostic.
-- **BING is imported only by** `algorithms.spec`, `run`, and `evaluate` (models,
-  parameters, rt, priors, fitting, evaluate, stats). Nothing in `metrics`,
+- **BING is imported by** `algorithms.spec`, `run`, and `evaluate` (models,
+  parameters, rt, priors, fitting, evaluate, stats) **and by `datasets`** for
+  dataset-specific truth extraction — the L23 adapter reuses
+  `bing.fitting.l23.load_one_l23` rather than re-deriving Chl/Y/Sdg/component
+  truth. The boundary that holds is the *downstream* one: nothing in `metrics`,
   `diagnostics`, or `report` imports BING — they operate purely on the results
   table. (`plotting` may reuse `bing.plotting` helpers, the one soft exception.)
 - This keeps IOPtics a **thin uniform layer**: the upstream packages are confined
@@ -801,10 +804,21 @@ class RetrievalResult:
 
 ### Sweep layers
 
+**Error policy (`strict`).** `run_batch`/`run_sweep` take a `strict` flag.
+`strict=True` (the current **development** default) fails fast — a fit error
+propagates with its traceback so bugs surface. `strict=False` is the intended
+**production** mode: a failed fit becomes a `status='fit_failed'`
+`RetrievalResult` and the sweep continues (failures show up as flagged rows +
+reduced coverage, per the Metrics partial-retrieval rules). **TODO:** flip the
+default to robust (`strict=False`) for production sweeps once the engine is
+exercised at scale.
+
 ```python
-def run_batch(spec, records, *, fit_method=None, n_cores=1) -> list[RetrievalResult]:
+def run_batch(spec, records, *, fit_method=None, n_cores=1,
+              strict=True) -> list[RetrievalResult]:
     """One algorithm over many records (ProcessPoolExecutor), mirroring
-    bing.fitting.l23.batch_fit's chunked parallelism."""
+    bing.fitting.l23.batch_fit's chunked parallelism. strict: fail-fast (dev)
+    vs fit_failed-and-continue (production)."""
 
 def run_sweep(cfg) -> SweepResult:
     """All algorithms × all records. For each algorithm: run_batch with the sweep

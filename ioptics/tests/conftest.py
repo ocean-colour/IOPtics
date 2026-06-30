@@ -52,6 +52,21 @@ def _pangaea_available():
         return False
 
 
+def _pace_data_available():
+    """True if ocpy ships its PACE error table (``PACE_error.csv``).
+
+    The ``pace`` noise model reads this bundled data file; some ocpy installs
+    don't package it, so the dependent test skips rather than failing.
+    """
+    try:
+        import numpy as np
+        from ocpy.satellites import pace
+        pace.gen_noise_vector(np.array([500.0]))
+        return True
+    except Exception:
+        return False
+
+
 needs_data = pytest.mark.skipif(
     not _os_color_available(), reason='requires the $OS_COLOR data tree')
 
@@ -60,3 +75,6 @@ needs_l23 = pytest.mark.skipif(
 
 needs_pangaea = pytest.mark.skipif(
     not _pangaea_available(), reason='requires the PANGAEA V3 data directory')
+
+needs_pace = pytest.mark.skipif(
+    not _pace_data_available(), reason="requires ocpy's bundled PACE_error.csv")

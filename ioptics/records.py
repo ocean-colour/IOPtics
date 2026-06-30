@@ -166,6 +166,8 @@ class RetrievalResult:
     provenance_id : str
         Link into the sweep's ``provenance.yaml`` (provenance record +
         algorithm block). Defaults to an empty string.
+    chain_file : str or None
+        Path to the saved MCMC chain NPZ (``None`` for least-squares results).
     """
 
     dataset:    str
@@ -178,3 +180,4 @@ class RetrievalResult:
     stats:      dict = field(default_factory=dict)
     status:     str  = 'ok'
     provenance_id: str = ''
+    chain_file: str | None = None     # path to the saved MCMC chain NPZ (None for chisq)
