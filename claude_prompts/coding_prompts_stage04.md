@@ -86,6 +86,11 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
 5. `diagnostics` figure-data functions.
 6. Tests.
 
+### Pull Requests
+
+1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
+2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
+
 ## Modules
 
 ### Tasks
@@ -250,6 +255,13 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
     L23 data). No open questions — flag if you'd like the Tier-2 confirmatory
     test to also assert accuracy thresholds (à la `test_micro`) or a real-chain
     `corner_data` smoke.
+
+**PR Task 1 (review + post + CI).**
+
+18. **PR base branch.** PR #7 (`stage-3` → **`main`**) targets `main`, but
+    `develop` exists and the noted convention was for stage PRs to target
+    `develop`. Want me (or you) to retarget the base to `develop`, or is `main`
+    intended for this stage?
 
 ## Logs
 
@@ -441,3 +453,23 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
   confirmed Tier-2 on a real sweep.
 - Tests: full suite **`134 passed, 13 skipped`** (`$OS_COLOR` unset,
   CI-equivalent) and **`147 passed`** with `$OS_COLOR` set (all Tier-2 run).
+
+### Stage 4 — PR Task 1: review + post + CI investigation (2026-06-30)
+
+- **Reviewed PR [#7](https://github.com/ocean-colour/IOPtics/pull/7)** (`stage-3`
+  → `main`, "Stage 4") and posted a **COMMENTED** review (no self-approve, per
+  the PR-workflow convention) summarizing scope, status checks, and caveats.
+- **CI investigation — green, no fixes needed.** The CI workflow
+  (`.github/workflows/ci.yml`) runs Tier-1 `pytest -q` on **py3.12 and py3.14**
+  only (deliberately light — no sweeps/reports/docs, no coverage floor, no
+  fail-on-warning). Both matrix jobs **pass** on the PR head (`7483a9c`). The
+  Tier-2 tests skip on the runner (no `$OS_COLOR`), as designed.
+- **Extra quality gate checked locally:** `sphinx-build -W` over `docs/source`
+  **builds clean** (no warnings) — the new `metrics`/`diagnostics` public APIs
+  are autodoc'd and RST-clean. (`docs` build is *not* part of CI; verified per
+  the Conventions note about keeping `-W` green.)
+- **Local suite:** `134 passed, 13 skipped` (no `$OS_COLOR`); `147 passed` with
+  the data tree.
+- **Flagged (Q&A #18):** PR base is `main` while a `develop` branch exists and
+  the convention had stage PRs target `develop` — left for JXP to decide (did
+  not retarget). No code changes made in this task.
