@@ -61,7 +61,8 @@ def test_run_sweep_small_chisq(tmp_path):
     spectral, scalar = io.read_results('sweep_smoke', root=tmp_path)
     assert sorted(scalar['algorithm'].unique()) == ['expb_pow', 'giop']
     assert len(scalar) == 6
-    assert len(spectral) == 6 * 6 * spectral['wavelength'].nunique()
+    # 6 results x 7 components (6 model + Rrs_obs) x nwave
+    assert len(spectral) == 6 * 7 * spectral['wavelength'].nunique()
     # provenance_id stamped through to the table
     assert set(scalar['provenance_id']) == {'sweep_smoke#expb_pow',
                                             'sweep_smoke#giop'}
@@ -102,9 +103,9 @@ def test_run_sweep_with_mcmc_subset_saves_chains(tmp_path):
     # (2 records x 6 components x nwave)
     giop_mcmc = spectral[(spectral.algorithm == 'giop')
                          & (spectral.fit_method == 'mcmc')]
-    assert len(giop_mcmc) == 2 * 6 * spectral['wavelength'].nunique()
+    assert len(giop_mcmc) == 2 * 7 * spectral['wavelength'].nunique()
     assert set(giop_mcmc['component']) == {'a', 'bb', 'a_ph', 'a_dg', 'bb_p',
-                                           'Rrs_model'}
+                                           'Rrs_model', 'Rrs_obs'}
 
     # the 2 MCMC rows carry a saved chain file; χ² rows do not
     mcmc_rows = scalar[scalar.fit_method == 'mcmc']
@@ -113,4 +114,6 @@ def test_run_sweep_with_mcmc_subset_saves_chains(tmp_path):
         assert (tmp_path / 'sweep_mcmc' / 'chains').as_posix() in cf
         chain = io.load_chain(cf)
         assert chain['chains'].ndim == 3          # (nsteps, nwalkers, nparam)
+        # parameter names persisted, one per chain column (for corner labels)
+        assert chain['pnames'].size == chain['chains'].shape[-1]
     assert scalar[scalar.fit_method == 'chisq']['chain_file'].isna().all()

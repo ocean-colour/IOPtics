@@ -285,7 +285,8 @@ def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
             res = evaluate.from_chains(spec, record, models, rt_dict, chains,
                                        perc=perc)
             res.chain_file = str(io.save_chain(sweep_id, spec.name, record,
-                                               chains, root=root))
+                                               chains, root=root,
+                                               pnames=list(res.params)))
         except Exception:
             if strict:
                 raise

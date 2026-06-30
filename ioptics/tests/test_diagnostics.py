@@ -100,15 +100,25 @@ def test_residual_spectra():
     assert res['chi2_nu'] == 1.2
 
 
-def test_corner_data(tmp_path):
+def test_corner_data_generic_labels(tmp_path):
     path = tmp_path / 'chain.npz'
     rng = np.random.default_rng(0)
     chains = rng.normal(size=(10, 4, 3))      # (nsteps, nwalkers, nparam)
-    np.savez(path, chains=chains, Chl=1.5, Y=0.5)
+    np.savez(path, chains=chains, Chl=1.5, Y=0.5)   # no pnames persisted
     cd = diagnostics.corner_data(path)
     assert cd['samples'].shape == (40, 3)
     assert cd['labels'] == ['p0', 'p1', 'p2']
     assert cd['Chl'] == 1.5 and cd['Y'] == 0.5
+
+
+def test_corner_data_uses_pnames(tmp_path):
+    path = tmp_path / 'chain.npz'
+    rng = np.random.default_rng(0)
+    chains = rng.normal(size=(10, 4, 3))
+    np.savez(path, chains=chains, Chl=1.5, Y=0.5,
+             pnames=np.asarray(['Adg', 'Sdg', 'Bnw'], dtype=str))
+    cd = diagnostics.corner_data(path)
+    assert cd['labels'] == ['Adg', 'Sdg', 'Bnw']
 
 
 def test_dbic_cdf_data():

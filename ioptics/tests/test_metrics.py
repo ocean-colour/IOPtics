@@ -12,6 +12,7 @@ import pandas as pd
 
 from ioptics import io, metrics
 from ioptics.records import ComponentFit, PreparedRecord, RetrievalResult
+from ioptics.tests.conftest import needs_l23
 
 
 def test_perfect_agreement():
@@ -441,3 +442,51 @@ def test_compute_strata_present(tmp_path):
     sc = _synthetic_sweep(tmp_path).scalar
     strata = set(sc['stratum'])
     assert {'all', 'oligotrophic', 'mesotrophic', 'eutrophic'} <= strata
+
+
+def test_compute_parquet_roundtrip(tmp_path):
+    """Exit criterion: the three parquet files re-read and carry ΔBIC + wins."""
+    tables = _synthetic_sweep(tmp_path)
+    d = io.sweep_dir('sweep_m', root=tmp_path)
+    sp = pd.read_parquet(d / metrics.METRICS_SPECTRAL_FILE)
+    sc = pd.read_parquet(d / metrics.METRICS_SCALAR_FILE)
+    pw = pd.read_parquet(d / metrics.METRICS_PAIRWISE_FILE)
+    # persisted == returned
+    assert len(sp) == len(tables.spectral) and len(sc) == len(tables.scalar)
+    assert len(pw) == len(tables.pairwise)
+    # schema spot-checks
+    assert {'mae', 'bias', 'coverage68', 'n'} <= set(sp.columns)
+    assert {'component', 'ref_wave', 'mae_rank'} <= set(sc.columns)
+    # ΔBIC + wins are populated
+    assert (pw['contest'] == 'dbic').any() and (pw['contest'] == 'wins').any()
+    dbic = pw[pw.contest == 'dbic']
+    assert dbic['frac_favor_a'].notna().any()
+
+
+# --------------------------------------------------------------------
+# Tier 2 — confirmatory: compute over a tiny real L23 sweep
+# --------------------------------------------------------------------
+@needs_l23
+def test_compute_over_real_sweep_l23(tmp_path):
+    from ioptics import config, run
+
+    cfg = config.loads(
+        "sweep_id: sweep_metrics_l23\n"
+        "datasets: [L23]\n"
+        "noise_model: pace\n"
+        "algorithms: [expb_pow, giop]\n"
+        "fit_method: chisq\n"
+        "mcmc_subset: 0\n"
+        "seed: 1234\n")
+    run.run_sweep(cfg, obs_ids=range(4), root=tmp_path)
+
+    tables = metrics.compute('sweep_metrics_l23', root=tmp_path)
+    d = io.sweep_dir('sweep_metrics_l23', root=tmp_path)
+    for fn in (metrics.METRICS_SPECTRAL_FILE, metrics.METRICS_SCALAR_FILE,
+               metrics.METRICS_PAIRWISE_FILE):
+        assert (d / fn).is_file()
+    assert not tables.spectral.empty and not tables.scalar.empty
+    # both algorithms scored, and the expb_pow-vs-giop ΔBIC contest populated
+    assert {'expb_pow', 'giop'} <= set(tables.spectral['algorithm'])
+    dbic = tables.pairwise[tables.pairwise.contest == 'dbic']
+    assert dbic['n'].sum() > 0

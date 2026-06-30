@@ -234,8 +234,8 @@ def corner_data(chain_file):
 
     Loads the NPZ via :func:`ioptics.io.load_chain` and flattens ``chains``
     (``nsteps, nwalkers, nparam``) to ``(nsteps·nwalkers, nparam)``. Returns
-    ``dict(samples, labels, Chl, Y)``. Parameter names are not persisted in the
-    chain NPZ, so ``labels`` are generic (``'p0'``, ``'p1'``, …).
+    ``dict(samples, labels, Chl, Y)``. ``labels`` are the persisted ``pnames``
+    when present, else generic (``'p0'``, ``'p1'``, …).
     """
     data = io.load_chain(chain_file)
     chains = np.asarray(data['chains'], dtype=float)
@@ -245,8 +245,9 @@ def corner_data(chain_file):
     else:
         samples = chains
         nparam = samples.shape[-1]
-    return {'samples': samples,
-            'labels': [f'p{i}' for i in range(nparam)],
+    pnames = [str(p) for p in data['pnames']] if 'pnames' in data else []
+    labels = pnames if len(pnames) == nparam else [f'p{i}' for i in range(nparam)]
+    return {'samples': samples, 'labels': labels,
             'Chl': float(data['Chl']) if 'Chl' in data else np.nan,
             'Y': float(data['Y']) if 'Y' in data else np.nan}
 

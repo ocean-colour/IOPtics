@@ -69,13 +69,15 @@ def chain_path(sweep_id, algorithm, obs_id, *, root=None):
     return sweep_dir(sweep_id, root=root) / 'chains' / f'{algorithm}_{obs_id}.npz'
 
 
-def save_chain(sweep_id, algorithm, record, chains, *, root=None):
+def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
     """Save one MCMC posterior chain to its NPZ and return the path.
 
     Mirrors ``bing.fitting.l23.save_chains``: stores ``chains`` (shape
     ``(nsteps, nwalkers, nparam)``) + ``idx`` and the context needed to
-    re-analyze it (``wave``, ``obs_Rrs``, ``varRrs``, ``Chl``, ``Y``). Written
-    under the sweep's ``chains/`` dir (created if needed).
+    re-analyze it (``wave``, ``obs_Rrs``, ``varRrs``, ``Chl``, ``Y``). When
+    ``pnames`` (the fit parameter names, in chain-column order) is given they
+    are stored too, so ``diagnostics.corner_data`` can label the corner axes.
+    Written under the sweep's ``chains/`` dir (created if needed).
     """
     sweep_dir(sweep_id, root=root, create=True)
     path = chain_path(sweep_id, algorithm, record.obs_id, root=root)
@@ -88,6 +90,7 @@ def save_chain(sweep_id, algorithm, record, chains, *, root=None):
         varRrs=np.asarray(record.varRrs, dtype=float),
         Chl=float(record.init.get('Chl', np.nan)),
         Y=float(record.init.get('Y', np.nan)),
+        pnames=np.asarray([] if pnames is None else pnames, dtype=str),
     )
     return path
 
