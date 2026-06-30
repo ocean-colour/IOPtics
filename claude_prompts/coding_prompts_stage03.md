@@ -108,6 +108,10 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
 
 2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
+### Stage 4
+
+1. We are ready to start Stage 4.  Modify the prompt file `coding_prompts_stage04.md` to reflect the changes in this stage.
+
 ## Modules
 
 ### Tasks
@@ -419,3 +423,24 @@ no working-tree drift; CI-equivalent suite still **94 passed, 12 skipped**. Made
 no code changes (won't fabricate edits for a clean, green PR) — reported the
 state and surfaced the merge/Stage-4 question in Q&A. The only open threads are
 the non-blocking follow-ups from my review, none blocking the merge.
+
+### 2026-06-30 (Stage 3 → Stage 4: update `coding_prompts_stage04.md`)
+
+Revised the Stage-4 (metrics & diagnostics) prompt to build on Stage-3 reality.
+
+- **Conventions** brought in line (Q&A questions-only; env-interpreter +
+  CI-equivalent runs; BING capitalization; RST-clean docstrings) while keeping
+  the "pure table-in/out, log10" rule.
+- **Added "Stage 0–3 carryover"**: the exact `results_{spectral,scalar}` column
+  schemas metrics scores, the `io.read_results`/`sweep_dir`/`load_chain` API, and
+  the fact that a real sweep has **both χ² (all) and MCMC (subset) rows**.
+- **Added "⚠ Known constraints / decisions"** — the three that shape Stage 4:
+  (1) `fit_method` is a metric key the design tuples omit → `compute` must
+  group/filter on it (ΔBIC/wins χ²-vs-χ²); (2) the **observed `Rrs` isn't in the
+  tables** (`Rrs_model.truth=NaN`), so §2 Rrs log-MAE/bias needs a JXP decision
+  (persist `Rrs_obs` vs scalar-only §2) while χ²ᵥ/AIC/BIC/ΔBIC stay table-in;
+  (3) **metrics is fully Tier-1** via synthetic results tables (`io.write_results`
+  → `compute`), so the orchestration test needs no L23.
+- **Refined Tasks 2/4/6 + Goal** for those points (fit_method handling, the
+  Rrs-closure decision, `compute` reads/writes via `io`, Tier-1-via-synthetic).
+- Prompt-doc edit only — no package code changed.
