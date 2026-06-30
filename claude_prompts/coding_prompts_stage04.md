@@ -262,6 +262,19 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
     `develop` exists and the noted convention was for stage PRs to target
     `develop`. Want me (or you) to retarget the base to `develop`, or is `main`
     intended for this stage?
+    >A. Resolved — retargeted PR #7 base to `develop` at JXP's request.
+
+**PR Task 2 (address PR comments).**
+
+19. **No reviewer comments to address.** PR #7 currently has only my own
+    COMMENTED self-review (0 inline threads, 0 issue comments). Its three caveats
+    are all settled (base branch redirected; thresholds already
+    configurable+recorded; mixed-schema pairwise approved in #13), so **no code
+    changes were made**. If you intend to leave review feedback for me to act on,
+    post it on the PR and I'll address it. Also: redirecting to `develop` makes
+    the PR diff cumulative (Stages 0–3 + 4, ~6.5k lines) because `develop` trails
+    `main` — want `main` merged into `develop` first to shrink it back to a
+    Stage-4-only review?
 
 ## Logs
 
@@ -473,3 +486,18 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
 - **Flagged (Q&A #18):** PR base is `main` while a `develop` branch exists and
   the convention had stage PRs target `develop` — left for JXP to decide (did
   not retarget). No code changes made in this task.
+
+### Stage 4 — PR Task 2: address PR comments (2026-06-30)
+
+- **Retargeted PR #7 base `main` → `develop`** at JXP's request (`gh api -X PATCH
+  …/pulls/7 -f base=develop`). Side effect: the diff is now cumulative
+  (Stages 0–3 + 4, ~6.5k lines / 36 files) because `develop` trails `main`;
+  flagged in Q&A #19.
+- **Read all PR comments — nothing to address in code.** Verified via
+  `gh pr view`, the inline-comments REST endpoint, and a GraphQL `reviewThreads`
+  query: **0 inline threads, 0 issue comments**; the only review is my own
+  COMMENTED self-review. Its three caveats are settled — base branch redirected
+  (above); Rrs/χ²ᵥ thresholds already configurable + recorded (Q&A #5/#6); the
+  `metrics_pairwise` mixed schema approved (Q&A #13). **No code changes made.**
+- Asked JXP (Q&A #19) to post any review feedback they want acted on, and
+  whether to merge `main` into `develop` first to restore a Stage-4-only diff.
