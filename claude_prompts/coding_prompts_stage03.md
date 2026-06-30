@@ -106,6 +106,8 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
 
 1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
 
+2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
+
 ## Modules
 
 ### Tasks
@@ -231,6 +233,14 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
   `mcmc_subset=2`) instead of launching the full one in a test. Want me to kick
   off the full `build_v1.py 1` run (long), or leave that for you?
   > A. Leave that for me.
+
+**PR #6 (read comments).**
+
+- PR #6 has **no outstanding comments to address** — the only review is my own
+  (informational; no change-requests), no inline/issue comments, CI green,
+  MERGEABLE/CLEAN, no working-tree drift. So no code changes this task. Anything
+  specific you wanted addressed that I'm not seeing? Otherwise: merge #6 and
+  start **Stage 4** (metrics + diagnostics)?
 
 ## Logs
 
@@ -380,3 +390,32 @@ was an audit against its checklist — everything is covered:
   `results_{spectral,scalar}.parquet` + `provenance.yaml` + saved `chains/` NPZs,
   tables validate. The full `build_v1.py 1` production run (all L23 × 200 MCMC) is
   left for JXP to launch.
+
+### 2026-06-30 (Stage 3, PR #6 review — CI green, no fixes needed)
+
+JXP opened **PR #6 "Stage 3"** (`stage-3` → `main`, 12 files / +951/−91).
+Reviewed it, checked CI, posted the review.
+
+- **CI green — no issues to fix** (unlike Stage 1). Both Tier-1 jobs (py3.12 +
+  py3.14) pass on the HEAD commit, on **both** the push and pull_request
+  triggers (the released bing/ocpy `main` carry the MCMC/chain symbols this stage
+  uses; the engine paths are Tier-2 and skip on CI anyway). PR MERGEABLE; no
+  working-tree drift.
+- **Re-verified locally.** Full suite **106 passed** (L23) / **94 passed, 12
+  skipped** CI-equivalent (`-u OS_COLOR`). `sphinx-build -W` clean.
+- **Posted** a COMMENTED review (`gh pr review 6 --comment` — gh = `profxj`,
+  self-approval blocked): verified items, what landed (run_batch/strict,
+  run_sweep + per-algorithm MCMC, the MCMC path sharing `_assemble`, chain
+  persistence + `chain_file`), and non-blocking follow-ups (integer-`obs_id` MCMC
+  assumption → Stage 6; serial MCMC subset; the `strict`-default TODO; the full
+  `build_v1.py 1` production run left for JXP).
+
+### 2026-06-30 (Stage 3, PR #6: read comments — nothing to change)
+
+Re-read PR #6. **No outstanding comments to address** — inline comments: none;
+issue comments: none; reviews: only my own COMMENTED one (informational, no
+change-requests, fully actioned). CI green (both Tier-1 jobs), MERGEABLE/CLEAN,
+no working-tree drift; CI-equivalent suite still **94 passed, 12 skipped**. Made
+no code changes (won't fabricate edits for a clean, green PR) — reported the
+state and surfaced the merge/Stage-4 question in Q&A. The only open threads are
+the non-blocking follow-ups from my review, none blocking the merge.
