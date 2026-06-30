@@ -91,6 +91,10 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
 1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
 2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
+### Stage 5
+
+1. We are ready to start Stage 5.  Modify the prompt file `coding_prompts_stage05.md` to reflect the changes in this stage.
+
 ## Modules
 
 ### Tasks
@@ -501,3 +505,29 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
   `metrics_pairwise` mixed schema approved (Q&A #13). **No code changes made.**
 - Asked JXP (Q&A #19) to post any review feedback they want acted on, and
   whether to merge `main` into `develop` first to restore a Stage-4-only diff.
+
+### Stage 4 — Stage 5 prep: refresh `coding_prompts_stage05.md` (2026-06-30)
+
+- Updated [`coding_prompts_stage05.md`](coding_prompts_stage05.md) (a Jun-21
+  skeleton predating Stage 4) so the Reporting stage reflects Stage 4's **actual**
+  outputs, not the design sketch:
+  - Added a **"Stage 0–4 carryover"** section documenting the concrete schemas
+    of all three wide-tidy `metrics_{spectral,scalar,pairwise}` tables (exact
+    keys + columns, the `stratum`/`fit_method`/`contest` keys, the closure row,
+    the GLORIA `caveat`), the full `diagnostics` figure-data API (signatures +
+    returns), and the Stage-4 `io` additions (`Rrs_obs` component, chain
+    `pnames`, `MetricsTables` namedtuple + file-name constants).
+  - Added a **"Known constraints / decisions"** section (wide-not-melted tables;
+    `fit_method` a key — don't pool χ²/MCMC; strata are rows; scatter guides
+    1:1/3:1/1:3; ranking inputs; `corner_data` uses persisted `pnames`;
+    provenance header-stamp).
+  - Aligned **Conventions** with Stage 4 (env-interpreter path, run without
+    `$OS_COLOR`, `sphinx -W`) and noted `plotting`/`report` **may** import
+    `bing.plotting` (unlike the BING/ocpy-free `metrics`/`diagnostics`); added
+    the **Pull Requests** + **Stage 6** prompt subsections for workflow
+    continuity.
+  - Pinned the Tier-2 target to the existing prototype sweep
+    `expb_giop_L23_v1` (`runs/prototypes/expb_giop/build_v1.py`, flags 2/3) and
+    refined each task line to name the real `metrics`/`diagnostics` inputs it
+    consumes.
+- No code changes; prompt-file edit only.
