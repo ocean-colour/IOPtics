@@ -61,20 +61,24 @@ def test_write_read_round_trip(tmp_path):
 
     spectral, scalar = io.read_results('sweep_v1', root=tmp_path)
 
-    # spectral: one row per component x wavelength
-    assert len(spectral) == 6 * WAVE.size
+    # spectral: one row per component x wavelength (6 model components + Rrs_obs)
+    assert len(spectral) == 7 * WAVE.size
     assert set(spectral['component']) == {'a', 'bb', 'a_ph', 'a_dg', 'bb_p',
-                                          'Rrs_model'}
+                                          'Rrs_model', 'Rrs_obs'}
     for col in ('value', 'lo68', 'hi68', 'lo95', 'hi95', 'truth',
                 'truth_interp', 'unit', 'wavelength'):
         assert col in spectral.columns
-    # a_dg truth came from the record's Spectrum; Rrs_model truth = Rrs_clean
+    # a_dg truth came from the record's Spectrum.
     adg = spectral[spectral.component == 'a_dg'].sort_values('wavelength')
     np.testing.assert_allclose(adg['truth'].to_numpy(),
                                np.linspace(0.05, 0.01, WAVE.size))
     # Rrs_model is model-only -> truth NaN
     rrs = spectral[spectral.component == 'Rrs_model']
     assert rrs['truth'].isna().all()
+    # Rrs_obs carries the observed Rrs in `value`, no truth / no bounds.
+    obs = spectral[spectral.component == 'Rrs_obs']
+    np.testing.assert_allclose(obs['value'].to_numpy(), 0.01)   # record.Rrs
+    assert obs['truth'].isna().all() and obs['lo68'].isna().all()
     # a component with no truth -> NaN
     assert spectral[spectral.component == 'bb_p']['truth'].isna().all()
     assert spectral['unit'][spectral.component.eq('Rrs_model').idxmax()] == '1/sr'

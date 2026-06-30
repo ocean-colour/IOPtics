@@ -12,10 +12,13 @@ two tidy parquet tables and owns the on-disk layout
         provenance.yaml  chains/  figures/      # written by other modules
 
 The tables store **linear, physical** quantities: the spectral components are
-``a``/``bb``/``a_ph``/``a_dg``/``bb_p`` in 1/m and ``Rrs_model`` in 1/sr (as
-``evaluate`` reconstructs them), and the scalar columns (``a_cdom440``, ``Sdg``,
-``beta``) are likewise linear. The fit's log10 amplitude parameters are not
-surfaced here — so no fit-space → linear conversion is needed in the tables.
+``a``/``bb``/``a_ph``/``a_dg``/``bb_p`` in 1/m and ``Rrs_model``/``Rrs_obs`` in
+1/sr (as ``evaluate`` reconstructs the model and ``run``/``prep`` supply the
+observation), and the scalar columns (``a_cdom440``, ``Sdg``, ``beta``) are
+likewise linear. The fit's log10 amplitude parameters are not surfaced here —
+so no fit-space → linear conversion is needed in the tables. ``Rrs_obs`` is the
+observed Rrs the fit saw, persisted as its own component so the metrics layer
+can close ``Rrs_model`` against it.
 
 This module depends only on pandas/pyarrow (no BING/ocpy).
 """
@@ -32,8 +35,12 @@ SPECTRAL_FILE = 'results_spectral.parquet'
 SCALAR_FILE = 'results_scalar.parquet'
 
 # Components written to the spectral table, with their physical unit.
+# ``Rrs_obs`` is the *observed* Rrs the fit saw (from the record, not the model)
+# — persisted as its own component so ``metrics`` §2 closure can score
+# ``Rrs_model`` against it. Its ``truth`` is NaN (it is the observation, not a
+# truth) and it carries no uncertainty bounds.
 _UNITS = {'a': '1/m', 'bb': '1/m', 'a_ph': '1/m', 'a_dg': '1/m',
-          'bb_p': '1/m', 'Rrs_model': '1/sr'}
+          'bb_p': '1/m', 'Rrs_model': '1/sr', 'Rrs_obs': '1/sr'}
 
 
 def runs_root(root=None):
@@ -125,6 +132,18 @@ def _spectral_rows(result, record):
                 'truth': float(truth[i]), 'truth_interp': interp,
                 'unit': unit,
             })
+    # Observed Rrs the fit saw — a no-uncertainty, no-truth component so
+    # metrics can close Rrs_model against it (the observation, not a truth).
+    obs_rrs = np.asarray(record.Rrs, dtype=float)
+    for i, lam in enumerate(wave):
+        rows.append({
+            'dataset': result.dataset, 'obs_id': result.obs_id,
+            'algorithm': result.algorithm, 'fit_method': result.fit_method,
+            'component': 'Rrs_obs', 'wavelength': float(lam),
+            'value': float(obs_rrs[i]),
+            'lo68': np.nan, 'hi68': np.nan, 'lo95': np.nan, 'hi95': np.nan,
+            'truth': np.nan, 'truth_interp': False, 'unit': _UNITS['Rrs_obs'],
+        })
     return rows
 
 
