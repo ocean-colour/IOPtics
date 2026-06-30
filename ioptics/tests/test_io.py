@@ -80,6 +80,31 @@ def test_write_read_round_trip(tmp_path):
     assert spectral['unit'][spectral.component.eq('Rrs_model').idxmax()] == '1/sr'
 
 
+def test_chain_save_load_round_trip(tmp_path):
+    rng = np.random.default_rng(0)
+    chains = rng.normal(size=(50, 8, 3))          # (nsteps, nwalkers, nparam)
+    record = _synthetic_record()
+    path = io.save_chain('sweep_v1', 'giop', record, chains, root=tmp_path)
+    assert path == tmp_path / 'sweep_v1' / 'chains' / 'giop_7.npz'
+    assert path.is_file()
+
+    loaded = io.load_chain(path)
+    np.testing.assert_array_equal(loaded['chains'], chains)
+    assert int(loaded['idx']) == 7
+    np.testing.assert_array_equal(loaded['wave'], record.wave)
+    np.testing.assert_array_equal(loaded['obs_Rrs'], record.Rrs)
+    assert float(loaded['Chl']) == record.init['Chl']
+
+
+def test_chain_file_column_from_result(tmp_path):
+    result = _synthetic_result()
+    result.fit_method = 'mcmc'
+    result.chain_file = '/runs/sweep_v1/chains/giop_7.npz'
+    io.write_results('sweep_v1', [(result, _synthetic_record())], root=tmp_path)
+    _, scalar = io.read_results('sweep_v1', root=tmp_path)
+    assert scalar.iloc[0]['chain_file'] == '/runs/sweep_v1/chains/giop_7.npz'
+
+
 def test_scalar_table_schema_and_truth(tmp_path):
     pairs = [(_synthetic_result(), _synthetic_record())]
     io.write_results('sweep_v1', pairs, root=tmp_path)

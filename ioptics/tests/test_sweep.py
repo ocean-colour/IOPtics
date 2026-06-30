@@ -66,3 +66,51 @@ def test_run_sweep_small_chisq(tmp_path):
     assert set(scalar['provenance_id']) == {'sweep_smoke#expb_pow',
                                             'sweep_smoke#giop'}
     assert (scalar['status'] == 'ok').all()
+
+
+@needs_l23
+def test_run_sweep_with_mcmc_subset_saves_chains(tmp_path):
+    from ioptics import config, io, run
+    from ioptics.algorithms import registry
+
+    # tiny MCMC so the subset is fast (correctness, not convergence)
+    registry.get('giop').mcmc.nsteps = 200
+    registry.get('giop').mcmc.nburn = 50
+
+    cfg = config.loads(
+        "sweep_id: sweep_mcmc\n"
+        "datasets: [L23]\n"
+        "noise_model: pace\n"
+        "algorithms:\n"
+        "  - expb_pow\n"
+        "  - name: giop\n"
+        "    fit_method: mcmc\n"
+        "fit_method: chisq\n"
+        "mcmc_subset: 2\n"
+        "seed: 1234\n")
+
+    run.run_sweep(cfg, obs_ids=range(3), root=tmp_path)
+    spectral, scalar = io.read_results('sweep_mcmc', root=tmp_path)
+
+    # expb_pow: 3 χ² rows; giop: 3 χ² + 2 MCMC rows
+    by_method = scalar.groupby(['algorithm', 'fit_method']).size()
+    assert by_method[('expb_pow', 'chisq')] == 3
+    assert by_method[('giop', 'chisq')] == 3
+    assert by_method[('giop', 'mcmc')] == 2
+
+    # the spectral table tags fit_method too: giop's MCMC rows are full
+    # (2 records x 6 components x nwave)
+    giop_mcmc = spectral[(spectral.algorithm == 'giop')
+                         & (spectral.fit_method == 'mcmc')]
+    assert len(giop_mcmc) == 2 * 6 * spectral['wavelength'].nunique()
+    assert set(giop_mcmc['component']) == {'a', 'bb', 'a_ph', 'a_dg', 'bb_p',
+                                           'Rrs_model'}
+
+    # the 2 MCMC rows carry a saved chain file; χ² rows do not
+    mcmc_rows = scalar[scalar.fit_method == 'mcmc']
+    assert mcmc_rows['chain_file'].notna().all()
+    for cf in mcmc_rows['chain_file']:
+        assert (tmp_path / 'sweep_mcmc' / 'chains').as_posix() in cf
+        chain = io.load_chain(cf)
+        assert chain['chains'].ndim == 3          # (nsteps, nwalkers, nparam)
+    assert scalar[scalar.fit_method == 'chisq']['chain_file'].isna().all()

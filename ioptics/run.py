@@ -266,6 +266,35 @@ def _tag_pairs(results, records, sweep_id, algorithm):
     return pairs
 
 
+def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
+                 perc=((16, 84), (2.5, 97.5))):
+    """MCMC-fit a subset serially, **saving each posterior chain** to the
+    sweep's ``chains/`` dir and stamping the result's ``chain_file`` +
+    ``provenance_id``. Returns ``[(result, record), ...]``.
+
+    Serial (not pooled): the subset is small and the raw chains are large, so
+    persisting them here avoids shipping chains back across a process pool.
+    """
+    from ioptics import evaluate, io, provenance
+
+    pid = provenance.provenance_id(sweep_id, spec.name)
+    pairs = []
+    for record in records:
+        try:
+            models, rt_dict, chains = fit_mcmc(spec, record)
+            res = evaluate.from_chains(spec, record, models, rt_dict, chains,
+                                       perc=perc)
+            res.chain_file = str(io.save_chain(sweep_id, spec.name, record,
+                                               chains, root=root))
+        except Exception:
+            if strict:
+                raise
+            res = _failed_result(spec, record, 'mcmc')
+        res.provenance_id = pid
+        pairs.append((res, record))
+    return pairs
+
+
 def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     """Run a full sweep (all algorithms × all records) and write the outputs.
 
@@ -322,9 +351,8 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
         uses_mcmc = (ac.fit_method or cfg.fit_method) == 'mcmc'
         if uses_mcmc and cfg.mcmc_subset:
             subset = records[:int(cfg.mcmc_subset)]
-            mcmc = run_batch(spec, subset, fit_method='mcmc', n_cores=n_cores,
-                            strict=strict)
-            pairs.extend(_tag_pairs(mcmc, subset, cfg.sweep_id, spec.name))
+            pairs.extend(_mcmc_subset(spec, subset, cfg.sweep_id,
+                                      root=out_root, strict=strict))
 
     paths = io.write_results(cfg.sweep_id, pairs, root=out_root)
     prov = provenance.build(cfg.sweep_id, cfg, specs, datasets=datasets_info)

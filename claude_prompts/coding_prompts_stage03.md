@@ -99,8 +99,12 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
 1. `run.run_sweep` + the `runs/.../build_v1.py` skeleton.
 1. I have answered your Q&A.  Please address my responses and then move on to the next task.
 1. MCMC path: `run_algorithm(method='mcmc')` + `evaluate.from_chains`.
-1. Chain persistence in `io` (`chains/`, `chain_file`).
+1. I answered your Q&A.  Please address my responses and then move on to the next task. Chain persistence in `io` (`chains/`, `chain_file`).
 1. Tests.
+
+### Pull Requests
+
+1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
 
 ## Modules
 
@@ -185,15 +189,48 @@ Implements **Retrieval & run** (sweep layers, MCMC, chains) and the **Staged pla
   identically. I unified **`params`** to the *sample* median ± std for both
   methods (χ² previously used `ans` ± `sqrt(diag cov)` — numerically the same for
   MVN draws). OK?
+  > A. Good, let's do that.
 - The MCMC path uses BING's **idx-keyed `Chl`/`Y`** (`pdict['Chl'] =
   zeros(obs_id+1); [obs_id] = Chl`), which assumes an **integer `obs_id`** (true
   for L23). PANGAEA/GLORIA string IDs will need a different keying — flagging for
   Stage 6.
+  > A. Good catch
 - `from_chains` burns `spec.mcmc.nburn` capped at `nsteps//2` so a tiny-`nsteps`
   test never discards the whole chain. Reasonable?
+  > A. Sure
 - Per the per-algorithm-MCMC answer, `run_v1.yaml` now sets `giop: {fit_method:
   mcmc}` + `mcmc_subset: 200` (giop = χ²-all + MCMC-subset; expb_pow = χ² only) —
   the design's example. Good?
+  > A. Good
+
+**Task 4 (chain persistence in `io`).**
+
+- To carry the chain pointer into `results_scalar`, I added **`chain_file:
+  str|None = None`** to `RetrievalResult` (a trailing default field — extends the
+  Stage-0 contract but is backward-compatible/picklable). OK, or would you rather
+  pass chain paths to `io.write_results` via a side channel instead?
+  > A. Ok
+- `save_chain` writes the NPZ with **`np.savez` directly** (keys `chains, idx,
+  wave, obs_Rrs, varRrs, Chl, Y`, matching `bing.fitting.l23.save_chains`) rather
+  than importing bing — keeps `io` numpy/pandas-only. Good?
+  > A. Good
+- `run_sweep`'s MCMC subset runs **serially** (`_mcmc_subset`) so each chain can
+  be saved without shipping large chains back across a process pool. Fine for the
+  small subset, or want pooled MCMC + chain-save later?
+  > A. Fine for the small subset.
+
+**Task 5 (tests).**
+
+- The Stage-3 tests were written incrementally per task, so Task 5 was a
+  **coverage audit** rather than new modules — every Task-5 item is covered (see
+  the Log). Anything additional you want exercised before the Stage-3 PR?
+  > A. No, that is fine.
+- **Exit criterion:** the full `build_v1.py` flag-1 run (all ~3320 L23 records ×
+  {expb_pow χ², giop χ²+200-MCMC}) is the **production** sweep — minutes-to-hours,
+  so I validate the *machinery* with a small real sweep (`obs_ids=range(3)`,
+  `mcmc_subset=2`) instead of launching the full one in a test. Want me to kick
+  off the full `build_v1.py 1` run (long), or leave that for you?
+  > A. Leave that for me.
 
 ## Logs
 
@@ -291,3 +328,55 @@ Applied the Task-2 answers and implemented the MCMC retrieval path.
 - **Smoke (L23 present).** giop MCMC → χ²ᵥ ≈ 1.54 (matches its χ² fit), bands
   ordered, status ok. Full suite **103 passed** (L23) / **92 passed, 11 skipped**
   CI-equivalent. `sphinx-build -W` clean.
+
+### 2026-06-29 (Stage 3, Task 4: chain persistence in `io`)
+
+Wired MCMC chain saving + the `chain_file` column. Task-3 Q&A all confirmed (no
+code change beyond what's below).
+
+- **`io`.** `save_chain(sweep_id, algorithm, record, chains, *, root)` →
+  `<sweep>/chains/<algorithm>_<obs_id>.npz` via `np.savez` (keys `chains, idx,
+  wave, obs_Rrs, varRrs, Chl, Y`, the `bing.fitting.l23.save_chains` convention)
+  — io stays numpy/pandas-only (no bing import). Plus `chain_path` and
+  `load_chain(path)` (for diagnostics/report). `_scalar_row` now reads
+  `result.chain_file` (was hardcoded `None`).
+- **`records`.** Added `chain_file: str|None = None` to `RetrievalResult` (the
+  pointer the `results_scalar` schema needs; trailing default, picklable).
+- **`run`.** `run_sweep`'s MCMC subset now goes through `_mcmc_subset` — serial
+  `fit_mcmc` → `evaluate.from_chains` → `io.save_chain`, stamping `chain_file` +
+  `provenance_id` (strict/fail-fast respected). Serial so the large chains aren't
+  shipped back across a pool.
+- **Tests.** Tier-1 (data-free): `save_chain`/`load_chain` round-trip
+  (chains+context preserved), and the `chain_file` column flows from
+  `result.chain_file`. Tier-2 `@needs_l23`: a tiny-`nsteps` sweep
+  (`giop: mcmc`, `mcmc_subset: 2`) → `expb_pow` 3 χ² rows, `giop` 3 χ² + 2 MCMC
+  rows; the 2 MCMC rows carry loadable `chain_file` NPZs, χ² rows `chain_file`
+  null.
+- **Verification.** io+sweep tests **8 passed** (L23). Full suite **106 passed**
+  (L23) / **94 passed, 12 skipped** CI-equivalent. `sphinx-build -W` clean.
+
+### 2026-06-29 (Stage 3, Task 5: tests — coverage audit + Stage 3 complete)
+
+Task-4 Q&A all confirmed (no code change). Tests were built per-module, so Task 5
+was an audit against its checklist — everything is covered:
+
+- **Tier-1 (data-free, CI-run):** chain NPZ save/load round-trip
+  (`test_io`), `chain_file` column wiring (`test_io`), `build_v1.py` config +
+  flag-0 dispatch (`test_sweep`), `run_batch` strict toggle (`test_run`),
+  `_component_fit` band ordering (`test_evaluate`).
+- **Tier-2 (`@needs_l23`):** `initial_guess` + `fit_chisq` closure
+  (`test_run`), MCMC round-trip tiny-`nsteps` (`test_run`), `run_batch`
+  serial/parallel (`test_run`), `from_chisq`/`run_algorithm` (`test_evaluate`),
+  small χ² `run_sweep` (`test_sweep`), and the MCMC-subset sweep that saves
+  chains + populates `chain_file` (`test_sweep`).
+- **Gap filled:** extended the MCMC-subset sweep test to also validate the
+  **spectral** table (giop's MCMC rows = 2×6×nwave, all six components) — so both
+  tables are checked for the MCMC path.
+- **Verification.** Full suite **106 passed** (L23) / **94 passed, 12 skipped**
+  CI-equivalent (the 12 skips are exactly the `@needs_l23` Tier-2 set).
+  `sphinx-build -W` clean.
+- **Stage-3 exit criterion MET** (machinery): a real `run_sweep`
+  (`expb_pow` χ² + `giop` χ²+MCMC) writes the full sweep directory —
+  `results_{spectral,scalar}.parquet` + `provenance.yaml` + saved `chains/` NPZs,
+  tables validate. The full `build_v1.py 1` production run (all L23 × 200 MCMC) is
+  left for JXP to launch.
