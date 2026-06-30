@@ -57,6 +57,40 @@ def sweep_dir(sweep_id, *, root=None, create=False):
     return d
 
 
+def chain_path(sweep_id, algorithm, obs_id, *, root=None):
+    """Path to one MCMC chain NPZ: ``<sweep>/chains/<algorithm>_<obs_id>.npz``."""
+    return sweep_dir(sweep_id, root=root) / 'chains' / f'{algorithm}_{obs_id}.npz'
+
+
+def save_chain(sweep_id, algorithm, record, chains, *, root=None):
+    """Save one MCMC posterior chain to its NPZ and return the path.
+
+    Mirrors ``bing.fitting.l23.save_chains``: stores ``chains`` (shape
+    ``(nsteps, nwalkers, nparam)``) + ``idx`` and the context needed to
+    re-analyze it (``wave``, ``obs_Rrs``, ``varRrs``, ``Chl``, ``Y``). Written
+    under the sweep's ``chains/`` dir (created if needed).
+    """
+    sweep_dir(sweep_id, root=root, create=True)
+    path = chain_path(sweep_id, algorithm, record.obs_id, root=root)
+    np.savez(
+        path,
+        chains=np.asarray(chains),
+        idx=record.obs_id,
+        wave=np.asarray(record.wave, dtype=float),
+        obs_Rrs=np.asarray(record.Rrs, dtype=float),
+        varRrs=np.asarray(record.varRrs, dtype=float),
+        Chl=float(record.init.get('Chl', np.nan)),
+        Y=float(record.init.get('Y', np.nan)),
+    )
+    return path
+
+
+def load_chain(path):
+    """Load a saved chain NPZ into a dict (for ``diagnostics`` / ``report``)."""
+    with np.load(path, allow_pickle=False) as npz:
+        return {key: npz[key] for key in npz.files}
+
+
 def _truth_spectrum(record, component):
     """Return truth values on ``record.wave`` for a component (NaN if absent).
 
@@ -132,7 +166,7 @@ def _scalar_row(result, record):
         'Sdg_truth': _scalar_value(record, 'Sdg'),
         'beta_truth': np.nan,                    # beta is a model param, not L23 truth
         'status': result.status,
-        'chain_file': None,                      # set for MCMC rows (Stage 3)
+        'chain_file': getattr(result, 'chain_file', None),  # null for χ² rows
         'provenance_id': result.provenance_id,
     }
 
