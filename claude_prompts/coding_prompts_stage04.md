@@ -243,6 +243,14 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
     a literal 0.3 factor.
     >A.  I confirm
 
+**Task 6 (tests).**
+
+17. **Stage-4 exit criterion met.** Consolidated Tier-1 + a parquet round-trip
+    test + a Tier-2 `@needs_l23` `compute`-over-real-sweep (passes locally with
+    L23 data). No open questions — flag if you'd like the Tier-2 confirmatory
+    test to also assert accuracy thresholds (à la `test_micro`) or a real-chain
+    `corner_data` smoke.
+
 ## Logs
 
 ### Stage 4 — Task 1: `metrics` §1 accuracy primitives (2026-06-29)
@@ -405,3 +413,31 @@ Implements **Metrics & diagnostics** and the **Staged plan / Stage 4** of
   residuals (−0.001, 0), corner shape `(40,3)`, ΔBIC `frac_favor_a=2/3`.
 - Tests: `7 passed` for the file; full suite `132 passed, 12 skipped`
   (`$OS_COLOR` unset). `ioptics.diagnostics` is autodoc'd.
+
+### Stage 4 — Task 6: tests (consolidation) + `pnames` persistence (2026-06-30)
+
+- **Folded Q&A #15 (persist `pnames`):** `io.save_chain(..., pnames=None)` now
+  stores the fit parameter names (chain-column order) in the chain NPZ;
+  `run._run_mcmc_serial` passes `list(res.params)`; `diagnostics.corner_data`
+  uses them for `labels` (generic `p0..` fallback when absent). #14/#16 confirmed
+  — no change.
+- **Consolidated Tier-1** (already broad across `test_metrics.py` +
+  `test_diagnostics.py`): added `test_compute_parquet_roundtrip` — re-reads the
+  three written parquet files, checks schema and that **ΔBIC + wins are
+  populated** (the Stage-4 exit criterion at the persistence level). Split the
+  corner test into generic-labels vs persisted-`pnames` cases.
+- **Tier-2 `@needs_l23`** `test_compute_over_real_sweep_l23`: `run.run_sweep`
+  (tiny χ², 4 obs) → `metrics.compute`; asserts the three files exist, both
+  algorithms scored, and the ΔBIC contest is non-empty. Verified locally **with**
+  L23 data (passes).
+- **Stale-assertion fixes from the Task-4 `Rrs_obs` component** (7 components
+  now): `test_sweep.py` (×2, +`Rrs_obs` in the set, +`pnames` size check on
+  saved chains) and `test_micro.py` (`2 * 7 * nwave`). `test_run.py:100` left
+  as-is — it checks `result.components` (model dict), which correctly excludes
+  the io-added `Rrs_obs`.
+- **Exit criterion met:** `metrics.compute(sweep_id)` emits
+  `metrics_{spectral,scalar,pairwise}.parquet`; primitives match hand-computed
+  toy `(M,O)` values; `expb_pow`-vs-`giop` ΔBIC and wins populated — all Tier-1,
+  confirmed Tier-2 on a real sweep.
+- Tests: full suite **`134 passed, 13 skipped`** (`$OS_COLOR` unset,
+  CI-equivalent) and **`147 passed`** with `$OS_COLOR` set (all Tier-2 run).

@@ -53,10 +53,11 @@ def test_two_way_comparison_end_to_end(tmp_path):
     io.write_results(SWEEP_ID, pairs, root=tmp_path)
     spectral, scalar = io.read_results(SWEEP_ID, root=tmp_path)
 
-    # two-way: a scalar row per algorithm; spectral covers both × 6 components
+    # two-way: a scalar row per algorithm; spectral covers both × 7 components
+    # (6 model components + Rrs_obs)
     assert sorted(scalar['algorithm']) == ['expb_pow', 'giop']
     assert set(spectral['algorithm']) == {'expb_pow', 'giop'}
-    assert len(spectral) == 2 * 6 * record.wave.size
+    assert len(spectral) == 2 * 7 * record.wave.size
     # provenance_id stamped through to the table
     assert set(scalar['provenance_id']) == {f'{SWEEP_ID}#expb_pow',
                                             f'{SWEEP_ID}#giop'}
