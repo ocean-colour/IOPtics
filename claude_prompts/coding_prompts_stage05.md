@@ -180,4 +180,104 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
 
 ### Q&A
 
+**Task 1 (`plotting.py`).**
+
+1. **`corner` does not wrap `bing.plotting.corner_plot`.** The design table said
+   `corner(chain_data)` "wraps `bing.plotting.corner_plot`", but that helper
+   expects the raw 3-D chains and applies a hard-coded 7000-step burn + labels
+   from BING model objects — whereas `diagnostics.corner_data` already returns
+   **flattened** samples with the persisted `pnames`. So `plotting.corner` calls
+   the `corner` package directly on those samples/labels (robust to short chains,
+   uses our labels). OK, or do you want it to re-load the raw chains and defer to
+   `bing.plotting.corner_plot` (accepting the 7000-burn behavior)?
+   >A. No need to use `bing.plotting.corner_plot`.
+
+2. **Taylor/Target diagram styling.** I implemented Taylor as a polar axes
+   (azimuth = `arccos(corr)`, radius = `norm_std`, reference star at 1) and Target
+   as a plain `(signed_unbiased_rmsd, bias)` scatter with origin crosshairs (no
+   normalized RMSD rings). Good enough for the standard report, or do you want the
+   full skill-circle/RMSD-arc decorations?
+   >A. Yes, this is good enough for now.
+
+**Task 2 (`report/figures.py` + `tables.py`).**
+
+3. **`sweep` argument = id or bundle.** Builders accept either a `sweep_id`
+   string (loaded via `figures.load`, honoring `root=`) or a pre-loaded
+   `SweepArtifacts` bundle (load once, render many). `standard.build` (Task 5)
+   will load once and pass the bundle. OK?
+   >A. Ok
+
+4. **Tier-1 not Tier-2.** The prompt said "Tier-2 on the Stage-4 sweep", but the
+   figure/table builders are fully exercisable Tier-1 on a **synthetic** sweep
+   (`io.write_results` → `metrics.compute` → build), incl. a real saved chain for
+   `corner_set` — so I tested Tier-1 (no L23). Want a Tier-2 `@needs_l23`
+   end-to-end confirmatory on `expb_giop_L23_v1` too, or defer that to Task 6?
+   >A. Go for it.
+
+5. **Output layout.** Figures → `runs/<sweep_id>/figures/<name>.{png,pdf}`;
+   CSV tables → the same `figures/` dir (`accuracy_<fit>_<stratum>.csv`,
+   `qc_<fit>_<stratum>.csv`). Design said "tables to CSV alongside" — kept them
+   in `figures/`. Prefer a separate `tables/` subdir?
+   >A. Yeah, use a separate `tables/` subdir.
+
 ## Logs
+
+### Stage 5 — Task 1: `plotting.py` static primitives (2026-07-01)
+
+- Implemented [`ioptics/plotting.py`](../ioptics/plotting.py) — 8 builders, each
+  takes the `diagnostics`/`metrics` arrays and returns a `matplotlib.Figure`
+  with **no I/O and no table reads**; all accept an optional `ax` so `report`
+  can compose panels, and none call `plt.show`:
+  - `scatter_log(scatter_data, guides=(1,3,⅓))` — log-log retrieved-vs-true +
+    1:1/3:1/1:3 guides.
+  - `ratio_hist(ratio_hist_data)` — grouped bars over `RATIO_EDGES` buckets.
+  - `spectra_band(comp_fit, truth=None)` — value + 68/95 credible bands (log y),
+    from a results-table slice (DataFrame or mapping).
+  - `residual_rrs(residual_spectra)` — `Rrs_obs−Rrs_model` per algorithm, χ²ᵥ in
+    the legend, zero line.
+  - `taylor(taylor_stats)` — polar Taylor diagram; `target(target_stats)` —
+    Target scatter with origin crosshairs.
+  - `corner(corner_data)` — `corner` package on the flattened samples + persisted
+    `pnames` labels (see Q&A #1).
+  - `dbic_cdf(dbic_cdf_data)` — step CDF (single or `by=`-stratified), 0 line,
+    `frac_favor_a` annotated.
+- Degenerate/empty inputs return a figure with a centered "no data" note (so the
+  `report` layer never crashes on a thin sweep). `plotting`/`report` **may**
+  import matplotlib + `corner` (unlike the BING/ocpy-free `metrics`/`diagnostics`).
+- **Decisions (Q&A #1–2):** `corner` uses the `corner` package directly rather
+  than `bing.plotting.corner_plot` (which needs 3-D chains + a 7000-step burn);
+  Taylor/Target are functional (no skill-arc decorations yet).
+- Tier-1 smoke tests [`ioptics/tests/test_plotting.py`](../ioptics/tests/test_plotting.py)
+  (Agg backend): every builder returns a `Figure` with ≥1 axes on realistic
+  `diagnostics` inputs; an empty-scatter case exercises the degenerate path.
+- Tests: `9 passed` for the file; full suite `143 passed, 13 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `ioptics.plotting` autodoc'd.
+
+### Stage 5 — Task 2: `report/figures.py` + `report/tables.py` (2026-07-01)
+
+- **`report/figures.py`** — a `load(sweep_id, root=None) → SweepArtifacts`
+  bundle (results + `metrics_*` tables; metrics optional) + `_resolve` so every
+  builder takes an id **or** a bundle; `_save` writes PNG+PDF to
+  `runs/<sweep_id>/figures/`. Six builders, each sourcing from
+  `diagnostics`/results and rendering via `plotting`:
+  - aggregate: `scatter_set(comp, ref=)`, `taylor_target(comp, ref=)`,
+    `dbic_cdf(model_a, model_b)`.
+  - per-obs (curated handful): `spectra_set(obs, algorithm=)` (per component,
+    incl. decomposed `a_dg`/`a_ph`), `closure_set(obs)`, `corner_set()` (every
+    MCMC row with a saved chain). All default `fit_method='chisq'`.
+- **`report/tables.py`** — `accuracy(fit_method, stratum)`: ref-band §1 accuracy
+  from `metrics_scalar` joined to `win_frac` from `metrics_pairwise`;
+  `qc(fit_method, stratum)`: non-solution rate from `results_scalar.status` +
+  §2 closure fractions (`frac_good/fit_noise/qc_fail`, `chi2_nu_median`) from the
+  `component='Rrs'` rows. Each returns a tidy DataFrame and writes a CSV in
+  `figures/`. Both raise a clear `FileNotFoundError` if `metrics.compute` wasn't run.
+- **Decisions (Q&A #3–5):** `sweep` = id or bundle (bundle for `standard.build`);
+  builders tested **Tier-1** on a synthetic sweep (incl. a real saved chain for
+  `corner_set`) rather than requiring L23; CSVs live in `figures/`.
+- Tier-1 tests [`ioptics/tests/test_report_figures.py`](../ioptics/tests/test_report_figures.py):
+  synthetic 2-algo sweep (`expb_pow` exact vs `giop` 2×; 3 obs across strata + 1
+  giop MCMC chain) → `compute` → every builder writes its PNG/PDF; `accuracy`
+  shows `expb_pow` mae≈0 / rank 1 / win_frac 1 at (a,440); `qc` shows
+  `giop` `frac_qc_fail`=1 (1.5× Rrs) and `expb_pow` `frac_not_ok`=0.
+- Tests: `8 passed` for the file; full suite `151 passed, 13 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; both modules autodoc'd.
