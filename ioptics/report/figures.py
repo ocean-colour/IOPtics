@@ -55,16 +55,21 @@ def load(sweep_id, *, root=None):
         metrics_pairwise=_opt(metrics.METRICS_PAIRWISE_FILE))
 
 
-def _resolve(sweep, root):
-    """Accept a ``sweep_id`` string or an already-loaded bundle."""
+def resolve(sweep, root=None):
+    """Accept a ``sweep_id`` string (loaded) or an already-loaded bundle."""
     return load(sweep, root=root) if isinstance(sweep, str) else sweep
+
+
+def subdir(sweep, name):
+    """A named output subdir under the sweep dir (created): ``figures/``, ``tables/``."""
+    d = io.sweep_dir(sweep.sweep_id, root=sweep.root, create=True) / name
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _figdir(sweep):
     """The sweep's ``figures/`` directory (created)."""
-    d = io.sweep_dir(sweep.sweep_id, root=sweep.root, create=True) / 'figures'
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    return subdir(sweep, 'figures')
 
 
 def _save(fig, figdir, name, *, formats=FORMATS):
@@ -84,7 +89,7 @@ def _save(fig, figdir, name, *, formats=FORMATS):
 
 def scatter_set(sweep, component, *, ref=None, fit_method='chisq', root=None):
     """Retrieved-vs-true log-log scatter for one component (optionally at ``ref``)."""
-    sweep = _resolve(sweep, root)
+    sweep = resolve(sweep, root)
     data = diagnostics.scatter_data(sweep.spectral, component, ref,
                                     fit_method=fit_method)
     fig = plotting.scatter_log(data)
@@ -95,7 +100,7 @@ def scatter_set(sweep, component, *, ref=None, fit_method='chisq', root=None):
 def taylor_target(sweep, component='a', *, ref=None, fit_method='chisq',
                   root=None):
     """Taylor + Target diagrams (all algorithms) for one component."""
-    sweep = _resolve(sweep, root)
+    sweep = resolve(sweep, root)
     figdir = _figdir(sweep)
     ts = diagnostics.taylor_stats(sweep.spectral, component, ref,
                                   fit_method=fit_method)
@@ -108,7 +113,7 @@ def taylor_target(sweep, component='a', *, ref=None, fit_method='chisq',
 
 def dbic_cdf(sweep, *, model_a='expb_pow', model_b='giop', root=None):
     """ΔBIC CDF for the two-model contest (χ²-only, like-for-like)."""
-    sweep = _resolve(sweep, root)
+    sweep = resolve(sweep, root)
     data = diagnostics.dbic_cdf_data(sweep.scalar, model_a, model_b)
     fig = plotting.dbic_cdf(data)
     return _save(fig, _figdir(sweep), f'dbic_cdf_{model_a}_vs_{model_b}')
@@ -121,7 +126,7 @@ def dbic_cdf(sweep, *, model_a='expb_pow', model_b='giop', root=None):
 def spectra_set(sweep, obs_id, *, algorithm, fit_method='chisq',
                 components=SPECTRA_COMPONENTS, root=None):
     """Per-component spectra (value + 68/95 bands vs truth) for one observation."""
-    sweep = _resolve(sweep, root)
+    sweep = resolve(sweep, root)
     figdir = _figdir(sweep)
     sub = sweep.spectral[(sweep.spectral['obs_id'] == obs_id)
                          & (sweep.spectral['algorithm'] == algorithm)
@@ -138,7 +143,7 @@ def spectra_set(sweep, obs_id, *, algorithm, fit_method='chisq',
 
 def closure_set(sweep, obs_id, *, fit_method='chisq', root=None):
     """Rrs closure residuals (all algorithms) for one observation."""
-    sweep = _resolve(sweep, root)
+    sweep = resolve(sweep, root)
     res = diagnostics.residual_spectra(sweep.spectral, sweep.scalar, obs_id,
                                        fit_method=fit_method)
     fig = plotting.residual_rrs(res)
@@ -147,7 +152,7 @@ def closure_set(sweep, obs_id, *, fit_method='chisq', root=None):
 
 def corner_set(sweep, *, root=None):
     """Corner plots for every MCMC row that saved a chain (the MCMC subset)."""
-    sweep = _resolve(sweep, root)
+    sweep = resolve(sweep, root)
     figdir = _figdir(sweep)
     sc = sweep.scalar
     mcmc = sc[(sc['fit_method'] == 'mcmc') & sc['chain_file'].notna()]

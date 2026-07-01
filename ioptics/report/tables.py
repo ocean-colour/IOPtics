@@ -35,7 +35,7 @@ def accuracy(sweep, *, fit_method='chisq', stratum='all', root=None,
     ``wins`` rows. Filtered to one ``fit_method`` and ``stratum``. Writes
     ``accuracy_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
     """
-    sweep = figures._resolve(sweep, root)
+    sweep = figures.resolve(sweep, root)
     ms = _require(sweep.metrics_scalar, 'metrics_scalar')
     acc = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
              & ms['component'].isin(metrics.ACCURACY_COMPONENTS)
@@ -56,7 +56,8 @@ def accuracy(sweep, *, fit_method='chisq', stratum='all', root=None,
     acc = acc.sort_values(['component', 'ref_wave', 'algorithm']) \
              .reset_index(drop=True)
     if write:
-        out = figures._figdir(sweep) / f'accuracy_{fit_method}_{stratum}.csv'
+        out = figures.subdir(sweep, 'tables') \
+            / f'accuracy_{fit_method}_{stratum}.csv'
         acc.to_csv(out, index=False)
     return acc
 
@@ -70,7 +71,7 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     come from the ``metrics_scalar`` ``component='Rrs'`` rows. Writes
     ``qc_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
     """
-    sweep = figures._resolve(sweep, root)
+    sweep = figures.resolve(sweep, root)
     sc = sweep.scalar[sweep.scalar['fit_method'] == fit_method]
     not_ok = (sc.assign(_bad=sc['status'].ne('ok'))
                 .groupby('algorithm')['_bad'].mean()
@@ -84,6 +85,6 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     out = not_ok.merge(closure[cols], on='algorithm', how='left') \
                 .sort_values('algorithm').reset_index(drop=True)
     if write:
-        path = figures._figdir(sweep) / f'qc_{fit_method}_{stratum}.csv'
+        path = figures.subdir(sweep, 'tables') / f'qc_{fit_method}_{stratum}.csv'
         out.to_csv(path, index=False)
     return out

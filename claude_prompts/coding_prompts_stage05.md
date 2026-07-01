@@ -220,6 +220,46 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
    in `figures/`. Prefer a separate `tables/` subdir?
    >A. Yeah, use a separate `tables/` subdir.
 
+**Task 3 (`report/leaderboard.py`).**
+
+6. **What gets folded.** `update` folds the **χ² population** ref-band accuracy
+   rows (all strata) from each sweep's `metrics_scalar`, joined to `win_frac`
+   from `metrics_pairwise`, keyed `(sweep_id, dataset, algorithm, stratum,
+   component, ref_wave)` with a compact `ioptics` version@commit stamp from
+   `provenance.yaml`. Excludes MCMC rows and derived-scalar rows. OK, or should
+   the leaderboard also carry `Chl`/`a_cdom440`/`Sdg` accuracy?
+   >A. Yes, that is ok.
+
+7. **Location.** `leaderboard.parquet` defaults to the **runs-root sibling**
+   (`$OS_COLOR/IOPtics/leaderboard.parquet`, per the design) — overridable via
+   `out=`. Idempotent: re-folding a `sweep_id` replaces its rows; folding a
+   subset preserves the rest. Good?
+   >A. Yeah, that is good.
+8. **Landing page default.** `render(fmt='rst')` emits an RST `list-table`
+   ranked by wins → `|bias|` → MAE within `(dataset, component, ref_wave)`, for
+   `stratum='all'` by default (a `fmt='md'` variant exists). Show `stratum='all'`
+   only on the landing page, or all strata?
+   >A. Let's try all strata.
+
+**Task 4 (`report/bokeh.py`).**
+
+9. **Scatter points source + stratum.** `interactive_scatter` builds points from
+   `results_spectral` (χ² accuracy components, finite/positive), merges the
+   per-obs Chl **stratum** (via `metrics._strata_map`, so it matches the tables),
+   and adds an `'all'` scope — so the algorithm/component/stratum `Select`s
+   filter live via `CustomJS`. Reasonable, or would you rather drive the scatter
+   off a pre-aggregated source?
+
+10. **Selector set.** Scatter selects **algorithm / component / stratum** (one
+    active combination shown); the leaderboard `DataTable` selects
+    **dataset / component / stratum** (blank = all). The design also mentions
+    "dataset" on the scatter — L23 is single-dataset for now, so I left it off
+    the scatter. Add a dataset select there too?
+
+11. **Offline embedding.** HTML is emitted via `file_html(..., INLINE, title)`
+    so BokehJS is inlined (no CDN) and the file works offline / embeds in
+    readthedocs. Confirm inline (vs `CDN`) is what you want for the site.
+
 ## Logs
 
 ### Stage 5 — Task 1: `plotting.py` static primitives (2026-07-01)
@@ -281,3 +321,60 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
   `giop` `frac_qc_fail`=1 (1.5× Rrs) and `expb_pow` `frac_not_ok`=0.
 - Tests: `8 passed` for the file; full suite `151 passed, 13 skipped`
   (`$OS_COLOR` unset). `sphinx-build -W` clean; both modules autodoc'd.
+- **Post-answer follow-ups (Q&A #4, #5):** moved the CSV tables to a separate
+  `runs/<sweep_id>/tables/` subdir (promoted `figures.subdir`/`figures.resolve`
+  to public helpers); added a **Tier-2 `@needs_l23`** end-to-end
+  figures+tables test on a tiny real L23 sweep (passes locally with data).
+
+### Stage 5 — Task 3: `report/leaderboard.py` (2026-07-01)
+
+- Implemented [`ioptics/report/leaderboard.py`](../ioptics/report/leaderboard.py)
+  (pure table-in, no BING/ocpy):
+  - `update(runs_root=None, *, root=None, out=None, sweep_ids=None)` scans the
+    runs root for sweep dirs with a `metrics_scalar.parquet` and folds each
+    sweep's **χ²** ref-band accuracy (all strata) + `win_frac` (from
+    `metrics_pairwise`) + an `ioptics` version@commit stamp (from
+    `provenance.yaml`) into `leaderboard.parquet`, keyed `(sweep_id, dataset,
+    algorithm, stratum, component, ref_wave)`. **Idempotent** — a folded
+    `sweep_id`'s rows are dropped-and-replaced; unfolded sweeps preserved.
+    Default `out` = runs-root sibling (`$OS_COLOR/IOPtics/leaderboard.parquet`).
+  - `ranked(board, stratum='all')` adds a per-`(dataset, component, ref_wave)`
+    `rank` (1 = best) sorted **wins → |bias| → MAE** (design Q23).
+  - `render(board=None, fmt='rst'|'md', stratum='all')` → an RST `list-table`
+    (renders under `sphinx -W`) or Markdown table for the landing page.
+- **Decisions (Q&A #6–8):** χ²-only, ref-band, all strata folded (no derived
+  scalars); runs-root-sibling location; landing-page ranking as above at
+  `stratum='all'`.
+- Tier-1 tests [`ioptics/tests/test_leaderboard.py`](../ioptics/tests/test_leaderboard.py):
+  fold writes the parquet; **idempotent** re-fold (no growth); **accumulates**
+  across sweeps (fold `sw_a` then `sw_b` → both retained); ranking puts the exact
+  `expb_pow` first (win_frac 1, rank 1) with `giop` second; `render` emits the
+  RST list-table and a Markdown variant.
+- Tests: `5 passed` for the file; full suite `156 passed, 14 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `ioptics.report.leaderboard`
+  autodoc'd. (Post-answer #8: `render`/`ranked` now default to **all strata**,
+  each ranked independently within `(dataset, component, ref_wave, stratum)`.)
+
+### Stage 5 — Task 4: `report/bokeh.py` (2026-07-01)
+
+- Implemented [`ioptics/report/bokeh.py`](../ioptics/report/bokeh.py) — standalone
+  BokehJS (no server), rendered via `file_html(..., INLINE, …)` so the HTML is
+  self-contained (offline / readthedocs-embeddable):
+  - `interactive_scatter(sweep, fit_method='chisq')` — retrieved-vs-true log-log
+    scatter from `results_spectral` (accuracy components, finite/positive) with
+    per-obs **stratum** merged in (via `metrics._strata_map`, incl. an `'all'`
+    scope). Three `Select`s (algorithm/component/stratum) drive a `CustomJS`
+    that repopulates a visible `ColumnDataSource` from the full one; 1:1 guide +
+    `HoverTool`.
+  - `interactive_leaderboard(runs_root|out|board)` — the ranked leaderboard as a
+    `DataTable` with dataset/component/stratum `Select`s (blank = all) filtering
+    rows via `CustomJS`.
+- **Decisions (Q&A #9–11):** scatter sourced from `results_spectral` + merged
+  stratum; scatter selects algorithm/component/stratum (dataset omitted —
+  single-dataset L23 for now); INLINE resources for offline embedding.
+- Tier-1 tests [`ioptics/tests/test_report_bokeh.py`](../ioptics/tests/test_report_bokeh.py):
+  each builder returns a self-contained HTML string (`<html>`, inline BokehJS, no
+  `cdn.bokeh.org`) carrying the expected `Select` titles and the algorithm names;
+  leaderboard from a persisted parquet and from an in-memory board.
+- Tests: `3 passed` for the file; full suite `159 passed, 14 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `ioptics.report.bokeh` autodoc'd.
