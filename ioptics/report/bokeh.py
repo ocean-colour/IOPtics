@@ -26,7 +26,8 @@ from ioptics import metrics
 from ioptics.report import figures
 
 # Fields carried in the scatter data source (all filterable keys + coords).
-_SCATTER_FIELDS = ['x', 'y', 'algorithm', 'component', 'stratum', 'wavelength']
+_SCATTER_FIELDS = ['x', 'y', 'dataset', 'algorithm', 'component', 'stratum',
+                   'wavelength']
 
 
 def _scatter_points(sweep, fit_method):
@@ -43,6 +44,7 @@ def _scatter_points(sweep, fit_method):
     pts = pd.DataFrame({
         'x': sp['truth'].to_numpy(dtype=float),
         'y': sp['value'].to_numpy(dtype=float),
+        'dataset': sp['dataset'].astype(str).to_numpy(),
         'algorithm': sp['algorithm'].astype(str).to_numpy(),
         'component': sp['component'].astype(str).to_numpy(),
         'stratum': sp['stratum'].astype(str).to_numpy(),
@@ -53,14 +55,15 @@ def _scatter_points(sweep, fit_method):
 
 
 def _filter_js(fields):
-    """CustomJS that rebuilds ``src`` from ``full`` where the three Selects match."""
+    """CustomJS that rebuilds ``src`` from ``full`` where the four Selects match."""
     pushes = '\n'.join(f"    o['{f}'].push(d['{f}'][i]);" for f in fields)
     init = ', '.join(f"'{f}': []" for f in fields)
     return CustomJS(code=f"""
     const d = full.data;
     const o = {{{init}}};
     for (let i = 0; i < d['algorithm'].length; i++) {{
-      if (d['algorithm'][i] === selA.value
+      if (d['dataset'][i] === selD.value
+          && d['algorithm'][i] === selA.value
           && d['component'][i] === selC.value
           && d['stratum'][i] === selS.value) {{
 {pushes}
@@ -82,16 +85,18 @@ def interactive_scatter(sweep, *, root=None, fit_method='chisq',
     sweep = figures.resolve(sweep, root)
     pts = _scatter_points(sweep, fit_method)
 
+    datasets = sorted(pts['dataset'].unique())
     algos = sorted(pts['algorithm'].unique())
     comps = sorted(pts['component'].unique())
     strata = sorted(pts['stratum'].unique())
+    d0 = datasets[0] if datasets else ''
     a0 = algos[0] if algos else ''
     c0 = 'a' if 'a' in comps else (comps[0] if comps else '')
     s0 = 'all' if 'all' in strata else (strata[0] if strata else '')
 
     full = ColumnDataSource({f: pts[f].tolist() for f in _SCATTER_FIELDS})
-    init = pts[(pts.algorithm == a0) & (pts.component == c0)
-               & (pts.stratum == s0)]
+    init = pts[(pts.dataset == d0) & (pts.algorithm == a0)
+               & (pts.component == c0) & (pts.stratum == s0)]
     src = ColumnDataSource({f: init[f].tolist() for f in _SCATTER_FIELDS})
 
     fig = figure(title=title, x_axis_type='log', y_axis_type='log',
@@ -107,16 +112,17 @@ def interactive_scatter(sweep, *, root=None, fit_method='chisq',
                                       ('λ', '@wavelength'),
                                       ('truth', '@x'), ('retrieved', '@y')]))
 
+    sel_d = Select(title='dataset', value=d0, options=datasets)
     sel_a = Select(title='algorithm', value=a0, options=algos)
     sel_c = Select(title='component', value=c0, options=comps)
     sel_s = Select(title='stratum', value=s0, options=strata)
     cb = _filter_js(_SCATTER_FIELDS)
-    cb.args = {'full': full, 'src': src, 'selA': sel_a, 'selC': sel_c,
-               'selS': sel_s}
-    for sel in (sel_a, sel_c, sel_s):
+    cb.args = {'full': full, 'src': src, 'selD': sel_d, 'selA': sel_a,
+               'selC': sel_c, 'selS': sel_s}
+    for sel in (sel_d, sel_a, sel_c, sel_s):
         sel.js_on_change('value', cb)
 
-    layout = column(sel_a, sel_c, sel_s, fig)
+    layout = column(sel_d, sel_a, sel_c, sel_s, fig)
     return file_html(layout, INLINE, title)
 
 
