@@ -131,7 +131,7 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
 
 ### Pull Requests
 
-1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
+1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate any CI issues and fix them. Use Fable. Please log your work in the Logs section below.
 2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
 ### Stage 6
@@ -512,3 +512,25 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
   I/O in the RST/report writers is `utf-8`.
 - Tests: full suite **`168 passed, 15 skipped`** (`$OS_COLOR` unset) and
   **`183 passed`** with data; `sphinx-build -W` clean. **Stage 5 ready for PR.**
+
+### Stage 5 — PR Task 1: review + post + CI investigation (2026-07-02)
+
+- **Reviewed PR [#8](https://github.com/ocean-colour/IOPtics/pull/8)**
+  (`stage-5` → `develop`) and posted a **COMMENTED** review (no self-approve).
+  Diff is Stage-5-only against `develop`.
+- **CI failed — root cause + fix.** Both matrix jobs failed on
+  `test_generated_page_renders_under_sphinx` with `No module named sphinx`:
+  the test shells out to `python -m sphinx -W` to prove the generated report
+  page renders, but CI is deliberately light (`ci.yml` = pytest only, no docs
+  build) so Sphinx isn't installed; it only passed locally because the dev env
+  has it.
+  - **Fix:** added a `needs_sphinx` skip-guard to
+    [`conftest.py`](../ioptics/tests/conftest.py) (mirrors `needs_l23`/`needs_pace`)
+    and marked both Sphinx-rendering tests (`test_generated_page_renders_under_
+    sphinx` + the `@needs_l23` `test_report_end_to_end_l23`). On CI they now skip;
+    wherever Sphinx is installed they still run and catch RST regressions.
+  - Verified locally: emulating "no sphinx" makes the render test **skip** (not
+    fail); full suite `168 passed, 15 skipped` locally (→ `167 passed, 16 skipped`
+    on CI). The fix is code-only; **JXP must commit + push** for CI to re-run
+    green.
+- No new Q&A.

@@ -10,7 +10,7 @@ matplotlib.use('Agg')
 
 from ioptics import io, metrics
 from ioptics.report import figures, rst, standard
-from ioptics.tests.conftest import needs_l23
+from ioptics.tests.conftest import needs_l23, needs_sphinx
 from ioptics.tests.test_metrics import _make_pair
 
 _SID = 'std_v1'
@@ -113,6 +113,7 @@ def test_build_bad_kind(tmp_path):
         standard.build(_SID, kind='nope', root=tmp_path, docs_root=tmp_path / 'd')
 
 
+@needs_sphinx
 def test_generated_page_renders_under_sphinx(tmp_path):
     """The generated report page must build under ``sphinx-build -W``."""
     import subprocess
@@ -139,6 +140,7 @@ def test_generated_page_renders_under_sphinx(tmp_path):
 # Tier 2 — full report pipeline end-to-end on a tiny real L23 sweep
 # --------------------------------------------------------------------
 @needs_l23
+@needs_sphinx
 def test_report_end_to_end_l23(tmp_path):
     import subprocess
     import sys
