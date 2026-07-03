@@ -534,3 +534,42 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
     on CI). The fix is code-only; **JXP must commit + push** for CI to re-run
     green.
 - No new Q&A.
+
+### Stage 5 — PR Task 2: address PR comments (2026-07-02)
+
+- **Read all PR comments — nothing to address in code.** Verified via
+  `gh pr view`, the inline-comments REST endpoint, and a GraphQL `reviewThreads`
+  query: **0 inline threads, 0 issue comments**; the only review is my own
+  COMMENTED review from Task 1 (its sole item — the CI failure — was fixed there).
+- **CI now green.** JXP pushed the Task-1 fix (commit `309b595`); the re-run
+  passed on **all four** matrix jobs (py3.12 + py3.14, PR + push) — the
+  `needs_sphinx` skip-guard resolved the `No module named sphinx` failure. No
+  code changes were needed in this task.
+
+### Stage 5 — Stage 6 prep: refresh `coding_prompts_stage06.md` (2026-07-03)
+
+- Updated [`coding_prompts_stage06.md`](coding_prompts_stage06.md) (a Jun-21
+  skeleton) so the final "Broaden" stage reflects the now-built Stage 4–5
+  machinery it extends:
+  - Added a **"Stage 0–5 carryover"** section: the `datasets` adapter seam
+    (`register_dataset`/`Adapter`/`RawObs`, L23 X=1/X=4 template), the one-line
+    `algorithms` registration, the `run`/`evaluate` `rt_dict` seam for inelastic
+    RT, the `io`/`metrics`/`diagnostics`/`plotting` contracts, and — new this
+    round — the whole **`report`** layer (`standard.build`, the idempotent
+    cross-sweep `leaderboard.update`/`render`, `rst.write_leaderboard_landing`,
+    dataset-aware Bokeh) plus the `build_v1.py` sequential-stage template.
+  - Added **"Known constraints / decisions"**: build scripts use **sequential**
+    stage numbers (not bitmask); the **GLORIA caveat is auto-stamped by
+    `metrics`** for `dataset` `GLORIA` + `component a_dg` (so adapters just name
+    the dataset + supply `a_dg` truth), and it surfaces in `tables.accuracy` —
+    but **`leaderboard.update` currently drops `caveat`**, flagged as a Stage-6
+    touch if the leaderboard must show it; multi-dataset is a group-by, not new
+    plumbing; PANGAEA `a_dg` is genuine (no caveat); `needs_sphinx`/`needs_*`
+    guards keep CI light.
+  - Aligned **Conventions** with the current stages (env interpreter, no
+    `$OS_COLOR`, `sphinx -W`, tiered `needs_*` guards) and added the **Pull
+    Requests** subsection. Stage 6 is the **final** stage (no Stage 7).
+  - Refined each task to name the real APIs (`register_dataset`, the metrics
+    caveat auto-stamp, `build_v2.py` mirroring `build_v1.py` +
+    `report.standard.build`/`leaderboard.update`).
+- No code changes; prompt-file edit only.
