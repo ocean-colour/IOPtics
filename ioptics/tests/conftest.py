@@ -52,6 +52,15 @@ def _pangaea_available():
         return False
 
 
+def _sphinx_available():
+    """True if Sphinx is importable (docs-only dep; not installed in light CI)."""
+    try:
+        import sphinx        # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
 def _pace_data_available():
     """True if ocpy ships its PACE error table (``PACE_error.csv``).
 
@@ -78,3 +87,6 @@ needs_pangaea = pytest.mark.skipif(
 
 needs_pace = pytest.mark.skipif(
     not _pace_data_available(), reason="requires ocpy's bundled PACE_error.csv")
+
+needs_sphinx = pytest.mark.skipif(
+    not _sphinx_available(), reason='requires Sphinx (docs build; not in light CI)')

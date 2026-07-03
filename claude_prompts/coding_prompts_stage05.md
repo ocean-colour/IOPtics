@@ -127,10 +127,11 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
 4. `report/bokeh.py`.
 5. `report/rst.py` + `report/standard.py`.
 6. Tests + wire build-script stage 3.
+7. Make sure you have properly addressed the anssers I have given to all of your questions.  Make another pass on the code ofr this Stage and I will then issue a PR.
 
 ### Pull Requests
 
-1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate the CI issues and fix them. Please log your work in the Logs section below.
+1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate any CI issues and fix them. Use Fable. Please log your work in the Logs section below.
 2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
 ### Stage 6
@@ -180,4 +181,395 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
 
 ### Q&A
 
+**Task 1 (`plotting.py`).**
+
+1. **`corner` does not wrap `bing.plotting.corner_plot`.** The design table said
+   `corner(chain_data)` "wraps `bing.plotting.corner_plot`", but that helper
+   expects the raw 3-D chains and applies a hard-coded 7000-step burn + labels
+   from BING model objects — whereas `diagnostics.corner_data` already returns
+   **flattened** samples with the persisted `pnames`. So `plotting.corner` calls
+   the `corner` package directly on those samples/labels (robust to short chains,
+   uses our labels). OK, or do you want it to re-load the raw chains and defer to
+   `bing.plotting.corner_plot` (accepting the 7000-burn behavior)?
+   >A. No need to use `bing.plotting.corner_plot`.
+
+2. **Taylor/Target diagram styling.** I implemented Taylor as a polar axes
+   (azimuth = `arccos(corr)`, radius = `norm_std`, reference star at 1) and Target
+   as a plain `(signed_unbiased_rmsd, bias)` scatter with origin crosshairs (no
+   normalized RMSD rings). Good enough for the standard report, or do you want the
+   full skill-circle/RMSD-arc decorations?
+   >A. Yes, this is good enough for now.
+
+**Task 2 (`report/figures.py` + `tables.py`).**
+
+3. **`sweep` argument = id or bundle.** Builders accept either a `sweep_id`
+   string (loaded via `figures.load`, honoring `root=`) or a pre-loaded
+   `SweepArtifacts` bundle (load once, render many). `standard.build` (Task 5)
+   will load once and pass the bundle. OK?
+   >A. Ok
+
+4. **Tier-1 not Tier-2.** The prompt said "Tier-2 on the Stage-4 sweep", but the
+   figure/table builders are fully exercisable Tier-1 on a **synthetic** sweep
+   (`io.write_results` → `metrics.compute` → build), incl. a real saved chain for
+   `corner_set` — so I tested Tier-1 (no L23). Want a Tier-2 `@needs_l23`
+   end-to-end confirmatory on `expb_giop_L23_v1` too, or defer that to Task 6?
+   >A. Go for it.
+
+5. **Output layout.** Figures → `runs/<sweep_id>/figures/<name>.{png,pdf}`;
+   CSV tables → the same `figures/` dir (`accuracy_<fit>_<stratum>.csv`,
+   `qc_<fit>_<stratum>.csv`). Design said "tables to CSV alongside" — kept them
+   in `figures/`. Prefer a separate `tables/` subdir?
+   >A. Yeah, use a separate `tables/` subdir.
+
+**Task 3 (`report/leaderboard.py`).**
+
+6. **What gets folded.** `update` folds the **χ² population** ref-band accuracy
+   rows (all strata) from each sweep's `metrics_scalar`, joined to `win_frac`
+   from `metrics_pairwise`, keyed `(sweep_id, dataset, algorithm, stratum,
+   component, ref_wave)` with a compact `ioptics` version@commit stamp from
+   `provenance.yaml`. Excludes MCMC rows and derived-scalar rows. OK, or should
+   the leaderboard also carry `Chl`/`a_cdom440`/`Sdg` accuracy?
+   >A. Yes, that is ok.
+
+7. **Location.** `leaderboard.parquet` defaults to the **runs-root sibling**
+   (`$OS_COLOR/IOPtics/leaderboard.parquet`, per the design) — overridable via
+   `out=`. Idempotent: re-folding a `sweep_id` replaces its rows; folding a
+   subset preserves the rest. Good?
+   >A. Yeah, that is good.
+8. **Landing page default.** `render(fmt='rst')` emits an RST `list-table`
+   ranked by wins → `|bias|` → MAE within `(dataset, component, ref_wave)`, for
+   `stratum='all'` by default (a `fmt='md'` variant exists). Show `stratum='all'`
+   only on the landing page, or all strata?
+   >A. Let's try all strata.
+
+**Task 4 (`report/bokeh.py`).**
+
+9. **Scatter points source + stratum.** `interactive_scatter` builds points from
+   `results_spectral` (χ² accuracy components, finite/positive), merges the
+   per-obs Chl **stratum** (via `metrics._strata_map`, so it matches the tables),
+   and adds an `'all'` scope — so the algorithm/component/stratum `Select`s
+   filter live via `CustomJS`. Reasonable, or would you rather drive the scatter
+   off a pre-aggregated source?
+   >A. That is reasonable.
+
+10. **Selector set.** Scatter selects **algorithm / component / stratum** (one
+    active combination shown); the leaderboard `DataTable` selects
+    **dataset / component / stratum** (blank = all). The design also mentions
+    "dataset" on the scatter — L23 is single-dataset for now, so I left it off
+    the scatter. Add a dataset select there too?
+    >A. yes, add a dataset select there too.
+
+11. **Offline embedding.** HTML is emitted via `file_html(..., INLINE, title)`
+    so BokehJS is inlined (no CDN) and the file works offline / embeds in
+    readthedocs. Confirm inline (vs `CDN`) is what you want for the site.
+    >A. Yes, inline is what we want. I think..
+
+**Task 5 (`report/rst.py` + `report/standard.py`).**
+
+12. **Report kinds differ modestly (single-dataset L23).** `cross_algorithm` is
+    the rich headline (scatter a@440/bb@555 + Taylor/Target + ΔBIC + accuracy/qc
+    tables + interactive scatter); `per_algorithm` swaps the aggregate scatters
+    for per-algorithm spectra (a curated obs) + tables + bokeh; `per_dataset` =
+    scatters + tables + bokeh. **Corner plots are omitted** from the standard
+    page for now (the MCMC subset can be ~200 → hundreds of corners); curated
+    corner selection is deferred. OK, or specify the curated per-obs handful now?
+    >A. That's ok
+
+13. **Leaderboard landing wiring.** `rst.write_leaderboard_landing` (idempotent,
+    between sentinels) exists, but `standard.build` does **not** call it —
+    I plan to wire `leaderboard.update()` + `write_leaderboard_landing(render())`
+    into build-script **stage 3** (Task 6), since the landing aggregates *across*
+    sweeps, not per sweep. Agree that's the right seam?
+    >A. Yes, that is the right seam.
+
+14. **`report` eager-imports submodules.** `import ioptics.report` now imports
+    `figures/tables/leaderboard/bokeh/rst/standard` (so `report.standard.build`
+    resolves per the design build-script), which pulls matplotlib + Bokeh at
+    import time. Fine for the viz layer?
+    >A. Fine for the viz layer.
+
+**Task 6 (tests + build-script stage 3).**
+
+15. **"Stage flag 3" = the report bit `2**2`.** `build_v1.py` uses a **bitmask**
+    (`1`=run, `2`=metrics, `4`=report; combine, e.g. `7`=all). I read the prompt's
+    "stage flag 3" as the *third stage* (report) and wired the `2**2` bit —
+    keeping the existing bitmask (not a literal `flg==3`, which would mean
+    run+metrics). Confirm that's the intended flag scheme.
+    >A. I am not longer using bitmaks.
+   >Applied: `build_v1.py` now uses **sequential stage numbers** (`1`=run,
+   >`2`=metrics, `3`=report; `0`=no-op), one stage per call — not a bitmask.
+
+**Task 7 (verification pass).**
+
+16. No open questions. Verified every Q&A answer (#1–15) is reflected in the
+    code and did a quality pass — ready for the PR. If you'd prefer the report
+    kinds to diverge more (e.g. a curated corner set, per-dataset grouping once
+    a second dataset lands), say so and I'll extend; otherwise the current scope
+    matches the answers given.
+
 ## Logs
+
+### Stage 5 — Task 1: `plotting.py` static primitives (2026-07-01)
+
+- Implemented [`ioptics/plotting.py`](../ioptics/plotting.py) — 8 builders, each
+  takes the `diagnostics`/`metrics` arrays and returns a `matplotlib.Figure`
+  with **no I/O and no table reads**; all accept an optional `ax` so `report`
+  can compose panels, and none call `plt.show`:
+  - `scatter_log(scatter_data, guides=(1,3,⅓))` — log-log retrieved-vs-true +
+    1:1/3:1/1:3 guides.
+  - `ratio_hist(ratio_hist_data)` — grouped bars over `RATIO_EDGES` buckets.
+  - `spectra_band(comp_fit, truth=None)` — value + 68/95 credible bands (log y),
+    from a results-table slice (DataFrame or mapping).
+  - `residual_rrs(residual_spectra)` — `Rrs_obs−Rrs_model` per algorithm, χ²ᵥ in
+    the legend, zero line.
+  - `taylor(taylor_stats)` — polar Taylor diagram; `target(target_stats)` —
+    Target scatter with origin crosshairs.
+  - `corner(corner_data)` — `corner` package on the flattened samples + persisted
+    `pnames` labels (see Q&A #1).
+  - `dbic_cdf(dbic_cdf_data)` — step CDF (single or `by=`-stratified), 0 line,
+    `frac_favor_a` annotated.
+- Degenerate/empty inputs return a figure with a centered "no data" note (so the
+  `report` layer never crashes on a thin sweep). `plotting`/`report` **may**
+  import matplotlib + `corner` (unlike the BING/ocpy-free `metrics`/`diagnostics`).
+- **Decisions (Q&A #1–2):** `corner` uses the `corner` package directly rather
+  than `bing.plotting.corner_plot` (which needs 3-D chains + a 7000-step burn);
+  Taylor/Target are functional (no skill-arc decorations yet).
+- Tier-1 smoke tests [`ioptics/tests/test_plotting.py`](../ioptics/tests/test_plotting.py)
+  (Agg backend): every builder returns a `Figure` with ≥1 axes on realistic
+  `diagnostics` inputs; an empty-scatter case exercises the degenerate path.
+- Tests: `9 passed` for the file; full suite `143 passed, 13 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `ioptics.plotting` autodoc'd.
+
+### Stage 5 — Task 2: `report/figures.py` + `report/tables.py` (2026-07-01)
+
+- **`report/figures.py`** — a `load(sweep_id, root=None) → SweepArtifacts`
+  bundle (results + `metrics_*` tables; metrics optional) + `_resolve` so every
+  builder takes an id **or** a bundle; `_save` writes PNG+PDF to
+  `runs/<sweep_id>/figures/`. Six builders, each sourcing from
+  `diagnostics`/results and rendering via `plotting`:
+  - aggregate: `scatter_set(comp, ref=)`, `taylor_target(comp, ref=)`,
+    `dbic_cdf(model_a, model_b)`.
+  - per-obs (curated handful): `spectra_set(obs, algorithm=)` (per component,
+    incl. decomposed `a_dg`/`a_ph`), `closure_set(obs)`, `corner_set()` (every
+    MCMC row with a saved chain). All default `fit_method='chisq'`.
+- **`report/tables.py`** — `accuracy(fit_method, stratum)`: ref-band §1 accuracy
+  from `metrics_scalar` joined to `win_frac` from `metrics_pairwise`;
+  `qc(fit_method, stratum)`: non-solution rate from `results_scalar.status` +
+  §2 closure fractions (`frac_good/fit_noise/qc_fail`, `chi2_nu_median`) from the
+  `component='Rrs'` rows. Each returns a tidy DataFrame and writes a CSV in
+  `figures/`. Both raise a clear `FileNotFoundError` if `metrics.compute` wasn't run.
+- **Decisions (Q&A #3–5):** `sweep` = id or bundle (bundle for `standard.build`);
+  builders tested **Tier-1** on a synthetic sweep (incl. a real saved chain for
+  `corner_set`) rather than requiring L23; CSVs live in `figures/`.
+- Tier-1 tests [`ioptics/tests/test_report_figures.py`](../ioptics/tests/test_report_figures.py):
+  synthetic 2-algo sweep (`expb_pow` exact vs `giop` 2×; 3 obs across strata + 1
+  giop MCMC chain) → `compute` → every builder writes its PNG/PDF; `accuracy`
+  shows `expb_pow` mae≈0 / rank 1 / win_frac 1 at (a,440); `qc` shows
+  `giop` `frac_qc_fail`=1 (1.5× Rrs) and `expb_pow` `frac_not_ok`=0.
+- Tests: `8 passed` for the file; full suite `151 passed, 13 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; both modules autodoc'd.
+- **Post-answer follow-ups (Q&A #4, #5):** moved the CSV tables to a separate
+  `runs/<sweep_id>/tables/` subdir (promoted `figures.subdir`/`figures.resolve`
+  to public helpers); added a **Tier-2 `@needs_l23`** end-to-end
+  figures+tables test on a tiny real L23 sweep (passes locally with data).
+
+### Stage 5 — Task 3: `report/leaderboard.py` (2026-07-01)
+
+- Implemented [`ioptics/report/leaderboard.py`](../ioptics/report/leaderboard.py)
+  (pure table-in, no BING/ocpy):
+  - `update(runs_root=None, *, root=None, out=None, sweep_ids=None)` scans the
+    runs root for sweep dirs with a `metrics_scalar.parquet` and folds each
+    sweep's **χ²** ref-band accuracy (all strata) + `win_frac` (from
+    `metrics_pairwise`) + an `ioptics` version@commit stamp (from
+    `provenance.yaml`) into `leaderboard.parquet`, keyed `(sweep_id, dataset,
+    algorithm, stratum, component, ref_wave)`. **Idempotent** — a folded
+    `sweep_id`'s rows are dropped-and-replaced; unfolded sweeps preserved.
+    Default `out` = runs-root sibling (`$OS_COLOR/IOPtics/leaderboard.parquet`).
+  - `ranked(board, stratum='all')` adds a per-`(dataset, component, ref_wave)`
+    `rank` (1 = best) sorted **wins → |bias| → MAE** (design Q23).
+  - `render(board=None, fmt='rst'|'md', stratum='all')` → an RST `list-table`
+    (renders under `sphinx -W`) or Markdown table for the landing page.
+- **Decisions (Q&A #6–8):** χ²-only, ref-band, all strata folded (no derived
+  scalars); runs-root-sibling location; landing-page ranking as above at
+  `stratum='all'`.
+- Tier-1 tests [`ioptics/tests/test_leaderboard.py`](../ioptics/tests/test_leaderboard.py):
+  fold writes the parquet; **idempotent** re-fold (no growth); **accumulates**
+  across sweeps (fold `sw_a` then `sw_b` → both retained); ranking puts the exact
+  `expb_pow` first (win_frac 1, rank 1) with `giop` second; `render` emits the
+  RST list-table and a Markdown variant.
+- Tests: `5 passed` for the file; full suite `156 passed, 14 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `ioptics.report.leaderboard`
+  autodoc'd. (Post-answer #8: `render`/`ranked` now default to **all strata**,
+  each ranked independently within `(dataset, component, ref_wave, stratum)`.)
+
+### Stage 5 — Task 4: `report/bokeh.py` (2026-07-01)
+
+- Implemented [`ioptics/report/bokeh.py`](../ioptics/report/bokeh.py) — standalone
+  BokehJS (no server), rendered via `file_html(..., INLINE, …)` so the HTML is
+  self-contained (offline / readthedocs-embeddable):
+  - `interactive_scatter(sweep, fit_method='chisq')` — retrieved-vs-true log-log
+    scatter from `results_spectral` (accuracy components, finite/positive) with
+    per-obs **stratum** merged in (via `metrics._strata_map`, incl. an `'all'`
+    scope). Three `Select`s (algorithm/component/stratum) drive a `CustomJS`
+    that repopulates a visible `ColumnDataSource` from the full one; 1:1 guide +
+    `HoverTool`.
+  - `interactive_leaderboard(runs_root|out|board)` — the ranked leaderboard as a
+    `DataTable` with dataset/component/stratum `Select`s (blank = all) filtering
+    rows via `CustomJS`.
+- **Decisions (Q&A #9–11):** scatter sourced from `results_spectral` + merged
+  stratum; scatter selects algorithm/component/stratum (dataset omitted —
+  single-dataset L23 for now); INLINE resources for offline embedding.
+- Tier-1 tests [`ioptics/tests/test_report_bokeh.py`](../ioptics/tests/test_report_bokeh.py):
+  each builder returns a self-contained HTML string (`<html>`, inline BokehJS, no
+  `cdn.bokeh.org`) carrying the expected `Select` titles and the algorithm names;
+  leaderboard from a persisted parquet and from an in-memory board.
+- Tests: `3 passed` for the file; full suite `159 passed, 14 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `ioptics.report.bokeh` autodoc'd.
+- **Post-answer #10:** added a **dataset** `Select` to `interactive_scatter`
+  (now dataset/algorithm/component/stratum); `_filter_js` matches all four.
+
+### Stage 5 — Task 5: `report/rst.py` + `report/standard.py` (2026-07-01)
+
+- **`report/rst.py`** — pure RST string builders (`title`, `provenance_header`
+  field-list stamp, `section`, `figure_block`, `csv_table_block` (`:file:`),
+  `bokeh_raw` (`<iframe>`), `page`) + idempotent site plumbing
+  (`ensure_glob_toctree` → upgrades `reports/index.rst` to a `:glob: */*` toctree
+  without touching prose; `write_leaderboard_landing` → inserts/replaces the
+  rendered board between sentinels). All directives use page-relative paths;
+  file I/O pinned to `utf-8` (pages carry unicode, e.g. "ΔBIC").
+- **`report/standard.py`** — `build(sweep_id, kind='cross_algorithm', root=None,
+  docs_root=None) → Path`: loads the sweep, (re)generates the standard
+  figures/tables + a standalone Bokeh scatter, copies the **lightweight** display
+  assets (figure **PNGs**, CSV tables, the Bokeh HTML — not PDFs/parquet/chains)
+  into `docs/source/reports/<sweep_id>/`, assembles the provenance-stamped
+  `<kind>.rst`, and globs it into the reports toctree. `KINDS` =
+  `per_algorithm`/`cross_algorithm`/`per_dataset`; bad kind → `ValueError`.
+  `DEFAULT_DOCS_SRC` = the repo `docs/source`, overridable (tests redirect to
+  `tmp_path`).
+- **`report/__init__`** now eagerly imports the submodules so
+  `report.standard.build` / `report.leaderboard.update` resolve (Q&A #14).
+- **Decisions (Q&A #12–14):** modest kind differences (corner omitted from the
+  standard page for now); leaderboard-landing wiring deferred to build-script
+  stage 3 (Task 6); eager submodule import.
+- Tier-1 tests [`ioptics/tests/test_report_standard.py`](../ioptics/tests/test_report_standard.py):
+  the RST builders (title/figure/csv-table/raw/provenance), glob-toctree
+  create+upgrade (prose kept), leaderboard-landing idempotency; `build` for all
+  three kinds copies assets + writes the page + globs the toctree; and — key —
+  **the generated page renders under `sphinx-build -W`** in a minimal temp tree
+  (this caught a real missing-blank-line RST bug in `page`, now fixed).
+- Tests: `8 passed` for the file; full suite `167 passed, 14 skipped`
+  (`$OS_COLOR` unset). `sphinx-build -W` clean; `rst`/`standard` autodoc'd.
+
+### Stage 5 — Task 6: tests + wire build-script stage 3 (2026-07-01)
+
+- **Wired [`build_v1.py`](../ioptics/runs/prototypes/expb_giop/build_v1.py)**
+  bitmask stages (Q&A #15 — "stage 3" = the report bit `2**2`, bitmask kept):
+  `2**1` → `metrics.compute(sweep_id)`; `2**2` → `report.standard.build(sweep_id,
+  kind='cross_algorithm')` + `report.leaderboard.update()` +
+  `report.rst.write_leaderboard_landing(<reports>/index.rst,
+  leaderboard.render(board=…))`. Updated the docstring; combine bits (`7` = all).
+- **Tier-1 dispatch test** [`test_sweep.py::test_build_v1_stage_dispatch`]:
+  monkeypatches run/metrics/report/leaderboard/rst and asserts each bit fires
+  exactly its stage (`2**0`→run, `2**1`→metrics, `2**2`→report+lb+landing,
+  combined→all in order) — no data.
+- **Tier-2 end-to-end** [`test_report_standard.py::test_report_end_to_end_l23`]
+  (`@needs_l23`): tiny real χ² sweep → `metrics.compute` → `standard.build` →
+  `leaderboard.update` → `write_leaderboard_landing`; asserts the `.rst` page,
+  `leaderboard.parquet`, and the landing sentinel + `expb_pow`, then builds the
+  whole reports tree under **`sphinx-build -W`** (page + landing render clean).
+  **Passes locally with L23 data.**
+- Per-module Tier-1 checks (plotting/figures/tables/leaderboard/bokeh/rst/
+  standard) already consolidate the design's rst/leaderboard/bokeh coverage;
+  the exb_pow-vs-giop ΔBIC + wins are asserted Tier-1 (Stage-4 `test_metrics`)
+  and surfaced through `figures.dbic_cdf` / `tables.accuracy`.
+- **Stage-5 exit criterion met:** `standard.build(kind='cross_algorithm')` +
+  `leaderboard.update()` (build flag `2**2`) produce a provenance-stamped `.rst`
+  page + standard figures/tables + a standalone Bokeh figure + a leaderboard
+  entry ranking the two algorithms, and the page renders in the Sphinx build.
+- Tests: full suite **`168 passed, 15 skipped`** (`$OS_COLOR` unset,
+  CI-equivalent); **`183 passed`** with `$OS_COLOR` set (all Tier-2 run).
+  `sphinx-build -W` clean.
+
+### Stage 5 — Task 7: verification + quality pass (2026-07-02)
+
+- **Applied the revised Q&A #15** (no bitmasks): `build_v1.py` now dispatches on
+  **sequential stage numbers** — `if flg == 1: run` / `== 2: metrics` /
+  `== 3: report` (`0` = no-op), one stage per call; docstring updated. The
+  dispatch test now asserts `main(0/1/2/3)` fire the right single stage (matching
+  the prompt's "stage flag 3 = report" and the Context line "flag 2 = metrics,
+  flag 3 = report").
+- **Verified every prior answer is in the code:** #1 `plotting.corner` uses the
+  `corner` package (not `bing.plotting.corner_plot`); #2 Taylor polar / Target
+  scatter kept; #3 `figures.resolve` (id-or-bundle); #4 Tier-2 figures/tables
+  test present; #5 CSVs in `tables/`; #6 leaderboard folds χ² ref-band (no derived
+  scalars); #7 runs-root-sibling `leaderboard.parquet`; #8 `render`/`ranked`
+  default to all strata; #9 scatter from `results_spectral` + merged stratum;
+  #10 dataset `Select` added to `interactive_scatter`; #11 `file_html(..., INLINE)`;
+  #12 modest kinds, corner omitted; #13 landing wired into build stage 3;
+  #14 eager submodule import.
+- **Quality pass:** `py_compile` clean across `plotting` + all `report/*` +
+  `build_v1`; manual review confirmed no unused imports / dead code; all file
+  I/O in the RST/report writers is `utf-8`.
+- Tests: full suite **`168 passed, 15 skipped`** (`$OS_COLOR` unset) and
+  **`183 passed`** with data; `sphinx-build -W` clean. **Stage 5 ready for PR.**
+
+### Stage 5 — PR Task 1: review + post + CI investigation (2026-07-02)
+
+- **Reviewed PR [#8](https://github.com/ocean-colour/IOPtics/pull/8)**
+  (`stage-5` → `develop`) and posted a **COMMENTED** review (no self-approve).
+  Diff is Stage-5-only against `develop`.
+- **CI failed — root cause + fix.** Both matrix jobs failed on
+  `test_generated_page_renders_under_sphinx` with `No module named sphinx`:
+  the test shells out to `python -m sphinx -W` to prove the generated report
+  page renders, but CI is deliberately light (`ci.yml` = pytest only, no docs
+  build) so Sphinx isn't installed; it only passed locally because the dev env
+  has it.
+  - **Fix:** added a `needs_sphinx` skip-guard to
+    [`conftest.py`](../ioptics/tests/conftest.py) (mirrors `needs_l23`/`needs_pace`)
+    and marked both Sphinx-rendering tests (`test_generated_page_renders_under_
+    sphinx` + the `@needs_l23` `test_report_end_to_end_l23`). On CI they now skip;
+    wherever Sphinx is installed they still run and catch RST regressions.
+  - Verified locally: emulating "no sphinx" makes the render test **skip** (not
+    fail); full suite `168 passed, 15 skipped` locally (→ `167 passed, 16 skipped`
+    on CI). The fix is code-only; **JXP must commit + push** for CI to re-run
+    green.
+- No new Q&A.
+
+### Stage 5 — PR Task 2: address PR comments (2026-07-02)
+
+- **Read all PR comments — nothing to address in code.** Verified via
+  `gh pr view`, the inline-comments REST endpoint, and a GraphQL `reviewThreads`
+  query: **0 inline threads, 0 issue comments**; the only review is my own
+  COMMENTED review from Task 1 (its sole item — the CI failure — was fixed there).
+- **CI now green.** JXP pushed the Task-1 fix (commit `309b595`); the re-run
+  passed on **all four** matrix jobs (py3.12 + py3.14, PR + push) — the
+  `needs_sphinx` skip-guard resolved the `No module named sphinx` failure. No
+  code changes were needed in this task.
+
+### Stage 5 — Stage 6 prep: refresh `coding_prompts_stage06.md` (2026-07-03)
+
+- Updated [`coding_prompts_stage06.md`](coding_prompts_stage06.md) (a Jun-21
+  skeleton) so the final "Broaden" stage reflects the now-built Stage 4–5
+  machinery it extends:
+  - Added a **"Stage 0–5 carryover"** section: the `datasets` adapter seam
+    (`register_dataset`/`Adapter`/`RawObs`, L23 X=1/X=4 template), the one-line
+    `algorithms` registration, the `run`/`evaluate` `rt_dict` seam for inelastic
+    RT, the `io`/`metrics`/`diagnostics`/`plotting` contracts, and — new this
+    round — the whole **`report`** layer (`standard.build`, the idempotent
+    cross-sweep `leaderboard.update`/`render`, `rst.write_leaderboard_landing`,
+    dataset-aware Bokeh) plus the `build_v1.py` sequential-stage template.
+  - Added **"Known constraints / decisions"**: build scripts use **sequential**
+    stage numbers (not bitmask); the **GLORIA caveat is auto-stamped by
+    `metrics`** for `dataset` `GLORIA` + `component a_dg` (so adapters just name
+    the dataset + supply `a_dg` truth), and it surfaces in `tables.accuracy` —
+    but **`leaderboard.update` currently drops `caveat`**, flagged as a Stage-6
+    touch if the leaderboard must show it; multi-dataset is a group-by, not new
+    plumbing; PANGAEA `a_dg` is genuine (no caveat); `needs_sphinx`/`needs_*`
+    guards keep CI light.
+  - Aligned **Conventions** with the current stages (env interpreter, no
+    `$OS_COLOR`, `sphinx -W`, tiered `needs_*` guards) and added the **Pull
+    Requests** subsection. Stage 6 is the **final** stage (no Stage 7).
+  - Refined each task to name the real APIs (`register_dataset`, the metrics
+    caveat auto-stamp, `build_v2.py` mirroring `build_v1.py` +
+    `report.standard.build`/`leaderboard.update`).
+- No code changes; prompt-file edit only.

@@ -36,6 +36,33 @@ def test_build_v1_config_and_flag_dispatch():
     mod.main(0)
 
 
+def test_build_v1_stage_dispatch(monkeypatch):
+    """Each stage number wires the right stage (1 run / 2 metrics / 3 report)."""
+    from ioptics import metrics, run
+    from ioptics.report import leaderboard, rst, standard
+
+    calls = []
+    monkeypatch.setattr(run, 'run_sweep', lambda cfg, **k: calls.append('run'))
+    monkeypatch.setattr(metrics, 'compute', lambda sid, **k: calls.append('metrics'))
+    monkeypatch.setattr(standard, 'build', lambda sid, **k: calls.append('report'))
+    monkeypatch.setattr(leaderboard, 'update', lambda **k: calls.append('lb') or None)
+    monkeypatch.setattr(leaderboard, 'render', lambda **k: 'TABLE')
+    monkeypatch.setattr(rst, 'write_leaderboard_landing',
+                        lambda idx, tbl: calls.append('landing'))
+
+    mod = _load_build_module()
+    mod.main(0)
+    assert calls == []                          # no-op
+    mod.main(1)
+    assert calls == ['run']
+    calls.clear()
+    mod.main(2)
+    assert calls == ['metrics']
+    calls.clear()
+    mod.main(3)
+    assert calls == ['report', 'lb', 'landing']
+
+
 # --------------------------------------------------------------------
 # Tier 2 — a small real sweep
 # --------------------------------------------------------------------
