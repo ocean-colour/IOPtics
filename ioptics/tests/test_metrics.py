@@ -407,19 +407,33 @@ def test_compute_spectral_accuracy_and_coverage(tmp_path):
 def test_compute_scalar_closure_and_ranks(tmp_path):
     sc = _synthetic_sweep(tmp_path).scalar
     allc = sc[(sc.stratum == 'all') & (sc.fit_method == 'chisq')]
-    # §2 closure row (component='Rrs')
+    # §2 closure row (component='Rrs') — χ²ᵥ-based QC (Q10a)
     rrs = allc[allc.component == 'Rrs'].set_index('algorithm')
+    # synthetic chi2_nu == 1.0 -> all 'good', none a non-solution
     assert rrs.loc['expb_pow', 'frac_good'] == 1.0
-    assert np.isclose(rrs.loc['expb_pow', 'mae'], 0.0)
-    assert rrs.loc['expb_pow', 'frac_fit_noise'] == 1.0
-    assert np.isclose(rrs.loc['giop', 'mae'], 0.5)       # Rrs 1.5x -> MAE 0.5
-    assert rrs.loc['giop', 'frac_qc_fail'] == 1.0
+    assert rrs.loc['expb_pow', 'frac_qc_fail'] == 0.0
+    assert rrs.loc['giop', 'frac_qc_fail'] == 0.0
+    assert np.isclose(rrs.loc['expb_pow', 'chi2_nu_median'], 1.0)
+    # the log-space Rrs MAE is no longer part of the closure row
+    assert 'frac_fit_noise' not in rrs.columns
     # ref-band accuracy ranks: expb_pow (mae 0) beats giop.
     a440 = allc[(allc.component == 'a') & (allc.ref_wave == 440.0)]
     a440 = a440.set_index('algorithm')
     assert a440.loc['expb_pow', 'ref_match'] == 440.0
     assert a440.loc['expb_pow', 'mae_rank'] == 1
     assert a440.loc['giop', 'mae_rank'] == 2
+
+
+def test_closure_qc_from_chi2nu():
+    """§2 QC-fail is χ²ᵥ-based: fraction with χ²ᵥ > CHI2NU_QC_MAX (Q10a)."""
+    scal = pd.DataFrame({
+        'dataset': ['L23'] * 4, 'algorithm': ['x'] * 4,
+        'fit_method': ['chisq'] * 4, 'stratum': ['all'] * 4,
+        'chi2_nu': [1.0, 1.0, 9.0, 20.0], 'n_bands': [81] * 4, 'k': [5] * 4})
+    row = metrics._closure_rows(scal, n_sigma=2.0).iloc[0]
+    assert row['component'] == 'Rrs'
+    assert row['frac_qc_fail'] == 0.5              # 2 of 4 exceed 5.0
+    assert 'mae' not in row.index or np.isnan(row.get('mae', np.nan))
 
 
 def test_compute_pairwise_wins_and_dbic(tmp_path):

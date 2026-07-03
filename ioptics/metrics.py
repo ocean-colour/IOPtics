@@ -134,14 +134,18 @@ def type2_fit(M, O):
 # they are correct regardless of how ``Rrs_obs`` is eventually sourced; wiring
 # them into ``compute`` waits on the persistence decision (see Q&A / Task 4).
 
-# Default Rrs-closure thresholds (Erickson dual-sided window). Configurable per
-# call; ``compute`` records the values it used (Q&A). ``NOISE_FLOOR`` ≈ the ~5%
-# measurement-noise level a good fit sits at; ``FIT_NOISE_FACTOR`` × that is the
-# "well below the noise floor" over-fitting threshold; ``RRS_QC_MAX`` marks
-# non-solutions.
+# Rrs-closure thresholds for the array helpers :func:`rrs_window`/:func:`rrs_closure`
+# (Erickson dual-sided window). NOTE: ``compute`` no longer uses these for the §2
+# QC flags — the log-space multiplicative Rrs MAE is ill-defined where ``Rrs``
+# crosses zero (the red tail of hyperspectral spectra goes ~0 / negative under
+# noise), so QC is derived from **χ²ᵥ** instead (:data:`CHI2NU_QC_MAX`). The
+# helpers remain valid for closure on strictly-positive Rrs bands.
 NOISE_FLOOR = 0.05
 FIT_NOISE_FACTOR = 0.5
 RRS_QC_MAX = 0.25
+
+# §2 QC (noise-weighted): a fit with reduced χ²ᵥ above this is a non-solution.
+CHI2NU_QC_MAX = 5.0
 
 
 def chi2nu_quality(chi2_nu, dof, *, n_sigma=2.0):
@@ -559,28 +563,15 @@ def _scalar_var_rows(scalar):
     return pd.DataFrame(out)
 
 
-def _rrs_per_obs(spec, *, noise_floor, fit_noise_factor, qc_max):
-    """Per-obs Rrs closure (Rrs_model vs Rrs_obs) for the §2 aggregation."""
-    mod = spec[spec['component'] == 'Rrs_model']
-    obs = spec[spec['component'] == 'Rrs_obs']
-    if mod.empty or obs.empty:
-        return pd.DataFrame()
-    on = ['dataset', 'obs_id', 'algorithm', 'fit_method', 'stratum',
-          'wavelength']
-    merged = mod.merge(obs, on=on, suffixes=('_mod', '_obs'))
-    out = []
-    okeys = ['dataset', 'obs_id', 'algorithm', 'fit_method', 'stratum']
-    for kvals, g in merged.groupby(okeys, sort=False):
-        c = rrs_closure(g['value_mod'].to_numpy(dtype=float),
-                        g['value_obs'].to_numpy(dtype=float),
-                        noise_floor=noise_floor,
-                        fit_noise_factor=fit_noise_factor, qc_max=qc_max)
-        out.append({**dict(zip(okeys, kvals)), **c})
-    return pd.DataFrame(out)
+def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX):
+    """metrics_scalar §2 closure rows (component='Rrs'), from **χ²ᵥ**.
 
-
-def _closure_rows(scalar, rrs_obs, *, n_sigma):
-    """metrics_scalar closure rows (component='Rrs'): χ²ᵥ quality + Rrs MAE."""
+    Fit quality is the noise-weighted reduced χ²ᵥ (from ``run``/BING ``stats``):
+    ``chi2_nu_median`` + the dof-scaled ``frac_good/overfit/underfit`` band, and
+    ``frac_qc_fail`` = fraction of fits that are non-solutions (χ²ᵥ > ``qc_max``).
+    The log-space Rrs MAE is intentionally **not** used here — it is ill-defined
+    where ``Rrs`` crosses zero (see :data:`CHI2NU_QC_MAX`).
+    """
     out = []
     for kvals, g in scalar.groupby(_KEYS, sort=False):
         row = dict(zip(_KEYS, kvals))
@@ -591,21 +582,16 @@ def _closure_rows(scalar, rrs_obs, *, n_sigma):
         cn = g['chi2_nu'].to_numpy(dtype=float)
         dof = (g['n_bands'].to_numpy(dtype=float)
                - g['k'].to_numpy(dtype=float))
-        labels = [chi2nu_quality(c, d, n_sigma=n_sigma) for c, d in zip(cn, dof)]
-        labels = np.array(labels)
+        labels = np.array([chi2nu_quality(c, d, n_sigma=n_sigma)
+                           for c, d in zip(cn, dof)])
         nq = labels.size
         row['n'] = int(nq)
         row['chi2_nu_median'] = float(np.nanmedian(cn)) if nq else np.nan
         row['frac_good'] = float(np.mean(labels == 'good')) if nq else np.nan
         row['frac_overfit'] = float(np.mean(labels == 'overfit')) if nq else np.nan
         row['frac_underfit'] = float(np.mean(labels == 'underfit')) if nq else np.nan
-        if not rrs_obs.empty:
-            r = rrs_obs.merge(pd.DataFrame([dict(zip(_KEYS, kvals))]), on=_KEYS)
-            if not r.empty:
-                row['mae'] = float(np.nanmedian(r['rrs_mae']))
-                row['bias'] = float(np.nanmedian(r['rrs_bias']))
-                row['frac_fit_noise'] = float(np.mean(r['fit_noise']))
-                row['frac_qc_fail'] = float(np.mean(r['qc_fail']))
+        row['frac_qc_fail'] = (float(np.mean(cn > qc_max))
+                               if nq else np.nan)   # χ²ᵥ non-solution
         out.append(row)
     return pd.DataFrame(out)
 
@@ -645,9 +631,8 @@ def _pairwise_metrics(ref, scalar, *, dbic_pair):
 
 
 def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
-            ref_tol=REF_TOL, noise_floor=NOISE_FLOOR,
-            fit_noise_factor=FIT_NOISE_FACTOR, rrs_qc_max=RRS_QC_MAX,
-            n_sigma=2.0, dbic_pair=('expb_pow', 'giop'), write=True):
+            ref_tol=REF_TOL, n_sigma=2.0, chi2nu_qc_max=CHI2NU_QC_MAX,
+            dbic_pair=('expb_pow', 'giop'), write=True):
     """Score a sweep: read its results tables and emit the metrics tables.
 
     Reads ``runs/<sweep_id>/results_{spectral,scalar}.parquet`` via
@@ -663,9 +648,10 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
       component, ref_wave)``: the ±``ref_tol`` nm **ref-band** §1 accuracy (the
       matched band recorded in ``ref_match``) for spectral components, the
       derived-scalar accuracy (``Chl``/``a_cdom440``/``Sdg``, ``ref_wave`` NaN),
-      and the §2 **closure** row (``component='Rrs'``: χ²ᵥ quality fractions +
-      Rrs MAE/bias + ``fit_noise``/``qc_fail`` fractions); accuracy metrics carry
-      cross-algorithm ranks. GLORIA ``a_dg`` rows are flagged ``caveat``.
+      and the §2 **closure** row (``component='Rrs'``: χ²ᵥ ``chi2_nu_median`` +
+      ``frac_good/overfit/underfit`` + ``frac_qc_fail`` = fraction with
+      χ²ᵥ > ``chi2nu_qc_max``); accuracy metrics carry cross-algorithm ranks.
+      GLORIA ``a_dg`` rows are flagged ``caveat``.
     - **metrics_pairwise** — §5 ``wins`` head-to-head per ``(dataset,
       fit_method, stratum, component, ref_wave)`` and the §3 ΔBIC contest
       (``dbic_pair``, default ``expb_pow`` vs ``giop``) per ``(dataset,
@@ -700,9 +686,8 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
             scalar_acc,
             by=('dataset', 'fit_method', 'stratum', 'component', 'ref_wave'))
 
-    rrs_obs = _rrs_per_obs(spec_scoped, noise_floor=noise_floor,
-                           fit_noise_factor=fit_noise_factor, qc_max=rrs_qc_max)
-    closure = _closure_rows(scal_scoped, rrs_obs, n_sigma=n_sigma)
+    closure = _closure_rows(scal_scoped, n_sigma=n_sigma,
+                            qc_max=chi2nu_qc_max)
 
     metrics_scalar = pd.concat(
         [df for df in (scalar_acc, closure) if not df.empty],

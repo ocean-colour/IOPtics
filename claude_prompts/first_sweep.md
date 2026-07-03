@@ -116,6 +116,22 @@ Q8. **Smoke-run cost + report.** For the 20-spectrum smoke, trim its MCMC (e.g.
     flag if you'd rather cap MCMC `nsteps` or the subset for a first full run.
 >A. Yes, let's trim the MCMC subset to 5 for the smoke run and render the report to a throwaway docs_root.
 
+Q10. **§2 Rrs-closure QC artifact (found in the step-2 smoke).** The smoke's
+    report shows `frac_qc_fail=1.0` for **both** algorithms even though χ²ᵥ≈1
+    (good fits). Cause: the §2 Rrs closure reuses the **log-space multiplicative**
+    `mae` (fine for strictly-positive IOPs), but **Rrs crosses zero in the red**
+    — L23 Rrs at >600 nm is ~0 and goes **negative** under pace noise. So the
+    multiplicative MAE is dominated by the red tail (obs0: all-band 0.34 vs
+    ≤600 nm 0.13), tripping `RRS_QC_MAX=0.25` spuriously. The committed report's
+    QC table would be misleading. Options (metrics-layer / Stage-4 fix — pick):
+    (a) base the QC flag on **χ²ᵥ** (inverse-variance weighted, already ≈1)
+    instead of the multiplicative Rrs MAE; (b) compute the Rrs closure MAE only
+    over bands with `Rrs_obs` above a floor / positive SNR; (c) use a
+    noise-relative (χ²-like) Rrs residual rather than log-space for §2.
+    Recommend (a) or (b). Resolve before committing the full report (step 5); the
+    full **run** (step 3) is unaffected and can proceed meanwhile.
+>A. Let's use option (a).
+
 Q9. **Execution shape (last check).** Q7's `build_v1.main` extension only adds
     `n_cores`/`strict`/`obs_ids` — it still reads `run_v1.yaml`'s
     `sweep_id=expb_giop_L23_v1` + `mcmc_subset=200`. The **smoke** needs a
@@ -184,6 +200,9 @@ Ok, and does the sweep use MCMC for BING?  It should.  Log your work
 `sphinx-build -W` the tmp tree. **Verify** the whole pipeline runs clean end to
 end and the page renders. This validates everything before the long full run;
 the tmp `docs_root` is discarded (nothing committed). Q&A. Log.
+
+### 2b. SMOKE Q&A
+I have answered your Q10, please modify the code as needed.
 
 ### 3. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
@@ -367,3 +386,54 @@ scope + the provenance versions the page carries.
 - **Full-run projection restored:** χ² minutes + **200 expb_pow MCMC serial ≈
   ~3 h** → step 3 runs the full sweep in the background.
 - **Ready for step 2** (smoke metrics + report → tmp docs_root, review-only).
+
+### First sweep — step 2: SMOKE metrics + report (review-only) (2026-07-03)
+
+- Ran `metrics.compute` → `report.standard.build(kind='cross_algorithm',
+  docs_root=<tmp>)` → `leaderboard.update(out=<tmp>)` +
+  `write_leaderboard_landing` → `sphinx-build -W` on `test20`, via
+  `/tmp/smoke_report.py`. **Whole pipeline clean end-to-end in ~3.7 s;
+  `sphinx -W` rc=0; the page HTML built.** (tmp docs discarded — nothing
+  committed.)
+- Tables produced: metrics_spectral 3645 / scalar 126 / pairwise 63 rows;
+  report assets = scatter_a_440 / scatter_bb_555 / taylor_a / target_a /
+  dbic_cdf PNGs + accuracy/qc CSVs + `interactive_scatter.html`; leaderboard 60
+  rows (both algos).
+- **Content is coherent** (20-obs smoke): `giop` beats `expb_pow` on a(440/443)
+  accuracy (mae 0.062 vs 0.109; wins 0.85 vs 0.15) but is worse at bb(670)
+  (0.117 vs 0.079, biased low, coverage68 0.10); ΔBIC median +3.1 → BIC mildly
+  favors the simpler `giop` (frac_favor_a=0.4). χ²ᵥ medians ≈1.06/1.09.
+- **⚠ Finding → Q10 (§2 Rrs-closure QC artifact).** `frac_qc_fail=1.0` for both
+  despite χ²ᵥ≈1. Diagnosed: the §2 closure reuses the **log-space multiplicative
+  `mae`**, but **Rrs crosses zero in the red** (L23 >600 nm ≈0, negative under
+  pace noise), so the MAE blows up on the red tail (obs0: all-band 0.34 vs
+  ≤600 nm 0.13). The QC-fail flag mis-fires. Raised **Q10** with fix options
+  (χ²ᵥ-based QC / band-floored Rrs MAE / noise-relative residual) — a Stage-4
+  metrics-layer decision to resolve **before committing the full report (step
+  5)**; the full **run (step 3)** is unaffected.
+- No package changes in this step (diagnosis only). **Ready for step 3** (full
+  run in background) — and Q10 to settle before step 4/5.
+
+### First sweep — step 2b: §2 QC → χ²ᵥ-based (Q10a) (2026-07-03)
+
+- **Implemented Q10 option (a)** in `metrics`: §2 closure QC now derives from
+  reduced **χ²ᵥ** (noise-weighted), not the log-space multiplicative Rrs MAE.
+  - Added `CHI2NU_QC_MAX = 5.0` (a fit with χ²ᵥ above this is a non-solution).
+  - `_closure_rows` now emits `chi2_nu_median` + `frac_good/overfit/underfit`
+    (dof-scaled band) + **`frac_qc_fail = mean(χ²ᵥ > CHI2NU_QC_MAX)`**; the
+    red-band-inflated `rrs_mae`/`rrs_bias`/`frac_fit_noise` are **dropped** from
+    the closure row. Removed the now-unused `_rrs_per_obs`; `compute` drops the
+    `noise_floor`/`fit_noise_factor`/`rrs_qc_max` params and gains
+    `chi2nu_qc_max`. (The `rrs_window`/`rrs_closure` array helpers stay — valid
+    for strictly-positive Rrs — just no longer wired into `compute`.)
+  - `report.tables.qc` now reports the χ²ᵥ columns (`chi2_nu_median`, `frac_good`,
+    `frac_overfit`, `frac_underfit`, `frac_qc_fail`).
+- **Tests updated:** `test_metrics` closure test (χ²ᵥ QC; `frac_qc_fail==0` for
+  the good synthetic) + new `test_closure_qc_from_chi2nu` (2 of 4 χ²ᵥ>5 → 0.5);
+  `test_report_figures.test_tables_qc` (χ²ᵥ columns, no `frac_fit_noise`). Full
+  suite **169 passed, 15 skipped** (`$OS_COLOR` unset); `sphinx -W` clean.
+- **Verified on real smoke data** (recomputed `test20`): `frac_qc_fail` now
+  **0.0** for both (was 1.0); χ²ᵥ classification meaningful (expb_pow
+  good 0.90 / underfit 0.10; giop 0.65 / 0.35). The misleading QC artifact is
+  gone — **the committed report's QC table will now be trustworthy.**
+- **Ready for step 3** (full run in background); Q10 resolved.

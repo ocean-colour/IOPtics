@@ -66,10 +66,10 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     """Per-algorithm QC summary: non-solution rate + §2 closure fractions.
 
     ``frac_not_ok`` is the fraction of ``results_scalar`` rows whose ``status``
-    is not ``'ok'`` (fit failures / QC flags); the closure fractions
-    (``frac_good``, ``frac_fit_noise``, ``frac_qc_fail``, ``chi2_nu_median``)
-    come from the ``metrics_scalar`` ``component='Rrs'`` rows. Writes
-    ``qc_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
+    is not ``'ok'`` (fit failures / QC flags); the χ²ᵥ closure fractions
+    (``chi2_nu_median``, ``frac_good``, ``frac_overfit``, ``frac_underfit``,
+    ``frac_qc_fail``) come from the ``metrics_scalar`` ``component='Rrs'`` rows.
+    Writes ``qc_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
     """
     sweep = figures.resolve(sweep, root)
     sc = sweep.scalar[sweep.scalar['fit_method'] == fit_method]
@@ -81,7 +81,8 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     closure = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
                  & (ms['component'] == 'Rrs')]
     cols = [c for c in ('algorithm', 'chi2_nu_median', 'frac_good',
-                        'frac_fit_noise', 'frac_qc_fail') if c in closure.columns]
+                        'frac_overfit', 'frac_underfit', 'frac_qc_fail')
+            if c in closure.columns]
     out = not_ok.merge(closure[cols], on='algorithm', how='left') \
                 .sort_values('algorithm').reset_index(drop=True)
     if write:

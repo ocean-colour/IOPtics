@@ -101,10 +101,13 @@ def test_tables_accuracy(tmp_path):
 def test_tables_qc(tmp_path):
     sw = _build_sweep(tmp_path)
     df = tables.qc(sw).set_index('algorithm')
-    assert 'frac_not_ok' in df.columns and 'frac_fit_noise' in df.columns
+    # χ²ᵥ-based QC columns (Q10a); no more Rrs-MAE frac_fit_noise
+    assert {'frac_not_ok', 'chi2_nu_median', 'frac_good', 'frac_qc_fail'} \
+        <= set(df.columns)
+    assert 'frac_fit_noise' not in df.columns
     assert df.loc['expb_pow', 'frac_not_ok'] == 0.0        # all 'ok'
-    # giop model Rrs is 1.5x -> closure QC-fail flagged
-    assert df.loc['giop', 'frac_qc_fail'] == 1.0
+    # synthetic χ²ᵥ == 1.0 -> no non-solutions
+    assert df.loc['giop', 'frac_qc_fail'] == 0.0
     assert (figures.subdir(sw, 'tables') / 'qc_chisq_all.csv').is_file()
 
 
