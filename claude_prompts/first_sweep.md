@@ -132,6 +132,38 @@ Q10. **§2 Rrs-closure QC artifact (found in the step-2 smoke).** The smoke's
     full **run** (step 3) is unaffected and can proceed meanwhile.
 >A. Let's use option (a).
 
+Q11. **Exposing the report on RTD — the Bokeh-iframe gotcha (step 2c).** RTD is
+    already wired (`.readthedocs.yaml` builds `docs/source/conf.py` on push,
+    `fail_on_warning: false`, installs the package + `docs/requirements.txt`,
+    heavy deps mocked). To publish a report you just generate it into the **real**
+    `docs/source/reports/<sweep_id>/` (not a tmp `docs_root`), commit the page +
+    assets + the updated `reports/index.rst`, and push — RTD's glob toctree picks
+    it up. **But** I verified sphinx copies the figure **PNGs** (→ `_images/`) yet
+    **not** the standalone `interactive_scatter.html`, so the `report.rst`
+    `<iframe src="interactive_scatter.html">` would **404** on RTD (static panels
+    fine; interactive figure broken). Fix options (Stage-5 `report` change):
+    (a) **inline-embed** the Bokeh figure with `bokeh.embed.components` + a
+    BokehJS CDN `<script>` via `.. raw:: html` (figure lives in the page; no
+    separate file/iframe; compatible with the mocked-bokeh RTD build since the
+    script/div are pre-generated); or (b) keep the standalone file + iframe and
+    make sphinx copy it (`html_extra_path`, writing the html to a copied
+    location). Recommend **(a)**. Which — and shall I implement it before we
+    commit the smoke report?
+>A. Let's use option (a).
+
+Q12. **Interactive scatter bakes the whole point cloud (found regenerating the
+    smoke, step 2e).** The inline Bokeh embed serializes **every** scatter point
+    into the page: the 20-obs smoke = **31,200 points → a 2.5 MB
+    `cross_algorithm.rst`**; the full 3320-obs run projects to **~5.2M points →
+    ~415 MB inline** — untenable to commit / serve. (The old standalone
+    `file_html` had the same all-points payload.) Fix before committing any real
+    report (recommend): **downsample** the interactive scatter to ~2–5k points
+    (stratified by algorithm/component, or per (component,ref-λ)); optionally
+    hexbin/aggregate. A small `report.bokeh` change. Which cap/strategy — and
+    shall I implement it before you push the smoke? (Static PNG scatters are
+    unaffected — they already summarize the full population.)
+>A. Yes, downsample the interactive scatter
+
 Q9. **Execution shape (last check).** Q7's `build_v1.main` extension only adds
     `n_cores`/`strict`/`obs_ids` — it still reads `run_v1.yaml`'s
     `sweep_id=expb_giop_L23_v1` + `mcmc_subset=200`. The **smoke** needs a
@@ -203,6 +235,18 @@ the tmp `docs_root` is discarded (nothing committed). Q&A. Log.
 
 ### 2b. SMOKE Q&A
 I have answered your Q10, please modify the code as needed.
+
+### 2c. SMOKE + expose
+I wish to expose the SMOKE report on RTD before continuing on to the full run.  How do I do so?
+
+### 2d. SMOKE
+I have answered Q11.  Read it and modify the code accordingly.  Log your work. 
+
+### 2e. Rerun the SMOKE
+Rerun the SMOKE test and tell me what to push to expose on RTD.  Log your work.
+
+### 2f. Another Rerun the SMOKE
+Ok, see my answer to Q12 and modify the code accordingly.  Log your work.
 
 ### 3. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
@@ -437,3 +481,108 @@ scope + the provenance versions the page carries.
   good 0.90 / underfit 0.10; giop 0.65 / 0.35). The misleading QC artifact is
   gone — **the committed report's QC table will now be trustworthy.**
 - **Ready for step 3** (full run in background); Q10 resolved.
+
+### First sweep — step 2c: how to expose the report on RTD (2026-07-03)
+
+- **RTD is already configured** (`.readthedocs.yaml`): builds `docs/source/conf.py`
+  on every push, `fail_on_warning: false`, installs the package (`pip install .`)
+  + `docs/requirements.txt` (Sphinx + rtd-theme), with `bing/ocpy/bokeh` **mocked**
+  in `conf.py` (autodoc-only; report pages are static RST + images). The project
+  must be imported/connected on readthedocs.org for the branch to build.
+- **Procedure to publish a report:** generate it into the **real** tree —
+  `report.standard.build(<sweep_id>, kind='cross_algorithm')` (default
+  `docs_root` = repo `docs/source`) + `leaderboard.update()` +
+  `rst.write_leaderboard_landing(docs/source/reports/index.rst, render())` —
+  then **commit** `docs/source/reports/<sweep_id>/` (rst + PNG + CSV + html) and
+  the updated `reports/index.rst`, and **push**. The `:glob: */*` toctree already
+  links the new page; RTD builds it. (This is exactly build stage `3`, but into
+  the committed docs tree rather than a tmp `docs_root`.)
+- **⚠ Found: the interactive Bokeh figure won't render on RTD.** Verified sphinx
+  copies the figure **PNGs** (→ `_images/`) but **not** the standalone
+  `interactive_scatter.html`, so the `report.rst` `<iframe>` 404s (built report
+  dir contained only `cross_algorithm.html`). Static scatter/Taylor/Target/ΔBIC
+  + accuracy/QC tables render fine; only the interactive scatter breaks.
+- **Raised Q11** with the fix (recommend inline-embed via
+  `bokeh.embed.components` + CDN, so the figure lives in the page — no separate
+  file/iframe, compatible with the mocked-bokeh RTD build). **Not committed
+  anything / no report written into the real tree yet** — awaiting the Q11
+  decision so we don't publish a broken iframe.
+- No package changes in this step (RTD-mechanics analysis + gotcha diagnosis).
+
+### First sweep — step 2d: inline Bokeh embed for RTD (Q11a) (2026-07-03)
+
+- **Implemented Q11 option (a)** — the interactive scatter is now **embedded
+  inline** in the report page (no separate file / iframe), so it survives a
+  Sphinx/RTD build:
+  - `report/bokeh.py`: extracted `_scatter_layout(...)`; `interactive_scatter`
+    still returns the standalone `file_html` (inline BokehJS) for a downloadable
+    artifact, and a new **`scatter_embed(sweep)`** returns an HTML **fragment** —
+    BokehJS **CDN** `<script>` (`CDN.render()`) + the `bokeh.embed.components`
+    `<div>`/`<script>`. Pre-generated at build time, so RTD needs no Bokeh
+    install (mocked), only the CDN at view time.
+  - `report/rst.py`: added `bokeh_embed(fragment)` (drops the fragment into a
+    `.. raw:: html` block); `bokeh_raw` (iframe) kept but no longer used by
+    `standard`.
+  - `report/standard.py`: the "Interactive" section now uses
+    `rst.bokeh_embed(bokeh.scatter_embed(sweep))`; **no `interactive_scatter.html`
+    written** into the report dir.
+- **Tests:** added `test_report_bokeh.test_scatter_embed` (fragment: CDN +
+  components div/script, not a full doc); updated
+  `test_report_standard.test_build_cross_algorithm` (no `.html` file; inline
+  `.. raw:: html`, no iframe). Full suite **170 passed, 15 skipped**
+  (`$OS_COLOR` unset); `sphinx -W` clean.
+- **Verified end-to-end:** built the `test20` report to a tmp Sphinx tree with
+  `sphinx -W` (rc=0) — the built `cross_algorithm.html` **embeds Bokeh inline**
+  (`data-root-id`, loads `cdn.bokeh.org`), **no broken `interactive_scatter.html`
+  reference**. The interactive figure will render on RTD.
+- **Not written into the real docs tree / not committed yet** — the smoke report
+  is now RTD-ready; next action (on your go): generate it into
+  `docs/source/reports/expb_giop_L23_test20/`, `sphinx -W`, then you commit +
+  push (RTD builds it). No git run (JXP runs git).
+
+### First sweep — step 2e: regenerate smoke into real docs; push set (2026-07-03)
+
+- Regenerated the smoke report into the **real** tree (test20 run results are
+  current/deterministic; re-ran `metrics.compute` → `standard.build` →
+  `leaderboard.update` → `write_leaderboard_landing`). **`sphinx -W` on
+  `docs/source` = rc 0**, `cross_algorithm.html` builds; the interactive scatter
+  is embedded inline (no missing file).
+- **Push set (to expose the smoke on RTD):**
+  - new: `docs/source/reports/expb_giop_L23_test20/` — `cross_algorithm.rst`,
+    `scatter_a_440.png`, `scatter_bb_555.png`, `taylor_a.png`, `target_a.png`,
+    `dbic_cdf_expb_pow_vs_giop.png`, `accuracy_chisq_all.csv`, `qc_chisq_all.csv`.
+  - modified: `docs/source/reports/index.rst` (leaderboard landing between the
+    sentinels; glob toctree picks up the page). Push the branch → RTD builds.
+  - **NOT** committed: `runs/…` parquet/chains, `$OS_COLOR/IOPtics/leaderboard.parquet`.
+- **⚠ Blocker before pushing — Q12.** `cross_algorithm.rst` is **2.5 MB**: the
+  inline Bokeh embed serializes all **31,200** smoke scatter points; the full run
+  projects to **~5.2M points → ~415 MB** inline. Recommend **downsampling** the
+  interactive scatter (~2–5k pts, stratified) — a small `report.bokeh` change —
+  **before** committing (else repo/RTD bloat now, and the full report is
+  impossible). Static PNGs are fine (already population summaries).
+- **Recommendation:** hold the push until Q12 is settled; then I regenerate (page
+  drops to a normal size) and hand you the same push set. No git run.
+
+### First sweep — step 2f: downsample interactive scatter (Q12); push set (2026-07-03)
+
+- **Implemented Q12** in `report/bokeh.py`: `_scatter_points` now caps the
+  interactive scatter at **`SCATTER_MAX_POINTS = 3000`**, stratified by
+  `(algorithm, component, stratum)` (seeded shuffle + `groupby.head` — keeps
+  every selectable combo, total ≤ cap, size **independent of sweep size**).
+  Added `test_scatter_points_downsampled`. Full suite **171 passed, 15 skipped**;
+  `sphinx -W` clean.
+- **Regenerated the smoke report** (clean, into the real tree):
+  `cross_algorithm.rst` **2.5 MB → 257 KB**; report dir ~496 KB. The full
+  3320-obs run will produce the **same ~257 KB** page (cap is constant).
+- **Push set (expose the smoke on RTD):**
+  - new: `docs/source/reports/expb_giop_L23_test20/` (`cross_algorithm.rst` +
+    5 PNG + `accuracy_chisq_all.csv` + `qc_chisq_all.csv`).
+  - modified: `docs/source/reports/index.rst` (leaderboard landing).
+  - `git add` those two paths, commit, push → RTD builds. **Not** committed:
+    `runs/…` parquet/chains, `$OS_COLOR/IOPtics/leaderboard.parquet`.
+- **⚠ Package changes ride along** (needed for the page to render right; should
+  land in the same branch/PR): `metrics.py` + `report/tables.py` (χ²-QC, 2b);
+  `report/bokeh.py`/`rst.py`/`standard.py` (inline embed 2d + downsample 2f);
+  `build_v1.py` knobs (step 1) + `run_v1.yaml` (1b/1d); plus the updated tests.
+- No git run (JXP runs git). **Ready for step 3** (full run) once the smoke is
+  pushed/approved.

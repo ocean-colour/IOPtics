@@ -2,7 +2,8 @@
 
 :func:`build` assembles one of the design's three report types from the standard
 figures/tables/bokeh, writing a reStructuredText page + its **lightweight
-display assets** (figure PNGs, CSV tables, the standalone Bokeh HTML) into the
+display assets** (figure PNGs, CSV tables; the interactive Bokeh figure is
+embedded inline in the page via CDN, not a separate file) into the
 accumulating Sphinx tree ``docs/source/reports/<sweep_id>/`` — each page
 header-stamped with the sweep's provenance versions. Heavy artifacts (parquet,
 chains) stay under ``runs/`` and are not copied.
@@ -135,11 +136,10 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
         sweep, report_dir, 'Quality control', tables_dir / 'qc_chisq_all.csv',
         'Non-solution rate + Rrs-closure fractions (χ²).'))
 
-    # standalone interactive scatter
-    html = bokeh.interactive_scatter(sweep)
-    (report_dir / 'interactive_scatter.html').write_text(html, encoding='utf-8')
+    # interactive scatter — embedded inline (CDN + components) so it renders on
+    # RTD without copying a separate HTML file into the build output.
     blocks.append(rst.section('Interactive',
-                              rst.bokeh_raw('interactive_scatter.html')))
+                              rst.bokeh_embed(bokeh.scatter_embed(sweep))))
 
     out = report_dir / f'{kind}.rst'
     out.write_text(rst.page(*blocks), encoding='utf-8')

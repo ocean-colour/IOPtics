@@ -85,12 +85,14 @@ def test_build_cross_algorithm(tmp_path):
     assert (rd / 'scatter_a_440.png').is_file()
     assert (rd / 'accuracy_chisq_all.csv').is_file()
     assert (rd / 'qc_chisq_all.csv').is_file()
-    assert (rd / 'interactive_scatter.html').is_file()
+    # interactive scatter is embedded inline (no separate .html file / iframe)
+    assert not (rd / 'interactive_scatter.html').exists()
     text = out.read_text()
     assert f':Sweep: {_SID}' in text
     assert '.. figure:: scatter_a_440.png' in text
     assert '.. csv-table::' in text
-    assert '<iframe src="interactive_scatter.html"' in text
+    assert '.. raw:: html' in text and 'iframe' not in text
+    assert 'Bokeh' in text or 'bokeh' in text          # inline CDN + components
     # toctree globs the new page in
     assert ':glob:' in (docs / 'reports' / 'index.rst').read_text()
 
