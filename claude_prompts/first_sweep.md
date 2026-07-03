@@ -29,8 +29,12 @@ This executes the sweep the architecture was built for — no new package code
 ## Context
 
 - **Config** (`run_v1.yaml`): `sweep_id: expb_giop_L23_v1`, `datasets: [L23]`,
-  `noise_model: pace`, `algorithms: [expb_pow (χ²), giop (mcmc)]`,
-  `fit_method: chisq`, `mcmc_subset: 200`, `seed: 1234`.
+  `noise_model: pace`, `seed: 1234`. **`expb_pow` = standard 5-parameter BING**
+  (ExpBricaud a_nw + Pow bb_nw; `Adg, Sdg, Aph, Bnw, beta`, k=5) — **MCMC-fit on
+  the `mcmc_subset` (1d)**, and χ²-fit over all records like every algorithm;
+  **`giop`** = k=3 contrast (GIOP a_nw + Lee bb_nw; `Aexp, Aph, Bnw`) — **LM/χ²
+  only (1b)**. `fit_method: chisq` (sweep default → giop); `mcmc_subset: 200`
+  (D4; the expb_pow spectra also MCMC-fit).
 - **Driver** (`build_v1.py`, `main(flg)`): `1` → `run.run_sweep(cfg)`; `2` →
   `metrics.compute(cfg.sweep_id)`; `3` → `report.standard.build(sweep_id,
   kind='cross_algorithm')` + `leaderboard.update()` +
@@ -41,19 +45,20 @@ This executes the sweep the architecture was built for — no new package code
 - **Leaderboard** lands at `$OS_COLOR/IOPtics/leaderboard.parquet` (runs-root
   sibling) and is not committed.
 
-### ⚠ Read before running — two real gotchas
+### ⚠ Read before running — the run knobs
 
-- **`build_v1.main(1)` runs the FULL L23 dataset, serial, fail-fast.** It calls
-  `run.run_sweep(cfg)` with the defaults `n_cores=1, strict=True` and **no
-  `obs_ids`** — i.e. every L23 spectrum, χ² for both algorithms + **200 giop MCMC
-  fits**, on one core. That is long, and `strict=True` means a **single** failed
-  fit aborts the whole sweep (the known run-error-policy TODO). Decide the run
-  knobs in Q&A **before** step 1.
-- **Getting the knobs in.** `build_v1.main` doesn't expose `obs_ids`/`n_cores`/
-  `strict`. Options (Q&A #1): (a) call the stages directly in a short snippet
-  (`run.run_sweep(cfg, obs_ids=…, n_cores=…, strict=…)`, then `metrics.compute`,
-  then `report.standard.build`+`leaderboard`); or (b) extend `build_v1.main` to
-  accept `n_cores`/`strict`/`obs_ids` (tiny, reusable change).
+- **Error policy / fail-fast.** By default `run.run_sweep` is `strict=True` — a
+  **single** failed fit aborts the whole sweep (the run-error-policy TODO). For
+  the first full sweep use `strict=False` (D3): failures become
+  `status='fit_failed'` rows + reduced coverage.
+- **Cost (post-1d): χ² fast, MCMC is the long pole.** χ² over all 3320 × 2 is
+  minutes (pooled at `n_cores`). But `expb_pow` (BING) is MCMC-fit on the
+  **200-spectrum subset**, and those MCMC fits are **serial** (~40 000 steps
+  each). The 5-fit smoke took ~5 min → the full **200 MCMC fits project to
+  ≈3 hours**. Plan to run the full sweep in the **background** (step 3).
+- **Getting the knobs in.** `build_v1.main` now accepts
+  `n_cores`/`strict`/`obs_ids` (step-1 tweak) and threads them into
+  `run.run_sweep`.
 
 ## Decisions — answer before step 1 (Q&A)
 
@@ -135,12 +140,14 @@ Q9. **Execution shape (last check).** Q7's `build_v1.main` extension only adds
 2. I have answered your Q&A.  Please read my responses and ask additional questions if you need to.  Log your work in the Logs section below.
 3. I have answered your Q&A.  Please read my responses and modify the prompts below as needed.  Log your work in the Logs section below.
 
-**Confirmed plan (D1–D5, Q6–Q9):** two runs this session — a **smoke** (throwaway
-`expb_giop_L23_test20`, 20 obs, `mcmc_subset=5`, review-only report to a tmp
-`docs_root`) to validate the pipeline, then the **full** deliverable
+**Confirmed plan (D1–D5, Q6–Q9, 1b–1d):** two runs this session — a **smoke**
+(throwaway `expb_giop_L23_test20`, 20 obs, `mcmc_subset=5`, review-only report to
+a tmp `docs_root`) to validate the pipeline, then the **full** deliverable
 (`expb_giop_L23_v1`, all L23, `mcmc_subset=200`, report into the real docs tree).
-Both use `n_cores=10`, `strict=False`. The smoke runs via a direct snippet; the
-full run via the extended `build_v1.main`.
+Both use `n_cores=10`, `strict=False`; **`expb_pow` (BING) is MCMC-fit on the
+subset + χ² over all, `giop` is LM/χ² only**. The smoke runs via a direct
+snippet; the full run via the extended `build_v1.main` (its 200 serial MCMC fits
+are the long pole → run in the background).
 
 ### 0. Preflight
 Environment checks only — **no package changes**: `$OS_COLOR` set and L23
@@ -153,12 +160,22 @@ L23 spectrum count (sets full-run expectations). Report readiness. Q&A. Log.
 First the sanctioned run-ergonomics tweak (Q7): extend
 `build_v1.main(flg, *, n_cores=1, strict=True, obs_ids=None)` to thread those into
 `run.run_sweep(...)` (keep defaults backward-compatible; add/adjust the Tier-1
-dispatch test). Then run the **smoke** via a direct snippet (Q8/Q9): `cfg =
+dispatch test). Then run the **smoke** via a direct snippet (Q8/Q9, 1b–1d): `cfg =
 config.loads(<sweep_id=expb_giop_L23_test20, datasets:[L23], noise:pace,
-expb_pow + giop-mcmc, mcmc_subset:5, seed:1234>)`; `run.run_sweep(cfg,
-obs_ids=range(20), n_cores=10, strict=False)`. **Verify:** results + provenance +
-`chains/` (≤5 giop MCMC) written under `test20`; `status` breakdown (ok vs
-fit_failed) and χ²ᵥ look sane. Report counts. Q&A. Log.
+expb_pow(fit_method:mcmc) + giop, fit_method:chisq, mcmc_subset:5, seed:1234>)`;
+`run.run_sweep(cfg, obs_ids=range(20), n_cores=10, strict=False)`. **Verify:**
+results + provenance + `chains/` (5 expb_pow MCMC) under `test20`; `giop` is
+χ²-only; `status` breakdown (ok vs fit_failed) and χ²ᵥ look sane. Report counts.
+Q&A. Log.
+
+### 1b. Modifications on GIOP MCMC
+We should not be doing MCMC analysis on GIOP, only LM.  Please modify the code and prompts to reflect this. If you have any questions, write them in the Q&A section below. Log your work.
+
+### 1c. BING
+I am now worried that the first sweep doesn't include a standard 5-parameter BING run.  Does it?  if not, it needs to.  If you have any questions, write them in the Q&A section below. Log your work.
+
+### 1d. BING MCMC
+Ok, and does the sweep use MCMC for BING?  It should.  Log your work
 
 ### 2. SMOKE metrics + report (review-only, not committed)
 `metrics.compute('expb_giop_L23_test20')`; then `report.standard.build(
@@ -170,9 +187,11 @@ the tmp `docs_root` is discarded (nothing committed). Q&A. Log.
 
 ### 3. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
-`run_v1.yaml`: all L23, `mcmc_subset=200`). **Heads-up:** the 200 MCMC fits are
-serial — expect this to be the long pole. **Verify:**
-`results_{spectral,scalar}.parquet` + `provenance.yaml` + `chains/` (200 giop
+`run_v1.yaml`: all 3320 L23 spectra; χ² for both + **expb_pow MCMC on the
+200-subset**). χ² is quick (pooled at 10 cores); the **200 serial MCMC fits are
+the long pole (~3 h)** — **run in the background** (a script file, not a heredoc —
+multiprocessing needs an importable `__main__`). **Verify:**
+`results_{spectral,scalar}.parquet` + `provenance.yaml` + `chains/` (200 expb_pow
 MCMC); `status` breakdown + χ²ᵥ distribution sane. Report counts + wall time.
 Q&A. Log.
 
@@ -289,3 +308,62 @@ scope + the provenance versions the page carries.
   **background**; and/or (revisit D4) cut MCMC `nsteps` or the subset for this
   first full pass. χ² over all 3320×2 is quick (pooled at 10 cores).
 - **Ready for step 2** (smoke metrics + report to a tmp docs_root, review-only).
+
+### First sweep — step 1b: GIOP is LM-only, no MCMC (2026-07-03)
+
+- **Decision:** neither algorithm is MCMC-fit in this sweep — `expb_pow` and
+  `giop` are both **least-squares (LM/χ²)**. (`AlgorithmSpec.fit_method` already
+  defaults to `chisq`; only `run_v1.yaml` had opted `giop` into MCMC.)
+- **Code:** edited `run_v1.yaml` → `algorithms: [expb_pow, giop]`,
+  `fit_method: chisq`, `mcmc_subset: 0`. No engine change — `run_sweep` only runs
+  MCMC for algorithms whose effective `fit_method=='mcmc'` gated by
+  `mcmc_subset`, so this is now a pure χ² sweep (no `chains/`). The general MCMC
+  machinery + its Tier-2 tests are left intact (a capability for future
+  algorithms/sweeps, e.g. Stage 6).
+- **Prompts:** updated the Config bullet, the "run knobs" box (dropped the
+  "200 MCMC serial" long-pole; the χ²-only sweep is minutes), the confirmed-plan
+  block, and steps 1/3 (no `mcmc_subset`, no `chains/`).
+- **Re-ran the smoke χ²-only** (`test20`, 20 obs, 10 cores, `strict=False`):
+  **40 results** (20 `expb_pow` + 20 `giop`, all `chisq`), **all `ok`**, χ²ᵥ
+  mean 1.12 / median 1.06 / range 0.83–1.57, no MCMC rows — in **~8 s** (vs
+  ~4.5 min with MCMC). `test_sweep.py` still green; `run_v1.yaml` loads as
+  χ²-only (`mcmc_subset=0`).
+- **Consequence noted:** the standard `cross_algorithm` report is unaffected —
+  coverage 68/95 comes from the χ² covariance bounds; corner plots (chains-only)
+  were already omitted. No coverage/diagnostic loss for the first report.
+- **Supersedes the step-1 "≈2–3 h full run" projection:** the full χ²-only run
+  over 3320×2 is now minutes. Q&A: flag if a *future* sweep should include an
+  MCMC contestant (for corner/degeneracy diagnostics) — not this one.
+- **Ready for step 2** (smoke metrics + report → tmp docs_root, review-only).
+
+### First sweep — step 1c: standard 5-parameter BING is included (2026-07-03)
+
+- **Answer: yes.** `expb_pow` **is** the standard 5-parameter BING — verified by
+  building its models: pnames = **`[Adg, Sdg, Aph, Bnw, beta]`** (k=5;
+  `ExpBricaud` a_nw = a_dg amplitude + slope + a_ph amplitude, `Pow` bb_nw =
+  amplitude + slope). `giop` is the intended k=3 contrast (`[Aexp, Aph, Bnw]`;
+  `GIOP` a_nw + `Lee` bb_nw). The smoke's scalar table agrees (k = 5 vs 3).
+- **No code change needed** — the sweep already contains the standard BING run.
+  Added a clarifying note to the Config bullet naming `expb_pow` as the 5-param
+  BING (and `giop` as the k=3 contrast) so it's unambiguous.
+- **Ready for step 2** (unchanged).
+
+### First sweep — step 1d: BING (expb_pow) is MCMC-fit (2026-07-03)
+
+- **Decision:** the standard 5-param BING (`expb_pow`) **should use MCMC** —
+  refines 1b (which correctly kept `giop` LM-only). Final policy: `expb_pow` →
+  χ² over all + **MCMC on the `mcmc_subset`**; `giop` → LM/χ² only.
+- **Code:** `run_v1.yaml` → `expb_pow` opts `fit_method: mcmc`, `giop` plain
+  (χ² default), `mcmc_subset: 200` restored (D4). No engine change (`run_sweep`
+  already χ²-fits every algorithm + adds MCMC for the mcmc-opted one).
+- **Prompts:** updated the Config bullet, the run-knobs "cost" box (**MCMC long
+  pole is back** — ~3 h for 200 serial expb_pow MCMC → run full in background),
+  the confirmed-plan block, and steps 1/3.
+- **Re-ran the smoke** (`test20`, 20 obs, subset 5, 10 cores, `strict=False`):
+  **45 results** — `expb_pow` 20 χ² + **5 MCMC**, `giop` 20 χ²; all `ok`; χ²ᵥ
+  mean 1.12; **5 chain files** written for expb_pow. ~5.3 min (the 5 MCMC
+  dominate). `test_sweep.py` green; `run_v1.yaml` loads as
+  `expb_pow→mcmc, giop→chisq, mcmc_subset=200`.
+- **Full-run projection restored:** χ² minutes + **200 expb_pow MCMC serial ≈
+  ~3 h** → step 3 runs the full sweep in the background.
+- **Ready for step 2** (smoke metrics + report → tmp docs_root, review-only).
