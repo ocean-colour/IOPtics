@@ -42,7 +42,12 @@ def test_build_v1_stage_dispatch(monkeypatch):
     from ioptics.report import leaderboard, rst, standard
 
     calls = []
-    monkeypatch.setattr(run, 'run_sweep', lambda cfg, **k: calls.append('run'))
+    run_kw = {}
+
+    def _run(cfg, **k):
+        calls.append('run')
+        run_kw.update(k)
+    monkeypatch.setattr(run, 'run_sweep', _run)
     monkeypatch.setattr(metrics, 'compute', lambda sid, **k: calls.append('metrics'))
     monkeypatch.setattr(standard, 'build', lambda sid, **k: calls.append('report'))
     monkeypatch.setattr(leaderboard, 'update', lambda **k: calls.append('lb') or None)
@@ -61,6 +66,13 @@ def test_build_v1_stage_dispatch(monkeypatch):
     calls.clear()
     mod.main(3)
     assert calls == ['report', 'lb', 'landing']
+
+    # stage-1 run knobs thread through to run_sweep
+    calls.clear()
+    mod.main(1, n_cores=10, strict=False, obs_ids=range(20))
+    assert calls == ['run']
+    assert run_kw['n_cores'] == 10 and run_kw['strict'] is False
+    assert list(run_kw['obs_ids']) == list(range(20))
 
 
 # --------------------------------------------------------------------
