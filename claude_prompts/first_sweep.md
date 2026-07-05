@@ -265,8 +265,10 @@ That is excellent, but not quite there yet.  Please:
 - White text on black is rather.. boring.  This is ocean color!  Do better
 - Add more, fixed graphics.  On models and datasets.  If you need to create PNGs with Python, save the scripts in docs/
 
+### 3a. FULL run — Stage 1 prep
+I wish to run the FULL run on my workstation.  Can you generate a script that I can execute on it with an `at` command to run in the background?  Call it `full_run.src`.  In essence, this will replace the 3b prompt below.  
 
-### 3. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
+### 3b. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
 `run_v1.yaml`: all 3320 L23 spectra; χ² for both + **expb_pow MCMC on the
 200-subset**). χ² is quick (pooled at 10 cores); the **200 serial MCMC fits are
@@ -675,3 +677,24 @@ Second docs pass, all four asks:
 - **Push set (delta):** modified `docs/source/{conf.py,models.rst,datasets.rst,
   reports/index.rst}`; new `docs/figures/`, `docs/source/_static/custom.css`,
   `_static/{model_components,l23_overview}.png`. No git run (JXP).
+
+### First sweep — step 3a: `full_run.src` for the workstation (2026-07-05)
+
+- **JXP will run the full sweep on their workstation** (replaces 3b here). I did
+  **not** launch it.
+- **Gave `build_v1.py` a CLI** (`_cli`, argparse): `build_v1.py <flg>
+  [--n-cores N] [--strict BOOL] [--obs-ids A:B]`, threading into
+  `main(...)`; dropped the now-unused `import sys`. Verified `--help`, `flg 0`
+  no-op; dispatch test still green.
+- **Wrote `full_run.src`** (repo root) — an `at`-runnable POSIX-`sh` background
+  script: sets `OS_COLOR`/`PY`/`REPO` (editable at top), then loops
+  `STAGES="1 2 3"` calling `build_v1.py <s> --n-cores 10 --strict false`
+  (stage 1 = the ~3 h run; 2 = metrics; 3 = report+leaderboard), appending
+  timestamps + results/report paths to `full_run.log`. Launch:
+  ``at now -f full_run.src`` (or ``nohup sh full_run.src &``); trim to
+  ``STAGES=1`` for run-only.
+- **Validated** without the heavy run: `sh -n` syntax OK; a `STAGES=0` (no-op)
+  dry run exercised the full wiring (env, paths, loop, CLI, logging) → clean log.
+- Push set (delta): modified `ioptics/runs/prototypes/expb_giop/build_v1.py`;
+  new `full_run.src`. **After the workstation run finishes**, do steps 4–5
+  (verify tables/χ²ᵥ/status, review the report page, commit). No git run (JXP).

@@ -24,7 +24,6 @@ datasets, algorithms, noise model, fit method, MCMC subset). Paths derive from
 """
 
 import os
-import sys
 
 from ioptics import config, run
 
@@ -55,5 +54,28 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None):
             idx, report.leaderboard.render(board=board))
 
 
+def _cli(argv=None):
+    """CLI: ``build_v1.py <flg> [--n-cores N] [--strict BOOL] [--obs-ids A:B]``."""
+    import argparse
+
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument('flg', nargs='?', type=int, default=0,
+                   help='stage: 1 run, 2 metrics, 3 report (0 = no-op)')
+    p.add_argument('--n-cores', type=int, default=1,
+                   help='parallel workers for prep + chi^2 (stage 1)')
+    p.add_argument('--strict', default='true',
+                   help='true = fail-fast; false = robust fit_failed rows (stage 1)')
+    p.add_argument('--obs-ids', default=None,
+                   help="restrict prep to a range 'A:B' (stage 1; default all)")
+    a = p.parse_args(argv)
+
+    strict = str(a.strict).strip().lower() not in ('false', '0', 'no', 'f')
+    obs_ids = None
+    if a.obs_ids:
+        lo, hi = (int(x) for x in a.obs_ids.split(':'))
+        obs_ids = range(lo, hi)
+    main(a.flg, n_cores=a.n_cores, strict=strict, obs_ids=obs_ids)
+
+
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else 0)
+    _cli()
