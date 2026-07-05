@@ -16,7 +16,8 @@
 #
 # ---- EDIT for your workstation if these differ -----------------------------
 OS_COLOR="${OS_COLOR:-/home/xavier/Projects/Oceanography/data/Color/}"  # data tree
-PY="${PY:-/home/xavier/miniforge3/envs/ocean14/bin/python}"            # ocean14 python
+PY="${PY:-/home/xavier/miniforge3/envs/os_313/bin/python}"            # ocean14 python
+#PY="${PY:-/home/xavier/miniforge3/envs/ocean14/bin/python}"            # ocean14 python
 REPO="${REPO:-/home/xavier/Oceanography/python/IOPtics}"               # repo root
 # ---- knobs -----------------------------------------------------------------
 STAGES="${STAGES:-1 2 3}"   # set to "1" for run-only; "1 2 3" = full report
