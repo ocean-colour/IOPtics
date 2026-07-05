@@ -17,20 +17,29 @@ Reading the leaderboard
 -----------------------
 
 The table below is the **persistent, cross-sweep leaderboard**: every sweep's
-ref-band accuracy is folded into one ranked store
-(:func:`ioptics.report.leaderboard.update`), so the standing comparison grows as
-algorithms and datasets accumulate (the fold is idempotent — re-running a sweep
-replaces its rows). Each row is one algorithm's score for a
-``(dataset, component, ref_wave, stratum)`` contest:
+accuracy at the diagnostic reference wavelengths (e.g. 440, 555 nm) is folded
+into one ranked store (:func:`ioptics.report.leaderboard.update`), so the
+standing comparison grows as algorithms and datasets accumulate. (The fold is
+idempotent — re-running a sweep just replaces its rows.) Each row is one
+algorithm's score for one contest — a ``(dataset, component, reference
+wavelength, trophic stratum)`` combination:
 
-- **rank** — 1 = best in that contest, ordered by **wins**, then
-  :math:`|\text{bias}|`, then log-space **MAE** (design default).
-- **win_frac** — fraction of per-spectrum head-to-head contests the algorithm
-  wins (closer to truth) against the others.
-- **bias / mae** — signed multiplicative bias and multiplicative mean absolute
-  error in :math:`\log_{10}` space (0 = perfect; e.g. ``mae = 0.1`` ≈ 10%).
-- **coverage68 / coverage95** — fraction of truth values inside the retrieval's
-  68% / 95% credible interval; well-calibrated uncertainties sit near 0.68 / 0.95.
+- **rank** — 1 = best in that contest. The default ordering is by **wins**,
+  breaking ties by :math:`|\text{bias}|` then MAE (see below).
+- **win_frac** — the head-to-head win fraction: for each individual spectrum,
+  the algorithm whose retrieval is *closer to the true value* wins; ``win_frac``
+  is the share of spectra it wins. 0.5 = a tie, 1.0 = always closest.
+- **mae** — *mean absolute error*, computed on :math:`\log_{10}` values so it
+  reads as a **multiplicative** (fractional) error: ``0`` is perfect, ``0.1`` ≈
+  “typically off by ~10 %”, ``0.3`` ≈ ~2× off. (Log space is used because IOPs
+  span orders of magnitude.)
+- **bias** — the *signed* version of MAE: positive = the algorithm systematically
+  over-estimates, negative = under-estimates (again multiplicative; 0 =
+  unbiased).
+- **coverage68 / coverage95** — a **calibration** check on the reported
+  uncertainties: the fraction of truth values that fall inside the retrieval's
+  68 % / 95 % confidence interval. Well-calibrated error bars land near 0.68 /
+  0.95; much lower means the stated uncertainties are too tight (over-confident).
 
 Each sweep also gets its own provenance-stamped page (linked below) with the
 figures and tables behind these numbers.

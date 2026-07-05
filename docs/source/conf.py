@@ -84,6 +84,7 @@ intersphinx_mapping = {
 html_theme = 'furo'
 html_static_path = ['_static']
 html_title = 'IOPtics'
+html_css_files = ['custom.css']       # ocean-colour theme accents
 
 html_theme_options = {
     'sidebar_hide_name': False,
