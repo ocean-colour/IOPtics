@@ -248,6 +248,16 @@ Rerun the SMOKE test and tell me what to push to expose on RTD.  Log your work.
 ### 2f. Another Rerun the SMOKE
 Ok, see my answer to Q12 and modify the code accordingly.  Log your work.
 
+### 2g. Improve docs
+The Report has been exposed on RTD and looks very good.  Please make these improvements:
+- Add significant text explaining what was done and why
+- Add a separate page that details each of the IOP models examined
+- Add text describing the Leaderboard
+- Add text describing each figure presented
+- Add a separate page that defines each dataset examined
+- Use a different Sphinx style than the default on RTD
+
+
 ### 3. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
 `run_v1.yaml`: all 3320 L23 spectra; χ² for both + **expb_pow MCMC on the
@@ -586,3 +596,38 @@ scope + the provenance versions the page carries.
   `build_v1.py` knobs (step 1) + `run_v1.yaml` (1b/1d); plus the updated tests.
 - No git run (JXP runs git). **Ready for step 3** (full run) once the smoke is
   pushed/approved.
+
+### First sweep — step 2g: docs improvements + new theme (2026-07-04)
+
+All six requested improvements:
+
+1. **"What was done & why"** — `standard.build` now emits an **Overview** section
+   (`_intro`) naming the algorithms/datasets and what the reader is looking at,
+   with links to the new reference pages.
+2. **Per-model page** — new `docs/source/models.rst` details each IOP model:
+   ``expb_pow`` = standard 5-param BING (Adg/Sdg/Aph/Bnw/beta, ExpBricaud+Pow,
+   MCMC-fit) vs ``giop`` = k=3 contrast (Aexp/Aph/Bnw, GIOP+Lee, LM), and why the
+   comparison matters (flexibility vs parsimony → ΔBIC).
+3. **Leaderboard text** — `reports/index.rst` now has a "Reading the leaderboard"
+   section explaining the cross-sweep fold + every column (rank/win_frac/bias/
+   mae/coverage). (Replaced the stale "no sweeps yet" note.)
+4. **Per-figure descriptions** — each generated figure/table section now carries
+   an explanatory paragraph (`_fig_section`/`_table_section` gained a ``desc``):
+   scatter (1:1/3:1/1:3 reading), Taylor/Target, ΔBIC CDF, accuracy & QC tables,
+   interactive scatter.
+5. **Per-dataset page** — new `docs/source/datasets.rst` defines L23 (Loisel
+   2023, 3320 spectra, PACE noise, strata) + planned PANGAEA/GLORIA (with the
+   CDOM-vs-`a_dg` caveat). Both new pages linked in the top-level toctree.
+6. **New theme** — switched `html_theme` from the classic ``sphinx_rtd_theme`` to
+   **``furo``** (modern light/dark, brand colors); added ``furo`` to
+   `docs/requirements.txt` (dropped ``sphinx-rtd-theme``), installed it in
+   `ocean14`.
+- **Tests:** the sphinx-render tests now scaffold stub `datasets`/`models` pages
+  (the report ``:doc:`` cross-links them). Full suite **171 passed, 15 skipped**;
+  `sphinx -W` builds the **full furo site** clean (rc 0). Regenerated the smoke
+  report (Overview + descriptions present; rst ~259 KB).
+- **Push set (docs):** modified — `docs/requirements.txt`, `docs/source/conf.py`,
+  `docs/source/index.rst`, `docs/source/reports/index.rst`,
+  `docs/source/reports/expb_giop_L23_test20/cross_algorithm.rst`; new —
+  `docs/source/datasets.rst`, `docs/source/models.rst`. (Package changes from
+  earlier steps still ride along in the same branch/PR.) No git run.

@@ -13,12 +13,27 @@ Report pages are generated **on demand** by a sweep's build script
 Docs builds them directly. The heavy artifacts (parquet tables, raw MCMC
 chains) stay under ``$OS_COLOR/IOPtics/runs/`` and are not committed.
 
-.. note::
+Reading the leaderboard
+-----------------------
 
-   No sweeps have been published yet (the run/metrics/report layers arrive in
-   Stages 2–5). As each ``<sweep_id>.rst`` page is generated it is linked from
-   the toctree below — :mod:`ioptics.report.rst` (Stage 5) will switch this to a
-   glob so new pages are picked up automatically.
+The table below is the **persistent, cross-sweep leaderboard**: every sweep's
+ref-band accuracy is folded into one ranked store
+(:func:`ioptics.report.leaderboard.update`), so the standing comparison grows as
+algorithms and datasets accumulate (the fold is idempotent — re-running a sweep
+replaces its rows). Each row is one algorithm's score for a
+``(dataset, component, ref_wave, stratum)`` contest:
+
+- **rank** — 1 = best in that contest, ordered by **wins**, then
+  :math:`|\text{bias}|`, then log-space **MAE** (design default).
+- **win_frac** — fraction of per-spectrum head-to-head contests the algorithm
+  wins (closer to truth) against the others.
+- **bias / mae** — signed multiplicative bias and multiplicative mean absolute
+  error in :math:`\log_{10}` space (0 = perfect; e.g. ``mae = 0.1`` ≈ 10%).
+- **coverage68 / coverage95** — fraction of truth values inside the retrieval's
+  68% / 95% credible interval; well-calibrated uncertainties sit near 0.68 / 0.95.
+
+Each sweep also gets its own provenance-stamped page (linked below) with the
+figures and tables behind these numbers.
 
 .. LEADERBOARD_START (auto-generated; do not edit)
 
@@ -702,7 +717,6 @@ Leaderboard
 
 
 .. LEADERBOARD_END
-
 .. toctree::
    :maxdepth: 1
    :glob:

@@ -80,13 +80,20 @@ intersphinx_mapping = {
 
 # -- HTML output -------------------------------------------------------------
 
-html_theme = 'sphinx_rtd_theme'
+# Furo — a clean, modern theme (light/dark) distinct from the classic RTD look.
+html_theme = 'furo'
 html_static_path = ['_static']
+html_title = 'IOPtics'
 
 html_theme_options = {
-    'collapse_navigation': False,
-    'sticky_navigation': True,
-    'navigation_depth': 4,
-    'titles_only': False,
-    'style_nav_header_background': '#2980B9',
+    'sidebar_hide_name': False,
+    'navigation_with_keys': True,
+    'light_css_variables': {
+        'color-brand-primary': '#1a6ea8',
+        'color-brand-content': '#1a6ea8',
+    },
+    'dark_css_variables': {
+        'color-brand-primary': '#6cb6e8',
+        'color-brand-content': '#6cb6e8',
+    },
 }
