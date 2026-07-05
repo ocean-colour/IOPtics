@@ -257,6 +257,14 @@ The Report has been exposed on RTD and looks very good.  Please make these impro
 - Add a separate page that defines each dataset examined
 - Use a different Sphinx style than the default on RTD
 
+### 2h. Improve docs
+That is excellent, but not quite there yet.  Please:
+
+- Use language that a geoscientist, but not ocean color expert, will understand.  This includes the statistcal conecpts
+- Explain the models in greater detail.  Include equations where possible (draw on the BING paper)
+- White text on black is rather.. boring.  This is ocean color!  Do better
+- Add more, fixed graphics.  On models and datasets.  If you need to create PNGs with Python, save the scripts in docs/
+
 
 ### 3. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
@@ -631,3 +639,39 @@ All six requested improvements:
   `docs/source/reports/expb_giop_L23_test20/cross_algorithm.rst`; new —
   `docs/source/datasets.rst`, `docs/source/models.rst`. (Package changes from
   earlier steps still ride along in the same branch/PR.) No git run.
+
+### First sweep — step 2h: accessible prose, equations, figures, palette (2026-07-05)
+
+Second docs pass, all four asks:
+
+1. **Accessible language (incl. stats).** Rewrote `models.rst`, `datasets.rst`
+   and the leaderboard prose for a geoscientist who isn't an ocean-colour expert:
+   define :math:`R_{rs}`, IOPs, absorption/backscatter, CDOM/phytoplankton/
+   detritus, and the statistics in plain terms — **MAE** (multiplicative/log
+   error, "0.1 ≈ 10% off"), **bias** (signed), **wins** (closer-to-truth per
+   spectrum), **coverage** (error-bar calibration), **χ²ᵥ** and **ΔBIC/BIC**.
+2. **Models in depth + equations.** `models.rst` now derives the forward model
+   (:math:`R_{rs}\approx g_1u+g_2u^2`, :math:`u=b_b/(a+b_b)`), the
+   :math:`a=a_w+a_{ph}+a_{dg}` / :math:`b_b=b_{bw}+b_{bp}` split, and each
+   parameterization (exponential :math:`a_{dg}`, Bricaud :math:`a_{ph}`,
+   power-law :math:`b_{bp}`) as ``.. math::`` — expb_pow (k=5) vs giop (k=3, fixed
+   slopes) — plus the χ²ᵥ and BIC definitions. Standard bio-optical forms in our
+   own notation (no paper text reproduced).
+3. **Colour.** Switched to an **ocean palette**: new
+   `docs/source/_static/custom.css` (wired via `html_css_files`) — ocean-blue/
+   teal/green brand, gradient sidebar-brand, gradient H1 underline, seafoam table
+   headers + zebra rows, framed figures; tuned for both furo light **and** dark
+   modes.
+4. **Fixed graphics (+ scripts in docs/).** Two generated PNGs:
+   `_static/model_components.png` (schematic :math:`a_{dg}`/:math:`a_{ph}`/
+   :math:`b_{bp}` shapes vs their slopes) on the models page, and
+   `_static/l23_overview.png` (phytoplankton-loading histogram + example Rrs
+   spectra) on the datasets page. Generators saved in **`docs/figures/`**
+   (`make_model_components.py` = data-free; `make_l23_overview.py` = needs L23;
+   PNGs committed so RTD serves them without data).
+- **Build:** `sphinx -W` full **furo** site clean (rc 0; css + both PNGs copied &
+  linked). Full suite **171 passed, 15 skipped** (no package code changed this
+  step; the render tests already scaffold stub `models`/`datasets`).
+- **Push set (delta):** modified `docs/source/{conf.py,models.rst,datasets.rst,
+  reports/index.rst}`; new `docs/figures/`, `docs/source/_static/custom.css`,
+  `_static/{model_components,l23_overview}.png`. No git run (JXP).
