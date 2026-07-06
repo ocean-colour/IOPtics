@@ -23,6 +23,13 @@ from ioptics.datasets import get_adapter
 from ioptics.noise import attach_noise
 from ioptics.records import PreparedRecord
 
+# In-situ datasets are meant to weight the fit by their own measured Rrs error
+# (``noise='insitu'``). PANGAEA V3 ships no per-band Rrs uncertainty, so when an
+# ``'insitu'`` record carries no ``Rrs_err`` prep falls back to a flat
+# fractional model (design §Noise: "pct fallback otherwise"). The provenance
+# tag then honestly records the model actually used (``'pct:0.05'``).
+_INSITU_PCT_FALLBACK = 0.05
+
 
 def _align_truth(src_wave, src_vals, wave):
     """Align one spectral truth component from its native grid onto ``wave``.
@@ -48,21 +55,32 @@ def _build_truth(raw, wave):
 
     Spectral components become ocpy ``Spectrum`` objects pre-aligned to
     ``wave`` (native grid retained in ``metadata['orig_wave']``); scalar
-    components become plain floats.
+    components become plain floats. A spectral truth value may arrive either as
+    a plain array on ``raw.wave`` (L23) or as a ``(src_wave, values)`` pair on
+    its own per-family grid (PANGAEA's ``a_ph``/``a_dg``/``bb_p``); both are
+    aligned onto ``wave`` (out-of-range points left ``NaN``, regrid flagged).
     """
     from ocpy.spectra import Spectrum
 
-    src_wave = np.asarray(raw.wave, dtype=float)
+    default_wave = np.asarray(raw.wave, dtype=float)
     truth, truth_interp = {}, {}
     for key, val in raw.truth.items():
+        if isinstance(val, tuple):                         # per-family spectrum
+            comp_wave, comp_vals = val
+            comp_wave = np.asarray(comp_wave, dtype=float)
+            aligned, interpolated = _align_truth(comp_wave, comp_vals, wave)
+            truth[key] = Spectrum(wave, aligned, units='1/m',
+                                  metadata={'orig_wave': comp_wave})
+            truth_interp[key] = interpolated
+            continue
         arr = np.asarray(val)
         if arr.ndim == 0:                                  # scalar component
             truth[key] = float(val)
             truth_interp[key] = False
-        else:                                              # spectral component
-            aligned, interpolated = _align_truth(src_wave, arr, wave)
+        else:                                              # spectral on raw.wave
+            aligned, interpolated = _align_truth(default_wave, arr, wave)
             truth[key] = Spectrum(wave, aligned, units='1/m',
-                                  metadata={'orig_wave': src_wave})
+                                  metadata={'orig_wave': default_wave})
             truth_interp[key] = interpolated
     return truth, truth_interp
 
@@ -117,7 +135,9 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         Observation identifier for the dataset's adapter.
     noise : str or None, optional
         Noise model passed to :func:`ioptics.noise.attach_noise`. Defaults to
-        ``'pace'`` for L23 (synthetic) and ``'insitu'`` otherwise.
+        ``'pace'`` for L23 (synthetic) and ``'insitu'`` otherwise; an
+        ``'insitu'`` record with no measured ``Rrs_err`` falls back to a flat
+        fractional model (see :data:`_INSITU_PCT_FALLBACK`).
     add_noise : bool or None, optional
         Whether to perturb ``Rrs``. Defaults to ``True`` for L23 and ``False``
         for in-situ datasets (their ``Rrs`` is already a real observation).
@@ -149,6 +169,11 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
     wave = wave_full[mask]
     Rrs_in = np.asarray(raw.Rrs, dtype=float)[mask]
     Rrs_err = None if raw.Rrs_err is None else np.asarray(raw.Rrs_err, float)[mask]
+
+    # In-situ weighting needs measured errors; fall back to a fractional model
+    # when the dataset carries none (e.g. PANGAEA V3).
+    if noise == 'insitu' and Rrs_err is None:
+        noise = f'pct:{_INSITU_PCT_FALLBACK}'
 
     # Uncertainty (+ optional perturbation).
     varRrs, Rrs_out, Rrs_clean, tag, seed_used = attach_noise(

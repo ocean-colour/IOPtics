@@ -9,11 +9,13 @@ import numpy as np
 import pytest
 
 from ioptics import datasets as D
-from ioptics.datasets import Adapter, L23Adapter, RawObs
-from ioptics.tests.conftest import needs_l23
+from ioptics.datasets import Adapter, L23Adapter, PANGAEAAdapter, RawObs
+from ioptics.tests.conftest import needs_l23, needs_pangaea
 
 L23_TRUTH_KEYS = {'a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
                   'Chl', 'Y', 'Sdg'}
+# PANGAEA provides a subset of these per observation (permissive coverage).
+PANGAEA_TRUTH_KEYS = {'a_ph', 'a_dg', 'bb_p', 'Chl', 'tss'}
 
 
 # --------------------------------------------------------------------
@@ -59,6 +61,21 @@ def test_l23_x2_is_guarded():
         L23Adapter().obs_ids(X=2)
 
 
+def test_registry_seeded_with_pangaea():
+    assert 'PANGAEA' in D.available_datasets()
+    assert isinstance(D.get_adapter('PANGAEA'), PANGAEAAdapter)
+
+
+def test_pangaea_adapter_satisfies_protocol():
+    assert isinstance(D.get_adapter('PANGAEA'), Adapter)
+
+
+def test_pangaea_truth_kind_map():
+    # ocpy family -> IOPtics spectral truth key (combined CDOM+detrital -> a_dg)
+    assert D._PANGAEA_TRUTH_KINDS == {'aph': 'a_ph', 'acdom': 'a_dg',
+                                      'bbp': 'bb_p'}
+
+
 # --------------------------------------------------------------------
 # Tier 2 — requires the L23 data tree
 # --------------------------------------------------------------------
@@ -87,3 +104,44 @@ def test_l23_load_obs_native_grid_and_truth():
     assert raw.meta['dataset'] == 'L23'
     assert raw.meta['X'] == 1 and raw.meta['Y'] == 0
     assert raw.Rrs_err is None
+
+
+# --------------------------------------------------------------------
+# Tier 2 — requires the PANGAEA V3 data directory
+# --------------------------------------------------------------------
+@needs_pangaea
+def test_pangaea_load_obs_native_grid_and_truth():
+    ad = D.get_adapter('PANGAEA')
+    ids = ad.obs_ids()
+    assert len(ids) > 0
+
+    raw = ad.load_obs(ids[0])
+    assert isinstance(raw, RawObs)
+
+    # native Rrs grid, ascending, aligned
+    assert raw.wave.ndim == 1 and raw.wave.size > 0
+    assert np.all(np.diff(raw.wave) > 0)
+    assert raw.Rrs.shape == raw.wave.shape
+
+    # only recognized truth keys; PANGAEA carries no measured Rrs error
+    assert set(raw.truth).issubset(PANGAEA_TRUTH_KEYS)
+    assert raw.Rrs_err is None
+    assert raw.meta['dataset'] == 'PANGAEA'
+
+    # spectral truth arrives as (src_wave, values) pairs on per-family grids
+    for comp in ({'a_ph', 'a_dg', 'bb_p'} & set(raw.truth)):
+        val = raw.truth[comp]
+        assert isinstance(val, tuple) and len(val) == 2
+        src_wave, vals = val
+        assert src_wave.shape == vals.shape and src_wave.size > 0
+        assert np.all(np.diff(src_wave) > 0)          # ascending native grid
+    # scalars, when present, are plain floats
+    for scalar in ({'Chl', 'tss'} & set(raw.truth)):
+        assert np.ndim(raw.truth[scalar]) == 0
+
+
+@needs_pangaea
+def test_pangaea_enumeration_is_permissive():
+    ad = D.get_adapter('PANGAEA')
+    # a lower Rrs-band floor admits at least as many observations
+    assert len(ad.obs_ids(min_rrs=1)) >= len(ad.obs_ids(min_rrs=10))

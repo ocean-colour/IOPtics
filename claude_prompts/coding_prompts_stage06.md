@@ -18,9 +18,12 @@ module/addition.
 - **Q&A holds open questions for JXP** — pose them, do **not** self-answer (JXP
   answers before the next task; decisions/rationale go in the Logs).
 - Run tests via the env interpreter directly
-  (`/home/xavier/miniforge3/envs/ocean14/bin/python -m pytest -q`); `conda
+  (`/home/xavier/miniconda3/envs/ocean14/bin/python -m pytest -q`); `conda
   activate` fails non-interactively. **Run the suite without `$OS_COLOR`**
-  (CI-equivalent) before declaring a task done.
+  (CI-equivalent) before declaring a task done. (`ocean14` now lives under
+  `miniconda3`, not `miniforge3`; it needs `pyarrow` — now in `requirements.txt`
+  — for the parquet metrics tables, plus `ocpy`/`bing` (installed editable from
+  the local sibling checkouts, as `requirements.txt`'s git deps).)
 - New adapters live in `datasets` (with `noise`, the only ocpy-importing modules).
 - Adding an algorithm must be **one `register(...)` call** — no core changes.
 - Capitalize **BING** in prose. Keep docstrings RST-clean so `sphinx-build -W`
@@ -45,8 +48,9 @@ module/addition.
 
 - **`datasets` — the adapter seam you add to.** `register_dataset(name, adapter)`
   + the `Adapter` Protocol (`obs_ids(**opts)`, `load_obs(obs_id, **opts) →
-  RawObs`); `RawObs` carries `Rrs`, per-component `truth` (ocpy `Spectrum`s on the
-  native grid) + scalar truth, optional `Rrs_err`, and `meta`. `L23Adapter` (X=1
+  RawObs`); `RawObs` carries `Rrs`, per-component `truth` (spectral values as
+  **plain numpy arrays** on the native grid — `prep` wraps them as ocpy
+  `Spectrum`s) + scalar truth, optional `Rrs_err`, and `meta`. `L23Adapter` (X=1
   elastic; **X=4** = +Raman/Chl-fl, already loadable; X=2 rejected) is the working
   template; `prep`/`noise` condition a `RawObs` into a `PreparedRecord`. New
   adapters import ocpy here and nowhere downstream.
@@ -71,7 +75,7 @@ module/addition.
   kind='cross_algorithm', root=None, docs_root=None)` → provenance-stamped
   `<kind>.rst` + copied PNG/CSV/Bokeh assets under
   `docs/source/reports/<sweep_id>/` + glob toctree; `report.leaderboard.update(
-  runs_root=None, out=None, sweep_ids=None)` **accumulates across sweeps**
+  runs_root=None, *, root=None, out=None, sweep_ids=None)` **accumulates across sweeps**
   (idempotent fold; keyed `(sweep_id, dataset, algorithm, stratum, component,
   ref_wave)`), `render`/`ranked` (wins → |bias| → MAE, all strata);
   `report.rst.write_leaderboard_landing(index_rst, render())` refreshes the
@@ -103,6 +107,7 @@ module/addition.
 
 ### Coding
 
+0. Update this prompt file to reflect the changes from any earlier stage.
 1. PANGAEA adapter in `datasets`.
 2. GLORIA adapter in `datasets` (+ caveat flag).
 3. Register `gsm`.
@@ -149,4 +154,69 @@ module/addition.
 
 ### Q&A
 
+> Open questions for JXP (posed, not self-answered — JXP answers before the next
+> task). Decisions already taken are recorded in the Logs.
+
+**Task 0 (refresh prompt file).**
+
+- **GLORIA caveat in the *leaderboard* (decide before Task 2/5).** The exit
+  criterion reads "the GLORIA scalar comparison surfaces the CDOM-vs-`a_dg`
+  caveat." `metrics.compute` already stamps `caveat='CDOM_vs_adg'` and per-sweep
+  report tables carry it, but I confirmed `report.leaderboard` still folds only
+  accuracy + wins and **drops `caveat`** (grep clean). Do you want the caveat
+  added to the leaderboard fold (so the accumulated cross-sweep leaderboard shows
+  it), or is surfacing it in the per-sweep report table sufficient to meet the
+  exit criterion?
+>A. Sure, add the caveat to the leaderboard fold.
+- **ocpy/bing on CI `main` vs local checkouts.** Stage 6's PANGAEA/GLORIA/`gsm`
+  work depends on `ocpy.insitu.{pangaea,gloria}` and `bing.parameters.standard.gsm`.
+  They import fine here from the **local editable** `ocpy`/`bing`, but Stage 1's
+  CI-lag pattern recurs whenever these aren't on the `git@main` that CI installs.
+  Should I keep the new PANGAEA/GLORIA adapter tests Tier-2 (`@needs_pangaea`,
+  skip-guarded) so CI stays green regardless, and treat "publish these to ocpy/bing
+  `main`" as an upstream follow-up (as with `Rrs_to_rrs`/`PACE_error.csv`)?
+>A. Yes, do so but add a reminder to remove it once I finally get the BING package on PyPI.
+
 ## Logs
+
+### 2026-06-27 (Stage 6, Task 0: refresh prompt file for earlier-stage changes)
+
+Re-read `coding_prompts_stage06.md` and verified every carryover/API claim against
+the current post-Stage-5 code before editing.
+
+- **Environment drift (the real change).** The `ocean14` interpreter is no longer
+  at `/home/xavier/miniforge3/envs/ocean14/bin/python` (the Stage-1 path) — the env
+  now lives under **`miniconda3`**. JXP freshly created it; it was missing
+  `pyarrow` (parquet backend for the metrics tables) and `ocpy`/`bing`. Installed
+  `pyarrow` and editable `ocpy`/`bing` from the local sibling checkouts
+  (`/mnt/tank/Oceanography/python/{ocpy,bing}`), matching the working `os_313` env.
+  **Added `pyarrow` to `requirements.txt`**; updated the Conventions interpreter
+  path + a note on the env move and deps.
+- **RawObs truth representation corrected.** The carryover said `RawObs.truth`
+  spectral values are "ocpy `Spectrum`s on the native grid." They are actually
+  **plain numpy arrays** on the native grid; `prep` (not the adapter) wraps them as
+  ocpy `Spectrum`s. Fixed the bullet so new PANGAEA/GLORIA adapters follow the L23
+  contract (return arrays, let prep wrap).
+- **`leaderboard.update` signature.** Real signature is
+  `update(runs_root=None, *, root=None, out=None, sweep_ids=None)` — added the
+  `root` kwarg the doc omitted.
+- **Verified accurate (no change):** `datasets` registry/`Adapter` Protocol/
+  `RawObs`/`L23Adapter` (X=2 rejected at `datasets.py:129`); `AlgorithmSpec`
+  `rt` toggles `variable_Gordon`/`include_Raman`/`include_Chl_fl` + `from_standard`
+  + `fit_method='chisq'`; `run.fit_chisq`/`evaluate.from_chisq`/`from_chains` and
+  the `rt_dict` seam; `io.read_results`/`write_results` with `Rrs_obs` + chain
+  `pnames`; `metrics.compute(sweep_id, *, root=None, …)` → `metrics_{spectral,
+  scalar,pairwise}.parquet` and `metrics._caveat` stamping `CDOM_vs_adg`;
+  `report.standard.build(sweep_id, kind='cross_algorithm', …)`,
+  `leaderboard.{update,render,ranked}`, `rst.write_leaderboard_landing`,
+  `bokeh.interactive_{scatter,leaderboard}`; `build_v1.py main(flg)` sequential
+  stages 1/2/3; conftest guards `needs_l23`/`needs_pangaea`/`needs_pace`/
+  `needs_sphinx`. All upstream APIs the file cites
+  (`ocpy.insitu.{pangaea,gloria}`, `ocpy.spectra`, `bing.parameters.standard.gsm`,
+  `bing.rt.{raman,chl_fl}`) import in `ocean14`.
+- **Confirmed still-open constraint:** `report.leaderboard` does **not** fold
+  `caveat` — the exit-criterion decision flagged in Known-constraints is genuinely
+  still pending (posed in Q&A).
+- **Verification (`ocean14`, CI-equivalent `env -u OS_COLOR`).** Full suite
+  **170 passed, 16 skipped** — env is sound. No IOPtics source code changed this
+  task (prompt-file + `requirements.txt` only).

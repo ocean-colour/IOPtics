@@ -14,7 +14,7 @@ from ioptics import datasets as D
 from ioptics import prep
 from ioptics.datasets import RawObs
 from ioptics.records import PreparedRecord
-from ioptics.tests.conftest import needs_l23
+from ioptics.tests.conftest import needs_l23, needs_pangaea
 
 L23_TRUTH_KEYS = {'a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
                   'Chl', 'Y', 'Sdg'}
@@ -40,6 +40,34 @@ def fake_dataset():
 
     name = '_FAKE_PREP'
     D.register_dataset(name, FakeAdapter())
+    try:
+        yield name
+    finally:
+        D.ADAPTERS.pop(name, None)
+
+
+@pytest.fixture
+def fake_insitu_dataset():
+    """A PANGAEA-like adapter: per-family truth grids, no measured Rrs error."""
+    class FakeInsituAdapter:
+        def obs_ids(self, **opts):
+            return [0]
+
+        def load_obs(self, obs_id, **opts):
+            wave = np.arange(400.0, 701.0, 5.0)              # Rrs grid
+            Rrs = 0.01 * np.exp(-0.003 * (wave - 400.0)) + 1e-3
+            # a_dg on its OWN grid, narrower than `wave` (edges -> NaN).
+            adg_wave = np.arange(420.0, 601.0, 20.0)
+            adg_vals = 0.2 * np.exp(-0.015 * (adg_wave - 440.0))
+            truth = {
+                'a_dg': (adg_wave, adg_vals),                # per-family pair
+                'Chl':  0.7,                                 # scalar
+            }
+            return RawObs(wave=wave, Rrs=Rrs, truth=truth, Rrs_err=None,
+                          meta={'dataset': 'PANGAEA', 'obs_id': obs_id})
+
+    name = '_FAKE_INSITU'
+    D.register_dataset(name, FakeInsituAdapter())
     try:
         yield name
     finally:
@@ -137,6 +165,38 @@ def test_prep_dataset_per_record_seeds(fake_dataset):
 
 
 # --------------------------------------------------------------------
+# Tier 1 — per-family truth grids + in-situ noise fallback (PANGAEA-shaped)
+# --------------------------------------------------------------------
+def test_prep_one_per_family_truth_aligned_onto_wave(fake_insitu_dataset):
+    from ocpy.spectra import Spectrum
+    r = prep.prep_one(fake_insitu_dataset, 0)
+    adg = r.truth['a_dg']
+    assert isinstance(adg, Spectrum)
+    # aligned onto the record's `wave`, and flagged as a genuine regrid
+    np.testing.assert_array_equal(adg.wavelength, r.wave)
+    assert r.truth_interp['a_dg'] is True
+    # out-of-(family)-range points are NaN, not extrapolated
+    assert np.isnan(adg.values[r.wave < 420.0]).all()
+    assert np.isnan(adg.values[r.wave > 600.0]).all()
+    assert np.isfinite(adg.values[(r.wave >= 420.0) & (r.wave <= 600.0)]).all()
+    # native family grid retained for provenance
+    np.testing.assert_array_equal(adg.metadata['orig_wave'],
+                                  np.arange(420.0, 601.0, 20.0))
+    # scalar truth still a plain float
+    assert isinstance(r.truth['Chl'], float)
+
+
+def test_prep_one_insitu_without_errors_falls_back_to_pct(fake_insitu_dataset):
+    # default noise for a non-L23 dataset is 'insitu'; with no measured Rrs_err
+    # prep falls back to the flat fractional model (and records it honestly).
+    r = prep.prep_one(fake_insitu_dataset, 0)
+    assert r.noise_model == f'pct:{prep._INSITU_PCT_FALLBACK}'
+    assert np.all(r.varRrs > 0)
+    assert r.noise_seed is None                    # in-situ Rrs is not perturbed
+    np.testing.assert_array_equal(r.Rrs, r.Rrs_clean)
+
+
+# --------------------------------------------------------------------
 # Tier 2 — requires the L23 data tree
 # --------------------------------------------------------------------
 @needs_l23
@@ -166,3 +226,30 @@ def test_prep_l23_init_chl_tracks_truth():
             dex.append(abs(np.log10(init_chl / truth_chl)))
     assert len(dex) > 0
     assert np.median(dex) < 0.5
+
+
+# --------------------------------------------------------------------
+# Tier 2 — requires the PANGAEA V3 data directory
+# --------------------------------------------------------------------
+PANGAEA_SPECTRAL_TRUTH = {'a_ph', 'a_dg', 'bb_p'}
+
+
+@needs_pangaea
+def test_prep_dataset_pangaea_smoke():
+    ids = D.get_adapter('PANGAEA').obs_ids()
+    assert len(ids) > 0
+    recs = prep.prep_dataset('PANGAEA', obs_ids=ids[:5])
+    assert len(recs) == 5
+    for r in recs:
+        assert r.dataset == 'PANGAEA'
+        assert np.all(np.diff(r.wave) > 0)        # native grid, ascending
+        assert r.Rrs.shape == r.wave.shape
+        assert np.all(r.varRrs > 0)
+        assert r.noise_model == f'pct:{prep._INSITU_PCT_FALLBACK}'
+        assert r.noise_seed is None               # in-situ Rrs not perturbed
+        # any spectral truth present is a Spectrum aligned onto `wave`
+        for comp in PANGAEA_SPECTRAL_TRUTH & set(r.truth):
+            assert r.truth[comp].wavelength.shape == r.wave.shape
+            assert r.truth_interp[comp] is True   # regridded from its own grid
+    # at least one record should carry some spectral IOP truth
+    assert any(PANGAEA_SPECTRAL_TRUTH & set(r.truth) for r in recs)
