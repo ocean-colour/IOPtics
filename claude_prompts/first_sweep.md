@@ -268,7 +268,10 @@ That is excellent, but not quite there yet.  Please:
 ### 3a. FULL run — Stage 1 prep
 I wish to run the FULL run on my workstation.  Can you generate a script that I can execute on it with an `at` command to run in the background?  Call it `full_run.src`.  In essence, this will replace the 3b prompt below.  
 
-### 3b. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
+### 3b. FULL run — Stage 1 more prep
+I have moved the script into `runs/` and renamed it `first_full_run.src`.  If I try to start it on my workstation with `source first_full_run.src`, it dumps me out of the machine altogether!  Please advise in the Reports section below.  Log your work
+
+### 3x. FULL run — Stage 1 (`expb_giop_L23_v1`, all L23)
 Extended driver: `build_v1.main(1, n_cores=10, strict=False)` (uses
 `run_v1.yaml`: all 3320 L23 spectra; χ² for both + **expb_pow MCMC on the
 200-subset**). χ² is quick (pooled at 10 cores); the **200 serial MCMC fits are
@@ -296,6 +299,8 @@ commits** `docs/source/reports/expb_giop_L23_v1/` + the updated
 `reports/index.rst` landing (NOT the `runs/` parquet/chains or the `test20`
 smoke). Confirm the artifact split holds (no heavy data staged). Log the commit
 scope + the provenance versions the page carries.
+
+## Reports
 
 ### Logs
 
