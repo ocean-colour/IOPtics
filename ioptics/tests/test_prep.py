@@ -14,7 +14,7 @@ from ioptics import datasets as D
 from ioptics import prep
 from ioptics.datasets import RawObs
 from ioptics.records import PreparedRecord
-from ioptics.tests.conftest import needs_l23, needs_pangaea
+from ioptics.tests.conftest import needs_gloria, needs_l23, needs_pangaea
 
 L23_TRUTH_KEYS = {'a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
                   'Chl', 'Y', 'Sdg'}
@@ -196,6 +196,46 @@ def test_prep_one_insitu_without_errors_falls_back_to_pct(fake_insitu_dataset):
     np.testing.assert_array_equal(r.Rrs, r.Rrs_clean)
 
 
+def test_prep_gloria_single_point_adg_and_caveat():
+    # GLORIA's design intent, data-free: aCDOM440 becomes a single-point a_dg
+    # truth at 440 nm; io derives a_cdom440_truth from it and metrics stamps the
+    # CDOM-vs-a_dg caveat. Measured Rrs std -> genuine 'insitu' (no fallback).
+    from ocpy.spectra import Spectrum
+    from ioptics import io as ioptics_io
+    from ioptics import metrics
+
+    class FakeGloria:
+        def obs_ids(self, **opts):
+            return [0]
+
+        def load_obs(self, obs_id, **opts):
+            wave = np.arange(400.0, 701.0, 5.0)
+            Rrs = 0.01 * np.exp(-0.003 * (wave - 400.0)) + 1e-3
+            truth = {'a_dg': (np.array([440.0]), np.array([0.15])), 'Chl': 2.0}
+            return RawObs(wave=wave, Rrs=Rrs, truth=truth, Rrs_err=0.1 * Rrs,
+                          meta={'dataset': 'GLORIA', 'obs_id': obs_id})
+
+    name = 'GLORIA_FAKE'
+    D.register_dataset(name, FakeGloria())
+    try:
+        r = prep.prep_one(name, 0)
+        adg = r.truth['a_dg']
+        assert isinstance(adg, Spectrum)
+        i440 = int(np.argmin(np.abs(r.wave - 440.0)))
+        assert adg.values[i440] == pytest.approx(0.15)
+        finite = np.isfinite(adg.values)                # finite only at 440 nm
+        assert finite.sum() == 1 and finite[i440]
+        assert r.truth_interp['a_dg'] is True
+        assert r.noise_model == 'insitu'                # measured std -> no pct
+        # io derives a_cdom440_truth from the single-point a_dg
+        assert ioptics_io._scalar_value(r, 'a_cdom440') == pytest.approx(0.15)
+        # metrics auto-stamps the caveat on GLORIA a_dg rows only
+        assert metrics._caveat(r.dataset, 'a_dg') == 'CDOM_vs_adg'
+        assert metrics._caveat(r.dataset, 'a_ph') == ''
+    finally:
+        D.ADAPTERS.pop(name, None)
+
+
 # --------------------------------------------------------------------
 # Tier 2 — requires the L23 data tree
 # --------------------------------------------------------------------
@@ -236,8 +276,12 @@ PANGAEA_SPECTRAL_TRUTH = {'a_ph', 'a_dg', 'bb_p'}
 
 @needs_pangaea
 def test_prep_dataset_pangaea_smoke():
-    ids = D.get_adapter('PANGAEA').obs_ids()
+    ad = D.get_adapter('PANGAEA')
+    ids = ad.obs_ids()
     assert len(ids) > 0
+
+    # Permissive smoke: the first few IDs need not carry any IOP truth
+    # (PANGAEA's rrs and iop tables only partially overlap).
     recs = prep.prep_dataset('PANGAEA', obs_ids=ids[:5])
     assert len(recs) == 5
     for r in recs:
@@ -247,9 +291,50 @@ def test_prep_dataset_pangaea_smoke():
         assert np.all(r.varRrs > 0)
         assert r.noise_model == f'pct:{prep._INSITU_PCT_FALLBACK}'
         assert r.noise_seed is None               # in-situ Rrs not perturbed
-        # any spectral truth present is a Spectrum aligned onto `wave`
-        for comp in PANGAEA_SPECTRAL_TRUTH & set(r.truth):
-            assert r.truth[comp].wavelength.shape == r.wave.shape
-            assert r.truth_interp[comp] is True   # regridded from its own grid
-    # at least one record should carry some spectral IOP truth
-    assert any(PANGAEA_SPECTRAL_TRUTH & set(r.truth) for r in recs)
+
+
+@needs_pangaea
+def test_prep_pangaea_per_family_truth_on_real_data():
+    # Exercise the per-family alignment on IDs that actually carry IOP truth.
+    ad = D.get_adapter('PANGAEA')
+    iop_index = set(ad._table('iop').index)
+    truth_ids = []
+    for oid in (i for i in ad.obs_ids() if i in iop_index):
+        if PANGAEA_SPECTRAL_TRUTH & set(ad.load_obs(oid).truth):
+            truth_ids.append(oid)
+            if len(truth_ids) == 3:
+                break
+    assert truth_ids, 'expected some PANGAEA obs with spectral IOP truth'
+    for r in prep.prep_dataset('PANGAEA', obs_ids=truth_ids):
+        present = PANGAEA_SPECTRAL_TRUTH & set(r.truth)
+        assert present                            # each sampled id has truth
+        for comp in present:
+            sp = r.truth[comp]
+            assert sp.wavelength.shape == r.wave.shape   # aligned onto fit grid
+            assert 'orig_wave' in sp.metadata            # native grid retained
+            # regrid flag is recorded; it is usually True (family grid differs
+            # from the Rrs grid) but can be False when the family grid is a
+            # superset of it (an exact node pick, not a regrid).
+            assert isinstance(r.truth_interp[comp], bool)
+
+
+# --------------------------------------------------------------------
+# Tier 2 — requires the GLORIA dataset CSVs (unbundled)
+# --------------------------------------------------------------------
+@needs_gloria
+def test_prep_dataset_gloria_smoke():
+    ids = D.get_adapter('GLORIA').obs_ids()
+    assert len(ids) > 0
+    recs = prep.prep_dataset('GLORIA', obs_ids=ids[:5])
+    assert len(recs) == 5
+    for r in recs:
+        assert r.dataset == 'GLORIA'
+        assert np.all(np.diff(r.wave) > 0)        # hyperspectral, ascending
+        assert r.Rrs.shape == r.wave.shape
+        assert np.all(r.varRrs > 0)
+        assert r.noise_model == 'insitu'          # measured Rrs std -> genuine
+        assert r.noise_seed is None               # in-situ Rrs not perturbed
+        # a_dg truth (from aCDOM440) is a single finite point at 440 nm
+        if 'a_dg' in r.truth:
+            vals = r.truth['a_dg'].values
+            assert np.isfinite(vals).sum() == 1

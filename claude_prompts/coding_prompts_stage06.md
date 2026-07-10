@@ -177,7 +177,171 @@ module/addition.
   `main`" as an upstream follow-up (as with `Rrs_to_rrs`/`PACE_error.csv`)?
 >A. Yes, do so but add a reminder to remove it once I finally get the BING package on PyPI.
 
+**Task 1 (PANGAEA adapter).**
+
+- **Chlorophyll truth key: `Chl` vs `chla` (please confirm).** The task/design
+  table name PANGAEA's scalar `chla`, but the machinery scores chlorophyll under
+  the key **`Chl`**: `io._scalar_value(record, 'Chl')` fills `Chl_truth`
+  (`io.py:186`) and `metrics.SCALAR_VARS` maps `Chl → Chl_truth`. So I mapped
+  ocpy's `chla` (HPLC, falling back to fluorometric) onto the IOPtics truth key
+  **`Chl`** — otherwise PANGAEA chlorophyll would be carried but silently
+  **unscored**, and not comparable to L23's `Chl` in the leaderboard. `tss` is
+  kept as-is (carried for provenance; nothing scores it yet — `beta_truth` is
+  NaN). Confirm `Chl`, or do you want literal `chla` (and a metrics change in
+  Task 5 to score it)?
+  >A. Yes, use `Chl`.
+- **In-situ noise with no measured error (please confirm the fraction).**
+  PANGAEA V3 exposes no per-band `Rrs` uncertainty (the loader parses no error
+  family), so `noise='insitu'` can't build `varRrs`. Per the design's "pct
+  fallback otherwise," `prep_one` now falls back to `pct:0.05` when an `insitu`
+  record has no `Rrs_err`, recording the honest tag `noise_model='pct:0.05'`
+  (constant `prep._INSITU_PCT_FALLBACK`). Is 5% the fraction you want, or should
+  in-situ Rrs error come from somewhere else (e.g. a per-sensor table)?
+  >A. Ok, let's use 5%, but let's make sure this is clearly documented in the code, and in the documentation and any reports.
+- **Permissive enumeration floor.** `obs_ids(min_rrs=1)` returns every `ID` with
+  ≥1 finite `Rrs` band (design Q12 "any usable Rrs"). I verified `prep_one` does
+  **not** crash even on a 1-band spectrum (OC4 `init` degrades gracefully), so
+  nothing forces a higher floor — but a 1-band `Rrs` can't support a real fit.
+  Keep the default at 1 (and let the Task-5 sweep pass a higher `min_rrs`), or
+  set a more useful default floor (e.g. 5) here?
+  >A. Let's use 5.
+- **Reminder (per your Task-0 answer):** the PANGAEA (and forthcoming GLORIA)
+  adapter tests are Tier-2, skip-guarded (`@needs_pangaea`), and prep imports
+  ocpy lazily. **TODO: once BING/ocpy are on PyPI, revisit whether these can be
+  promoted to always-run and drop the local-checkout dependence.**
+
+**Task 2 (GLORIA adapter).**
+
+- **GLORIA meta column names (please confirm).** The GLORIA CSVs aren't bundled
+  in ocpy (only a download README) and aren't on disk here, so I inferred the
+  meta-table column names from ocpy's GLORIA notebooks (`nb/GLORIA/*.ipynb`),
+  **not** a data dictionary: id `GLORIA_ID`, CDOM `aCDOM440`, chlorophyll `Chla`,
+  `TSS`, Secchi `Secchi_depth`; Rrs mean via `parse_table(df,'Rrs')`, std via
+  `parse_table(df,'Rrs_std')`. Are these exact (esp. `aCDOM440` vs `aCDOM_440`,
+  and `Secchi_depth`)? If any differ, it's a one-line change in the adapter's
+  `_GLORIA_*` maps.
+- **Row alignment.** `load_gloria` returns `(df_meta, df_Rrs, df_Rrs_std, qc)`;
+  `parse_table` drops row identity, so I align `df_meta` rows **positionally**
+  with the parsed spectra columns (same order/length). Is that how GLORIA ships,
+  or should I join on `GLORIA_ID` if `df_Rrs` also carries it?
+- **`a_cdom440` as a single-point `a_dg` (confirm the approach).** GLORIA's only
+  IOP constraint is CDOM at 440 nm. To make it flow through the *existing*
+  machinery (score retrieved `a_dg(440)`, derive `a_cdom440_truth`, and
+  auto-stamp the `CDOM_vs_adg` caveat — all keyed on component `a_dg`), I map
+  `aCDOM440` to a **single-point `a_dg` truth at 440 nm** (`NaN` elsewhere) rather
+  than a plain scalar. Verified end-to-end (data-free + against real
+  `gloria.parse_table`): on GLORIA's native 1 nm grid this yields
+  `a_cdom440_truth = aCDOM440` and the caveat. **Caveat of the caveat:** it needs
+  440 nm on the record grid (always true natively; a `[wv_min,wv_max]` trim must
+  keep 440). OK, or would you prefer a scalar `a_cdom440` truth + a small
+  `io`/`metrics` change (core) to score it and stamp the caveat?
+- **`Chla → Chl`, `TSS → tss`, `Secchi_depth → Secchi`** (same rationale as
+  PANGAEA `Chl`). `Secchi` is carried for provenance (nothing scores it yet).
+  Confirm.
+- **Surfacing the PANGAEA 5% fallback "in reports" (per your Task-1 answer).**
+  Done in **code** (constant/comment + `prep` module & `prep_one` docstrings +
+  `PANGAEAAdapter` docstring) and **documentation** (`docs/source/datasets.rst`
+  note + design-doc §Noise). The per-record `noise_model` tag is honestly
+  `pct:0.05`. For **reports**, `provenance.yaml` currently records the *configured*
+  `noise_model` ('insitu'), not the effective per-record tag — I'll make Task-5's
+  `build_v2` provenance/report note the effective 5% fallback for PANGAEA. OK to
+  defer that surfacing to Task 5?
+
 ## Logs
+
+### 2026-07-07 (Stage 6, Task 1 follow-ups + Task 2: GLORIA adapter)
+
+Applied JXP's Task-1 answers, then added the GLORIA adapter.
+
+**Task-1 follow-ups (from JXP's answers).**
+- `Chl` key confirmed — no change (already mapped ocpy `chla → Chl`).
+- **5% in-situ fallback kept and documented everywhere JXP asked:** code
+  (`prep._INSITU_PCT_FALLBACK` constant + comment, `prep` module docstring,
+  `prep_one` docstring, `PANGAEAAdapter` docstring), documentation
+  (`docs/source/datasets.rst` PANGAEA note + table; design-doc §Noise made the
+  "pct fallback otherwise" explicit as 5% with the honest `noise_model='pct:0.05'`
+  tag). Report-surfacing (provenance records the *configured* model, not the
+  effective per-record tag) is deferred to Task-5 `build_v2` — flagged in Q&A.
+- **Permissive floor → `min_rrs=5`** (`PANGAEAAdapter.obs_ids` default; still
+  overridable to 1 for the fully-permissive set). Docstrings updated.
+
+**Task 2 — `datasets.GLORIAAdapter`** (registered `'GLORIA'`). Loads via
+`ocpy.insitu.gloria.load_gloria`; parses mean `Rrs` (`parse_table(·,'Rrs')`) and
+its per-band std (`parse_table(·,'Rrs_std')`) onto the native 350–900 nm grid.
+- **Genuine `insitu` noise:** GLORIA *does* ship a per-band Rrs std, so
+  `Rrs_err = Rrs_std` → `varRrs = Rrs_std**2`, `add_noise=False` (no fallback).
+- **Scalar-only truth**, mapped `aCDOM440 → a_dg` (single point at 440 nm),
+  `Chla → Chl`, `TSS → tss`, `Secchi_depth → Secchi`. The single-point `a_dg`
+  representation makes CDOM-at-440 flow through the existing machinery: `io`
+  derives `a_cdom440_truth` from it, and — because the dataset is named `GLORIA`
+  — `metrics._caveat` auto-stamps `CDOM_vs_adg` on its `a_dg` rows (no per-adapter
+  flag, per design). PANGAEA `a_dg` stays genuine (no caveat).
+- **`needs_gloria` guard** added to `conftest` (GLORIA CSVs are unbundled;
+  probes ocpy's `data/Rrs/GLORIA/GLORIA_Rrs.csv`).
+- **Tests.** Tier-1 (data-free): registry/protocol/`_GLORIA_*` maps; and a full
+  end-to-end representation test — synthetic `GLORIA`-named adapter → `prep_one`
+  → single-point `a_dg` finite only at 440, `io._scalar_value` gives
+  `a_cdom440_truth`, `metrics._caveat` gives `CDOM_vs_adg` (and `''` for `a_ph`),
+  `noise_model='insitu'`. Tier-2 `@needs_gloria`: adapter `load_obs` (hyperspectral
+  grid, measured std, single-point a_dg) + `prep_dataset('GLORIA', ids[:5])` smoke.
+- **Verification.** GLORIA data isn't local, so I validated the adapter against
+  the **real** ocpy `gloria.parse_table`/`load_gloria` (monkeypatched loader,
+  synthetic frames): on a GLORIA-like 1 nm grid → `a_dg(440)=aCDOM440`,
+  `a_cdom440_truth` matches, caveat stamped, genuine `insitu`; NaN-CDOM rows
+  correctly omit `a_dg`; Chl/tss/Secchi NaN-dropped. Found and documented that the
+  single-point `a_dg` needs 440 nm on the grid (native 1 nm always has it; keep it
+  in any trim). CI-equivalent suite (`env -u OS_COLOR`) → **179 passed, 21
+  skipped** (was 175/19; +4 Tier-1, +2 Tier-2 skips). Docstrings + `datasets.rst`
+  kept RST-clean (no glued backticks, no nested inline markup, no private xrefs);
+  Sphinx isn't installed in this light env so no `-W` build (docs not in light CI).
+
+### 2026-07-07 (Stage 6, Task 1: PANGAEA adapter)
+
+Added the PANGAEA V3 (Valente et al. 2022) in-situ adapter to `datasets`, plus
+the per-family-truth-grid seam in `prep` it needs, and an in-situ noise fallback.
+
+- **`datasets.PANGAEAAdapter`** (registered as `'PANGAEA'`). Loads the tidy
+  `rrs`/`iop`/`chla` tables via `ocpy.insitu.pangaea.load` (cached per table).
+  `obs_ids(min_rrs=1)` is **permissive** (design Q12): every global `ID` with
+  ≥`min_rrs` finite `Rrs` bands, via `pangaea.n_spectral`. `load_obs` returns
+  native-grid `Rrs` + spectral truth from `pangaea.spectrum` — `aph→a_ph`,
+  `acdom→a_dg` (combined CDOM+detrital), `bbp→bb_p` — as **`(src_wave, values)`
+  pairs** on each family's own grid, only for components present; scalars `Chl`
+  (HPLC→fluorometric merge) and `tss`; lat/lon/depth/date into `meta`.
+  `Rrs_err=None` (V3 has no per-band Rrs error).
+- **`prep._build_truth` per-family seam** (the Stage-1-flagged extension). Truth
+  values that are `(src_wave, values)` tuples align from their own grid onto
+  `wave` (out-of-range → `NaN`, regrid flagged); plain arrays still align from
+  `raw.wave`. L23 path unchanged (all `truth_interp` still `False`); PANGAEA
+  components come back `truth_interp=True`. No change to `PreparedRecord`.
+- **In-situ noise fallback.** PANGAEA's default `noise='insitu'` has no measured
+  `Rrs_err`, so `prep_one` falls back to `pct:0.05` (design §Noise "pct fallback
+  otherwise"), recording the honest tag `noise_model='pct:0.05'`
+  (`prep._INSITU_PCT_FALLBACK`). `add_noise` stays `False` for in-situ (real Rrs
+  not perturbed).
+- **Truth-key decision (flagged in Q&A):** mapped ocpy `chla → Chl` (not literal
+  `chla`) because `io`/`metrics` score chlorophyll under `Chl`/`Chl_truth`
+  (`io.py:186`); otherwise PANGAEA Chl would be unscored and non-comparable to
+  L23. `a_dg(440)` auto-yields `a_cdom440_truth` via `io._scalar_value`, and the
+  dataset is **not** `GLORIA`, so no caveat is stamped (correct — PANGAEA `a_dg`
+  from `acdom` is genuine). Awaiting JXP's confirm on `Chl` and the 5% fraction.
+- **Tests.** Tier-1 (data-free, always run): `_build_truth` per-family alignment
+  (Spectrum on `wave`, `truth_interp=True`, NaN edges, `orig_wave` retained) and
+  the insitu→pct fallback, both via a new PANGAEA-shaped synthetic adapter;
+  registry/protocol/kind-map checks. Tier-2 `@needs_pangaea` (skip where V3 isn't
+  mounted): adapter `load_obs` grid/truth-pair shape + permissive-floor
+  monotonicity; `prep_dataset('PANGAEA', ids[:5])` smoke (native grid, `varRrs>0`,
+  `pct:0.05`, per-family regrid).
+- **Verification.** Since PANGAEA V3 isn't mounted here, I validated the adapter
+  against the **real** ocpy parser (`pangaea._build_columns`/`spectrum`/
+  `n_spectral`) on a synthetic PANGAEA-format frame: per-family pairs on distinct
+  grids, HPLC→fluor Chl merge, `tss` NaN-drop, permissive `min_rrs`, and full
+  `prep_one` (interp with NaN edges, `orig_wave`, `init` computed) all correct;
+  a 1-band obs does not crash. CI-equivalent suite (`env -u OS_COLOR`) →
+  **175 passed, 19 skipped** (was 170/16; +5 Tier-1, +3 Tier-2 skips, +1 fixed).
+  Docstrings kept RST-clean (fixed a glued `` ``ID``s ``; no private xrefs);
+  Sphinx isn't installed in this light env so no `-W` build was run (docs are not
+  in light CI — `@needs_sphinx`).
 
 ### 2026-06-27 (Stage 6, Task 0: refresh prompt file for earlier-stage changes)
 

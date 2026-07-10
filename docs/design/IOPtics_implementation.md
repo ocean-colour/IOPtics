@@ -492,9 +492,15 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None):
   (provenance) so the sweep is reproducible, and `Rrs_clean` retains the
   noiseless input. (`bing.noise.scale_noise`/`add_noise` remain available for the
   satellite-band conventions BING already encodes.)
-- **PANGAEA / GLORIA** use `model='insitu'` (the loader's measured `Rrs` errors;
-  `pct` fallback otherwise) with **`add_noise=False`** — the in-situ `Rrs` is
-  already a real, noisy observation, so no synthetic perturbation is added.
+- **PANGAEA / GLORIA** use `model='insitu'` with **`add_noise=False`** — the
+  in-situ `Rrs` is already a real, noisy observation, so no synthetic
+  perturbation is added. **GLORIA** ships a per-band `Rrs` std, so `varRrs =
+  Rrs_std**2` (genuine `insitu`). **PANGAEA V3 ships no per-band `Rrs`
+  uncertainty**, so `prep` falls back to a **flat 5% fractional** model
+  (`varRrs = (0.05*Rrs)**2`; constant `prep._INSITU_PCT_FALLBACK`) and records
+  the honest tag `noise_model='pct:0.05'` (never `'insitu'`), so the assumption
+  is explicit in every prepared record, `provenance.yaml`, and report — it never
+  masquerades as a measured error.
 
 ### Prep API (`ioptics.prep`)
 

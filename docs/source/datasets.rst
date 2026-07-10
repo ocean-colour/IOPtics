@@ -35,13 +35,14 @@ and components.
      - in situ
      - per-family native λ
      - :math:`a_{ph}`, :math:`a_{dg}` (from ``acdom``), :math:`b_{bp}`
-       (from ``bbp``); scalars ``chla``, ``tss``
-     - planned (Stage 6)
+       (from ``bbp``); scalars ``Chl`` (from ``chla``), ``tss``
+     - **active** (Stage 6)
    * - GLORIA
      - in situ
-     - hyperspectral
-     - scalar only: ``a_cdom440``, ``Chla``, ``TSS``, ``Secchi``
-     - planned (Stage 6)
+     - hyperspectral (350–900 nm @ 1 nm)
+     - scalar only: ``a_cdom440`` (as :math:`a_{dg}(440)`), ``Chl`` (from
+       ``Chla``), ``TSS``, ``Secchi``
+     - **active** (Stage 6)
 
 L23 — Loisel et al. (2023)
 ==========================
@@ -82,19 +83,60 @@ for every IOP — the ideal first-pass benchmark. IOPtics loads it via
   (0.1–1.0), and **eutrophic** (high, > 1.0 mg m\ :sup:`-3`) — so one can see
   whether an algorithm does better in clear vs. productive water.
 
-PANGAEA & GLORIA (planned)
-==========================
+PANGAEA (in situ)
+=================
 
-Two *in-situ* (field-measured) datasets extend the comparison beyond synthetic
-data in Stage 6:
+**PANGAEA** is the Valente et al. (2022) V3 compilation of global bio-optical
+in-situ data, loaded via ``ocpy.insitu.pangaea``. Each observation is a real,
+already-noisy measured :math:`R_{rs}`, so it is **not** perturbed
+(``add_noise=False``). Its measured spectral truth — :math:`a_{ph}`,
+:math:`a_{dg}` (from measured CDOM+detrital absorption ``acdom``) and
+:math:`b_{bp}` (from ``bbp``) — arrives on **each family's own native
+wavelength set** and is interpolated onto the :math:`R_{rs}` grid by prep
+(flagged in ``truth_interp``). The chlorophyll scalar (HPLC, falling back to
+fluorometric) is exposed as ``Chl`` so it is scored alongside L23; ``tss`` is
+carried for provenance.
 
-- **PANGAEA** — measured :math:`R_{rs}` with its own reported uncertainty
-  (``noise='insitu'``) and measured spectral truth for :math:`a_{ph}`,
-  :math:`a_{dg}` (from measured CDOM absorption ``acdom``) and :math:`b_{bp}`
-  (from ``bbp``), plus ``chla``/``tss`` scalars.
-- **GLORIA** — hyperspectral :math:`R_{rs}` with **scalar-only** truth
-  (``a_cdom440``, ``Chla``, ``TSS``, ``Secchi``). GLORIA reports CDOM absorption
-  at 440 nm rather than the combined :math:`a_{dg}`, so comparing a retrieved
-  :math:`a_{dg}(440)` against ``a_cdom440`` mixes two slightly different
-  quantities; that comparison is flagged with a ``caveat`` (``CDOM_vs_adg``) so
-  reports surface the definitional mismatch instead of hiding it.
+.. note::
+
+   **PANGAEA has no per-band** :math:`R_{rs}` **uncertainty.** The V3 tables
+   report no measurement error, so the ``'insitu'`` weighting has nothing to
+   build
+   ``varRrs`` from. IOPtics therefore falls back to a **flat 5% fractional
+   error** (``varRrs = (0.05 · Rrs)²``) and records the honest provenance tag
+   ``noise_model='pct:0.05'`` — never ``'insitu'`` — so this assumption is
+   explicit in every prepared record, provenance file, and report rather than
+   silently masquerading as a measured error.
+
+Enumeration is **permissive**: every observation with at least a handful of
+finite :math:`R_{rs}` bands is kept (``min_rrs=5`` by default), even if it lacks
+some truth components; the metrics layer then reports per-component coverage.
+
+GLORIA (in situ)
+================
+
+**GLORIA** (Lehmann et al. 2023) is a globally representative **hyperspectral**
+in-situ dataset (:math:`R_{rs}` on a 350–900 nm, 1 nm grid), loaded via
+``ocpy.insitu.gloria``. Unlike PANGAEA it **does** ship a per-band :math:`R_{rs}`
+standard deviation, so it uses genuine ``noise='insitu'`` weighting
+(``varRrs = Rrs_std²``); the in-situ spectrum is not perturbed.
+
+GLORIA carries **scalar-only** lab truth: CDOM absorption at 440 nm
+(``aCDOM440``), chlorophyll (``Chla`` → ``Chl``), total suspended solids
+(``TSS`` → ``tss``) and ``Secchi`` depth. There is no measured IOP *spectrum*.
+The one IOP comparison GLORIA supports is CDOM at 440 nm, so the adapter exposes
+``aCDOM440`` as a single-point :math:`a_{dg}` truth **at 440 nm** (NaN at every
+other wavelength). That lets the existing machinery grade a retrieved
+:math:`a_{dg}(440)` against it directly and derive ``a_cdom440_truth`` — with one
+important qualification:
+
+.. note::
+
+   **CDOM vs.** :math:`a_{dg}` **caveat.** GLORIA reports CDOM absorption only
+   (``aCDOM440``), whereas a retrieval's :math:`a_{dg}` is the *combined* CDOM +
+   detrital absorption. Comparing the two mixes slightly different quantities.
+   Because the dataset is named ``GLORIA``, the metrics layer automatically
+   stamps a ``caveat='CDOM_vs_adg'`` on its :math:`a_{dg}` rows
+   (``metrics._caveat``), so reports surface the definitional mismatch instead
+   of hiding it. PANGAEA's :math:`a_{dg}` (from ``acdom``, which already includes
+   detritus) is genuine and carries **no** caveat.

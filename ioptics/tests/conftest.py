@@ -52,6 +52,19 @@ def _pangaea_available():
         return False
 
 
+def _gloria_available():
+    """True if ocpy's GLORIA CSVs are present (they are not bundled)."""
+    try:
+        import os
+        from importlib import resources
+        from ocpy.insitu import gloria       # noqa: F401 (import guard)
+        rrs = os.path.join(resources.files('ocpy'), 'data', 'Rrs', 'GLORIA',
+                           'GLORIA_Rrs.csv')
+        return os.path.isfile(rrs)
+    except Exception:
+        return False
+
+
 def _sphinx_available():
     """True if Sphinx is importable (docs-only dep; not installed in light CI)."""
     try:
@@ -84,6 +97,9 @@ needs_l23 = pytest.mark.skipif(
 
 needs_pangaea = pytest.mark.skipif(
     not _pangaea_available(), reason='requires the PANGAEA V3 data directory')
+
+needs_gloria = pytest.mark.skipif(
+    not _gloria_available(), reason='requires the GLORIA dataset CSVs (unbundled)')
 
 needs_pace = pytest.mark.skipif(
     not _pace_data_available(), reason="requires ocpy's bundled PACE_error.csv")

@@ -13,6 +13,15 @@ original grid kept in ``metadata['orig_wave']``) and seeds ``init`` from
 ``ocpy.chl.band_ratios`` + the Lee (2002) backscatter-slope prescription.
 Everything downstream of a :class:`~ioptics.records.PreparedRecord` is
 data-source-agnostic.
+
+**In-situ noise fallback.** In-situ datasets use ``noise='insitu'`` (weight the
+fit by the dataset's own measured ``Rrs`` error). PANGAEA V3 ships **no**
+per-band ``Rrs`` uncertainty, so such a record has no ``Rrs_err`` and prep
+falls back to a **flat 5% fractional** model (``varRrs = (0.05 * Rrs)**2``; the
+fraction is the module constant ``_INSITU_PCT_FALLBACK``). The record's
+``noise_model`` is then
+set to the honest tag ``'pct:0.05'`` — **not** ``'insitu'`` — so downstream
+provenance and reports show the model that was actually applied.
 """
 
 from __future__ import annotations
@@ -137,7 +146,7 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         Noise model passed to :func:`ioptics.noise.attach_noise`. Defaults to
         ``'pace'`` for L23 (synthetic) and ``'insitu'`` otherwise; an
         ``'insitu'`` record with no measured ``Rrs_err`` falls back to a flat
-        fractional model (see :data:`_INSITU_PCT_FALLBACK`).
+        fractional model (``_INSITU_PCT_FALLBACK``).
     add_noise : bool or None, optional
         Whether to perturb ``Rrs``. Defaults to ``True`` for L23 and ``False``
         for in-situ datasets (their ``Rrs`` is already a real observation).
