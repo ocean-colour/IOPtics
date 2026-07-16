@@ -13,7 +13,7 @@ round-trips) is covered by the separate Tier-1 tests so CI still exercises it.
 import numpy as np
 import yaml
 
-from ioptics.tests.conftest import needs_l23
+from ioptics.tests.conftest import needs_inelastic, needs_l23
 
 SWEEP_ID = 'expb_giop_L23_micro'
 
@@ -78,3 +78,65 @@ def test_two_way_comparison_end_to_end(tmp_path):
     assert [a['name'] for a in loaded['algorithms']] == ['expb_pow', 'giop']
     assert loaded['config'] == cfg.to_dict()
     assert 'ioptics' in loaded['versions']
+
+
+@needs_l23
+def test_gsm_chisq_fit_recovers_iops():
+    """gsm round-trips through run_algorithm unchanged and fits an L23 spectrum.
+
+    The registered ``gsm`` spec (one ``_STANDARD_SEED`` entry, no core changes)
+    drives the standard χ² path to a well-formed result recovering the planted
+    IOPs — the Stage-6 "register + a tiny χ² fit" check.
+    """
+    from ioptics import prep, run
+    from ioptics.algorithms import registry
+
+    record = prep.prep_one('L23', 0, seed=1234)
+    spec = registry.get('gsm')          # from the registry, not rebuilt
+
+    res = run.run_algorithm(spec, record)
+    assert res.status == 'ok'
+    assert set(res.components) >= {'a', 'bb', 'a_ph', 'a_dg', 'bb_p'}
+    assert res.components['a'].med.shape == record.wave.shape
+    assert 0.0 < res.stats['chi2_nu'] < 5.0
+
+    i440 = int(np.argmin(np.abs(record.wave - 440.0)))
+    i555 = int(np.argmin(np.abs(record.wave - 555.0)))
+    a_ratio = res.components['a'].med[i440] / record.truth['a'].values[i440]
+    bb_ratio = res.components['bb'].med[i555] / record.truth['bb'].values[i555]
+    assert 0.5 < a_ratio < 2.0, f'gsm: a(440) ratio {a_ratio:.2f}'
+    assert 0.5 < bb_ratio < 2.0, f'gsm: bb(555) ratio {bb_ratio:.2f}'
+
+
+@needs_l23
+@needs_inelastic
+def test_l23_x4_inelastic_rt_shifts_rrs_model():
+    """L23 X=4: the include_Raman/include_Chl_fl toggles reach the forward model.
+
+    Fits one L23 **X=4** spectrum (trimmed to 400-700 nm, where Raman is
+    numerically stable — bing's own X=4 convention) with an elastic spec and
+    with both inelastic toggles on. Both fits complete and the inelastic
+    ``Rrs_model`` differs measurably from the elastic one (Raman + the ~685 nm
+    fluorescence peak) — the Stage-6 X=4 smoke.
+    """
+    import copy
+    from ioptics import prep, run
+    from ioptics.algorithms.spec import AlgorithmSpec
+
+    record = prep.prep_one('L23', 0, seed=1234, X=4, wv_min=400, wv_max=700)
+    assert record.wave.size > 0 and record.meta['X'] == 4
+
+    elastic = AlgorithmSpec.from_standard('expb_pow', label='ExpB_Pow')
+    inelastic = copy.deepcopy(elastic)
+    inelastic.rt.include_Raman = True
+    inelastic.rt.include_Chl_fl = True
+
+    res_el = run.run_algorithm(elastic, record)
+    res_x4 = run.run_algorithm(inelastic, record)
+    assert res_el.status == 'ok' and res_x4.status == 'ok'
+
+    m_el = res_el.components['Rrs_model'].med
+    m_x4 = res_x4.components['Rrs_model'].med
+    assert np.isfinite(m_el).all() and np.isfinite(m_x4).all()
+    rel = np.max(np.abs(m_x4 - m_el)) / np.max(np.abs(m_el))
+    assert rel > 1e-3, f'X=4 Rrs_model barely differs from elastic (rel {rel:.1e})'

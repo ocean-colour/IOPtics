@@ -48,7 +48,7 @@ def available():
 # so a mocked/absent bing (e.g. the Sphinx docs build, which mocks bing) does
 # not break `import ioptics.algorithms.registry`; with bing present the registry
 # seeds normally and the Tier-1 tests assert it.
-_STANDARD_SEED = [('expb_pow', 'ExpB_Pow'), ('giop', 'GIOP')]
+_STANDARD_SEED = [('expb_pow', 'ExpB_Pow'), ('giop', 'GIOP'), ('gsm', 'GSM')]
 
 
 def _seed_standard():

@@ -6,6 +6,7 @@ matplotlib
 seaborn
 xarray
 h5netcdf
+h5py
 cftime
 scikit-learn
 tqdm

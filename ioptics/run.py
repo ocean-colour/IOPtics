@@ -110,6 +110,20 @@ def _prepare(spec, record):
         models[0].init_var_gordon(
             include_G0=spec.rt.variable_Gordon_G0,
             include_Gb=spec.rt.variable_Gordon_bbp)
+    # Inelastic RT setup (L23 X=4). Raman needs no extra wiring here: both
+    # models call ``init_raman()`` in their constructors, so ``wave_ex``/``bb_R``
+    # are always set and the forward model's ``eval_a_ex``/``eval_bb_ex`` work.
+    # (Raman is numerically unstable blueward of ~400 nm, where the excitation
+    # wavelengths fall off the water/Gordon tables — trim the record to
+    # ``[400, 700]`` for inelastic fits, as bing's own X=4 path does.)
+    # Chl fluorescence, however, needs the downwelling irradiance ``Ed`` seeded
+    # on the a-model — mirror ``bing.fitting.l23``.
+    if spec.rt.include_Chl_fl:
+        from correct_atmosphere import downwelling
+        from bing.rt import chl_fl
+        Ed = downwelling.downwelling_irradiance(models[0].wave, 0.)
+        Ed_em = downwelling.downwelling_irradiance(chl_fl.LAMBDA_FL_PRIMARY, 0.)
+        models[0].init_Chl_fluorescence(Ed=Ed, Ed_em=Ed_em)
     rt_dict = rt_defs.rt_dict_from_p(p)
     # Truth-free model internals (Bricaud a_ph from Chl, Lee bb_p slope from Y),
     # from record.init (derived from the observed Rrs), never from truth.

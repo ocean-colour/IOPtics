@@ -129,23 +129,28 @@ module/addition.
    (`chla`, `tss`). `noise='insitu'`. `register_dataset('PANGAEA', …)`. Tier-2
    `@needs_pangaea`. Q&A. Log.
 
-2. **GLORIA adapter.** Add to `datasets`: `load_obs` via `gloria.load_gloria` →
+2. **Hanging**.  When executing the task below, you are hanging. I think on a test.  So investigate what might be wrong and implement a way to avoid your hanging.  Log your work.
+
+3. **Grab GLORIA**.  Grab the GLORIA dataset from this URL `https://doi.pangaea.de/10.1594/PANGAEA.948492`.  Put it in the `$OS_COLOR/GLORIA` directory.  Log your work.
+
+4. **GLORIA adapter.**  See my answers to your question.  Then, 
+   add to `datasets`: `load_obs` via `gloria.load_gloria` →
    hyperspectral `Rrs` + scalar truth (`a_cdom440`, `Chla`, `TSS`, `Secchi`),
    mapped so `a_dg(440)` truth = `a_cdom440`; name the dataset `GLORIA` so
    `metrics` auto-stamps `caveat='CDOM_vs_adg'` (no per-adapter flag needed — but
    see Known-constraints re: surfacing it in the *leaderboard*). Skip-guarded
    (data may not be local). Q&A. Log.
 
-3. **Register `gsm`.** `registry.register(AlgorithmSpec.from_standard('gsm',
+5. **Register `gsm`.** `registry.register(AlgorithmSpec.from_standard('gsm',
    label='GSM'))`; confirm it round-trips and runs through `run_algorithm`
    unchanged. Tier-1 + a tiny χ² fit. Q&A. Log.
 
-4. **L23 X=4 (inelastic).** Load `X=4` via the L23 adapter and wire the
+6. **L23 X=4 (inelastic).** Load `X=4` via the L23 adapter and wire the
    `include_Raman`/`include_Chl_fl` `AlgorithmSpec.rt` toggles → `rt_dict` so
    `run`/`evaluate` apply Raman + Chl-fluorescence. Tier-2 `@needs_l23` smoke
    (X=4 fit completes; `Rrs_model` differs from the elastic run). Q&A. Log.
 
-5. **Tests + multi-everything sweep.** A `runs/prototypes/<name>/build_v2.py`
+7. **Tests + multi-everything sweep.** A `runs/prototypes/<name>/build_v2.py`
    (sequential stages, mirroring `build_v1.py`) over {L23(X=1), PANGAEA} ×
    {expb_pow, giop, gsm} (χ²) → tables + `metrics.compute` + `report.standard.build`
    + `leaderboard.update` accumulation; assert per-dataset/component coverage
@@ -247,7 +252,314 @@ module/addition.
   `build_v2` provenance/report note the effective 5% fallback for PANGAEA. OK to
   defer that surfacing to Task 5?
 
+**Task 2 (Hanging — per-test hang guard).**
+
+- **Default ceiling of 120 s (confirm).** I added a dependency-free per-test
+  wall-clock guard in `conftest.py`; a stuck test now fails fast with a
+  traceback instead of hanging the run. The default ceiling is 120 s
+  (`$IOPTICS_TEST_TIMEOUT`; per-test `@pytest.mark.timeout(n)`; `0` disables).
+  Every real test here runs in well under a second, so 120 s only ever trips on
+  a genuine hang — but if you'd rather have a tighter default (e.g. 30 s) so a
+  wedged local run frees up faster, say so and I'll change the one constant.
+- **`pytest-timeout` as a hard dependency?** The guard is self-sufficient on
+  Linux (CI included) and needs nothing installed, but it **defers to
+  `pytest-timeout`** if that plugin is present (it catches some C-level hangs
+  `SIGALRM` cannot). Want me to add `pytest-timeout` to `requirements.txt` so CI
+  always has the stronger mechanism, or keep the zero-dependency guard as-is?
+>A. Keep the zero-dependency guard as-is.
+- **Separate finding (not the hang): local `bing` is broken with data mounted.**
+  Running the suite with `$OS_COLOR` set, 14 tests fail at
+  `import bing.fitting.l23` → `ModuleNotFoundError: No module named
+  'correct_atmosphere'`. That's a missing module in the **local editable `bing`
+  checkout**, not an IOPtics regression and not the hang. Flagging it so you can
+  fix/ignore the `bing` side; it does not affect CI (Tier-1 skips these).
+>A. Ok, I will fix the `bing` side.
+
+**Task 3 (Grab GLORIA).**
+
+- **Loader-path mismatch — where should GLORIA live so ocpy can read it?** I
+  downloaded + extracted the dataset to `$OS_COLOR/GLORIA` as instructed (14
+  files, flat). **But `ocpy.insitu.gloria.load_gloria()` reads from ocpy's
+  *packaged* dir `<ocpy>/data/Rrs/GLORIA/`, not `$OS_COLOR`** — so as placed, the
+  loader (and the `needs_gloria` guard, which probes the same ocpy path) still
+  won't find it. To make Task 4 actually load real GLORIA, pick one: (a) symlink
+  `<ocpy>/data/Rrs/GLORIA` → `$OS_COLOR/GLORIA` (quick, but writes into the ocpy
+  checkout); (b) copy the CSVs into `<ocpy>/data/Rrs/GLORIA/` (ocpy loads
+  unchanged, but ~250 MB inside the package tree); or (c) make `load_gloria()`
+  (upstream ocpy) `$OS_COLOR`-aware and have the IOPtics adapter point it at
+  `$OS_COLOR/GLORIA` (cleanest; an upstream ocpy change). Which do you want? I'll
+  wire it in Task 4.
+>A. That's not right.  Re-inspect the code in ocpy.
+- **Column names now confirmed against the real data (no longer inferred).** The
+  earlier "Task 2 (GLORIA adapter)" Q&A guessed the meta columns from notebooks;
+  the downloaded `GLORIA_meta_and_lab.csv` header confirms them exactly:
+  `GLORIA_ID`, `aCDOM440` (**not** `aCDOM_440`), `Chla`, `TSS`, `Secchi_depth`;
+  `GLORIA_Rrs.csv` is keyed by `GLORIA_ID` with `Rrs_<nm>` columns from 350 nm.
+  So the adapter's `_GLORIA_*` maps are correct as written — that part of the
+  GLORIA-adapter Q&A is resolved by data.
+
+**Task 4 (GLORIA adapter).**
+
+- **Reminder: the `$OS_COLOR`-aware `load_gloria` is an *uncommitted* ocpy edit.**
+  The GLORIA loader now resolving `$OS_COLOR/GLORIA` is a working-tree change in
+  your local `ocpy` checkout (`M ocpy/insitu/gloria.py`), not on `ocpy@main`
+  that CI installs. It doesn't break CI (GLORIA Tier-2 skips with no data tree),
+  but GLORIA won't load anywhere until this lands upstream — same
+  publish-to-ocpy-`main` follow-up as `Rrs_to_rrs`/`PACE_error.csv`. Flagging so
+  it's on the TODO; no action needed from me unless you want me to do anything
+  on the ocpy side.
+
+**Task 5 (Register `gsm`).**
+
+- **`h5py` was silently missing — I installed it + added to `requirements.txt`
+  (confirm).** Running any L23 fit failed at `loisel23.load_ds` →
+  `h5netcdf` → `ImportError: No module named 'h5py'`. `h5netcdf` needs `h5py` as
+  its backend to read the L23 `.nc` files, but it wasn't in the env or
+  `requirements.txt`. CI never noticed because all `@needs_l23` tests skip there
+  (no data tree). I installed `h5py` (3.16.0) into `ocean14` and added it to
+  `requirements.txt` — same pattern as the Task-0 `pyarrow` fix. OK? (It's a
+  genuine missing dependency of the documented L23 workflow, so I think it
+  belongs there regardless.)
+- **`gsm` is registered chisq-first, priors as-shipped.** BING's
+  `standard.gsm` sets very broad `log_uniform[-6,5]` priors and `add_noise=True`;
+  `AlgorithmSpec` intentionally does **not** carry `add_noise` (IOPtics owns
+  noise via `record.varRrs` + the sweep-level `noise_model`, same as
+  expb_pow/giop). The χ² fit converges fine on L23 (χ²ᵥ≈2.2, a(440)/bb(555)
+  ratios ≈0.96/0.92). Registering + the tiny χ² check is all I did per the task;
+  say if you want a per-spec MCMC config for gsm too (else it inherits the
+  default `MCMCOptions`).
+
+**Task 6 (L23 X=4 inelastic).**
+
+- **Raman is numerically unstable blueward of ~400 nm — where should the trim
+  live?** On the native 350–900 nm grid an `include_Raman` fit returns an
+  **all-NaN** `Rrs_model` (Raman excitation wavelengths fall off the water/Gordon
+  tables at the blue end, and the correction factor divides by ~0). Trimming to
+  `[400, 700]` (bing's own X=4 convention, `test_l23_fitting.py:610`) fixes it —
+  I do that in the smoke test. For Task-7's `build_v2`, should the **sweep
+  config** carry `wv_min/wv_max=[400,700]` for inelastic algorithms, or should
+  `run`/`_prepare` **auto-clamp** the fit grid when `include_Raman` is on
+  (raising/logging if the record can't supply 400–700)? I lean toward the
+  config (explicit, per your existing `prep_one` trim), but it's your call.
+>A. Use the config.
+- **`correct_atmosphere` dependency for Chl fluorescence — add to
+  `requirements.txt`?** The Chl-fl `Ed` comes from `correct_atmosphere.
+  downwelling` (I wired `_prepare` to seed it, mirroring `bing.fitting.l23`).
+  It's importable now (you fixed the bing side — thanks), but it's a local
+  package (not on PyPI, not pinned in `requirements.txt`). Add it as a git/
+  editable dep next to `ocpy`/`bing`, or leave it as a bing-side transitive dep?
+  The X=4 test is `@needs_inelastic`-guarded so CI stays green either way.
+>A. Add it to `requirements.txt`.
+- **FYI (benign):** importing `correct_atmosphere` emits a
+  `RuntimeWarning: numpy.ndarray size changed` — a C-extension built against a
+  different numpy ABI. Harmless here (no crash), flagging in case you want it
+  rebuilt.
+
 ## Logs
+
+### 2026-07-15 (Stage 6, Task 6: L23 X=4 inelastic RT)
+
+Wired Raman + Chl-fluorescence through the fit and verified an X=4 fit's
+`Rrs_model` shifts vs the elastic run.
+
+- **Toggle -> rt_dict was already wired (Stage 2).** `AlgorithmSpec.rt.
+  include_Raman/include_Chl_fl` -> `to_bing_p` -> `p` -> `rt_defs.rt_dict_from_p`
+  -> `rt_dict`, which `bing.evaluate` (the fit + reconstruction forward model)
+  reads. Confirmed end-to-end; no change needed there.
+- **Raman: no extra wiring, but trim the grid.** Both models call `init_raman()`
+  in their constructors (`wave_ex`/`bb_R` always set), so `eval_a_ex`/
+  `eval_bb_ex` work and the forward model applies Raman for free. **But** on the
+  native 350–900 nm grid the reconstruction is all-NaN (blue-end excitation off
+  the tables); trimming to `[400, 700]` (bing's X=4 convention) gives a finite
+  `Rrs_model` differing from elastic by ~1.5%. Documented in a `_prepare`
+  comment; trim decision posed for Task 7 (Q&A).
+- **Chl fluorescence: added the missing model setup in `run._prepare`.** When
+  `spec.rt.include_Chl_fl`, `_prepare` now seeds the a-model's downwelling
+  irradiance — `Ed = downwelling.downwelling_irradiance(wave, 0.)`,
+  `Ed_em` at `chl_fl.LAMBDA_FL_PRIMARY` (685 nm), then
+  `models[0].init_Chl_fluorescence(Ed, Ed_em)` — mirroring `bing.fitting.l23`.
+  `correct_atmosphere`/`bing.rt.chl_fl` imported lazily (only when the toggle is
+  on). Without this the fl branch crashed (`i_Chl_ex/Ed_ex` unset).
+- **X=4 loads via the L23 adapter.** `load_obs(0, X=4)` → `meta['X']==4`; its
+  `Rrs` differs from X=1 by ~1.8e-3 (the inelastic signal in the synthetic obs).
+- **Verified (data-mounted).** Fitting an L23 X=4 record (trimmed 400–700) with
+  expb_pow: elastic χ²ᵥ≈1.47; +Raman differs by 1.7e-4; +Chl_fl by 9.6e-4; both
+  on by 1.2e-3 — all `status='ok'`, finite `Rrs_model`. `correct_atmosphere` is
+  importable now (bing-side fix).
+- **Test.** `test_micro.py::test_l23_x4_inelastic_rt_shifts_rrs_model`
+  (`@needs_l23` + new `@needs_inelastic` guard for `correct_atmosphere`): elastic
+  vs Raman+Chl_fl on an X=4 record; both complete, `Rrs_model` differs
+  (rel > 1e-3). `conftest` gains `_correct_atmosphere_available` +
+  `needs_inelastic`.
+- **Suite.** `test_micro` with data → **3 passed**; CI-equivalent
+  (`env -u OS_COLOR`) → **181 passed, 24 skipped** (+1 skip = the guarded X=4
+  test). Under the hang guard; no wedge. Only `run.py` + tests/conftest changed.
+
+### 2026-07-15 (Stage 6, Task 5: register `gsm`)
+
+### 2026-07-15 (Stage 6, Task 5: register `gsm`)
+
+Added `gsm` to the algorithm registry as a **one-line** seed entry (no core
+changes) and verified it round-trips and fits.
+
+- **Registration.** Appended `('gsm', 'GSM')` to `registry._STANDARD_SEED`, so
+  `AlgorithmSpec.from_standard('gsm', label='GSM')` seeds it alongside
+  expb_pow/giop. `registry.available()` → `['expb_pow', 'giop', 'gsm']`. No
+  change to `spec`/`run`/anything else — `gsm` flows through the existing
+  declarative machinery unchanged.
+- **Verified data-free (Tier-1).** `from_standard('gsm')` → models `GSM`/`GSM`,
+  2 apriors (Adg, Aph) + 1 bprior (Bbp) = k=3 free params, `othera_priors=None`,
+  `fit_method='chisq'`; `to_bing_p()` round-trips model names + priors verbatim
+  against `standard.gsm()`.
+- **Verified the χ² fit (Tier-2, `@needs_l23`).** `run_algorithm(registry.get(
+  'gsm'), prep_one('L23', 0))` → `status='ok'`, χ²ᵥ≈2.23, components
+  `{a, bb, a_ph, a_dg, bb_p, Rrs_model}`, recovers planted IOPs (a(440) ratio
+  0.96, bb(555) ratio 0.92). Confirms gsm runs through `run_algorithm` unchanged.
+- **Env fix (flagged in Q&A).** `h5py` was missing (h5netcdf's backend for the
+  L23 `.nc` files) — no L23 fit could run until installed. Installed into
+  `ocean14` (3.16.0) and added `h5py` to `requirements.txt` (CI never hit this
+  because `@needs_l23` skips there). Mirrors the Task-0 `pyarrow` addition.
+- **Tests.** `test_spec.py::test_from_standard_gsm`,
+  `test_registry.py::test_seeded_with_gsm` (Tier-1, always run);
+  `test_micro.py::test_gsm_chisq_fit_recovers_iops` (Tier-2, `@needs_l23`).
+  gsm-focused → **15 passed**; CI-equivalent full suite (`env -u OS_COLOR`) →
+  **181 passed, 23 skipped** (was 179/22: +2 Tier-1 always-run, +1 Tier-2
+  skip-on-CI). All under the hang guard; no wedge.
+
+### 2026-07-14 (Stage 6, Task 4: GLORIA adapter — verified against real data)
+
+### 2026-07-14 (Stage 6, Task 4: GLORIA adapter — verified against real data)
+
+With the dataset grabbed (Task 3) and JXP's `$OS_COLOR`-aware `load_gloria`
+edit in ocpy, drove the (already-implemented) `GLORIAAdapter` end-to-end against
+the **real** GLORIA-2022 data and made the tiered guard match the new loader.
+
+- **Re-inspected ocpy (per JXP's Task-3 answer).** `gloria.load_gloria()` now
+  reads `$OS_COLOR/GLORIA` when `$OS_COLOR` is set (else the packaged
+  `data/Rrs/GLORIA`). My earlier "reads only the package dir" claim was stale —
+  corrected. So the Task-3 download location is exactly where the loader looks.
+- **`conftest._gloria_available()` now mirrors that resolution** (`$OS_COLOR/
+  GLORIA` first, else packaged) instead of probing only the package tree — so
+  the `@needs_gloria` Tier-2 tests **run** where the data is mounted and still
+  skip cleanly on CI.
+- **Real-data verification (`$OS_COLOR` set, under the hang guard).**
+  `obs_ids()` → 7,572 spectra in ~0.8 s (the feared heavy `parse_table` load is
+  actually fast; the guard stays as insurance). A sampled obs: native 350–900 nm
+  1 nm grid (551 bands, ascending), all-finite `Rrs`, measured `Rrs_err`
+  present; single-point `a_dg` truth = `(array([440.]), array([aCDOM440]))`;
+  `prep_one` → `noise_model='insitu'` (genuine, from the measured std; no
+  perturbation), `varRrs>0`; `metrics._caveat('GLORIA','a_dg')=='CDOM_vs_adg'`
+  and `''` for `a_ph`; the a_dg truth aligns onto the fit grid as exactly one
+  finite point at 440 nm.
+- **Row alignment resolved by data (Q&A).** All three GLORIA tables
+  (`meta_and_lab`, `Rrs`, `Rrs_std`) ship 7,572 rows in the **same `GLORIA_ID`
+  order**, so the adapter's positional alignment of `df_meta` against the parsed
+  spectra columns is correct (each table also carries `GLORIA_ID`, so it can be
+  hardened to a join later if a future release reorders — not needed now).
+  Scalar-truth coverage: aCDOM440 4393, Chla 5132, TSS 4623, Secchi 3948 finite
+  of 7,572.
+- **Tests.** Tier-2 GLORIA tests (`test_datasets`/`test_prep`) now **run** with
+  data: `-k "gloria or GLORIA or caveat"` → **6 passed, 0 skipped** (was 4
+  passed / 2 skipped when data-guarded off). CI-equivalent (`env -u OS_COLOR`)
+  full suite → **179 passed, 22 skipped** (GLORIA Tier-2 correctly skip with no
+  data). No adapter code change needed — implementation from 2026-07-07 is
+  confirmed correct against real data; only the test guard was updated.
+
+### 2026-07-14 (Stage 6, Task 3: grab the GLORIA dataset)
+
+### 2026-07-14 (Stage 6, Task 3: grab the GLORIA dataset)
+
+Downloaded the GLORIA-2022 dataset (Lehmann et al. 2023,
+doi:10.1594/PANGAEA.948492) into `$OS_COLOR/GLORIA` per JXP's instruction.
+
+- **Source.** The DOI landing page's `link` header exposes the archive item
+  `https://download.pangaea.de/dataset/948492/files/GLORIA-2022.zip`
+  (`application/zip`, 58,956,647 B / ~59 MB). Downloaded with `curl`;
+  `unzip -t` verified integrity (zip OK).
+- **Placed.** Extracted **flat** (`unzip -j`) into
+  `/home/xavier/Oceanography/data/Color/GLORIA/` — 14 files, ~250 MB
+  uncompressed, incl. the four the ocpy loader uses (`GLORIA_Rrs.csv`,
+  `GLORIA_Rrs_std.csv`, `GLORIA_qc_flags.csv`, `GLORIA_meta_and_lab.csv`) plus
+  the raw radiometry (`Es/Lsky/Lt/Lu/Lw`), `GLORIA_Rrs_mean.csv`,
+  `qc_ancillary`, `waterqual_uncert`, and the `variables_and_methods.xlsx` /
+  `method_references.ris` docs. Kept `GLORIA-2022.zip` alongside for provenance
+  (delete if you don't want the extra 59 MB).
+- **Verified.** `GLORIA_Rrs.csv` header = `GLORIA_ID,Rrs_350,Rrs_351,…` (native
+  1 nm grid from 350 nm, keyed by `GLORIA_ID`); `GLORIA_meta_and_lab.csv`
+  carries `GLORIA_ID`, `aCDOM440`, `Chla`, `TSS`, `Secchi_depth` — confirming the
+  adapter's inferred `_GLORIA_*` maps exactly (see Q&A).
+- **⚠ Wiring gap (flagged in Q&A, deferred to Task 4).** `load_gloria()` reads
+  ocpy's *packaged* `<ocpy>/data/Rrs/GLORIA/`, not `$OS_COLOR/GLORIA`, so the
+  data is grabbed but not yet reachable by the loader/`needs_gloria` guard.
+  Posed the symlink-vs-copy-vs-upstream choice for JXP; no code changed this
+  task (data grab only).
+
+### 2026-07-14 (Stage 6, Task 3: GLORIA adapter — execute under the hang guard)
+
+### 2026-07-14 (Stage 6, Task 3: GLORIA adapter — execute under the hang guard)
+
+Task 3 is the task the hang struck on ("the task below" in Task 2). The
+`GLORIAAdapter` itself was written on 2026-07-07 (log below); this pass **runs
+it to completion** now that the Task-2 hang guard is in place — the step the
+hang had blocked — and confirms it no longer wedges.
+
+- **No hang, full coverage.** GLORIA-focused run (`-k "gloria or caveat or
+  a_cdom440 or a_dg"`, under a 60 s per-test ceiling) → 4 passed, 2 skipped in
+  ~1.6 s; full CI-equivalent suite (`env -u OS_COLOR`) → **179 passed, 22
+  skipped in ~15 s**, no wedge. If GLORIA data were local the heavy full-CSV
+  `_load` (two `parse_table` ~300 MB allocations) could be slow, but the guard
+  now fails it fast with a traceback instead of hanging — so the original
+  failure mode can't recur silently.
+- **What's verified data-free (Tier-1):** registry seeding + `Adapter` protocol
+  (`test_datasets.py`), the `_GLORIA_*` column maps, and the end-to-end
+  single-point-`a_dg` → `a_cdom440_truth` → **`CDOM_vs_adg` caveat** path
+  (`test_prep.py::test_prep_gloria_single_point_adg_and_caveat` asserts
+  `metrics._caveat('GLORIA','a_dg')=='CDOM_vs_adg'` and `''` for `a_ph`;
+  genuine `insitu` noise from the measured Rrs std).
+- **What's skip-guarded (Tier-2, `@needs_gloria`):** adapter `load_obs`
+  (hyperspectral grid + measured std + single-point a_dg) and
+  `prep_dataset('GLORIA', ids[:5])` — GLORIA CSVs are unbundled and not on disk
+  here, so these skip (as designed).
+- **Still open — GLORIA Q&A awaits JXP.** The "Task 2 (GLORIA adapter)" Q&A
+  block (column names `aCDOM440`/`Secchi_depth`, positional row alignment, the
+  single-point-`a_dg` approach, `Chla→Chl`/`TSS→tss`/`Secchi_depth→Secchi`,
+  deferring the 5%-fallback report surfacing) is unanswered; those are inferred
+  from ocpy notebooks and can only be confirmed against real GLORIA data. Not
+  self-answering per the Conventions — they don't block the adapter compiling or
+  the suite passing, but a wrong column name would surface the first time GLORIA
+  data is mounted.
+
+### 2026-07-13 (Stage 6, Task 2: hang guard)
+
+Investigated the reported hang and added a durable guard so no test can wedge
+the run (or me) indefinitely.
+
+- **Repro attempts.** The suite does **not** currently hang: CI-equivalent
+  (`env -u OS_COLOR`) → 179 passed / 22 skipped in ~14 s; data-mounted
+  (`$OS_COLOR` set) completes in ~26 s (with the pre-existing `bing` import
+  failures noted below, no hang). Ran both under `faulthandler_timeout` to catch
+  any stuck test — none. The real exposure is structural: several Tier-2 tests
+  drive `ProcessPoolExecutor` batch fits, blocking data loads, and MCMC, and
+  there was **no per-test time limit**, so one wedged test hangs the whole run.
+- **Fix — `conftest._guard_against_hangs`** (autouse). A dependency-free
+  per-test wall-clock ceiling via Unix `SIGALRM`/`setitimer` (main thread only;
+  no-ops elsewhere). On expiry it dumps all thread tracebacks (`faulthandler`)
+  then raises `TimeoutError`, failing just that test so the rest of the suite
+  continues. Deferred to `pytest-timeout` when installed. Ceiling is 120 s by
+  default (`$IOPTICS_TEST_TIMEOUT`), overridable per-test with
+  `@pytest.mark.timeout(n)` (`0` disables); `timeout` marker registered via
+  `pytest_configure`.
+- **Verified the guard fires.** A throwaway `test_hangguard_tmp.py` (removed):
+  `while True: pass` and `time.sleep(10_000)` both **failed** with `TimeoutError`
+  (+ traceback) under a 3 s ceiling in ~6 s total — not killed by an outer
+  watchdog — and `@pytest.mark.timeout(0)` correctly opted out. The full
+  CI-equivalent suite still passes with the guard active (179 passed / 22
+  skipped), confirming zero interference with real tests.
+- **Docs.** Added a "Hang guard" subsection to design-doc §Testing & CI; module
+  docstring in `conftest.py` documents the mechanism and tunables.
+- **Flagged (Q&A):** default ceiling value + whether to make `pytest-timeout` a
+  hard dependency; and the unrelated local-`bing` `correct_atmosphere`
+  `ModuleNotFoundError` surfaced by the data-mounted run.
 
 ### 2026-07-07 (Stage 6, Task 1 follow-ups + Task 2: GLORIA adapter)
 

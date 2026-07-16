@@ -1312,6 +1312,26 @@ tree is mounted:
 - One short **MCMC** fit on a single spectrum (tiny `nsteps`) → chains persisted,
   corner data loads — guards the `inference`/chains path without a long run.
 
+### Hang guard (per-test wall-clock ceiling)
+
+An autouse fixture in `conftest.py` (`_guard_against_hangs`) puts every test
+under a **wall-clock ceiling** so a wedged test — a deadlocked
+`ProcessPoolExecutor` batch fit, a data load blocked on I/O, an MCMC that never
+returns — **fails fast with a traceback** instead of hanging the whole run (and
+whoever is watching it). It is dependency-free (Unix `SIGALRM`/`setitimer`,
+main thread only), dumps all thread tracebacks via `faulthandler` before
+failing so the culprit is obvious, and **defers to `pytest-timeout`** when that
+plugin is installed. Tunables:
+
+- `$IOPTICS_TEST_TIMEOUT` — the ceiling in seconds (default **120**; the whole
+  suite runs in well under a minute, so this only ever trips on a genuine hang).
+  Set to `0` to disable the guard entirely.
+- `@pytest.mark.timeout(seconds)` — override for a single test (`0` disables it
+  for that test); marker is compatible with `pytest-timeout`.
+
+The guard no-ops where `SIGALRM` is unavailable (non-Unix) or when the test is
+not on the main thread, so it never interferes with CI on other platforms.
+
 ### Test data & speed
 
 - **No large fixtures in the repo.** Tier-1 fixtures are generated in-process
