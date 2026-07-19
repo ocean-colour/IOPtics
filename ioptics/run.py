@@ -349,6 +349,7 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     for dataset in cfg.datasets:
         recs = prep.prep_dataset(dataset, obs_ids=obs_ids,
                                  noise=cfg.noise_model, seed=cfg.seed,
+                                 wv_min=cfg.wv_min, wv_max=cfg.wv_max,
                                  n_cores=n_cores)
         records.extend(recs)
         datasets_info[dataset] = {'n_obs': len(recs)}

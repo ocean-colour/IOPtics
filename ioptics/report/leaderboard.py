@@ -10,7 +10,10 @@ for the site landing page.
 
 Default ranking (design Q23): **wins** first, then ``|bias|`` and log-space
 **MAE** at the reference wavelengths, per ``(dataset, component, ref_wave)``;
-MAE / bias / coverage ride along as adjacent columns.
+MAE / bias / coverage ride along as adjacent columns. The GLORIA
+``CDOM_vs_adg`` **caveat** is folded through and shown in the rendered table, so
+the accumulated leaderboard surfaces the CDOM-vs-``a_dg`` truth-mapping mismatch
+on GLORIA ``a_dg`` rows.
 
 Consumes only persisted artifacts (no re-fitting, no BING/ocpy).
 """
@@ -74,6 +77,10 @@ def _fold_sweep(sweep_id, runs_root):
         return None
     acc['sweep_id'] = sweep_id
     keep = _KEY_COLS + ['ref_match'] + [c for c in _VALUE_COLS if c in acc]
+    # Carry the GLORIA CDOM-vs-a_dg caveat through the fold so the accumulated
+    # leaderboard surfaces it (metrics stamps it on GLORIA a_dg rows only).
+    if 'caveat' in acc.columns:
+        keep = keep + ['caveat']
     out = acc[keep]
 
     pw_path = d / metrics.METRICS_PAIRWISE_FILE
@@ -158,9 +165,12 @@ def render(board=None, *, runs_root=None, root=None, out=None, fmt='rst',
         out = Path(out) if out is not None else _default_out(runs_root)
         board = pd.read_parquet(out)
     df = ranked(board, stratum=stratum)
+    if 'caveat' in df.columns:
+        # rows from sweeps folded before caveat-carrying (or non-GLORIA) → ''
+        df['caveat'] = df['caveat'].fillna('')
 
     cols = ['dataset', 'component', 'ref_wave', 'stratum', 'rank', 'algorithm',
-            'win_frac', 'bias', 'mae', 'coverage68', 'coverage95']
+            'win_frac', 'bias', 'mae', 'coverage68', 'coverage95', 'caveat']
     cols = [c for c in cols if c in df.columns]
 
     def _cell(v):

@@ -334,17 +334,19 @@ def _cf(values):
 
 
 def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
-               fit_method='chisq', rrs_factor=1.0):
+               fit_method='chisq', rrs_factor=1.0, dataset='L23'):
     """One (RetrievalResult, PreparedRecord) for the synthetic sweep.
 
     ``factor`` scales every retrieved value above truth (1.0 = perfect, 2.0 =
     2x over). ``rrs_factor`` scales the model Rrs above the observed Rrs.
+    ``dataset`` names the source (defaults to ``'L23'``); pass ``'GLORIA'`` to
+    exercise the CDOM-vs-a_dg caveat, ``'PANGAEA'`` for a genuine-``a_dg`` set.
     """
     comps = {c: _cf(np.full(_WAVE.size, factor * b)) for c, b in _BASE.items()}
     comps['Rrs_model'] = _cf(rrs_factor * _RRS)
     k = 5 if algo == 'expb_pow' else 3
     result = RetrievalResult(
-        dataset='L23', obs_id=obs_id, algorithm=algo, fit_method=fit_method,
+        dataset=dataset, obs_id=obs_id, algorithm=algo, fit_method=fit_method,
         components=comps,
         scalars={'Chl': (factor * chl_truth, 0.1), 'Sdg': (factor * 0.017, 1e-3),
                  'a_cdom440': (factor * _BASE['a_dg'], 1e-3),
@@ -356,7 +358,7 @@ def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
     truth = {c: _Spec(np.full(_WAVE.size, b)) for c, b in _BASE.items()}
     truth.update({'Chl': chl_truth, 'Sdg': 0.017})
     record = PreparedRecord(
-        dataset='L23', obs_id=obs_id, wave=_WAVE, Rrs=_RRS,
+        dataset=dataset, obs_id=obs_id, wave=_WAVE, Rrs=_RRS,
         varRrs=np.full(_WAVE.size, 1e-6), Rrs_clean=_RRS,
         truth=truth, truth_interp={}, init={'Chl': 1.0, 'Y': 0.5},
         noise_model='pace', noise_seed=1)

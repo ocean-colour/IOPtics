@@ -1,0 +1,13 @@
+sweep_id: multi_L23_PANGAEA_v2
+datasets: [L23, PANGAEA]        # L23 defaults to X=1 (elastic); PANGAEA in-situ
+noise_model: pct:0.05          # uniform across datasets (a sweep has ONE noise
+                               #   model; L23-pace vs PANGAEA-insitu would need
+                               #   two sweeps folded into the leaderboard — see
+                               #   the Stage-6 Task-7 Q&A)
+algorithms: [expb_pow, giop, gsm]   # the three-way contest (all chi^2-first)
+fit_method: chisq              # sweep default; no MCMC subset for the broad run
+seed: 1234
+wv_min: 400                    # common window: keep every fit inside the Gordon
+wv_max: 750                    #   coefficient table (max ~750 nm) + comparable
+                               #   across datasets (native grids differ)
+
