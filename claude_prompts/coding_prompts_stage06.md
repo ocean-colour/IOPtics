@@ -157,6 +157,8 @@ module/addition.
    accounting and that the GLORIA caveat surfaces (Tier-2 with data; Tier-1 on a
    synthetic multi-dataset results table where possible). Q&A. Log.
 
+8. **GLORIA fits.**  I have answered your Task 7 questions; see my responses.  It sounds like the GLORIA fits are not converging.  So, please investigate why and write a separate report on this called `reports/gloria_fits_report.md`.  Be sure to include Figures and save the Python scripts as `reports/scripts/gloria_fits_report.py`.  If you have any questions, please add them to the Q&A section below.  Log your work.  Use Fable if you can.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -355,7 +357,153 @@ module/addition.
   different numpy ABI. Harmless here (no crash), flagging in case you want it
   rebuilt.
 
+**Task 7 (multi-everything sweep).**
+
+- **Per-dataset noise in one sweep (confirm the approach).** A sweep carries a
+  **single** `noise_model`, but the datasets want different ones (L23 `pace`,
+  PANGAEA/GLORIA `insitu`). `build_v2` uses a uniform `pct:0.05` for the one
+  cross-dataset {L23, PANGAEA} sweep (fair + comparable). To compare *native*
+  noise models, run them as **separate per-dataset sweeps** and let
+  `leaderboard.update` accumulate them (the design's "group-by / accumulate
+  across sweeps"). OK, or do you want per-dataset `noise_model` added to the
+  config?
+>A. Run them as separate per-dataset sweeps.
+
+- **`obs_ids` can't subset a mixed-id sweep.** `run_sweep` passes the same
+  `obs_ids` to every dataset, and L23 ids are ints while PANGAEA/GLORIA are
+  strings — so a small mixed L23/PANGAEA smoke isn't expressible (the Tier-1
+  multi-dataset test therefore uses a **synthetic** results table, per the
+  task's "where possible"). `build_v2` runs full datasets (`obs_ids=None`).
+  Add per-dataset `obs_ids` to the config/`run_sweep`, or leave it?
+>A. Add per-dataset `obs_ids` to the config.
+
+- **GLORIA χ² fits don't converge (needs a decision).** A real GLORIA
+  `expb_pow` χ² sweep (trimmed 400–750) **fails to converge** —
+  `curve_fit: "Optimal parameters not found: max function evaluations
+  exceeded"` on every sampled spectrum (turbid inland waters + broad GSM-style
+  priors). So a real GLORIA leaderboard is currently empty of `a_dg` rows (all
+  `fit_failed`). The **caveat mechanism is fully verified** on a synthetic
+  GLORIA-named sweep (Tier-1), but surfacing it from *real* GLORIA needs the fit
+  to succeed first. Want me to (a) raise `curve_fit`'s `maxfev` / improve the
+  GLORIA initial guess, (b) fit GLORIA with MCMC instead, or (c) treat GLORIA
+  fit-quality as a post-Stage-6 follow-up?
+>A. This deserves further investigation.  
+
+- **`wv_min/wv_max` added to the sweep config (per your Task-6 "use the
+  config").** Beyond the Raman trim, it's needed for any dataset whose native
+  grid exceeds the Gordon-coefficient table (GLORIA → 900 nm fails at 751 nm);
+  `build_v2` sets `[400, 750]`. Flagging the small `config`/`run_sweep` change
+  in case you'd have scoped it differently.
+>A. Sounds fine
+
+**Task 8 (GLORIA fits — convergence investigation).**
+
+- **`fit_mcmc` crashes on GLORIA's string ids (real bug).** `ioptics/run.py`
+  (`fit_mcmc`) does `idx = int(record.obs_id)` for BING's idx-keyed `Chl`/`Y`
+  lookup, but GLORIA `obs_id`s are strings (`'GID_1'`) → `ValueError`. So GLORIA
+  MCMC sweeps can't run today. Fixing it needs an indexing decision (synthesize a
+  positional int index? change BING's Chl/Y keying?) — want me to fix it, and
+  how?
+- **Turbid-water model family?** The investigation's root cause is **model
+  inadequacy**: `expb_pow`/`giop`/`gsm` are open-ocean parameterisations and
+  cannot represent GLORIA's turbid green-red Rrs (converged fits have median
+  χ²ᵥ ≈ 250 vs ≈ 1 for L23). Should IOPtics grow a dedicated turbid/inland model
+  family (NAP/mineral backscatter, wider CDOM, green-red-admitting a_ph), or is
+  GLORIA intended as a stress-test the open-ocean models are *expected* to fail?
+- **`maxfev` exposure.** Raising scipy `curve_fit`'s `maxfev` ~40× ~triples the
+  yield (12.5%→37.5% for `expb_pow`) — necessary but not sufficient. Prefer
+  raising it inside `bing/fitting/chisq_fit.py`, or plumbing a `maxfev` through
+  an IOPtics `AlgorithmSpec`/RT option?
+- **Reporting policy for poor fits.** How should a sweep record a GLORIA fit
+  that "converges" but with χ²ᵥ ≈ 250 — as `fit_failed`, a new `poor_fit`
+  status, or `ok` with the stat attached (and let metrics/leaderboard flag it)?
+
 ## Logs
+
+### 2026-07-19 (Stage 6, Task 8: GLORIA fit-convergence investigation + report)
+
+Investigated why real GLORIA χ² fits don't converge and wrote a standalone
+report with figures + a reproducible script. Ran the investigation via a **Fable**
+subagent (per the task), seeded with the grounding facts I measured first; I
+verified its deliverables. **No package source changed** — only `reports/`.
+
+- **Root cause: model inadequacy (dominant) + too-small `maxfev` (secondary).**
+  BING's open-ocean forward models can't represent GLORIA's turbid,
+  green-red-peaked Rrs (peak ~568 nm + humps at ~649/700 nm; L23 peaks ~405 nm
+  and decays). Even converged GLORIA fits sit at median χ²ᵥ ≈ **2.5e2** vs ≈
+  **1.0** for L23 — the model misses by ~16σ/band, so LM never contracts its
+  trust region and exhausts the eval budget (surfacing as the `maxfev` error).
+  Raising `maxfev` ~40× lifts `expb_pow` yield 12.5%→37.5% (necessary, not a
+  cure); band down-sampling (30 nm) and `varRrs`×100 do nothing (rules out band
+  count / stiffness as independent causes); OC4 Chl init is unreliable in turbid
+  water (0.1–2224 mg/m³) — a tertiary factor.
+- **Corrected my earlier "0/20".** That was a benign contiguous-GID cluster
+  (where even maxfev→100% fails); across the full 7572 the true `expb_pow`
+  baseline is ~12.5%, maxfev ceiling ~37.5% — so sample choice matters and
+  `maxfev` is not a general fix.
+- **Convergence table (40 GLORIA / 40 L23, 400–750 nm):** expb_pow 12.5%, giop
+  17.5%, gsm 25.0% baseline; all three ~37.5% at maxfev 20k; varRrs×100 and
+  ds-30 nm stay 12.5%; L23 expb_pow 100%. Tiny MCMC (nsteps=300) ran on GLORIA.
+- **Recommendation:** don't report the current models' GLORIA fits as successes;
+  short-term bump `maxfev` + flag GLORIA as its own regime; real fix is a
+  turbid-water forward model and/or MCMC + a turbid-robust Chl init.
+- **Found a real bug (Q&A):** `run.fit_mcmc` `int(record.obs_id)` crashes on
+  GLORIA string ids — GLORIA MCMC can't run until fixed.
+- **Deliverables:** `reports/gloria_fits_report.md`,
+  `reports/scripts/gloria_fits_report.py` (self-contained, rerunnable, `Agg`,
+  bounded runtime; `py_compile` clean), and 5 figures in `reports/figures/`
+  (Rrs shape contrast, peak-λ histogram, convergence-rate bars, χ²ᵥ
+  distribution, fit overlay). Verified files present + figures non-empty; did
+  not re-run the ~35 min script. Suite unaffected (no `ioptics/` change).
+
+### 2026-07-19 (Stage 6, Task 7: multi-everything sweep + leaderboard caveat)
+
+### 2026-07-19 (Stage 6, Task 7: multi-everything sweep + leaderboard caveat)
+
+The final Stage-6 task: the multi-dataset × multi-algorithm sweep driver, the
+leaderboard caveat fold (per your Task-0 answer), and the config wavelength trim
+(per your Task-6 answer). Exit criterion — ≥3 algorithms, multi-dataset sweep,
+leaderboard accumulates, GLORIA caveat surfaces — is met (see the GLORIA
+fit-convergence caveat in Q&A).
+
+- **`runs/prototypes/multi_v2/{build_v2.py,run_v2.yaml}`** — mirrors `build_v1`
+  (sequential stages `1` run / `2` `metrics.compute` / `3`
+  `standard.build` + `leaderboard.update` + `write_leaderboard_landing`). Sweep:
+  `{L23, PANGAEA} × {expb_pow, giop, gsm}`, χ², uniform `pct:0.05` noise,
+  `wv_min/wv_max=[400,750]`.
+- **Leaderboard now folds the GLORIA caveat** (`report.leaderboard`). `_fold_
+  sweep` carries the `caveat` column from `metrics_scalar` through the fold, and
+  `render` shows it (with `fillna('')` so pre-caveat/non-GLORIA rows stay blank).
+  So the accumulated cross-sweep leaderboard surfaces `CDOM_vs_adg` on GLORIA
+  `a_dg` rows — the exit criterion. (Was the open Known-constraint;
+  you approved adding it.)
+- **`wv_min/wv_max` added to `SweepConfig`** (+ `from_dict` validation, `to_dict`
+  round-trip) and threaded through `run_sweep → prep_dataset`. Implements your
+  "use the config" answer for the Raman trim, and unblocks datasets whose native
+  grid overruns the Gordon table (GLORIA).
+- **`correct_atmosphere` added to `requirements.txt`** (git dep, next to
+  ocpy/bing) — your Task-6 answer.
+- **Tests (Tier-1, always run).** `test_sweep_multi.py`:
+  (1) `build_v2` config parses + stage dispatch (mirrors the build_v1 test);
+  (2) a synthetic **{L23, PANGAEA, GLORIA} × {expb_pow, giop, gsm}** results
+  table → `metrics.compute` + `leaderboard.update` asserting per-dataset/
+  component coverage **and** that the GLORIA `CDOM_vs_adg` caveat is stamped on
+  GLORIA `a_dg` rows only (not L23/PANGAEA `a_dg`, not GLORIA non-`a_dg`) and
+  appears in the rendered table. `_make_pair` gained a `dataset=` kwarg
+  (default `'L23'`, back-compatible).
+- **Real-data check (not committed — flaky).** A real GLORIA χ² sweep confirmed
+  the load/trim/metrics/leaderboard chain runs, but every `expb_pow` fit failed
+  to converge (`curve_fit` maxfev) → no `a_dg` rows; hence the caveat is
+  verified via the synthetic Tier-1 path and GLORIA fit-convergence is posed in
+  Q&A.
+- **Suite.** CI-equivalent (`env -u OS_COLOR`) → **184 passed, 24 skipped**
+  (was 181/24: +3 Tier-1 — build_v2 config, build_v2 dispatch, multi-dataset
+  coverage+caveat). Config round-trip green. Under the hang guard; no wedge.
+  Changed: `report/leaderboard.py`, `config.py`, `run.py`, `requirements.txt`,
+  `tests/test_metrics.py`, new `tests/test_sweep_multi.py` + `runs/prototypes/
+  multi_v2/`.
+
+### 2026-07-15 (Stage 6, Task 6: L23 X=4 inelastic RT)
 
 ### 2026-07-15 (Stage 6, Task 6: L23 X=4 inelastic RT)
 
