@@ -159,6 +159,8 @@ module/addition.
 
 8. **GLORIA fits.**  I have answered your Task 7 questions; see my responses.  It sounds like the GLORIA fits are not converging.  So, please investigate why and write a separate report on this called `reports/gloria_fits_report.md`.  Be sure to include Figures and save the Python scripts as `reports/scripts/gloria_fits_report.py`.  If you have any questions, please add them to the Q&A section below.  Log your work.  Use Fable if you can.
 
+9. **More GLORIA fits.**  I have answered your Task 8 questions; see my responses.  Continue your exploration.  Also add a few example fits to the report.  Log your work.  Use Fable if you can.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -404,21 +406,95 @@ module/addition.
   MCMC sweeps can't run today. Fixing it needs an indexing decision (synthesize a
   positional int index? change BING's Chl/Y keying?) — want me to fix it, and
   how?
+>A. Synthesize a positional int index.
+
 - **Turbid-water model family?** The investigation's root cause is **model
   inadequacy**: `expb_pow`/`giop`/`gsm` are open-ocean parameterisations and
   cannot represent GLORIA's turbid green-red Rrs (converged fits have median
   χ²ᵥ ≈ 250 vs ≈ 1 for L23). Should IOPtics grow a dedicated turbid/inland model
   family (NAP/mineral backscatter, wider CDOM, green-red-admitting a_ph), or is
   GLORIA intended as a stress-test the open-ocean models are *expected* to fail?
+>A.  I'm not sure I understand.  Why can't a model with larger CDOM and NAP fit the GLORIA data?  Continue to explore this.
 - **`maxfev` exposure.** Raising scipy `curve_fit`'s `maxfev` ~40× ~triples the
   yield (12.5%→37.5% for `expb_pow`) — necessary but not sufficient. Prefer
   raising it inside `bing/fitting/chisq_fit.py`, or plumbing a `maxfev` through
   an IOPtics `AlgorithmSpec`/RT option?
+>A. Plumb a `maxfev` through an IOPtics `AlgorithmSpec`/RT option.
 - **Reporting policy for poor fits.** How should a sweep record a GLORIA fit
   that "converges" but with χ²ᵥ ≈ 250 — as `fit_failed`, a new `poor_fit`
   status, or `ok` with the stat attached (and let metrics/leaderboard flag it)?
+>A. As `poor_fit`.
+
+**Task 9 (more GLORIA fits — range vs form).**
+
+- **Which form extension to prototype first?** The exploration ruled out
+  "wider CDOM/NAP" (see Log) — the wall is functional form in 500–750 nm. Do you
+  want prototyped first: (a) a free-shape / multi-Gaussian `a_ph`, (b) an added
+  mineral-NAP absorption+backscatter component, or (c) a published turbid-water
+  scheme (QAA-turbid / red-NIR two-band)? I'd add it as a new `AlgorithmSpec`
+  under `reports/` for testing.
+- **NIR window for turbid waters.** The worst spectra rise strongly at
+  700–750 nm (one peaks at 750). Extend the fit window past 750 nm for turbid
+  GLORIA, or fit turbid GLORIA on a red-NIR sub-window?
+- **Regime status vocabulary.** OK to classify turbid GLORIA (red-shifted peak /
+  high χ²ᵥ) as `out_of_scope` rather than `fit_failed`? (Relatedly, you approved
+  `poor_fit` in Task 8 — is `out_of_scope` a *distinct* third status, or should
+  turbid GLORIA just be `poor_fit`?)
+- **Noise floor.** GLORIA's measured per-band `varRrs` (~2.3e-8, σ~1.5e-4 sr⁻¹)
+  is so tight that even clear-water fits sit several σ/band off. Trust the 1-nm
+  measured error, or fit GLORIA with an inflated / error-floor noise model?
+
+**Deferred (Task-8 answers approved, not yet implemented — confirm the plan).**
+- **`maxfev` via `AlgorithmSpec`.** Blocked on a BING change: `bing.fitting.
+  chisq_fit.fit` takes no `maxfev` and doesn't reach `curve_fit`'s. I can (a) add
+  a `maxfev` kwarg to BING's `chisq_fit.fit` + an `AlgorithmSpec` field, or (b)
+  keep it IOPtics-only by having `fit_chisq` call `curve_fit` itself. Which?
+- **`poor_fit` status.** A reporting change touching `run`/`evaluate`/`io`/
+  `metrics` (threshold policy + filtering). I deferred it pending the regime-flag
+  decision above (so `poor_fit` vs `out_of_scope` are designed together).
 
 ## Logs
+
+### 2026-07-20 (Stage 6, Task 9: GLORIA range-vs-form exploration + MCMC id fix)
+
+Continued the GLORIA investigation to answer JXP's Task-8 question — *why can't
+larger CDOM/NAP fit GLORIA?* — via the same **Fable** subagent (resumed with its
+report context), and applied the approved `fit_mcmc` id fix. Only `reports/`
+(exploration) + the one-line `run.fit_mcmc` fix + its test changed.
+
+- **Answer: it is functional FORM, not parameter range — tested, not asserted.**
+  The amplitude priors (`Adg`/`Aph`/`Bnw`) are already `log_uniform` ~1e-6..1e5
+  (effectively unbounded), so "larger CDOM/NAP" was *always* allowed. A
+  deliberately over-wide `expb_pow` (amplitudes 1e-8..1e8, wider `Sdg`/`beta`)
+  refit of 40 GLORIA spectra gives **byte-identical** median χ²ᵥ ≈ 2.47e2 (LM);
+  MCMC with wide priors (independent of LM/`maxfev`) lands at ≈ 2.55e2. Three
+  independent levers → same χ²ᵥ. **Residual localises to 500–750 nm** (relative
+  residual saturates near −100%): the open-ocean form decays to ~0 exactly where
+  turbid GLORIA has its green peak / ~649 nm hump / NIR rise. Failure tracks
+  turbidity — *clear* GLORIA fits fine (best χ²ᵥ ≈ 0.08, blue-peaked), the worst
+  (peak 750 nm) hits χ²ᵥ ~2.9e5.
+- **Conclusion sharpened, JXP's remedy ruled out with numbers.** "Model
+  inadequacy" stands but is now pinned to **functional form** in 500–750 nm; the
+  fix is a richer model *form* (free/multi-Gaussian `a_ph` + explicit NAP), not
+  wider ranges. Nuance added: the current models are adequate for *clear* GLORIA
+  → flag by regime, don't reject GLORIA globally.
+- **Report updated** (`reports/gloria_fits_report.md` gains "Continued
+  exploration: can wider CDOM/NAP fit GLORIA?") with **example fits** (JXP asked)
+  and 3 new figures — `range_vs_form.png` (wide-vs-standard χ²ᵥ on the 1:1 line +
+  χ²ᵥ vs peak-λ collapse), `wide_example_fits.png` (4 clear→turbid overlays with
+  χ²ᵥ), `residual_localization.png` (Rrs + relative residual, green-red band
+  shaded). Script gains `continued_exploration()` + 3 figure fns, still
+  self-contained/rerunnable (~40 spectra, MCMC nsteps=400); `py_compile` clean.
+- **`fit_mcmc` id fix (approved).** `run.fit_mcmc` now synthesizes a positional
+  index (`idx=0`, size-1 Chl/Y arrays) instead of `int(record.obs_id)`, so MCMC
+  runs on GLORIA string ids (`'GID_1'`) — verified on GLORIA + L23. Regression
+  test `test_micro.py::test_fit_mcmc_accepts_string_obs_id` (`@needs_l23`, tiny
+  chain, string obs_id). CI-equivalent (`env -u OS_COLOR`) → **184 passed, 25
+  skipped** (+1 skip). Under the hang guard.
+- **Deferred (Q&A):** `maxfev` plumbing (needs a BING `chisq_fit` change) and the
+  `poor_fit` status (reporting change, designed with the regime-flag decision).
+
+### 2026-07-19 (Stage 6, Task 8: GLORIA fit-convergence investigation + report)
 
 ### 2026-07-19 (Stage 6, Task 8: GLORIA fit-convergence investigation + report)
 

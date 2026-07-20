@@ -170,11 +170,13 @@ def fit_mcmc(spec, record):
 
     pdict = bing_inf.init_mcmc(models, nsteps=spec.mcmc.nsteps,
                                nburn=spec.mcmc.nburn)
-    idx = int(record.obs_id)                       # BING idx-keyed Chl/Y lookup
-    pdict['Chl'] = np.zeros(idx + 1)
-    pdict['Chl'][idx] = float(record.init.get('Chl', 0.0))
-    pdict['Y'] = np.zeros(idx + 1)
-    pdict['Y'][idx] = float(record.init.get('Y', 0.0))
+    # A single record is fit in isolation, so synthesize a positional index of 0
+    # with size-1 Chl/Y arrays (BING keys Chl/Y by this idx). This replaces
+    # ``int(record.obs_id)``, which fails on non-integer ids (e.g. GLORIA's
+    # 'GID_1'); the real obs id still rides on the result via ``record.obs_id``.
+    idx = 0
+    pdict['Chl'] = np.array([float(record.init.get('Chl', 0.0))])
+    pdict['Y'] = np.array([float(record.init.get('Y', 0.0))])
 
     items = (np.asarray(record.Rrs, dtype=float),
              np.asarray(record.varRrs, dtype=float), p0, idx)

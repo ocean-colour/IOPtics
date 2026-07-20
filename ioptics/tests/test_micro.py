@@ -109,6 +109,29 @@ def test_gsm_chisq_fit_recovers_iops():
 
 
 @needs_l23
+def test_fit_mcmc_accepts_string_obs_id():
+    """MCMC fits a record with a non-integer obs_id (e.g. GLORIA 'GID_1').
+
+    ``fit_mcmc`` synthesizes a positional index instead of ``int(record.obs_id)``
+    — regression guard for the crash on GLORIA's string ids. Uses L23 water
+    models + a tiny chain for speed; only completion (not fit quality) matters.
+    """
+    import copy
+    from ioptics import prep, run
+    from ioptics.algorithms import registry
+
+    record = prep.prep_one('L23', 0, wv_min=400, wv_max=750)
+    record.obs_id = 'GID_str'                       # non-integer id, as GLORIA gives
+    spec = copy.deepcopy(registry.get('giop'))
+    spec.mcmc.nsteps, spec.mcmc.nburn = 120, 30
+
+    res = run.run_algorithm(spec, record, fit_method='mcmc')
+    assert res.status == 'ok'
+    assert res.obs_id == 'GID_str'                  # real id preserved on the result
+    assert 'a' in res.components
+
+
+@needs_l23
 @needs_inelastic
 def test_l23_x4_inelastic_rt_shifts_rrs_model():
     """L23 X=4: the include_Raman/include_Chl_fl toggles reach the forward model.

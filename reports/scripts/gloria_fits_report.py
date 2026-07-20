@@ -220,6 +220,9 @@ def main():
     print("  (NB: packaged run.fit_mcmc raises on GLORIA string obs_ids;"
           " probe used an integer obs_id.)")
 
+    # ============ CONTINUED EXPLORATION: range vs form (JXP's question) =====
+    wide = continued_exploration(grecs)
+
     # =========================================================== FIGURES ====
     _fig_shape_contrast(g0, l0)
     _fig_peak_hist(g_peaks, l_peaks)
@@ -248,6 +251,19 @@ def main():
     print("\nReduced chi^2 (median, converged fits):")
     print(f"  expb_pow GLORIA maxfev 20k : {_med(mf):.2e}")
     print(f"  expb_pow L23   baseline    : {_med(l23_res):.2e}")
+
+    print("\n" + "=" * 66)
+    print("RANGE vs FORM: does widening CDOM/NAP priors fix GLORIA?")
+    print("=" * 66)
+    print(f"  expb_pow standard priors, LM  : median chi2_nu = "
+          f"{wide['med_std']:.2e}  (n={wide['n_std']})")
+    print(f"  expb_pow WIDE priors,     LM  : median chi2_nu = "
+          f"{wide['med_wide']:.2e}  (n={wide['n_wide']})")
+    print(f"  expb_pow WIDE priors,     MCMC: median chi2_nu = "
+          f"{wide['med_mcmc']:.2e}  (n={wide['n_mcmc']})")
+    print(f"  wide-prior fits sitting at a bound: {wide['n_atbound']}/{wide['n_wide']}")
+    print(f"  good fits (chi2_nu<10): median Rrs-peak = {wide['peak_good']:.0f} nm; "
+          f"bad fits: {wide['peak_bad']:.0f} nm")
     print("=" * 66)
     print("Figures written to reports/figures/")
 
@@ -368,6 +384,195 @@ def _fig_chi2_dist(results, l23_res):
     ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(os.path.join(_FIGDIR, 'chi2_distribution.png'), dpi=130)
+    plt.close(fig)
+
+
+# =================== CONTINUED EXPLORATION: range vs form ==================
+def wide_expb_spec():
+    """`expb_pow` with deliberately over-wide CDOM/NAP/backscatter priors.
+
+    Amplitude priors (Adg, Aph, Bnw) are pushed to 1e-8..1e8 (the shipped ones
+    are already 1e-6..1e5 -- essentially unbounded), the CDOM slope Sdg is opened
+    from [0.01, 0.02] to [0.005, 0.03], and the bbp slope beta from [0, 2] to
+    [-1, 4]. If GLORIA fails for lack of CDOM/NAP *range*, this must fix it.
+    """
+    s = registry.get('expb_pow')
+    apriors = [{'flavor': 'log_uniform', 'pmin': -8, 'pmax': 8},   # Adg (CDOM)
+               {'flavor': 'uniform',     'pmin': 0.005, 'pmax': 0.03},  # Sdg
+               {'flavor': 'log_uniform', 'pmin': -8, 'pmax': 8}]   # Aph
+    bpriors = [{'flavor': 'log_uniform', 'pmin': -8, 'pmax': 8},   # Bnw (NAP bb)
+               {'flavor': 'uniform',     'pmin': -1.0, 'pmax': 4.0}]  # beta
+    return dataclasses.replace(s, apriors=apriors, bpriors=bpriors)
+
+
+def continued_exploration(grecs):
+    """Test JXP's hypothesis: is GLORIA a parameter-RANGE problem (widen CDOM/
+    NAP priors and it fits) or a functional-FORM problem (the shapes can't make
+    the green-red multi-hump)? Fits the sample under standard vs wide priors
+    (LM, raised maxfev) and under a wide-prior MCMC, records where fits land and
+    where the residual concentrates, and writes the range-vs-form figures.
+    """
+    std = registry.get('expb_pow')
+    wide = wide_expb_spec()
+
+    peaks, chi2_std, chi2_wide, atbound = [], [], [], 0
+    per_spec = []                       # (rec, ans, pred, chi2nu) for wide fits
+    for rec in grecs:
+        pk = rec.wave[np.argmax(rec.Rrs)]
+        try:
+            a_s, m_s, rt_s = chisq_fit(std, rec, maxfev=MAXFEV_BIG)
+            chi2_std.append(reduced_chisq(rec, m_s, rt_s, a_s))
+        except Exception:
+            pass
+        try:
+            a_w, m_w, rt_w = chisq_fit(wide, rec, maxfev=MAXFEV_BIG)
+            c = reduced_chisq(rec, m_w, rt_w, a_w)
+            chi2_wide.append(c)
+            peaks.append(pk)
+            per_spec.append((rec, a_w, model_rrs(m_w, rt_w, a_w), c))
+            lo, hi = run._prior_bounds(m_w)
+            if np.any(np.isclose(a_w, lo, rtol=1e-3) |
+                      np.isclose(a_w, hi, rtol=1e-3)):
+                atbound += 1
+        except Exception:
+            pass
+
+    chi2_std = np.array(chi2_std)
+    chi2_wide = np.array(chi2_wide)
+    peaks = np.array(peaks)
+    good = chi2_wide < 10.0
+
+    # Wide-prior MCMC on 3 representative spectra (best / median / worst wide-LM
+    # chi2_nu) as an independent, budget-free check.
+    spec_mcmc = dataclasses.replace(
+        wide, fit_method='mcmc',
+        mcmc=MCMCOptions(nsteps=MCMC_NSTEPS, nburn=MCMC_NBURN))
+    order = np.argsort([c for _, _, _, c in per_spec])
+    picks = sorted({order[0], order[len(order) // 2], order[-1]})
+    mcmc_chi2 = []
+    print("\nWide-prior MCMC check (independent of LM/maxfev):")
+    for j in picks:
+        rec = per_spec[j][0]
+        try:
+            res = run.run_algorithm(spec_mcmc, rec, fit_method='mcmc')
+            mcmc_chi2.append(res.stats['chi2_nu'])
+            print(f"  {rec.obs_id} peak {rec.wave[np.argmax(rec.Rrs)]:.0f} nm: "
+                  f"LM chi2_nu={per_spec[j][3]:.2e}  MCMC chi2_nu="
+                  f"{res.stats['chi2_nu']:.2e}")
+        except Exception as e:
+            print(f"  MCMC fail {rec.obs_id}: {type(e).__name__}: {str(e)[:60]}")
+    mcmc_chi2 = np.array(mcmc_chi2)
+
+    # ---- figures ----
+    _fig_range_vs_form(peaks, chi2_std, chi2_wide)
+    _fig_wide_example_fits(per_spec)
+    _fig_residual_localization(per_spec)
+
+    return {
+        'med_std': np.median(chi2_std) if chi2_std.size else np.nan,
+        'n_std': chi2_std.size,
+        'med_wide': np.median(chi2_wide) if chi2_wide.size else np.nan,
+        'n_wide': chi2_wide.size,
+        'med_mcmc': np.median(mcmc_chi2) if mcmc_chi2.size else np.nan,
+        'n_mcmc': mcmc_chi2.size,
+        'n_atbound': atbound,
+        'peak_good': np.median(peaks[good]) if good.any() else np.nan,
+        'peak_bad': np.median(peaks[~good]) if (~good).any() else np.nan,
+    }
+
+
+def _fig_range_vs_form(peaks, chi2_std, chi2_wide):
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+    # (a) wide vs std chi2_nu -- identical points lie on the 1:1 line.
+    n = min(chi2_std.size, chi2_wide.size)
+    ax = axes[0]
+    if n:
+        ax.loglog(chi2_std[:n], chi2_wide[:n], 'o', color='#762a83', ms=6)
+        lim = [min(chi2_std.min(), chi2_wide.min()) * 0.5,
+               max(chi2_std.max(), chi2_wide.max()) * 2]
+        ax.plot(lim, lim, 'k--', lw=1, label='1:1')
+    ax.set_xlabel('reduced chi^2, standard priors')
+    ax.set_ylabel('reduced chi^2, WIDE priors')
+    ax.set_title('Widening CDOM/NAP priors does not\nchange the fit (points on 1:1)')
+    ax.legend(frameon=False)
+    ax.grid(alpha=0.3, which='both')
+    # (b) chi2_nu vs Rrs-peak wavelength -- failure grows toward the red.
+    ax = axes[1]
+    ax.semilogy(peaks, chi2_wide, 'o', color='#1b7837', ms=6)
+    ax.axhline(10, color='k', ls=':', lw=1, label='chi2_nu = 10')
+    ax.axhline(1, color='grey', ls='--', lw=1, label='chi2_nu = 1')
+    ax.set_xlabel('Rrs-peak wavelength [nm]')
+    ax.set_ylabel('reduced chi^2 (WIDE priors)')
+    ax.set_title('Fit quality collapses as the Rrs peak\nmoves to green-red '
+                 '(turbid)')
+    ax.legend(frameon=False)
+    ax.grid(alpha=0.3, which='both')
+    fig.tight_layout()
+    fig.savefig(os.path.join(_FIGDIR, 'range_vs_form.png'), dpi=130)
+    plt.close(fig)
+
+
+def _fig_wide_example_fits(per_spec):
+    """Overlay model vs observed Rrs for ~4 representative GLORIA spectra
+    (spanning clear to turbid) under the wide-prior fit, annotated with chi2_nu.
+    """
+    if not per_spec:
+        return
+    chis = np.array([c for _, _, _, c in per_spec])
+    order = np.argsort(chis)
+    n = len(order)
+    picks = sorted({order[0], order[n // 3], order[2 * n // 3], order[-1]})
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    for ax, j in zip(axes.ravel(), picks):
+        rec, _, pred, c = per_spec[j]
+        ax.plot(rec.wave, rec.Rrs, 'k.', ms=3, label='observed')
+        ax.plot(rec.wave, pred, color='#1b7837', lw=2, label='expb_pow (wide)')
+        pk = rec.wave[np.argmax(rec.Rrs)]
+        ax.set_title(f'{rec.obs_id}  (peak {pk:.0f} nm)  '
+                     f'chi2_nu = {c:.1e}', fontsize=10)
+        ax.set_xlabel('wavelength [nm]')
+        ax.set_ylabel('Rrs [1/sr]')
+        ax.legend(frameon=False, fontsize=8)
+        ax.grid(alpha=0.3)
+    for ax in axes.ravel()[len(picks):]:
+        ax.axis('off')
+    fig.suptitle('Wide-prior expb_pow fits: clear (top-left) to turbid '
+                 '(bottom-right)', fontsize=12)
+    fig.tight_layout()
+    fig.savefig(os.path.join(_FIGDIR, 'wide_example_fits.png'), dpi=130)
+    plt.close(fig)
+
+
+def _fig_residual_localization(per_spec):
+    """For the worst (most turbid) wide-prior fit, show where the model misses:
+    relative residual vs wavelength, with the green-red band shaded.
+    """
+    if not per_spec:
+        return
+    chis = np.array([c for _, _, _, c in per_spec])
+    j = int(np.argmax(chis))
+    rec, _, pred, c = per_spec[j]
+    obs = np.asarray(rec.Rrs, dtype=float)
+    relres = (pred - obs) / np.maximum(np.abs(obs), 1e-6)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+    ax1.plot(rec.wave, obs, 'k.', ms=3, label='observed')
+    ax1.plot(rec.wave, pred, color='#b2182b', lw=2, label='wide-prior model')
+    ax1.axvspan(500, 750, color='#1b7837', alpha=0.08)
+    ax1.set_ylabel('Rrs [1/sr]')
+    ax1.set_title(f'{rec.obs_id}: model misses the green-red band '
+                  f'(chi2_nu = {c:.1e})')
+    ax1.legend(frameon=False)
+    ax1.grid(alpha=0.3)
+    ax2.plot(rec.wave, relres, color='#b2182b', lw=1.5)
+    ax2.axhline(0, color='k', lw=0.8)
+    ax2.axvspan(500, 750, color='#1b7837', alpha=0.08,
+                label='green-red (500-750 nm)')
+    ax2.set_xlabel('wavelength [nm]')
+    ax2.set_ylabel('(model - obs) / obs')
+    ax2.legend(frameon=False)
+    ax2.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(os.path.join(_FIGDIR, 'residual_localization.png'), dpi=130)
     plt.close(fig)
 
 
