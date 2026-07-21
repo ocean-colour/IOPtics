@@ -461,7 +461,74 @@ module/addition.
   decision above (so `poor_fit` vs `out_of_scope` are designed together).
 >A. Ok
 
+**Task 10 (more more GLORIA fits — it's backscatter, not CDOM/NAP).**
+
+- **Which backscatter extension to prototype?** The corrected diagnosis: the
+  single power-law `b_bp` can't supply the backscatter the red needs (see Log).
+  Options for a turbid `b_bp`: (a) let `beta` go negative/flat for turbid water,
+  (b) a two-component `b_bp` (mineral + organic, independent amplitudes), or (c) a
+  published turbid `b_bp` slope parameterization. Add which as a new
+  `AlgorithmSpec` under `reports/` for testing?
+- **Is required `b_b` ≈ 0.2–0.4 m⁻¹ at 700 nm physically plausible** for these
+  sites, or does it hint the **fixed Gordon `G` coefficients / `a_w`** are being
+  pushed outside validity in very turbid water? If `G` should vary for turbid
+  water, that's a separate lever worth testing — want me to?
+- **Regime-flag threshold.** OK to classify turbid GLORIA as `out_of_scope`
+  (distinct from `fit_failed`, per your Task-9 answer) using a relative-misfit or
+  peak-wavelength threshold — and what threshold (e.g. red-shifted peak > 560 nm,
+  or relative Rrs misfit > 25%)?
+- **Round 4?** Do you want me to actually implement + benchmark a candidate
+  turbid backscatter model (in `reports/`, not touching `ioptics/`), or is the
+  diagnosis sufficient for now?
+
 ## Logs
+
+### 2026-07-21 (Stage 6, Task 10: GLORIA — corrected diagnosis, it's backscatter)
+
+Third exploration round via the same **Fable** subagent. JXP was right that
+CDOM/NAP can't govern 500–750 nm; corrected the analysis and the report. Only
+`reports/` changed (no `ioptics/` change this task).
+
+- **Corrected root cause: the red misfit is a *backscatter* deficit, not
+  absorption.** CDOM/NAP absorption ∝ exp(−S(λ−440)) is essentially gone by the
+  green-red (in the actual fits `a_dg` is ~8% of total absorption at 560 nm and
+  ~0.06% at 700 nm), so widening CDOM/NAP priors has **zero** leverage there —
+  the Round-2 "range-vs-form" test was the wrong lever (now marked *superseded*).
+  Across 500–750 nm absorption is owned by **pure-water `a_w`** (rises ~500× from
+  440→750; Pope & Fry 1997) + the `a_ph` 675 nm band — both already in the model.
+  Inverting the observed turbid Rrs through the Gordon relation with the model's
+  own absorption shows the **required** `b_b` rises to ~0.2–0.4 m⁻¹ in the red,
+  while the fitted single **power-law `b_bp`** sits flat at ~0.013 m⁻¹ — short by
+  ~an order of magnitude, and a decreasing power law can't make the rising/
+  structured shape without wrecking the blue. The green/NIR Rrs peaks are
+  backscatter shining through the absorption-minimum windows; the model finds the
+  windows but can't fill them.
+- **Numbers.** Backscatter is already free (`Bnw`∈1e-6..1e5, `beta`∈[0,2]);
+  wide priors + MCMC still median χ²ᵥ ≈ 247 — the power-law *form* is the wall,
+  not the range. **Inflated noise** (σ = max(σ_measured, f·Rrs), JXP-approved,
+  clearly labelled): convergence stays 15/40; median χ²ᵥ drops 247→72 (f=5%)→20
+  (f=10%) but the true relative Rrs misfit stays **~48%** — noise inflation is χ²
+  bookkeeping, not a cure. Clear spectra fit (χ²ᵥ≈0.1, ~6% misfit); turbid miss
+  by 80–91%.
+- **Report + refs.** Round-2 section marked *superseded*; new "Correction: what
+  governs Rrs at 500–750 nm" section; corrected Summary + Recommendation (the fix
+  is a richer **backscattering** model, not wider absorption priors); a
+  **References** section with canonical sources (Pope & Fry 1997; Bricaud/Morel/
+  Prieur 1981; Babin et al. 2003; Bricaud et al. 1995; Gordon et al. 1988;
+  Gitelson 1992; Gons 1999; Dall'Olmo & Gitelson 2005; IOCCG Report 5). 3 new
+  figures — `iop_decay.png` (CDOM/NAP decay vs a_w rise vs b_bp), `iop_
+  decomposition.png` (Rrs + absorption components + fitted-vs-required
+  backscatter), `inflated_noise_examples.png` (4 clear→turbid fits at a 5%
+  floor). 11 figures total; script gains `fit_sigma`/`floor_frac`,
+  `round3_backscatter_and_noise` + 3 figure fns, self-contained/rerunnable
+  (`py_compile` clean).
+- **JXP decisions recorded (Task-9 answers; not yet implemented — held for an
+  implementation pass):** `maxfev` via a BING `chisq_fit.fit` kwarg + an
+  `AlgorithmSpec` field (option a); add a distinct **`out_of_scope`** status
+  *and* the `poor_fit` status; keep the fit window **<750 nm**; GLORIA fits use
+  an **inflated noise floor** (state it in outputs).
+
+### 2026-07-20 (Stage 6, Task 9: GLORIA range-vs-form exploration + MCMC id fix)
 
 ### 2026-07-20 (Stage 6, Task 9: GLORIA range-vs-form exploration + MCMC id fix)
 
