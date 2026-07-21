@@ -161,6 +161,8 @@ module/addition.
 
 9. **More GLORIA fits.**  I have answered your Task 8 questions; see my responses.  Continue your exploration.  Also add a few example fits to the report.  Log your work.  Use Fable if you can.
 
+10. **More More GLORIA fits.**  I have answered your Task 9 questions; see my responses.  Continue your exploration.  Also add a few example fits to the report.  Log your work.  Use Fable if you can.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -433,25 +435,31 @@ module/addition.
   mineral-NAP absorption+backscatter component, or (c) a published turbid-water
   scheme (QAA-turbid / red-NIR two-band)? I'd add it as a new `AlgorithmSpec`
   under `reports/` for testing.
+>A. I'm not sure I follow.  I don't think CDOM/NAP will affect those wavelengths.  If you think you do, find me a reference from the literature that demonstrates this.  Continue to explore this.
 - **NIR window for turbid waters.** The worst spectra rise strongly at
   700–750 nm (one peaks at 750). Extend the fit window past 750 nm for turbid
   GLORIA, or fit turbid GLORIA on a red-NIR sub-window?
+>A. Stick with <750nm
 - **Regime status vocabulary.** OK to classify turbid GLORIA (red-shifted peak /
   high χ²ᵥ) as `out_of_scope` rather than `fit_failed`? (Relatedly, you approved
   `poor_fit` in Task 8 — is `out_of_scope` a *distinct* third status, or should
   turbid GLORIA just be `poor_fit`?)
+>A. Ok, add `out_of_scope` as yet another status.
 - **Noise floor.** GLORIA's measured per-band `varRrs` (~2.3e-8, σ~1.5e-4 sr⁻¹)
   is so tight that even clear-water fits sit several σ/band off. Trust the 1-nm
   measured error, or fit GLORIA with an inflated / error-floor noise model?
+>A.  Hmm..  Ok, let's try the inflated noise model and make sure to clearly state we did so.
 
 **Deferred (Task-8 answers approved, not yet implemented — confirm the plan).**
 - **`maxfev` via `AlgorithmSpec`.** Blocked on a BING change: `bing.fitting.
   chisq_fit.fit` takes no `maxfev` and doesn't reach `curve_fit`'s. I can (a) add
   a `maxfev` kwarg to BING's `chisq_fit.fit` + an `AlgorithmSpec` field, or (b)
   keep it IOPtics-only by having `fit_chisq` call `curve_fit` itself. Which?
+>A. (a)
 - **`poor_fit` status.** A reporting change touching `run`/`evaluate`/`io`/
   `metrics` (threshold policy + filtering). I deferred it pending the regime-flag
   decision above (so `poor_fit` vs `out_of_scope` are designed together).
+>A. Ok
 
 ## Logs
 
