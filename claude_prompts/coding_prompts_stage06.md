@@ -485,7 +485,120 @@ module/addition.
   turbid backscatter model (in `reports/`, not touching `ioptics/`), or is the
   diagnosis sufficient for now?
 
+**Task 12 (Modifying bbp — turbid backscatter models; design only, no code yet).**
+
+> Full proposal (map + formulas + priors) is in the Log entry below. These are the
+> decisions I need before implementing. **No code changed this task.**
+
+- **Which model(s) to build first?** (a) `Pow2` two-component (mineral+organic)
+  only; (b) `Pow2` **plus** a cheap `PowFlex` single-power-law-with-free-slope
+  ablation to prove two components are genuinely needed; (c) also a published
+  turbid scheme (e.g. turbidity-dependent slope). **I recommend (b).**
+- **`eval_bbnw` dispatch — add branches or refactor?** BING's
+  `bbnw.bbNWModel.eval_bbnw` (`bbnw.py:240`) dispatches on `self.name` via a
+  string `if/elif`, not polymorphically. Adding a model means adding an `init_model`
+  dict entry **and** an `eval_bbnw` branch — a BING "core" edit either way. OK to
+  just add branches, or would you prefer I first refactor `eval_bbnw` so each
+  subclass overrides its own `eval_bbnw` (cleaner, but touches all existing
+  models)?
+- **Two-component form/priors.** Proposed
+  `b_bp(λ) = B_min·(600/λ)^η_min + B_org·(600/λ)^η_org`, mineral term flat/large
+  (`η_min` ~ uniform[-0.5, 0.5]), organic term steeper (`η_org` ~ uniform[0.5, 2]),
+  both amplitudes `log_uniform[-6, 5]`. OK with pivot=600 nm and these ranges, or
+  do you want η/amplitude priors anchored to specific literature values
+  (Twardowski 2001 refractive-index/ratio ranges; Snyder 2008 slopes)?
+- **Identifiability.** A 4-param bb + 3-param a model against GLORIA's tight
+  measured noise may be degenerate under χ². Fit turbid GLORIA with **MCMC** (now
+  works on GLORIA), the **inflated-noise floor** (Task-9 approved), and/or **fix
+  `η_min`** to reduce the parameter count? Which combination do you want?
+- **Where do the new models live?** They must go in the sibling **`bing`** package
+  (`bing/models/bbnw.py` + `bing/parameters/standard.py`) because IOPtics imports
+  all models from bing and `AlgorithmSpec.from_standard('<name>')` reads a
+  `standard.<name>()` factory. IOPtics then adds each in **one line**
+  (`registry.register(AlgorithmSpec.from_standard('expb_pow2', label='ExpB_Pow2'))`)
+  with **no IOPtics core change**. Confirm bing is the intended home (and that you
+  will push to bing `main` so CI/IOPtics see them — same publish-to-main follow-up
+  as `Rrs_to_rrs`/`correct_atmosphere`/`load_gloria`).
+- **Default seed or opt-in?** Register the turbid models into the always-on
+  `registry._STANDARD_SEED`, or keep them opt-in (referenced only by the
+  GLORIA/turbid sweep configs) so the open-ocean leaderboard isn't diluted?
+- **Bundle with the deferred implementation pass?** The Task-8/9 approved-but-
+  unimplemented items (`maxfev` via a `chisq_fit.fit` kwarg + `AlgorithmSpec`
+  field; `poor_fit` and `out_of_scope` statuses; inflated-noise floor for GLORIA)
+  pair naturally with these bb models so turbid fits both *converge* and are
+  *scored/flagged* correctly. Do them in the same pass as the bb models, or bb
+  models first in isolation?
+
 ## Logs
+
+### 2026-07-26 (Stage 6, Task 12: propose turbid backscatter (bbp) models — design only)
+
+Design task per the prompt: *given the GLORIA/literature findings, propose how to
+allow backscattering functions representative of turbid waters; describe the
+changes and pose questions; **do not change code yet***. **No code changed** — I
+mapped the existing backscatter machinery (read-only) and wrote the proposal
+below + decision questions in Q&A. (Tried to run the code map through a **Fable**
+subagent per "use Fable if you can"; JXP interrupted that call, so I did the
+investigation directly.)
+
+**What I read (the seam map, with refs).**
+- **BING `bing/models/bbnw.py`** — base `bbNWModel` + subclasses `Cst`
+  (spectrally flat, 1 param), `Pow` (power law `Bnw·(600/λ)^β`, 2 params:
+  `Bnw`,`beta`, `bbnw.py:407`), `GSM` (fixed η=1.0337, 1 param), `Lee` (dynamic
+  Y from Rrs ratio, 1 param), `Every` (one param/channel). Selection is a dict in
+  `init_model` (`bbnw.py:64`); **evaluation is a string `if/elif` on `self.name`
+  in `eval_bbnw` (`bbnw.py:240`)**; `eval_bb = bb_w + eval_bbnw` (`bbnw.py:275`);
+  pure-water `bb_w` from L23 (`init_bbw`, `bbnw.py:217`).
+- **BING `bing/parameters/standard.py`** — `expb_pow()` = `['ExpBricaud','Pow']`
+  with `bpriors=[Bnw log_uniform(-6,5), beta uniform(0,2)]` — i.e. **`beta ≥ 0`,
+  a *decreasing*-only power law** (`standard.py:8`). `giop`→`Lee`, `gsm`→`GSM`.
+- **BING `bing/models/functions.py::powerlaw`** — `10^Bnw · (pivot/λ)^beta`,
+  pivot 600 (`functions.py:60`).
+- **IOPtics `ioptics/algorithms/spec.py`** — `AlgorithmSpec.bbnw_model` is a plain
+  **string**; `to_bing_p` passes `[anw_model, bbnw_model]` to BING (`spec.py:115`);
+  `build_models` → `bing.models.utils.init` → `bbnw.init_model` (`spec.py:186`);
+  `from_standard(name)` just calls `bing.parameters.standard.<name>()`
+  (`spec.py:146`). `registry.register` + `_STANDARD_SEED` (`registry.py:51`).
+
+**Key architectural finding.** A turbid backscatter model is **purely a BING
+change**; **IOPtics needs no core change**. Because `bbnw_model` is a string that
+BING resolves and `from_standard` reads a `standard.<name>()` factory, IOPtics
+adds a turbid algorithm in **one line**
+(`registry.register(AlgorithmSpec.from_standard('expb_pow2', label='ExpB_Pow2'))`),
+satisfying the "one `register()` call, no core changes" constraint. The catch:
+the new models must land on **bing `main`** (CI installs bing from git) — same
+publish-to-main follow-up as `Rrs_to_rrs`/`correct_atmosphere`/`load_gloria`.
+
+**Proposed changes (all in the `bing` sibling package).**
+
+1. **`Pow2` — two-component particulate backscatter (the literature-backed fix).**
+   New `bbNWPow2(bbNWModel)` in `bbnw.py`:
+   `b_bp(λ) = 10^B_min·(600/λ)^η_min + 10^B_org·(600/λ)^η_org` — a **mineral** term
+   (large amplitude, ~flat slope) + an **organic** term (steeper). 4 params
+   (`Bmin, eta_min, Borg, eta_org`). This supplies the ~0.1–0.4 m⁻¹ the red needs
+   (flat mineral term) while the organic term preserves the blue — directly
+   matching the composition split in the literature (Snyder 2008; Twardowski 2001;
+   Boss 2004; Neukermans 2012; Doxaran 2009; Gordon 2009, all now cited in the
+   report). Needs: the subclass, an `init_model` dict entry, an `eval_bbnw` branch
+   (sum of two `functions.powerlaw` calls), and `standard.expb_pow2()`.
+2. **`PowFlex` — free-slope single power law (cheap ablation).** Same `Pow` form
+   but `beta` prior widened to ~uniform[-1, 2] so the slope can flatten or **rise**
+   toward the red (the "white/mineral" limit). Implementable as just a new
+   `standard.expb_powflex()` with a wider `beta` prior — **no new eval branch**.
+   The GLORIA report already showed a *single* power law is insufficient, so this
+   is the control that proves two components are genuinely needed, not the fix.
+3. **(Optional) a published turbid slope** (turbidity-dependent η, or reuse the
+   existing `Lee` dynamic-Y) — lower priority.
+
+**Recommended path.** Build `Pow2` (primary) + `PowFlex` (ablation); register both
+in IOPtics via `from_standard`; benchmark on a turbid GLORIA subset vs L23 to
+confirm turbid χ²ᵥ / relative-misfit drops materially **and** clear/L23 is not
+regressed. Because a 4-param bb + 3-param a model may be degenerate against
+GLORIA's tight noise, pair the fit with MCMC (now GLORIA-capable) and/or the
+Task-9-approved inflated-noise floor, and consider fixing `η_min`. This dovetails
+with the deferred (approved, unimplemented) `maxfev` plumbing + `poor_fit`/
+`out_of_scope` statuses so turbid fits both converge and are scored/flagged
+correctly. Decisions needed → Q&A (Task 12).
 
 ### 2026-07-22 (Stage 6, Task 11: literature on turbid-water backscattering)
 
