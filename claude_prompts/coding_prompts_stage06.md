@@ -163,6 +163,10 @@ module/addition.
 
 10. **More More GLORIA fits.**  I have answered your Task 9 questions; see my responses.  Continue your exploration.  Also add a few example fits to the report.  Log your work.  Use Fable if you can.
 
+11. **Dig into the literature**.  Please scour the literature for any relevant information backscattering in turbid waters.  Please add what you find to the report.  Include references and DOI citations. Log your work.  Use Fable if you can.
+
+12. **Modifying bbp**.  Given your recommendations after exploring GLORIA fits and the literature, we should allow for backscattering functions that are representatitve of turbid waters.  Please describe the changes you propose making and any questions you have in the Q&A section. Do not make any changes to the code yet.  Log your work.  Use Fable if you can.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -482,6 +486,50 @@ module/addition.
   diagnosis sufficient for now?
 
 ## Logs
+
+### 2026-07-22 (Stage 6, Task 11: literature on turbid-water backscattering)
+
+Scoured the peer-reviewed IOP literature for backscattering in turbid waters and
+folded the findings — with **verified DOIs** — into `reports/gloria_fits_report.md`.
+Ran the review via a **Fable** subagent (per the task), then independently
+verified every DOI myself. **Report-only change** — no `ioptics/` source, no
+script change.
+
+- **New report section: "What the literature says about backscattering in
+  turbid waters."** Organises published evidence under the report's four
+  mechanistic claims: (1) the particulate-backscatter spectral **slope flattens**
+  toward wavelength-independence in mineral-dominated water (Snyder 2008; Gordon
+  et al. 2009 `n≈0.4-1.0`; Doxaran 2009), well below the assumed λ⁻¹-λ⁻²; (2) the
+  **backscattering ratio** is several-fold higher in mineral water (~0.02-0.04 vs
+  open-ocean ~0.005-0.01) as a composition signature (Twardowski 2001; Boss 2004;
+  Whitmire 2007; McKee 2009; Sullivan & Twardowski 2009 VSF shape); (3) turbid
+  backscatter **magnitude** is set by suspended mineral sediment, ~10× the organic
+  mass-specific value (Neukermans 2012; Babin 2003 *L&O*); (4) the green/red-NIR
+  reflectance peaks are backscatter through absorption minima and are the basis of
+  SPM retrieval (Doxaran 2002; Nechad 2010; Gitelson 1992; Gons 1999). Each strand
+  is tied back to the report's numbers (required `b_b`~0.2-0.4 vs fitted ~0.013;
+  "form, not range") as external corroboration of the corrected diagnosis.
+- **References section reworked.** The old note "*DOIs are omitted deliberately*"
+  is replaced — all 8 pre-existing references now carry **verified** DOIs, and 11
+  new turbid-backscatter sources were added, split into "absorption/water/model"
+  and "backscattering in turbid/mineral waters" groups. 32 `doi:` citations total.
+- **DOI verification (the load-bearing requirement).** Every DOI was checked
+  against **Crossref** (`api.crossref.org/works/<doi>`) — author/year/title/journal
+  all matched; the two the subagent flagged as inferred (Gordon et al. 2009
+  *Opt. Express* `10.1364/OE.17.016192`; Gitelson 1992 IJRS
+  `10.1080/01431169208904125`) were confirmed via both doi.org 302-resolution to
+  the correct publisher URIs **and** Crossref metadata. The only item without a
+  DOI is the IOCCG Report No. 5 (report series, no registered DOI) — stated as
+  such, not fabricated.
+- **Attribution note.** The 2009 *Optics Express* "Spectra of particulate
+  backscattering in natural waters" is **Gordon et al. 2009**, not Sullivan &
+  Twardowski (a common mix-up); the genuine Sullivan & Twardowski 2009 is the
+  *Applied Optics* backward-VSF paper. Both cited correctly. The report did not
+  previously contain this error (it had no Sullivan & Twardowski entry).
+- **Suite.** CI-equivalent (`env -u OS_COLOR`) → **184 passed, 25 skipped** —
+  unchanged baseline, as expected for a docs-only change. (An interim run showed
+  9 `ModuleNotFoundError: ocpy` failures because this macOS `ocean14` lacked the
+  editable `ocpy`/`bing`; JXP installed `ocpy` and the suite is green again.)
 
 ### 2026-07-21 (Stage 6, Task 10: GLORIA — corrected diagnosis, it's backscatter)
 
