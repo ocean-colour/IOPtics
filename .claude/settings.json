@@ -45,7 +45,8 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\)['message']['items'][0]; print\\('DOI:', d.get\\('DOI'\\)\\); print\\('year:', d.get\\('published',{}\\).get\\('date-parts'\\)\\); print\\('authors:', [a.get\\('family'\\) for a in d.get\\('author',[]\\)][:3]\\); print\\('title:', d.get\\('title',['?']\\)[0]\\); print\\('container:', d.get\\('container-title'\\)\\)\")",
       "Bash(env -u OS_COLOR /home/xavier/miniconda3/envs/ocean14/bin/python -m pytest -q)",
       "Bash(env -u OS_COLOR /Users/xavier/miniforge3/envs/ocean14/bin/python -m pytest -q)",
-      "Bash(/Users/xavier/miniforge3/envs/ocean14/bin/python -c \"import bing, os; print\\(os.path.dirname\\(bing.__file__\\)\\)\")"
+      "Bash(/Users/xavier/miniforge3/envs/ocean14/bin/python -c \"import bing, os; print\\(os.path.dirname\\(bing.__file__\\)\\)\")",
+      "Bash(grep -n '^#\\\\{1,4\\\\} ' /Users/xavier/Oceanography/python/IOPtics/reports/gloria_fits_report.md)"
     ],
     "deny": [
       "Bash(rm -rf /:*)",

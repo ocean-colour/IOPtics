@@ -167,6 +167,8 @@ module/addition.
 
 12. **Modifying bbp**.  Given your recommendations after exploring GLORIA fits and the literature, we should allow for backscattering functions that are representatitve of turbid waters.  Please describe the changes you propose making and any questions you have in the Q&A section. Do not make any changes to the code yet.  Log your work.  Use Fable if you can.
 
+13. **BING changes**.  I agree that the next steps are to modify BING to allow for backscattering functions that are representatitve of turbid waters.  Please generate a new prompt doc in `Oceanography/python/bing/prompts` named `turbid_waters.md`.  I will then use it to add the new functionality to BING.  Log your work.  Use Fable if you can.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -530,6 +532,89 @@ module/addition.
   models first in isolation?
 
 ## Logs
+
+### 2026-07-26 (Stage 6, Task 13: BING prompt doc for turbid-water backscattering)
+
+Wrote the requested BING-side prompt doc:
+**`Oceanography/python/bing/prompts/turbid_waters.md`** (~430 lines). **No code
+changed** in either repo — this task's deliverable is the prompt doc JXP will use
+to drive the BING work. (Per "use Fable if you can": I *am* Fable this session, so
+I did the code-map verification and drafting directly rather than delegating —
+every code claim in the doc is checked against the current `bing` source, not
+recalled from the Task-12 design.)
+
+**Doc structure** (mirrors the house style of `prompts/chl_fl.md` / `rt.md`:
+Goals → Skills → Code → Testing → … → Prompts → Logging → Logs, so JXP can drive
+it prompt-by-prompt and Claude logs into the same file):
+
+- **Goals + Why.** Four deliverables (`Pow2`, `PowFlex`, `maxfev`, tests/docs/
+  benchmark) and the evidence that motivates them, condensed from
+  `reports/gloria_fits_report.md`: required red `b_b` ~0.2–0.4 m⁻¹ vs fitted
+  ~0.013 m⁻¹; "form, not range" (over-wide priors change χ²ᵥ by nothing);
+  CDOM/NAP have no leverage at 500–750 nm; noise inflation is bookkeeping
+  (χ²ᵥ 247→20 but misfit stays ~48%). Plus the 12 turbid-backscatter literature
+  citations **with the DOIs as verified in the report** (Snyder 2008; Gordon 2009;
+  Doxaran 2009/2002; Twardowski 2001; Boss 2004; Whitmire 2007; McKee 2009;
+  Sullivan & Twardowski 2009; Neukermans 2012; Babin 2003 *L&O*; Nechad 2010;
+  Gitelson 1992; Gons 1999). Links to the report and its script.
+- **Code map with line numbers** — `bbnw.init_model` (`bbnw.py:76`), the base
+  `__init__` (`:200`), the **string `if/elif` dispatch** in `eval_bbnw` (`:240`),
+  `eval_bb_ex` (`:288`), `functions.powerlaw` (`functions.py:61`),
+  `standard.expb_pow` (`standard.py:8`), `chisq_fit.fit` (`:42`), and the p0/
+  bounds code in `l23.py:385-390`/`:611-618`.
+- **The two contracts that bite** (found by reading, and the reason I didn't just
+  reuse the skill's scaffold): (1) `init_guess` returns amplitudes in **linear**
+  space and the *caller* log10s slots selected **by prior flavor**
+  (`l23.py:387`, `ioptics/run.py::_log_mask`) — so `pnames` order must match the
+  prior-dict order, with a `log_*` prior on every amplitude; (2) chi-squared
+  bounds are read from `prior.pmin/.pmax` (`l23.py:611`,
+  `ioptics/run.py::_prior_bounds`) — so new params must be `uniform`/
+  `log_uniform`, never `gaussian`.
+- **Concrete implementation sketches** for `standard.expb_powflex()` (a
+  *parameters-only* change — `beta` prior widened to `uniform(-1, 2)`; no class,
+  no eval branch, since `functions.powerlaw` already handles a negative
+  exponent), the `bbNWPow2` class + its `eval_bbnw` branch (two `powerlaw` calls
+  on `params[..., 0:2]` / `[..., 2:4]`, which preserves the `(nsample, nwave)`
+  contract for 1-D *and* 2-D input), `init_guess`, and the prior table.
+- **A 9-item test plan** for a new `bing/tests/test_bbnw.py` (the module doesn't
+  exist yet), including the two guards I think matter most: `Pow2` must **reduce
+  to `Pow`** when one amplitude is driven to zero (proves it's a strict
+  generalization), and it must **honour the `wave=` kwarg** so
+  `eval_bb_ex`/Raman is right — `Pow` honours it, but `Lee`/`GSM` silently
+  ignore it, a pre-existing inconsistency the doc explicitly says not to copy.
+- **`maxfev`** (JXP-approved option (a)): I verified in the installed scipy
+  (1.18, `_minpack_py.py`) that `curve_fit` **renames `maxfev` → `max_nfev`**
+  for the bounded 'trf' branch, so one `maxfev` kwarg on `chisq_fit.fit` is
+  correct for both bounded and unbounded paths. Worth knowing because our fits
+  always pass finite bounds, so the naïve `maxfev`-only-works-for-'lm' worry
+  doesn't apply.
+- **Benchmark + docs tasks**, and a *Downstream (IOPtics)* section restating that
+  IOPtics needs **no core change** (one `registry.register(...)` line), that the
+  models must land on **bing `main`** for CI, and one gotcha I found while
+  checking: `ioptics/io.py:174` extracts a scalar literally named `beta`, so
+  `Pow2` (whose exponents are `eta_min`/`eta_org`) will report `beta = NaN`
+  unless JXP wants one renamed.
+- **Design decisions I identified as JXP's, carried into the doc's own Open
+  Questions** so they aren't lost: literature-anchored vs generic priors, pivot
+  wavelength (600 nm vs a red pivot for the mineral term), whether to fix
+  `eta_min` (3-param instead of 4-param, killing most of the degeneracy risk),
+  whether to add a published turbid scheme as a third model, and whether the
+  fixed Gordon `G` coefficients are valid at these backscatter levels.
+  **The Task-12 Q&A above is still unanswered**; where those questions belong to
+  BING (which models first, eval-dispatch refactor, form/priors, identifiability)
+  the doc now carries them, and the `eval_bbnw` refactor is scoped as an explicit
+  **opt-in step 8** rather than bundled in.
+- **Flagged stale docs the pass must fix.** Both `bing/CLAUDE.md`'s "New
+  Backscattering Model Template" and `.claude/skills/add-bbnw-model/SKILL.md`
+  show `super().__init__(wave)` and a *subclass-level* `eval_bbnw` override —
+  neither matches the code (priors are built in the base `__init__(wave,
+  prior_dicts)`, and evaluation is the base-class string dispatch). The doc warns
+  the implementer up front and puts the corrections in the docs task. Also noted
+  that `docs/references.rst` is in the `index.rst` toctree but **does not exist**
+  in `docs/`.
+
+**No tests run** — nothing executable changed in IOPtics (the only new file is a
+markdown prompt doc in the sibling `bing` repo).
 
 ### 2026-07-26 (Stage 6, Task 12: propose turbid backscatter (bbp) models — design only)
 
