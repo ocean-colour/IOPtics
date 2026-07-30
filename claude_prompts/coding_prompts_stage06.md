@@ -167,7 +167,11 @@ module/addition.
 
 12. **Modifying bbp**.  Given your recommendations after exploring GLORIA fits and the literature, we should allow for backscattering functions that are representatitve of turbid waters.  Please describe the changes you propose making and any questions you have in the Q&A section. Do not make any changes to the code yet.  Log your work.  Use Fable if you can.
 
-13. **BING changes**.  I agree that the next steps are to modify BING to allow for backscattering functions that are representatitve of turbid waters.  Please generate a new prompt doc in `Oceanography/python/bing/prompts` named `turbid_waters.md`.  I will then use it to add the new functionality to BING.  Log your work.  Use Fable if you can.
+13. **BING changes**.  I agree that the next steps are to modify BING to allow for backscattering functions that are representative of turbid waters.  Please generate a new prompt doc in `Oceanography/python/bing/prompts` named `turbid_waters.md`.  I will then use it to add the new functionality to BING.  Log your work.  Use Fable if you can.
+
+14. **Back to IOPtics**.  I have developed the new functionality in BING.  Please add continue with what is necessary for IOPtics to use the new functionality.  Log your work.  Use Fable if you can.  If you have any questions, please add them to the Q&A section below.
+
+15. **More yet** I have the Task 14 questions.  Please read those and proceed accordingly.  Log your work.  Use Fable if you can.
 
 ### Q&A
 
@@ -496,6 +500,7 @@ module/addition.
   only; (b) `Pow2` **plus** a cheap `PowFlex` single-power-law-with-free-slope
   ablation to prove two components are genuinely needed; (c) also a published
   turbid scheme (e.g. turbidity-dependent slope). **I recommend (b).**
+>A. (b)
 - **`eval_bbnw` dispatch — add branches or refactor?** BING's
   `bbnw.bbNWModel.eval_bbnw` (`bbnw.py:240`) dispatches on `self.name` via a
   string `if/elif`, not polymorphically. Adding a model means adding an `init_model`
@@ -503,16 +508,22 @@ module/addition.
   just add branches, or would you prefer I first refactor `eval_bbnw` so each
   subclass overrides its own `eval_bbnw` (cleaner, but touches all existing
   models)?
+>A. Lets' refactor `eval_bbnw` so each subclass overrides its own `eval_bbnw`.
+
 - **Two-component form/priors.** Proposed
   `b_bp(λ) = B_min·(600/λ)^η_min + B_org·(600/λ)^η_org`, mineral term flat/large
   (`η_min` ~ uniform[-0.5, 0.5]), organic term steeper (`η_org` ~ uniform[0.5, 2]),
   both amplitudes `log_uniform[-6, 5]`. OK with pivot=600 nm and these ranges, or
   do you want η/amplitude priors anchored to specific literature values
   (Twardowski 2001 refractive-index/ratio ranges; Snyder 2008 slopes)?
+>A. Ok with pivot=600 nm and these ranges.
+
 - **Identifiability.** A 4-param bb + 3-param a model against GLORIA's tight
   measured noise may be degenerate under χ². Fit turbid GLORIA with **MCMC** (now
   works on GLORIA), the **inflated-noise floor** (Task-9 approved), and/or **fix
   `η_min`** to reduce the parameter count? Which combination do you want?
+>A. Fix `η_min` to reduce the parameter count, for now.
+
 - **Where do the new models live?** They must go in the sibling **`bing`** package
   (`bing/models/bbnw.py` + `bing/parameters/standard.py`) because IOPtics imports
   all models from bing and `AlgorithmSpec.from_standard('<name>')` reads a
@@ -521,17 +532,350 @@ module/addition.
   with **no IOPtics core change**. Confirm bing is the intended home (and that you
   will push to bing `main` so CI/IOPtics see them — same publish-to-main follow-up
   as `Rrs_to_rrs`/`correct_atmosphere`/`load_gloria`).
+>A.  BING is the home, and we have already pushed these changes to bing `main`.
+
 - **Default seed or opt-in?** Register the turbid models into the always-on
   `registry._STANDARD_SEED`, or keep them opt-in (referenced only by the
   GLORIA/turbid sweep configs) so the open-ocean leaderboard isn't diluted?
+>A. Keep them opt-in, so the open-ocean leaderboard isn't diluted.
+
 - **Bundle with the deferred implementation pass?** The Task-8/9 approved-but-
   unimplemented items (`maxfev` via a `chisq_fit.fit` kwarg + `AlgorithmSpec`
   field; `poor_fit` and `out_of_scope` statuses; inflated-noise floor for GLORIA)
   pair naturally with these bb models so turbid fits both *converge* and are
   *scored/flagged* correctly. Do them in the same pass as the bb models, or bb
   models first in isolation?
+>A. Hopefully, I did these in the BING development pass.  If not, please let me know.
+
+**Task 14 (IOPtics uses the new BING functionality).**
+
+- **The two deferred items are still not implemented — I need thresholds.**
+  You hoped the BING pass covered them; it covered the BING half of
+  `maxfev` only (see the Log). Remaining:
+  (i) **`poor_fit` / `out_of_scope` statuses.** You approved both (Tasks
+  8/9). What decides each? My proposal: `poor_fit` when a fit *converges*
+  but χ²_ν exceeds a threshold (**10?**), and `out_of_scope` when the
+  regime is outside the model family — by the red-shifted-peak test from
+  the GLORIA report (**Rrs peak > 560 nm**) or a relative-misfit threshold
+  (**> 25%**), whichever you prefer. Both need a home in
+  `records.RetrievalResult.status` plus filtering in `metrics`/leaderboard
+  so a `poor_fit` row is not scored as a success. Confirm the thresholds
+  and I will implement.
+  (ii) **Inflated-noise floor.** Approved in Task 9 as
+  `σ = max(σ_measured, f·|Rrs|)`, clearly labelled. Should it be a
+  **sweep-config field** (`noise_floor=0.05`, applied in `prep`/`noise`
+  and stamped into provenance), or a per-dataset default that only GLORIA
+  turns on? A config field is more honest but touches the sweep schema.
+>A. It should be a per-dataset default that only GLORIA turns on for now.  Use chi^2_nu > 5 for the threshold.
+
+- **Scalar columns for the turbid shape parameters.** `evaluate` promotes
+  only `('Sdg', 'beta')` into `scalars`, so for `Pow2Flat`/`Pow2` the
+  `beta` column is NaN and `eta_org`/`Bmin`/`Borg` never reach
+  `results_scalar.parquet` (they *are* in `result.params` and the chains).
+  Three options: (a) leave it — the spectral metrics on `bb_p` already
+  capture what matters; (b) widen the tuple to include `eta_org` and add
+  `eta_org`/`sig_eta_org` columns; (c) generalise to a per-model
+  "reportable shape parameter" so any future model declares its own. (c)
+  is the cleanest but changes the results schema for every algorithm.
+  Which?
+>A. (c);  time to keep improving this
+
+- **Turbid sweep — do you want one now?** Everything needed to run
+  `{GLORIA, L23} × {expb_pow, expb_pow2flat, expb_pow2, expb_powflex}` is
+  in place, but bing's benchmark predicts `Pow2` will *not* fix GLORIA:
+  the single-power-law structural misfit is ~2e-3 relative, while real
+  turbid GLORIA spectra are missed by ~48%, so the remaining suspects are
+  the fixed Gordon coefficients (Q5, deferred) and the absorption side.
+  A GLORIA sweep with these models would settle that empirically — worth
+  a `build_v3.py`, or should the Gordon question come first?
+>A. Yes, do a GLORIA sweep with these models.
+- **A bing-checkout hazard worth naming.** IOPtics imports bing from the
+  local editable checkout, so which *branch* is checked out silently
+  changes which algorithms exist. Before your pull, `bing` was on a `main`
+  without any of the turbid work and `register_turbid()` would have failed
+  at `AlgorithmSpec.from_standard`. Worth pinning bing in
+  `requirements.txt` to a tag/commit once these land, so a stale checkout
+  fails loudly instead of the registry quietly coming up short?
+>A. No, stick with main.  It is on me to keep it up to date.
+
+**Task 15 (statuses, noise floor, shape scalars, GLORIA sweep).**
+
+- **Does the leaderboard now filter on status?** It does **not** yet, and
+  this is the decision the sweep made urgent. `metrics` scores every row
+  it finds, so a `poor_fit`/`out_of_scope` row counts toward accuracy, and
+  each algorithm's median is taken over *its own* converged subset — which
+  is why the metrics table says χ²_ν 4.3 for `expb_pow` vs 34-37 for the
+  turbid models when the paired comparison says they are identical (see
+  the Log). Options: (a) score `ok` rows only, reporting the other statuses
+  as coverage; (b) score `ok` + `poor_fit`, excluding `out_of_scope`;
+  (c) score everything and add a `frac_out_of_scope` column so the reader
+  can judge. I lean (a) with the status counts alongside, since a
+  leaderboard's job is to rank *solutions* — but it changes every existing
+  number, so it is your call.
+- **Confirm the `out_of_scope` criterion.** You gave me χ²_ν > 5 but not
+  the regime test; I used the red-shifted-peak one (Rrs peak > 560 nm)
+  because it describes the *spectrum* rather than the fit, and a
+  misfit-based test would be indistinguishable from `poor_fit`. Also
+  confirm the hierarchy: a turbid spectrum that *is* fitted well stays
+  `ok` (regime alone does not make a fit out of scope). Threshold and rule
+  are both one constant in `records.py`.
+- **The real GLORIA blocker is convergence, not the model.** 18-20 of 24
+  χ² fits fail even with `maxfev=40000`. Backscattering form is now
+  eliminated as the explanation for the misfit, so what next?
+  (i) **MCMC** on GLORIA (it avoids the LM budget failure entirely and now
+  works there); (ii) a **turbid-robust initial guess** — `run.initial_guess`
+  is a QAA-style inversion anchored at 670 nm where turbid water is
+  anything but absorption-dominated, and the GLORIA report noted OC4
+  returning Chl up to 2224 mg/m³; (iii) the **Gordon coefficients** (Q5),
+  now the leading suspect. My order would be (ii) then (i) then (iii),
+  since a bad seed explains non-convergence better than either physics
+  question. Which?
+- **Sample size.** I ran 24 spectra to keep a stage-1 pass to minutes. The
+  catalogue has 7572 and `--n-sample 0` runs all of them. Worth a large
+  run now (a few hours), or only once the convergence problem is fixed?
+  With 4/24 converging, a big run mostly buys precision on the failure
+  rate.
 
 ## Logs
+
+### 2026-07-30 (Stage 6, Task 15: statuses, noise floor, shape scalars, GLORIA sweep)
+
+All four Task-14 answers implemented, and the GLORIA sweep **run**. Suite
+**233 passed, 4 skipped** (208/29 CI-equivalent); `sphinx-build -W` green.
+
+#### THE ANSWER: the two-component models do **not** fix GLORIA
+
+The sweep exists to settle this, so it leads. 24 GLORIA spectra evenly
+spread over the catalogue, four algorithms, χ², 400-750 nm. Compared
+**paired** on the 4 spectra where all four converged — unpaired medians
+would be a selection effect, the same trap I hit in bing's benchmark:
+
+| obs_id | expb_pow | expb_powflex | expb_pow2flat | expb_pow2 |
+|---|---|---|---|---|
+| GID_1003 | 1.1 | 1.0 | 1.1 | 1.0 |
+| GID_2324 | 68.0 | 61.8 | 68.2 | 65.1 |
+| GID_3680 | 0.7 | 0.7 | 0.7 | 0.7 |
+| GID_7773 | 7.6 | 7.3 | 7.6 | 7.4 |
+| **median** | **4.30** | **4.14** | **4.32** | **4.23** |
+
+Spectrum by spectrum the four are indistinguishable. GID_2324 sits at
+χ²_ν ≈ 65 whichever model is used; the two spectra that fit well fit well
+for everyone. **Adding a second backscattering component changes nothing
+on real turbid data** — exactly what bing's benchmark predicted from the
+noise argument (the Pow↔Pow2 structural difference is ~2e-3 relative,
+while GLORIA's misfit is ~48%).
+
+The binding problem is **convergence**, not form: 18-20 of 24 fits fail
+outright. `expb_pow` converged on 4/24, the three turbid specs on 6/24 —
+and `expb_powflex` (the same single power law with a wider prior) matches
+the two-component models exactly, so even that small gain is about the
+optimizer budget, not the parameterisation.
+
+**Where that leaves the GLORIA question.** Backscattering *form* is now
+eliminated as the explanation, on real data. The remaining suspects are
+the ones deferred: the fixed Gordon coefficients at these backscatter
+levels (Q5) and the absorption side — plus the convergence failure itself,
+which no model choice fixes. See the Q&A.
+
+#### 1. `poor_fit` / `out_of_scope` statuses (χ²_ν > 5 per your answer)
+
+`records.py` now declares the vocabulary in one place: `STATUSES`,
+`CHI2NU_POOR_FIT = 5.0` and `RED_PEAK_NM = 560.0`, each documented with
+why. `metrics.CHI2NU_QC_MAX` is now *aliased to* `CHI2NU_POOR_FIT` rather
+than being a second literal 5.0, so the per-row label and the aggregate
+`frac_qc_fail` cannot drift apart.
+
+`evaluate._fit_status(record, stats, finite)` classifies:
+
+- not finite → `fit_failed`
+- χ²_ν ≤ 5 → `ok`
+- χ²_ν > 5 **and the Rrs peak is redward of 560 nm** → `out_of_scope`
+- χ²_ν > 5 otherwise → `poor_fit`
+
+**A choice you did not explicitly make.** You gave me the χ²_ν threshold
+but not the `out_of_scope` criterion (I had offered red-shifted peak *or*
+>25% misfit). I used the **peak test**, because it is a property of the
+*observation* rather than of the fit: "out of scope" should say the
+spectrum is outside the family's regime, which a misfit threshold cannot
+distinguish from an ordinary bad fit. Note the hierarchy means a turbid
+spectrum that *is* fitted well stays `ok` — being in the turbid regime is
+only out-of-scope if the fit also failed. Easy to change; say the word.
+
+It works on real data: the sweep produced all four statuses, `fit_failed`
+18-20, `out_of_scope` 2-3, `poor_fit` 0-1, `ok` 2 per algorithm.
+
+#### 2. Inflated-noise floor, GLORIA-only (your answer (b))
+
+`noise.attach_noise(..., floor_frac=)` applies
+`sigma = max(sigma_measured, floor_frac·|Rrs|)` elementwise at the single
+join point where all three noise models have produced `varRrs`, *before*
+the perturbation draw so the weight and any realisation stay consistent.
+The tag gains a `'+floor:X'` suffix, following the PANGAEA fallback's
+convention that the provenance tag never overstates what was used — a
+GLORIA record now reports `noise_model='insitu+floor:0.05'`.
+
+`prep._GLORIA_NOISE_FLOOR = 0.05` is applied by a per-dataset default
+(`prep._is_gloria`, prefix-tolerant like `metrics._caveat` so
+`GLORIA_FAKE` fixtures behave like the real thing); `noise_floor` also
+threads through `prep_dataset` so a caller can override or disable it.
+Verified on a real record: median sigma 1.51e-4 with the floor doing the
+work where 5%·Rrs exceeds the quoted error, and the measured error still
+in charge where Rrs is small.
+
+Two existing tests asserted `noise_model == 'insitu'` for GLORIA. Both are
+updated to the new tag — and the second one only started *running* once
+you dropped the data in, so it would have been an invisible break.
+
+#### 3. Shape-parameter scalars, generalised (your answer (c))
+
+Instead of a hard-coded `('Sdg', 'beta')`, `evaluate._shape_param_names`
+derives them from each model's **`log_params`**: the parameters a model
+holds in *linear* space are its shape descriptors. That is a per-model
+declaration bing already carries (I added it there in the turbid pass), so
+no new attribute and no per-model table in IOPtics.
+
+The pleasing part: for the open-ocean models this yields exactly `Sdg` and
+`beta` — the historical pair — so the change is backward compatible by
+construction, and a test asserts it. `Pow2Flat` adds `eta_org`, `Pow2`
+adds `eta_min` too. `io._scalar_row` emits any such parameter under its own
+name plus `sig_<name>`, so `results_scalar.parquet` gained `eta_min`,
+`eta_org`, `sig_eta_min`, `sig_eta_org`, NaN for algorithms without them.
+
+#### 4. The sweep itself
+
+`ioptics/runs/prototypes/gloria_turbid_v3/{build_v3.py,run_v3.yaml}`,
+following `build_v2.py`'s three-stage shape. Two differences, both
+documented in the module docstring: stage 1 calls
+`registry.register_turbid()` (the models are opt-in), and `--n-sample N`
+takes a deterministic even spread of string ids instead of `--obs-ids A:B`,
+which cannot subset GLORIA. All three stages ran: results and metrics
+parquet, figures, `cross_algorithm.rst`, and the leaderboard fold.
+
+**Tests**: 5 new noise-floor tests (the max semantics, the label, floors on
+any base model, the perturbation drawn from the floored sigma, a bad
+fraction raising), 8 status/shape-parameter tests (each status including a
+check that all four are reachable, and that the open-ocean pair is
+unchanged).
+
+#### Two hazards found while running it
+
+- **The metrics table's per-algorithm medians are unpaired.**
+  `metrics_scalar`'s closure rows give `chi2_nu_median` 4.30 for `expb_pow`
+  against 34-37 for the others — which reads as "the turbid models are far
+  worse" and is an artefact: each median is over that algorithm's own
+  converged rows, and the turbid specs converged on *more*, harder spectra.
+  The paired table above is the honest comparison. This is a live reporting
+  trap for any sweep with unequal convergence, and it is what makes the
+  leaderboard-filtering question below matter.
+- **Build scripts need the repo root on `PYTHONPATH`.** `ioptics` is not
+  pip-installed in `ocean14`, so `python .../build_v3.py 1` fails with
+  `ModuleNotFoundError`; `PYTHONPATH=$PWD` fixes it. Applies to
+  `build_v1`/`build_v2` equally — worth an `install -e .` or a note in the
+  build-script docstrings.
+
+### 2026-07-30 (Stage 6, Task 14: IOPtics wired to BING's turbid models)
+
+Your Task-12 answers drove this. **Suite 218 passed, 6 skipped** (195/29 in
+the CI-equivalent run with `$OS_COLOR` unset); `sphinx-build -W` stays
+green. Four files touched, all additive.
+
+**Confirmed BING's side first.** `bing` is on `main` at `f242b0e` and the
+working tree carries `bbNWPow2`/`bbNWPow2Flat`, `expb_pow2`/
+`expb_pow2flat`/`expb_powflex`, `chisq_fit.fit(..., maxfev=)`, the
+polymorphic `_eval_bbnw`, and the `log_params` convention. (Before your
+pull the checkout was on a `main` without any of it, so I checked rather
+than assumed — worth keeping in mind that IOPtics silently depends on
+which bing branch is checked out.)
+
+**1. Opt-in registration — per your "keep them opt-in".**
+`ioptics/algorithms/registry.py` gains `TURBID_SEED`, `TURBID_MAXFEV` and
+`register_turbid()`. The standard seed is untouched, so the open-ocean
+leaderboard keeps exactly its three algorithms; a turbid sweep calls
+`registry.register_turbid()` and then resolves names normally. Looking up
+a turbid name *before* opting in now raises a `KeyError` that names the
+function to call, rather than a bare "unknown algorithm" — the failure a
+sweep config would otherwise hit.
+
+Registered: `expb_pow2flat` (`Pow2Flat`, 3 bb params), `expb_pow2`
+(`Pow2`, 4) and `expb_powflex` (`Pow`, 2 — the control with a widened
+`beta` prior). Per your "fix η_min for now", **`expb_pow2flat` is
+documented as the one to reach for first**, which also matches what
+bing's own benchmark found: under χ² the 4-parameter version is
+degenerate (Bmin/Borg anti-correlated at −1.00, condition number ~1e7),
+while fixing the mineral exponent recovers every parameter to within a
+fraction of its uncertainty.
+
+**2. `maxfev` through `AlgorithmSpec` — the Task-8 item (a).** New
+`AlgorithmSpec.maxfev` field (default `None`), forwarded by
+`run.fit_chisq` to `chisq_fit.fit`. `register_turbid` stamps
+**40000** on the turbid specs, because that is the whole point: at
+scipy's default budget the two-component models fail on 5 of 8 and 6 of 8
+clear L23 spectra in bing's benchmark, versus 8 of 8 raised. Open-ocean
+specs keep `maxfev=None`, so scipy's default path is untouched for every
+existing algorithm and sweep.
+
+**3. Verified end-to-end on real L23 data**, not just unit-tested. All
+four algorithms run through `run.run_algorithm` on L23 idx 0 with
+`status='ok'`:
+
+| algorithm | bb model | k | χ²_ν | AIC |
+|---|---|---|---|---|
+| `expb_pow` | Pow | 5 | 1.35015 | 112.61 |
+| `expb_powflex` | Pow | 5 | 1.35015 | 112.61 |
+| `expb_pow2flat` | Pow2Flat | 6 | 1.36600 | 114.45 |
+| `expb_pow2` | Pow2 | 7 | 1.38149 | 116.23 |
+
+χ²_ν rises by exactly the degrees-of-freedom divisor and AIC by 2 per
+added parameter — i.e. **no regression on clear water, and no spurious
+improvement either**, which is what these models should do off their home
+turf. `expb_powflex` reproducing `expb_pow` byte-for-byte is the same
+"widening the range buys nothing" result bing's benchmark reported, now
+confirmed through IOPtics' own pipeline. Corroborating the degeneracy
+finding: on this clear spectrum `Pow2Flat`'s bb parameters come back with
+enormous χ² uncertainties (`Borg` ±12.8, `eta_org` ±51 dex) — unconstrained
+precisely because clear water gives the mineral term nothing to do.
+
+**4. Tests** — new `ioptics/tests/test_turbid.py`, 15 tests. Tier-1 (9,
+data-free, so they run in CI): the turbid names are absent from the
+standard seed and present in `TURBID_SEED`; the pre-opt-in `KeyError`
+mentions `register_turbid`; each spec carries the right bb model and prior
+count; `expb_powflex` really does allow `beta < 0` where `expb_pow` floors
+it at 0; `Pow2`'s exponent priors are **disjoint** (the label-switching
+guard) with the flavour pattern `[log, linear, log, linear]`; repeat
+registration is idempotent; `maxfev` defaults to `None` for open-ocean and
+is overridable. Tier-2 (`@needs_l23`): `fit_chisq` provably *forwards*
+`maxfev` (a spy on `chisq_fit.fit` asserts 40000 for turbid and `None` for
+`expb_pow`), each algorithm runs end to end reporting all its parameters
+by name, and the no-regression check above as an assertion. A registry
+fixture snapshots and restores `REGISTRY` so opting in cannot leak into
+other tests.
+
+**5. Docs.** New "Turbid-water algorithms (opt-in)" section in
+`docs/source/models.rst`: the physical argument with DOIs, the three
+algorithms with their k and when to use each, the `register_turbid()`
+snippet, and why `maxfev` is not cosmetic. `register_turbid` is picked up
+automatically by the existing `automodule:: ioptics.algorithms.registry`.
+`sphinx-build -W` succeeds. (I had to `pip install -r
+docs/requirements.txt` locally — `furo` was declared but not installed, so
+the docs could not build here at all before that.)
+
+**Left undone deliberately, and one correction to your answer.**
+
+- You wrote *"Hopefully, I did these in the BING development pass. If not,
+  please let me know."* — **partly**. The BING pass did the BING half of
+  the `maxfev` item (the `chisq_fit.fit` kwarg); I have now done the
+  IOPtics half. The other two remain **not implemented**:
+  the **`poor_fit`/`out_of_scope` statuses** and the **inflated-noise
+  floor** for GLORIA. Both are IOPtics-side reporting-policy changes
+  touching `run`/`evaluate`/`io`/`metrics`, so I have not smuggled them
+  into this pass — see the new Q&A questions for the thresholds I need.
+- **Scalar columns for the new shape parameters.** `evaluate` promotes only
+  `Sdg` and `beta` into `scalars`, so `results_scalar.parquet` reports
+  `beta = NaN` for the two-component models and never carries `eta_org`.
+  Nothing is lost on disk — the parameters *are* in `result.params` and the
+  saved chains, keyed by name — but a cross-algorithm slope comparison
+  shows them blank. Fixing it changes the results-table schema, so it is a
+  question below rather than a unilateral change.
 
 ### 2026-07-26 (Stage 6, Task 13: BING prompt doc for turbid-water backscattering)
 

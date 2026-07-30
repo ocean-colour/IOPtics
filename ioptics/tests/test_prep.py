@@ -226,7 +226,13 @@ def test_prep_gloria_single_point_adg_and_caveat():
         finite = np.isfinite(adg.values)                # finite only at 440 nm
         assert finite.sum() == 1 and finite[i440]
         assert r.truth_interp['a_dg'] is True
-        assert r.noise_model == 'insitu'                # measured std -> no pct
+        # Measured std, so no pct fallback -- but GLORIA gets the error floor
+        # by default, and the tag says so rather than claiming 'insitu'.
+        assert r.noise_model == f'insitu+floor:{prep._GLORIA_NOISE_FLOOR}'
+        # The floor is a *max*, so a fixture whose measured error (10% here)
+        # already exceeds it keeps exactly that error: applying the floor
+        # must never shrink an uncertainty.
+        assert np.allclose(np.sqrt(r.varRrs), 0.1 * np.abs(r.Rrs_clean))
         # io derives a_cdom440_truth from the single-point a_dg
         assert ioptics_io._scalar_value(r, 'a_cdom440') == pytest.approx(0.15)
         # metrics auto-stamps the caveat on GLORIA a_dg rows only
@@ -332,8 +338,12 @@ def test_prep_dataset_gloria_smoke():
         assert np.all(np.diff(r.wave) > 0)        # hyperspectral, ascending
         assert r.Rrs.shape == r.wave.shape
         assert np.all(r.varRrs > 0)
-        assert r.noise_model == 'insitu'          # measured Rrs std -> genuine
+        # Measured Rrs std, plus GLORIA's default error floor -- the tag
+        # records the floor so no result is mistaken for measured-error-only.
+        assert r.noise_model == f'insitu+floor:{prep._GLORIA_NOISE_FLOOR}'
         assert r.noise_seed is None               # in-situ Rrs not perturbed
+        # The floor never lowers an uncertainty
+        assert np.all(np.sqrt(r.varRrs) >= 0.0)
         # a_dg truth (from aCDOM440) is a single finite point at 440 nm
         if 'a_dg' in r.truth:
             vals = r.truth['a_dg'].values

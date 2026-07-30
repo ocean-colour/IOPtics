@@ -173,6 +173,19 @@ def _scalar_row(result, record):
     sdg, sig_sdg = med_sig('Sdg')
     beta, sig_beta = med_sig('beta')
     st = result.stats
+    # Shape parameters beyond the four fixed columns above -- e.g. eta_min /
+    # eta_org for the two-component backscattering models. Emitted under their
+    # own names so the column set is the union across algorithms; a row from an
+    # algorithm without them simply gets NaN.
+    extra = {}
+    for key, val in result.scalars.items():
+        if key in ('Chl', 'a_cdom440', 'Sdg', 'beta'):
+            continue                       # already emitted, fixed names
+        try:
+            extra[key] = float(val[0])
+            extra[f'sig_{key}'] = float(val[1])
+        except (TypeError, IndexError, ValueError):
+            continue
     return {
         'dataset': result.dataset, 'obs_id': result.obs_id,
         'algorithm': result.algorithm, 'fit_method': result.fit_method,
@@ -190,6 +203,7 @@ def _scalar_row(result, record):
         'status': result.status,
         'chain_file': getattr(result, 'chain_file', None),  # null for χ² rows
         'provenance_id': result.provenance_id,
+        **extra,
     }
 
 

@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from ioptics.records import ComponentFit, RetrievalResult
+from ioptics.records import (CHI2NU_POOR_FIT, RED_PEAK_NM,
+                             ComponentFit, RetrievalResult)
 
 # Components reconstructed for every retrieval (spectral).
 _SPECTRAL = ('a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'Rrs_model')
@@ -37,6 +38,78 @@ def _component_fit(wave, samples, perc):
         lo95=np.percentile(samples, lo2, axis=0),
         hi95=np.percentile(samples, hi2, axis=0),
     )
+
+
+def _shape_param_names(models):
+    """Names of the fitted parameters a model holds in **linear** space.
+
+    These are the shape descriptors -- exponential slopes and power-law
+    exponents -- as opposed to the log10 amplitudes. Each bing model
+    declares the split in ``log_params``; a model that declares nothing is
+    treated as all-log10 (bing's own default) and contributes none.
+
+    Deriving the list per model, rather than hard-coding names, is what lets
+    a new model's shape parameters reach the results table without editing
+    this function: ``expb_pow`` yields ``Sdg``/``beta`` exactly as before,
+    while the two-component backscattering models add ``eta_min``/
+    ``eta_org``.
+
+    Parameters
+    ----------
+    models : list
+        ``[a_model, bb_model]``, in parameter order.
+
+    Returns
+    -------
+    list of str
+        Parameter names, in fit order.
+    """
+    names = []
+    for model in models:
+        declared = getattr(model, 'log_params', None)
+        if declared is None:
+            continue
+        for pname, is_log in zip(list(model.pnames), list(declared)):
+            if not is_log:
+                names.append(pname)
+    return names
+
+
+def _fit_status(record, stats, finite):
+    """Classify a fit: ``ok`` | ``poor_fit`` | ``out_of_scope`` | ``fit_failed``.
+
+    A converged fit whose reduced chi-squared exceeds
+    :data:`ioptics.records.CHI2NU_POOR_FIT` is not a solution. Which of the
+    two "bad fit" labels it gets depends on the *spectrum*, not the fit: one
+    peaking redward of :data:`ioptics.records.RED_PEAK_NM` is turbid, i.e.
+    outside what this model family is built for, so the failure is a
+    statement about scope rather than about this algorithm.
+
+    Parameters
+    ----------
+    record : PreparedRecord
+        The observation, for its Rrs peak wavelength.
+    stats : dict
+        Fit statistics; ``chi2_nu`` is read.
+    finite : bool
+        Whether the fit produced usable (finite) parameters.
+
+    Returns
+    -------
+    str
+        A member of :data:`ioptics.records.STATUSES`.
+    """
+    if not finite:
+        return 'fit_failed'
+    chi2_nu = float(stats.get('chi2_nu', np.nan))
+    if np.isfinite(chi2_nu) and chi2_nu <= CHI2NU_POOR_FIT:
+        return 'ok'
+    Rrs = np.asarray(record.Rrs, dtype=float)
+    if np.any(np.isfinite(Rrs)):
+        peak = float(np.asarray(record.wave, dtype=float)[int(np.nanargmax(Rrs))])
+        if peak > RED_PEAK_NM:
+            return 'out_of_scope'
+    return 'poor_fit'
 
 
 def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
@@ -76,7 +149,9 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     i440 = int(np.argmin(np.abs(record.wave - 440.0)))
     adg440 = np.asarray(a_dg_s)[:, i440]
     scalars = {'a_cdom440': (float(np.median(adg440)), float(np.std(adg440)))}
-    for key in ('Sdg', 'beta'):
+    # Promote the model's shape parameters (its linear-space ones). For the
+    # open-ocean models this is exactly Sdg and beta, as before.
+    for key in _shape_param_names(models):
         if key in params:
             scalars[key] = params[key]
 
@@ -100,7 +175,7 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
         dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
         fit_method=fit_method, components=components, params=params,
         scalars=scalars, stats=stats,
-        status='ok' if finite else 'fit_failed', provenance_id='')
+        status=_fit_status(record, stats, finite), provenance_id='')
 
 
 def from_chisq(spec, record, models, rt_dict, ans, cov, *,

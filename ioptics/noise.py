@@ -40,7 +40,7 @@ def _parse_pct(model):
 
 
 def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
-                 Rrs_err=None):
+                 Rrs_err=None, floor_frac=None):
     """Build ``varRrs`` for a record and optionally perturb ``Rrs``.
 
     Parameters
@@ -102,6 +102,22 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
         raise ValueError(
             f"unknown noise model {model!r} "
             "(expected 'pace', 'insitu', or 'pct:X')")
+
+    # --- optional error floor (inflated noise) ---
+    # sigma = max(sigma_measured, floor_frac * |Rrs|), elementwise: the same
+    # max-of-measured-or-fractional idea as the PANGAEA percentage fallback,
+    # but applied *on top of* a measured error rather than instead of it. The
+    # tag gains a '+floor:X' suffix so a result is never mistaken for one
+    # weighted by the measured error alone -- an inflated-noise result must
+    # announce itself, because the floor makes chi-squared interpretable
+    # without improving the fit.
+    if floor_frac is not None:
+        frac = float(floor_frac)
+        if frac <= 0:
+            raise ValueError(f'floor_frac must be > 0, got {floor_frac!r}')
+        sigma = np.maximum(np.sqrt(varRrs), frac * np.abs(Rrs_clean))
+        varRrs = sigma ** 2
+        tag = f'{tag}+floor:{frac}'
 
     # --- optional single noise realization ---
     if add_noise:

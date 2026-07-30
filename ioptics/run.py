@@ -141,7 +141,8 @@ def fit_chisq(spec, record):
 
     The Stage-2 fitting core (used by :func:`run_algorithm` and exercised
     directly by tests). Builds models, seeds a truth-free initial guess, and
-    calls ``bing.fitting.chisq_fit.fit`` with prior-derived bounds.
+    calls ``bing.fitting.chisq_fit.fit`` with prior-derived bounds and the
+    spec's ``maxfev`` evaluation budget.
     """
     from bing.fitting import chisq_fit
 
@@ -150,7 +151,11 @@ def fit_chisq(spec, record):
     bounds = _prior_bounds(models)
     items = (np.asarray(record.Rrs, dtype=float),
              np.asarray(record.varRrs, dtype=float), p0, record.obs_id)
-    ans, cov, _ = chisq_fit.fit(items, models, rt_dict, bounds=bounds)
+    # spec.maxfev is None for the open-ocean algorithms, which leaves
+    # scipy's default budget alone; the turbid models raise it because they
+    # otherwise run out of evaluations before converging.
+    ans, cov, _ = chisq_fit.fit(items, models, rt_dict, bounds=bounds,
+                                maxfev=getattr(spec, 'maxfev', None))
     return models, rt_dict, ans, cov
 
 

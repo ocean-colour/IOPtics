@@ -89,3 +89,70 @@ def test_pace_model_native_grid():
     assert np.all(varRrs > 0)
     assert seed_used == 7
     assert not np.array_equal(Rrs_out, Rrs_clean)
+
+
+# --------------------------------------------------------------------
+# Inflated-noise floor (GLORIA's default; see prep._GLORIA_NOISE_FLOOR)
+# --------------------------------------------------------------------
+def test_floor_raises_tight_errors_only_where_needed():
+    # GLORIA-like: a quoted error far tighter than any model's misfit.
+    wave, Rrs = _synthetic()
+    measured = np.full_like(Rrs, 1.5e-4)
+    varRrs, _, Rrs_clean, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False, Rrs_err=measured,
+        floor_frac=0.05)
+
+    sigma = np.sqrt(varRrs)
+    expected = np.maximum(measured, 0.05 * np.abs(Rrs_clean))
+    assert np.allclose(sigma, expected)
+    # It is a max: never below the measured error, and strictly above it
+    # wherever 5% of Rrs is the larger of the two.
+    assert np.all(sigma >= measured - 1e-15)
+    assert np.any(sigma > measured)
+    # ... and where Rrs is small the measured error stays in charge
+    small = 0.05 * np.abs(Rrs_clean) < measured
+    if small.any():
+        assert np.allclose(sigma[small], measured[small])
+
+
+def test_floor_labels_itself_in_the_tag():
+    # An inflated-noise result must never look like a measured-error one.
+    wave, Rrs = _synthetic()
+    _, _, _, plain, _ = attach_noise(wave, Rrs, model='insitu',
+                                     add_noise=False, Rrs_err=0.1 * Rrs)
+    _, _, _, floored, _ = attach_noise(wave, Rrs, model='insitu',
+                                       add_noise=False, Rrs_err=0.1 * Rrs,
+                                       floor_frac=0.05)
+    assert plain == 'insitu'
+    assert floored == 'insitu+floor:0.05'
+    assert floored != plain
+
+
+def test_floor_applies_to_any_base_model():
+    wave, Rrs = _synthetic()
+    _, _, _, tag, _ = attach_noise(wave, Rrs, model='pct:0.02',
+                                   add_noise=False, floor_frac=0.05)
+    assert tag == 'pct:0.02+floor:0.05'
+
+
+def test_floor_feeds_the_perturbation():
+    # The realization must be drawn from the *floored* sigma, so the noise a
+    # record carries and the weight the fit uses stay consistent.
+    wave, Rrs = _synthetic()
+    measured = np.full_like(Rrs, 1e-6)          # negligible next to the floor
+    var_plain, out_plain, clean, _, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=True, seed=3, Rrs_err=measured)
+    var_floor, out_floor, _, _, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=True, seed=3, Rrs_err=measured,
+        floor_frac=0.05)
+    assert np.all(var_floor > var_plain)
+    # same seed, bigger sigma -> a bigger departure from the clean spectrum
+    assert (np.abs(out_floor - clean).sum()
+            > np.abs(out_plain - clean).sum())
+
+
+def test_bad_floor_raises():
+    wave, Rrs = _synthetic()
+    with pytest.raises(ValueError, match='floor_frac'):
+        attach_noise(wave, Rrs, model='pct:0.05', add_noise=False,
+                     floor_frac=0.0)

@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 
 from ioptics import io
+from ioptics import records
 
 # Erickson (2023) Fig. 4 ratio buckets for M / O (multiplicative agreement).
 RATIO_EDGES = [0, 1 / 3, 1 / 2, 3 / 4, 1, 4 / 3, 2, 3, np.inf]
@@ -145,7 +146,10 @@ FIT_NOISE_FACTOR = 0.5
 RRS_QC_MAX = 0.25
 
 # §2 QC (noise-weighted): a fit with reduced χ²ᵥ above this is a non-solution.
-CHI2NU_QC_MAX = 5.0
+#: Reduced chi-squared above which a fit is not a solution. Same number as
+#: the per-row ``poor_fit`` status uses, imported so the aggregate metric
+#: and the row label cannot drift apart.
+CHI2NU_QC_MAX = records.CHI2NU_POOR_FIT
 
 
 def chi2nu_quality(chi2_nu, dof, *, n_sigma=2.0):

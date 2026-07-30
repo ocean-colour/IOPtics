@@ -134,6 +134,59 @@ With the slopes pinned to literature values, ``giop`` has fewer knobs — more
 parsimonious, and harder to over-fit. It is fit by **least squares** only (see
 below).
 
+Turbid-water algorithms (opt-in)
+================================
+
+The models above assume open-ocean particulate backscatter: a single power
+law that *decreases* with wavelength. In turbid, mineral-dominated water
+that assumption fails. Measurements report a backscattering spectrum that is
+larger in magnitude and much flatter — sometimes rising toward the red —
+because mineral particles dominate (Snyder et al. 2008,
+doi:10.1364/AO.47.000666; Doxaran et al. 2009,
+doi:10.4319/lo.2009.54.4.1257; Neukermans et al. 2012,
+doi:10.4319/lo.2012.57.1.0124). A single decreasing power law cannot supply
+the red-end shape without wrecking the blue.
+
+BING therefore provides two-component backscattering, splitting
+:math:`b_{bp}` into a near-flat **mineral** term and a steeper **organic**
+one, and IOPtics exposes three algorithms built on it:
+
+``expb_pow2flat`` (**k = 6**)
+    ``ExpBricaud`` + ``Pow2Flat``: a constant mineral term plus an organic
+    power law. **Start here.** Fixing the mineral exponent removes a
+    degenerate direction that leaves the 4-parameter version badly
+    conditioned under least squares.
+
+``expb_pow2`` (**k = 7**)
+    ``ExpBricaud`` + ``Pow2``: as above with the mineral exponent free
+    (pivoted at 700 nm, where it does its work). More expressive, but the
+    two amplitudes trade off strongly against each other.
+
+``expb_powflex`` (**k = 5**)
+    ``ExpBricaud`` + ``Pow``, with the slope prior widened so
+    :math:`\beta` may go negative. The **control**: it changes the prior
+    *range* without adding a component, so a spectrum that ``expb_powflex``
+    still cannot fit implicates the functional *form*.
+
+These are **not** registered by default — on open-ocean spectra they simply
+reproduce the single-power-law solution, so seeding them would fill the
+cross-algorithm leaderboard with near-duplicate rows. A turbid sweep opts
+in:
+
+.. code-block:: python
+
+    from ioptics.algorithms import registry
+
+    registry.register_turbid()          # adds all three
+    spec = registry.get('expb_pow2flat')
+
+``register_turbid`` also stamps a raised optimizer budget
+(:data:`~ioptics.algorithms.registry.TURBID_MAXFEV`) onto each spec, carried
+as ``AlgorithmSpec.maxfev`` and handed to ``curve_fit``. That is not
+cosmetic: at scipy's default budget these models fail to converge on a
+substantial fraction of spectra. It governs *whether* a fit returns, not how
+well the model can fit.
+
 Fitting and how the two are judged
 ==================================
 

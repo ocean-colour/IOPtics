@@ -39,6 +39,25 @@ from ioptics.records import PreparedRecord
 # tag then honestly records the model actually used (``'pct:0.05'``).
 _INSITU_PCT_FALLBACK = 0.05
 
+# GLORIA quotes a per-band Rrs standard deviation so tight (~1.5e-4 sr^-1,
+# well under 1% of a turbid Rrs) that it dominates chi-squared: even fits that
+# track the spectrum well land many sigma per band away, and the turbid ones
+# reach chi2_nu ~ 250. An error floor makes the statistic interpretable
+# (median chi2_nu 247 -> 72 at 5%) without pretending the fit improved -- the
+# true relative misfit is unchanged at ~48% (reports/gloria_fits_report.md).
+# It is applied as a **per-dataset default for GLORIA only**; the resulting
+# noise_model tag says so ('insitu+floor:0.05').
+_GLORIA_NOISE_FLOOR = 0.05
+
+
+def _is_gloria(dataset):
+    """Whether ``dataset`` is GLORIA (prefix-tolerant).
+
+    Matches on the prefix, like :func:`ioptics.metrics._caveat`, so a
+    ``'GLORIA_FAKE'`` test fixture behaves like the real dataset.
+    """
+    return str(dataset).upper().startswith('GLORIA')
+
 
 def _align_truth(src_wave, src_vals, wave):
     """Align one spectral truth component from its native grid onto ``wave``.
@@ -128,7 +147,7 @@ def _init_from_rrs(wave, Rrs):
 
 
 def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
-             wv_min=None, wv_max=None, **load_opts):
+             wv_min=None, wv_max=None, noise_floor=None, **load_opts):
     """Prepare one observation into a :class:`~ioptics.records.PreparedRecord`.
 
     Loads the observation on its native grid via the dataset adapter, optionally
@@ -165,6 +184,10 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         noise = 'pace' if dataset == 'L23' else 'insitu'
     if add_noise is None:
         add_noise = (dataset == 'L23')
+    if noise_floor is None and _is_gloria(dataset):
+        # Per-dataset default: GLORIA's quoted errors are too tight for
+        # chi-squared to mean anything (see _GLORIA_NOISE_FLOOR).
+        noise_floor = _GLORIA_NOISE_FLOOR
 
     raw = get_adapter(dataset).load_obs(obs_id, **load_opts)
 
@@ -187,7 +210,7 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
     # Uncertainty (+ optional perturbation).
     varRrs, Rrs_out, Rrs_clean, tag, seed_used = attach_noise(
         wave, Rrs_in, model=noise, add_noise=add_noise, seed=seed,
-        Rrs_err=Rrs_err)
+        Rrs_err=Rrs_err, floor_frac=noise_floor)
 
     # Truth pre-aligned onto `wave`; init from the observed (post-noise) Rrs.
     truth, truth_interp = _build_truth(raw, wave)
@@ -200,15 +223,18 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         noise_model=tag, noise_seed=seed_used, meta=dict(raw.meta))
 
 
-def _prep_one_star(item, dataset, noise, add_noise, wv_min, wv_max, load_opts):
+def _prep_one_star(item, dataset, noise, add_noise, wv_min, wv_max, load_opts,
+                   noise_floor=None):
     """Top-level worker for :func:`prep_dataset`'s process pool (picklable)."""
     obs_id, seed = item
     return prep_one(dataset, obs_id, noise=noise, add_noise=add_noise,
-                    seed=seed, wv_min=wv_min, wv_max=wv_max, **load_opts)
+                    seed=seed, wv_min=wv_min, wv_max=wv_max,
+                    noise_floor=noise_floor, **load_opts)
 
 
 def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
-                 seed=None, n_cores=1, wv_min=None, wv_max=None, **load_opts):
+                 seed=None, n_cores=1, wv_min=None, wv_max=None,
+                 noise_floor=None, **load_opts):
     """Prepare many observations into a list of ``PreparedRecord``.
 
     Maps :func:`prep_one` over ``obs_ids`` (default: every observation the
@@ -222,8 +248,10 @@ def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
         Registered dataset name.
     obs_ids : iterable or None, optional
         Observation ids to prepare; ``None`` → all (``adapter.obs_ids``).
-    noise, add_noise, wv_min, wv_max, **load_opts
-        Forwarded to :func:`prep_one`.
+    noise, add_noise, wv_min, wv_max, noise_floor, **load_opts
+        Forwarded to :func:`prep_one`. ``noise_floor`` is normally left
+        ``None``, which lets each dataset's default apply (an error floor
+        for GLORIA, none elsewhere).
     seed : int or None, optional
         Master seed; record ``i`` uses ``seed + i`` (``None`` → unseeded).
     n_cores : int, optional
@@ -248,10 +276,12 @@ def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
         from functools import partial
         fn = partial(_prep_one_star, dataset=dataset, noise=noise,
                      add_noise=add_noise, wv_min=wv_min, wv_max=wv_max,
+                     noise_floor=noise_floor,
                      load_opts=load_opts)
         with ProcessPoolExecutor(max_workers=n_cores) as ex:
             return list(ex.map(fn, work))
 
     return [prep_one(dataset, oid, noise=noise, add_noise=add_noise, seed=s,
-                     wv_min=wv_min, wv_max=wv_max, **load_opts)
+                     wv_min=wv_min, wv_max=wv_max, noise_floor=noise_floor,
+                     **load_opts)
             for oid, s in work]

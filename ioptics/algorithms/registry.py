@@ -33,8 +33,12 @@ def register(spec, *, overwrite=False):
 def get(name):
     """Return the :class:`AlgorithmSpec` registered under ``name``."""
     if name not in REGISTRY:
+        hint = ''
+        if name in dict(TURBID_SEED):
+            hint = (f"; {name!r} is a turbid-water algorithm -- call "
+                    "ioptics.algorithms.registry.register_turbid() first")
         raise KeyError(
-            f"unknown algorithm {name!r}; available: {available()}")
+            f"unknown algorithm {name!r}; available: {available()}{hint}")
     return REGISTRY[name]
 
 
@@ -61,3 +65,65 @@ def _seed_standard():
 
 
 _seed_standard()
+
+
+# --- turbid-water algorithms: opt-in, not seeded ----------------------------
+# BING's two-component backscattering models (a near-flat mineral term plus a
+# steeper organic one) exist for turbid, mineral-dominated water, where a
+# single decreasing power law cannot supply the shape the red end needs. They
+# are deliberately **not** in _STANDARD_SEED: on open-ocean data they simply
+# reproduce the single-power-law solution, so seeding them would dilute the
+# cross-algorithm leaderboard with near-duplicate rows. A turbid sweep opts in
+# by calling :func:`register_turbid` before resolving its algorithm names.
+TURBID_SEED = [
+    # (standard-factory name, leaderboard label)
+    ('expb_pow2flat', 'ExpB_Pow2Flat'),   # 3 bb params, eta_min fixed at 0
+    ('expb_pow2', 'ExpB_Pow2'),           # 4 bb params, eta_min free
+    ('expb_powflex', 'ExpB_PowFlex'),     # 1-component control, beta may be <0
+]
+
+# Evaluation budget for the turbid specs. The two-component models need it:
+# at scipy's default budget they fail to converge on a substantial fraction of
+# spectra (5 of 8 and 6 of 8 clear L23 spectra in bing's own benchmark,
+# dev/turbid_bbp), versus 8 of 8 with a raised budget.
+TURBID_MAXFEV = 40000
+
+
+def register_turbid(*, overwrite=True, maxfev=TURBID_MAXFEV):
+    """Register the turbid-water algorithms and return their specs.
+
+    Opt-in counterpart to the standard seed. Call this before running a
+    sweep whose config names ``expb_pow2flat``, ``expb_pow2`` or
+    ``expb_powflex``.
+
+    ``expb_pow2flat`` is the one to reach for first: fixing the mineral
+    exponent removes a degenerate direction that makes the 4-parameter
+    ``expb_pow2`` badly conditioned under chi-squared. ``expb_powflex`` is
+    the single-component control -- it widens the ordinary power law's
+    slope prior without adding a component, so a fit that fails with it
+    too implicates the functional form rather than the prior range.
+
+    Parameters
+    ----------
+    overwrite : bool, optional
+        Replace an existing registration of the same name (default True,
+        so repeat calls are harmless).
+    maxfev : int or None, optional
+        Optimizer evaluation budget stamped onto each spec; see
+        :data:`TURBID_MAXFEV` for why the default is not None.
+
+    Returns
+    -------
+    dict
+        ``{name: AlgorithmSpec}`` for the algorithms registered.
+    """
+    import dataclasses
+
+    out = {}
+    for name, label in TURBID_SEED:
+        spec = AlgorithmSpec.from_standard(name, label=label)
+        if maxfev is not None:
+            spec = dataclasses.replace(spec, maxfev=maxfev)
+        register(spec, overwrite=overwrite)
+        out[name] = spec
+    return out

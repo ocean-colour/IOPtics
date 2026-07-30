@@ -63,666 +63,1447 @@ Leaderboard
      - mae
      - coverage68
      - coverage95
-   * - L23
+     - caveat
+   * - GLORIA
      - a
      - 440
      - all
      - 1
-     - giop
-     - 0.85
-     - 0.0579
-     - 0.0617
-     - 0.45
-     - 0.65
-   * - L23
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 440
      - all
      - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 1
      - expb_pow
-     - 0.15
-     - 0.0964
-     - 0.109
-     - 0.65
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 440
-     - mesotrophic
-     - 1
-     - giop
-     - 0.846
-     - 0.0682
-     - 0.0721
-     - 0.462
-     - 0.615
-   * - L23
-     - a
-     - 440
-     - mesotrophic
+     - eutrophic
      - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 1
      - expb_pow
-     - 0.154
-     - 0.116
-     - 0.134
-     - 0.615
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 440
-     - oligotrophic
-     - 1
-     - giop
-     - 0.857
-     - 0.0391
-     - 0.0426
-     - 0.429
-     - 0.714
-   * - L23
-     - a
-     - 440
-     - oligotrophic
+     - unknown
      - 2
-     - expb_pow
-     - 0.143
-     - 0.0616
-     - 0.0634
-     - 0.714
-     - 1
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 443
      - all
      - 1
-     - giop
-     - 0.8
-     - 0.0578
-     - 0.0624
-     - 0.45
-     - 0.6
-   * - L23
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 443
      - all
      - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 1
      - expb_pow
-     - 0.2
-     - 0.0986
-     - 0.109
-     - 0.65
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 443
-     - mesotrophic
-     - 1
-     - giop
-     - 0.846
-     - 0.0654
-     - 0.0696
-     - 0.462
-     - 0.538
-   * - L23
-     - a
-     - 443
-     - mesotrophic
+     - eutrophic
      - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 1
      - expb_pow
-     - 0.154
-     - 0.116
-     - 0.132
-     - 0.615
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a
      - 443
-     - oligotrophic
-     - 1
-     - giop
-     - 0.714
-     - 0.0439
-     - 0.0491
-     - 0.429
-     - 0.714
-   * - L23
-     - a
-     - 443
-     - oligotrophic
+     - unknown
      - 2
-     - expb_pow
-     - 0.286
-     - 0.0666
-     - 0.0666
-     - 0.714
-     - 1
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a_dg
      - 440
      - all
      - 1
-     - giop
+     - expb_pow2
+     - 0.714
+     - -0.597
+     - 1.48
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 2
+     - expb_pow2flat
+     - 0.571
+     - -0.411
+     - 0.966
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 3
+     - expb_pow
+     - 0.333
+     - 0.215
+     - 0.215
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 4
+     - expb_powflex
+     - 0.286
+     - -0.758
+     - 3.14
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 1
+     - expb_pow2
      - 0.8
-     - -0.00278
-     - 0.116
-     - 0.35
+     - -0.412
+     - 0.701
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 2
+     - expb_pow2flat
      - 0.4
-   * - L23
-     - a_dg
-     - 440
-     - all
-     - 2
-     - expb_pow
-     - 0.2
-     - 0.169
-     - 0.299
-     - 0.65
-     - 0.9
-   * - L23
-     - a_dg
-     - 440
-     - mesotrophic
-     - 1
-     - giop
-     - 0.769
-     - 0.0138
-     - 0.126
-     - 0.231
-     - 0.231
-   * - L23
-     - a_dg
-     - 440
-     - mesotrophic
-     - 2
-     - expb_pow
-     - 0.231
-     - 0.165
-     - 0.334
-     - 0.692
-     - 0.923
-   * - L23
-     - a_dg
-     - 440
-     - oligotrophic
-     - 1
-     - giop
-     - 0.857
-     - -0.0328
-     - 0.0972
-     - 0.571
+     - -0.273
      - 0.714
-   * - L23
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
      - a_dg
      - 440
-     - oligotrophic
-     - 2
-     - expb_pow
-     - 0.143
-     - 0.176
-     - 0.238
-     - 0.571
-     - 0.857
-   * - L23
+     - eutrophic
+     - 3
+     - expb_powflex
+     - 0.4
+     - -0.709
+     - 2.44
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
      - a_dg
-     - 443
-     - all
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow
+     - 0.333
+     - 0.215
+     - 0.215
      - 1
-     - giop
-     - 0.8
-     - -0.0262
-     - 0.124
-     - 0.25
-     - 0.35
-   * - L23
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
      - a_dg
-     - 443
-     - all
-     - 2
-     - expb_pow
-     - 0.2
-     - 0.17
-     - 0.312
-     - 0.7
-     - 0.9
-   * - L23
+     - 440
+     - unknown
+     - 1
+     - expb_pow2flat
+     - 1
+     - -0.614
+     - 1.59
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
      - a_dg
-     - 443
-     - mesotrophic
-     - 1
-     - giop
-     - 0.769
-     - -0.0082
-     - 0.134
-     - 0.154
-     - 0.231
-   * - L23
-     - a_dg
-     - 443
-     - mesotrophic
+     - 440
+     - unknown
      - 2
-     - expb_pow
-     - 0.231
-     - 0.165
-     - 0.347
-     - 0.769
-     - 0.923
-   * - L23
-     - a_dg
-     - 443
-     - oligotrophic
-     - 1
-     - giop
-     - 0.857
-     - -0.0587
-     - 0.106
-     - 0.429
-     - 0.571
-   * - L23
-     - a_dg
-     - 443
-     - oligotrophic
-     - 2
-     - expb_pow
-     - 0.143
-     - 0.177
-     - 0.249
-     - 0.571
-     - 0.857
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - 1
-     - giop
-     - 0.75
-     - 0.186
-     - 0.25
-     - 0.25
-     - 0.6
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - 2
-     - expb_pow
-     - 0.25
-     - -0.332
-     - 0.702
-     - 0.9
-     - 1
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - 1
-     - giop
-     - 0.769
-     - 0.177
-     - 0.257
-     - 0.231
-     - 0.538
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - 2
-     - expb_pow
-     - 0.231
-     - -0.29
-     - 0.612
-     - 0.846
-     - 1
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - 1
-     - giop
-     - 0.714
-     - 0.202
-     - 0.237
-     - 0.286
-     - 0.714
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - 2
-     - expb_pow
-     - 0.286
-     - -0.402
-     - 0.883
-     - 1
-     - 1
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - 1
-     - giop
-     - 0.7
-     - 0.225
-     - 0.278
-     - 0.3
+     - expb_pow2
      - 0.5
-   * - L23
+     - -0.81
+     - 4.28
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 3
+     - expb_powflex
+     - 0
+     - -0.833
+     - 4.99
+     - 1
+     - 1
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 4
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a_ph
      - 443
      - all
      - 2
-     - expb_pow
-     - 0.3
-     - -0.308
-     - 0.669
-     - 0.9
-     - 1
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a_ph
      - 443
-     - mesotrophic
-     - 1
-     - giop
-     - 0.769
-     - 0.204
-     - 0.264
-     - 0.385
-     - 0.538
-   * - L23
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a_ph
      - 443
-     - mesotrophic
-     - 2
-     - expb_pow
-     - 0.231
-     - -0.272
-     - 0.591
-     - 0.846
-     - 1
-   * - L23
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a_ph
      - 443
-     - oligotrophic
+     - eutrophic
      - 1
-     - giop
-     - 0.571
-     - 0.265
-     - 0.303
-     - 0.143
-     - 0.429
-   * - L23
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - a_ph
      - 443
-     - oligotrophic
+     - eutrophic
      - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 1
      - expb_pow
-     - 0.429
-     - -0.37
-     - 0.825
-     - 1
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 555
      - all
      - 1
      - expb_pow
-     - 0.55
-     - 0.02
-     - 0.0354
-     - 0.8
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 555
      - all
      - 2
-     - giop
-     - 0.45
-     - -0.0259
-     - 0.0345
-     - 0.6
-     - 0.9
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 555
-     - mesotrophic
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - eutrophic
      - 1
      - expb_pow
-     - 0.538
-     - 0.015
-     - 0.0334
-     - 0.846
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 555
-     - mesotrophic
+     - eutrophic
      - 2
-     - giop
-     - 0.462
-     - -0.0301
-     - 0.0381
-     - 0.462
-     - 0.846
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 555
-     - oligotrophic
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
      - 1
      - expb_pow
-     - 0.571
-     - 0.0294
-     - 0.039
-     - 0.714
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 555
-     - oligotrophic
+     - unknown
      - 2
-     - giop
-     - 0.429
-     - -0.0181
-     - 0.0278
-     - 0.857
-     - 1
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 670
      - all
      - 1
      - expb_pow
-     - 0.7
-     - 0.0325
-     - 0.0787
-     - 0.85
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 670
      - all
      - 2
-     - giop
-     - 0.3
-     - -0.103
-     - 0.117
-     - 0.1
-     - 0.45
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 670
-     - mesotrophic
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - eutrophic
      - 1
      - expb_pow
-     - 0.846
-     - 0.0197
-     - 0.0708
-     - 0.846
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 670
-     - mesotrophic
+     - eutrophic
      - 2
-     - giop
-     - 0.154
-     - -0.109
-     - 0.127
-     - 0.0769
-     - 0.385
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb
      - 670
-     - oligotrophic
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
      - 1
-     - giop
-     - 0.571
-     - -0.0908
-     - 0.0999
-     - 0.143
-     - 0.571
-   * - L23
-     - bb
-     - 670
-     - oligotrophic
-     - 2
      - expb_pow
-     - 0.429
-     - 0.0567
-     - 0.0936
-     - 0.857
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 555
      - all
      - 1
      - expb_pow
-     - 0.55
-     - 0.0499
-     - 0.0807
-     - 0.8
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 555
      - all
      - 2
-     - giop
-     - 0.45
-     - -0.0492
-     - 0.0735
-     - 0.6
-     - 0.9
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 555
-     - mesotrophic
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - eutrophic
      - 1
      - expb_pow
-     - 0.538
-     - 0.0367
-     - 0.0732
-     - 0.846
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 555
-     - mesotrophic
+     - eutrophic
      - 2
-     - giop
-     - 0.462
-     - -0.0508
-     - 0.0757
-     - 0.462
-     - 0.846
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 555
-     - oligotrophic
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
      - 1
      - expb_pow
-     - 0.571
-     - 0.0748
-     - 0.0949
-     - 0.714
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 555
-     - oligotrophic
+     - unknown
      - 2
-     - giop
-     - 0.429
-     - -0.0461
-     - 0.0695
-     - 0.857
-     - 1
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 670
      - all
      - 1
      - expb_pow
-     - 0.75
-     - 0.0667
-     - 0.141
-     - 0.85
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 670
      - all
      - 2
-     - giop
-     - 0.25
-     - -0.166
-     - 0.206
-     - 0.1
-     - 0.45
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 670
-     - mesotrophic
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - eutrophic
      - 1
      - expb_pow
-     - 0.846
-     - 0.0411
-     - 0.121
-     - 0.846
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 670
-     - mesotrophic
+     - eutrophic
      - 2
-     - giop
-     - 0.154
-     - -0.163
-     - 0.206
-     - 0.0769
-     - 0.385
-   * - L23
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 670
-     - oligotrophic
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
      - 1
      - expb_pow
-     - 0.571
-     - 0.116
-     - 0.18
-     - 0.857
-     - 1
-   * - L23
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
      - bb_p
      - 670
-     - oligotrophic
+     - unknown
      - 2
-     - giop
-     - 0.429
-     - -0.171
-     - 0.207
-     - 0.143
-     - 0.571
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 
 
 
 .. LEADERBOARD_END

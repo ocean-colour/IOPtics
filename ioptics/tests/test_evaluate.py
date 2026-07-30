@@ -79,3 +79,97 @@ def test_run_algorithm_end_to_end_returns_result():
     assert isinstance(res, RetrievalResult)
     assert res.status == 'ok'
     assert res.components['a'].med.shape == record.wave.shape
+
+
+# --------------------------------------------------------------------
+# Tier 1 — fit status classification and shape-parameter promotion
+# --------------------------------------------------------------------
+def _record_peaking_at(peak_nm):
+    """A minimal record whose Rrs peaks at ``peak_nm``."""
+    from ioptics.records import PreparedRecord
+
+    wave = np.arange(400.0, 751.0, 5.0)
+    Rrs = np.exp(-0.5 * ((wave - peak_nm) / 40.0) ** 2) * 0.02
+    return PreparedRecord(dataset='X', obs_id=0, wave=wave, Rrs=Rrs,
+                          varRrs=(0.02 * Rrs) ** 2, Rrs_clean=Rrs,
+                          truth={}, truth_interp={}, init={},
+                          noise_model='pct:0.02', noise_seed=None)
+
+
+def test_status_ok_for_an_acceptable_fit():
+    from ioptics.records import CHI2NU_POOR_FIT
+
+    rec = _record_peaking_at(450.0)
+    assert evaluate._fit_status(rec, {'chi2_nu': 1.0}, True) == 'ok'
+    # right at the threshold is still acceptable
+    assert evaluate._fit_status(
+        rec, {'chi2_nu': CHI2NU_POOR_FIT}, True) == 'ok'
+
+
+def test_status_fit_failed_beats_everything():
+    rec = _record_peaking_at(600.0)          # red-peaked, but unusable params
+    assert evaluate._fit_status(rec, {'chi2_nu': 1.0}, False) == 'fit_failed'
+
+
+def test_status_poor_fit_when_the_regime_does_not_explain_it():
+    # A blue-peaked (clear) spectrum this family *should* handle: a bad fit
+    # is a statement about the fit, not about scope.
+    rec = _record_peaking_at(450.0)
+    assert evaluate._fit_status(rec, {'chi2_nu': 50.0}, True) == 'poor_fit'
+
+
+def test_status_out_of_scope_for_red_peaked_spectra():
+    from ioptics.records import RED_PEAK_NM
+
+    rec = _record_peaking_at(RED_PEAK_NM + 40.0)
+    assert evaluate._fit_status(rec, {'chi2_nu': 50.0}, True) == 'out_of_scope'
+    # ... but only when the fit is actually bad: a turbid spectrum the model
+    # does fit is in scope by definition.
+    assert evaluate._fit_status(rec, {'chi2_nu': 1.2}, True) == 'ok'
+
+
+def test_status_nonfinite_chi2_is_not_ok():
+    rec = _record_peaking_at(450.0)
+    assert evaluate._fit_status(rec, {'chi2_nu': np.nan}, True) == 'poor_fit'
+    assert evaluate._fit_status(rec, {}, True) == 'poor_fit'
+
+
+def test_all_statuses_are_declared():
+    from ioptics.records import STATUSES
+
+    rec = _record_peaking_at(450.0)
+    red = _record_peaking_at(650.0)
+    seen = {evaluate._fit_status(rec, {'chi2_nu': 1.0}, True),
+            evaluate._fit_status(rec, {'chi2_nu': 99.0}, True),
+            evaluate._fit_status(red, {'chi2_nu': 99.0}, True),
+            evaluate._fit_status(rec, {'chi2_nu': 1.0}, False)}
+    assert seen == set(STATUSES)
+
+
+def test_shape_params_come_from_the_models():
+    class FakeModel:
+        def __init__(self, pnames, log_params):
+            self.pnames = pnames
+            self.log_params = log_params
+            self.nparam = len(pnames)
+
+    # the open-ocean pair: exactly the historical ('Sdg', 'beta')
+    a = FakeModel(['Adg', 'Sdg', 'Aph'], [True, False, True])
+    bb = FakeModel(['Bnw', 'beta'], [True, False])
+    assert evaluate._shape_param_names([a, bb]) == ['Sdg', 'beta']
+
+    # two-component backscattering adds its exponents
+    bb2 = FakeModel(['Bmin', 'eta_min', 'Borg', 'eta_org'],
+                    [True, False, True, False])
+    assert evaluate._shape_param_names([a, bb2]) == ['Sdg', 'eta_min',
+                                                     'eta_org']
+
+
+def test_shape_params_tolerate_models_that_declare_nothing():
+    class Undeclared:
+        pnames = ['Aexp', 'Aph']
+        nparam = 2
+
+    # A model with no log_params is treated as all-log10 (bing's default),
+    # so it contributes no shape parameters rather than raising.
+    assert evaluate._shape_param_names([Undeclared(), Undeclared()]) == []
