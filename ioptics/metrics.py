@@ -151,6 +151,15 @@ RRS_QC_MAX = 0.25
 #: and the row label cannot drift apart.
 CHI2NU_QC_MAX = records.CHI2NU_POOR_FIT
 
+#: Row statuses that are **scored**. A leaderboard ranks *solutions*, so only
+#: ``'ok'`` rows enter the accuracy and closure reductions; the other statuses
+#: (:data:`ioptics.records.STATUSES`) are reported as **coverage** — the
+#: ``frac_ok`` / ``frac_poor_fit`` / ``frac_out_of_scope`` / ``frac_fit_failed``
+#: columns on the ``component='Rrs'`` closure row — rather than averaged in.
+#: Without this an algorithm's median is taken over whichever spectra it
+#: happened to fit, so two algorithms' numbers are not comparable at all.
+SCORE_STATUSES = ('ok',)
+
 
 def chi2nu_quality(chi2_nu, dof, *, n_sigma=2.0):
     """Headline single-fit flag from reduced χ²ᵥ, with a dof-scaled good band.

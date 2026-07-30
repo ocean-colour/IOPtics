@@ -28,6 +28,36 @@ import numpy as np
 
 from ioptics.records import RetrievalResult
 
+#: Anchor wavelength (nm) for the QAA-style band inversion in
+#: :func:`initial_guess` — the red band where the water's own absorption
+#: dominates, so ``u`` can be turned into an absolute ``bb``.
+ANCHOR_NM = 670.0
+
+#: Observed ``Rrs`` at :data:`ANCHOR_NM` (sr^-1) at or above which a spectrum
+#: is treated as **turbid** by :func:`is_turbid`. This is QAA_v6's own
+#: reference-wavelength switch (Lee et al. 2002, doi:10.1364/AO.41.005755;
+#: QAA_v6 update, ioccg.org/groups/software.html): below it the red band
+#: carries too little signal for the turbid branch, above it the red anchor's
+#: *non-water* absorption can no longer be neglected.
+TURBID_RRS_ANCHOR = 0.0015
+
+#: QAA_v6 Step 2 (turbid branch) coefficients for the non-water absorption at
+#: the red anchor, ``a_nw(670) = C * [Rrs(670) / (Rrs(443) + Rrs(490))] ** E``.
+#: Note SeaDAS ships different values for this step (0.07 with a
+#: ``Rrs(670)/Rrs(440)`` ratio); these are the coefficients in the IOCCG
+#: QAA_v6 document.
+QAA_ANW_ANCHOR = (0.39, 1.14)
+
+#: Bands (nm) forming the blue-green denominator of that ratio.
+QAA_BLUE_NM = (443.0, 490.0)
+
+#: Fraction of each prior's range by which the seed is held **off** its
+#: bounds. A parameter seeded exactly on a bound gives the bounded
+#: least-squares solver a zero-width search direction, which is a real
+#: failure mode for turbid fits (the amplitudes and the backscattering
+#: exponent are the ones that clip).
+BOUND_INSET = 1e-3
+
 
 def _prior_bounds(models):
     """Lower/upper parameter bounds from the models' priors (a then bb)."""
@@ -48,7 +78,93 @@ def _log_mask(models):
     return np.array(mask, dtype=bool)
 
 
-def initial_guess(models, record):
+def is_turbid(record, *, threshold=TURBID_RRS_ANCHOR):
+    """Whether the *observed* spectrum is turbid, by QAA_v6's own test.
+
+    ``Rrs`` at the nearest band to :data:`ANCHOR_NM` at or above ``threshold``
+    (:data:`TURBID_RRS_ANCHOR`). This is the switch QAA_v6 uses to move its
+    reference wavelength into the red, and it is what :func:`initial_guess`
+    keys its turbid branch on. Truth-free: it reads ``record.Rrs`` only.
+
+    Parameters
+    ----------
+    record : PreparedRecord
+        The record whose observed ``Rrs`` is tested.
+    threshold : float, optional
+        Rrs threshold (sr^-1) at the anchor band.
+
+    Returns
+    -------
+    bool
+        ``True`` for a turbid spectrum. A non-finite anchor ``Rrs`` gives
+        ``False`` (the conservative, open-ocean branch).
+    """
+    wave = np.asarray(record.wave, dtype=float)
+    Rrs = np.asarray(record.Rrs, dtype=float)
+    iref = int(np.argmin(np.abs(wave - ANCHOR_NM)))
+    return bool(np.isfinite(Rrs[iref]) and Rrs[iref] >= threshold)
+
+
+def _anw_anchor(wave, Rrs, turbid):
+    """Non-water absorption (m^-1) at the red anchor, QAA_v6 Step 2.
+
+    Zero on the open-ocean branch — that is the ``a(670) ~ a_w(670)``
+    approximation, valid where the red band is absorption-dominated by water
+    itself. On the turbid branch it is QAA_v6's empirical term,
+    ``C * [Rrs(670) / (Rrs(443) + Rrs(490))] ** E``
+    (:data:`QAA_ANW_ANCHOR`), which is exactly the quantity that
+    approximation throws away: in mineral-rich water ``a_nw(670)`` is
+    comparable to (or larger than) ``a_w(670)``, so neglecting it
+    under-estimates the anchor ``bb`` — and with it every amplitude seeded
+    from it — by that same factor.
+
+    Returns ``0.0`` if the blue bands are unusable (non-finite or a
+    non-positive sum), so a bad spectrum degrades to the open-ocean branch
+    rather than producing a garbage anchor.
+    """
+    if not turbid:
+        return 0.0
+    iref = int(np.argmin(np.abs(wave - ANCHOR_NM)))
+    blue = sum(float(Rrs[int(np.argmin(np.abs(wave - nm)))])
+               for nm in QAA_BLUE_NM)
+    if not np.isfinite(blue) or blue <= 0.0:
+        return 0.0
+    coeff, expo = QAA_ANW_ANCHOR
+    return float(coeff * (Rrs[iref] / blue) ** expo)
+
+
+def _seed_bb_exponent(model, p0_b, Y, log_mask_b):
+    """Seed a *single*-power-law backscattering exponent from the QAA ``Y``.
+
+    ``bbNWPow.init_guess`` returns a fixed ``beta = 1`` — an open-ocean
+    particle slope — no matter what the spectrum looks like. For turbid water
+    the shape wanted is flat or rising (``beta <= 0``), so the fixed seed
+    starts the optimizer on the wrong side of the answer, and for
+    ``expb_pow`` (whose ``beta`` prior floors at 0) it starts it hard against
+    a bound. ``record.init['Y']`` already holds the Lee/QAA estimate of that
+    exponent from the observed blue-to-green ratio, so use it.
+
+    Applied **only** to the one-component power law (``Pow``, i.e.
+    ``expb_pow`` / ``expb_powflex``), where the exponent *is* the whole
+    spectral shape and ``Y`` estimates precisely that. ``Pow2`` / ``Pow2Flat``
+    are left alone: their exponents are per-component (a bulk slope is not an
+    estimate of either), and bing seeds them deliberately — the mineral one
+    just off zero so MCMC's multiplicative walker spread can move it.
+
+    Returns a copy of ``p0_b``; ``log_mask_b`` marks the log-flavored
+    (amplitude) slots, so the exponent is the remaining one.
+    """
+    if getattr(model, 'name', '') != 'Pow' or not np.isfinite(Y):
+        return p0_b
+    slots = np.flatnonzero(~np.asarray(log_mask_b, dtype=bool))
+    if slots.size != 1:
+        return p0_b
+    out = np.array(p0_b, dtype=float)
+    out[slots[0]] = float(Y)
+    return out
+
+
+def initial_guess(models, record, *, turbid=None):
     """A **truth-free** least-squares starting point from the observed ``Rrs``.
 
     Performs a QAA-style band inversion of ``record.Rrs`` using BING's Gordon
@@ -56,6 +172,38 @@ def initial_guess(models, record):
     ``bb_w`` on the bb-model) to estimate ``a_nw``/``bb_nw``, then seeds each
     model's parameters via its ``init_guess`` (amplitudes log10'd to match the
     log-uniform priors). Never touches ``record.truth``.
+
+    The inversion is anchored at :data:`ANCHOR_NM`, and how that anchor is
+    read depends on the water:
+
+    - **open ocean** — ``a(670) ~ a_w(670)``; non-water absorption in the red
+      is neglected.
+    - **turbid** — ``a(670) = a_w(670) + a_nw(670)`` with QAA_v6's empirical
+      red-band term (:func:`_anw_anchor`), and the backscattering exponent of
+      a one-component power law seeded from the QAA ``Y`` rather than from
+      bing's fixed ``beta = 1`` (:func:`_seed_bb_exponent`).
+
+    Which branch is taken is decided per spectrum by :func:`is_turbid`. On the
+    open-ocean branch the returned seed is **identical** to the pre-turbid
+    one, save for being held :data:`BOUND_INSET` off the prior bounds instead
+    of clipped onto them.
+
+    Parameters
+    ----------
+    models : list
+        ``[a_model, bb_model]`` as built by ``AlgorithmSpec.build_models``.
+    record : PreparedRecord
+        Supplies ``wave``, the observed ``Rrs``, and ``init`` (``Chl``/``Y``).
+    turbid : bool or None, optional
+        Force the branch. ``None`` (default) auto-detects with
+        :func:`is_turbid`; pass ``False`` to reproduce the open-ocean seed on
+        any spectrum (which is how the two are compared).
+
+    Returns
+    -------
+    numpy.ndarray
+        The concatenated ``[a-params, bb-params]`` seed, strictly inside the
+        prior bounds.
     """
     from bing.rt import rrs as bing_rrs
 
@@ -63,6 +211,8 @@ def initial_guess(models, record):
     Rrs = np.asarray(record.Rrs, dtype=float)
     a_w = np.asarray(models[0].a_w, dtype=float)
     bb_w = np.asarray(models[1].bb_w, dtype=float)
+    if turbid is None:
+        turbid = is_turbid(record)
 
     # Gordon: rrs = G1 u + G2 u^2, u = bb / (a + bb)  ->  solve for u.
     rrs = Rrs / (bing_rrs.A_Rrs + bing_rrs.B_Rrs * Rrs)
@@ -70,9 +220,10 @@ def initial_guess(models, record):
     disc = np.clip(G1 * G1 + 4.0 * G2 * rrs, 0.0, None)
     u = np.clip((-G1 + np.sqrt(disc)) / (2.0 * G2), 1e-3, 1.0 - 1e-3)
 
-    # Red anchor (~670 nm): a ~ a_w there (non-water absorption is small).
-    iref = int(np.argmin(np.abs(wave - 670.0)))
-    a_ref = a_w[iref]
+    # Red anchor (~670 nm): total a there is a_w plus, in turbid water, a
+    # non-negligible non-water part.
+    iref = int(np.argmin(np.abs(wave - ANCHOR_NM)))
+    a_ref = a_w[iref] + _anw_anchor(wave, Rrs, turbid)
     bb_ref = u[iref] * a_ref / (1.0 - u[iref])
     bbnw_ref = max(bb_ref - bb_w[iref], 1e-4)
 
@@ -83,17 +234,22 @@ def initial_guess(models, record):
     a_nw = np.clip(a_tot - a_w, 1e-4, None)
     bb_nw = np.clip(bb_nw, 1e-5, None)
 
+    log_mask = _log_mask(models)
     p0_a = np.atleast_1d(models[0].init_guess(a_nw)).astype(float)
     p0_b = np.atleast_1d(models[1].init_guess(bb_nw)).astype(float)
+    if turbid:
+        p0_b = _seed_bb_exponent(models[1], p0_b, Y, log_mask[p0_a.size:])
     p0 = np.concatenate([p0_a, p0_b])
 
     # log10 the log-flavored amplitudes (mirrors bing.fitting.l23.prep_one_l23).
-    log_mask = _log_mask(models)
     p0[log_mask] = np.log10(np.clip(p0[log_mask], 1e-10, None))
 
-    # Keep the guess feasible w.r.t. the prior bounds.
+    # Keep the guess feasible w.r.t. the prior bounds — and strictly *inside*
+    # them, since a bounded least-squares solver cannot search outward from a
+    # parameter pinned to its bound.
     lo, hi = _prior_bounds(models)
-    return np.clip(p0, lo, hi)
+    inset = BOUND_INSET * (hi - lo)
+    return np.clip(p0, lo + inset, hi - inset)
 
 
 def _prepare(spec, record):

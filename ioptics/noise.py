@@ -60,7 +60,14 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
         when ``add_noise`` is ``False``.
     Rrs_err : numpy.ndarray or None, optional
         Measured ``Rrs`` 1-sigma errors on ``wave`` — required for
-        ``model='insitu'``.
+        ``model='insitu'``. Non-finite entries mean *no measured error at that
+        band*, which only ``floor_frac`` can make usable.
+    floor_frac : float or None, optional
+        Fractional **error floor**: raise each ``sigma`` to at least
+        ``floor_frac * |Rrs|``, and supply that value outright where no error
+        was measured. ``None`` (default) leaves the variance as the model gave
+        it. An inflated-noise result — it makes chi-squared interpretable
+        without improving any fit, so it is stamped on ``tag``.
 
     Returns
     -------
@@ -72,7 +79,9 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
         The un-perturbed input ``Rrs`` (a copy).
     tag : str
         Provenance tag for the noise model (``'pace'`` / ``'insitu'`` /
-        ``'pct:X'``) — assigned to ``PreparedRecord.noise_model``.
+        ``'pct:X'``) — assigned to ``PreparedRecord.noise_model``. With
+        ``floor_frac`` it gains ``'+floor:X'``, or ``'+imputed:X'`` when the
+        weights come entirely from the floor because nothing was measured.
     seed_used : int or None
         The seed actually used (``None`` if unperturbed) — assigned to
         ``PreparedRecord.noise_seed``.
@@ -111,13 +120,33 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
     # weighted by the measured error alone -- an inflated-noise result must
     # announce itself, because the floor makes chi-squared interpretable
     # without improving the fit.
+    #
+    # Bands whose measured error is **missing** (non-finite) take the floor
+    # outright. This is not a detail: 70% of GLORIA spectra carry no measured
+    # ``Rrs`` uncertainty at any band, and a plain ``np.maximum`` propagates
+    # the NaN, so those records reach the fitter with all-NaN weights and the
+    # bounded least-squares solver refuses to start ("Residuals are not finite
+    # in the initial point") -- a data gap that reads as a convergence
+    # failure. Where **no** band had a measured error the weights are wholly
+    # imputed rather than floored, and the tag says so (``+imputed:X``): a
+    # chi-squared against an assumed 5% error is a different claim from one
+    # against a measured error that was floored at 5%.
     if floor_frac is not None:
         frac = float(floor_frac)
         if frac <= 0:
             raise ValueError(f'floor_frac must be > 0, got {floor_frac!r}')
-        sigma = np.maximum(np.sqrt(varRrs), frac * np.abs(Rrs_clean))
+        sigma_meas = np.sqrt(varRrs)
+        measured = np.isfinite(sigma_meas)
+        floor = frac * np.abs(Rrs_clean)
+        # A band with Rrs == 0 would floor to sigma = 0 (an infinite weight),
+        # so fall back there to the same fraction of the spectrum's own scale.
+        scale = np.abs(Rrs_clean[np.isfinite(Rrs_clean)])
+        scale = float(np.median(scale)) if scale.size else 0.0
+        floor = np.where(floor > 0, floor, frac * scale)
+        sigma = np.where(measured, np.maximum(sigma_meas, floor), floor)
         varRrs = sigma ** 2
-        tag = f'{tag}+floor:{frac}'
+        tag = f'{tag}+floor:{frac}' if measured.any() \
+            else f'{tag}+imputed:{frac}'
 
     # --- optional single noise realization ---
     if add_noise:

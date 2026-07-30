@@ -173,6 +173,8 @@ module/addition.
 
 15. **More yet** I have the Task 14 questions.  Please read those and proceed accordingly.  Log your work.  Use Fable if you can.
 
+16. **More yet** I have answered the Task 15 questions.  Please read those and proceed accordingly.  Log your work.  Use Fable if you can.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -612,6 +614,7 @@ module/addition.
   can judge. I lean (a) with the status counts alongside, since a
   leaderboard's job is to rank *solutions* — but it changes every existing
   number, so it is your call.
+>A. (a)
 - **Confirm the `out_of_scope` criterion.** You gave me χ²_ν > 5 but not
   the regime test; I used the red-shifted-peak one (Rrs peak > 560 nm)
   because it describes the *spectrum* rather than the fit, and a
@@ -619,6 +622,8 @@ module/addition.
   confirm the hierarchy: a turbid spectrum that *is* fitted well stays
   `ok` (regime alone does not make a fit out of scope). Threshold and rule
   are both one constant in `records.py`.
+>A. I confirm
+
 - **The real GLORIA blocker is convergence, not the model.** 18-20 of 24
   χ² fits fail even with `maxfev=40000`. Backscattering form is now
   eliminated as the explanation for the misfit, so what next?
@@ -630,11 +635,13 @@ module/addition.
   now the leading suspect. My order would be (ii) then (i) then (iii),
   since a bad seed explains non-convergence better than either physics
   question. Which?
+>A. Yes, let's start with (ii)
 - **Sample size.** I ran 24 spectra to keep a stage-1 pass to minutes. The
   catalogue has 7572 and `--n-sample 0` runs all of them. Worth a large
   run now (a few hours), or only once the convergence problem is fixed?
   With 4/24 converging, a big run mostly buys precision on the failure
   rate.
+>A. Let's run 100 samples.
 
 ## Logs
 
