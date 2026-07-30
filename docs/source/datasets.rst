@@ -117,9 +117,20 @@ GLORIA (in situ)
 
 **GLORIA** (Lehmann et al. 2023) is a globally representative **hyperspectral**
 in-situ dataset (:math:`R_{rs}` on a 350–900 nm, 1 nm grid), loaded via
-``ocpy.insitu.gloria``. Unlike PANGAEA it **does** ship a per-band :math:`R_{rs}`
-standard deviation, so it uses genuine ``noise='insitu'`` weighting
+``ocpy.insitu.gloria``. Unlike PANGAEA it ships a per-band :math:`R_{rs}`
+standard deviation, so it uses ``noise='insitu'`` weighting
 (``varRrs = Rrs_std²``); the in-situ spectrum is not perturbed.
+
+.. warning::
+
+   **Most GLORIA spectra quote no uncertainty at all.** Only **29%** (2208 of
+   7572) carry a finite ``Rrs_std`` at their finite-:math:`R_{rs}` bands;
+   **70%** (5338) carry none at any band, and 26 are partial. A fit weighted
+   by an all-NaN variance cannot even be started — the bounded least-squares
+   solver rejects the initial point — so those spectra are unusable without an
+   assumed error. This is what the GLORIA **error floor** below is for, and it
+   is why the provenance tag distinguishes a *floored* measured error from a
+   wholly *imputed* one.
 
 GLORIA carries **scalar-only** lab truth: CDOM absorption at 440 nm
 (``aCDOM440``), chlorophyll (``Chla`` → ``Chl``), total suspended solids
@@ -140,3 +151,32 @@ important qualification:
    (``metrics._caveat``), so reports surface the definitional mismatch instead
    of hiding it. PANGAEA's :math:`a_{dg}` (from ``acdom``, which already includes
    detritus) is genuine and carries **no** caveat.
+
+GLORIA error floor
+------------------
+
+Where GLORIA does quote an uncertainty it is far tighter than any model's
+misfit, which makes :math:`\chi^2_\nu` uninterpretable (thousands, not units).
+:mod:`ioptics.prep` therefore applies a **5% fractional error floor** to this
+dataset by default (``prep._GLORIA_NOISE_FLOOR``), i.e.
+:math:`\sigma \ge 0.05\,|R_{rs}|` at every band, filling in outright where
+nothing was measured. The floor makes :math:`\chi^2_\nu` readable; it does
+**not** improve any fit, so it announces itself in the record's
+``noise_model`` provenance tag:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Tag
+     - Meaning
+   * - ``insitu``
+     - measured errors, used as-is (no floor requested)
+   * - ``insitu+floor:0.05``
+     - at least one band had a measured error; the floor raised the tight ones
+   * - ``insitu+imputed:0.05``
+     - **nothing** was measured; every weight comes from the 5% assumption
+
+A :math:`\chi^2_\nu` computed against an imputed error is a statement about an
+assumed 5%, not about GLORIA's measured uncertainty — the two must not be
+pooled without saying so.

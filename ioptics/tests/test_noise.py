@@ -156,3 +156,60 @@ def test_bad_floor_raises():
     with pytest.raises(ValueError, match='floor_frac'):
         attach_noise(wave, Rrs, model='pct:0.05', add_noise=False,
                      floor_frac=0.0)
+
+
+# --------------------------------------------------------------------
+# Missing measured errors. 70% of GLORIA spectra quote no Rrs uncertainty
+# at any band; a NaN-propagating floor hands the fitter all-NaN weights and
+# scipy refuses to start, which reads as a convergence failure.
+# --------------------------------------------------------------------
+def test_floor_fills_missing_errors_and_says_so():
+    wave, Rrs = _synthetic()
+    measured = np.full_like(Rrs, np.nan)        # nothing measured, anywhere
+    varRrs, _, Rrs_clean, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False, Rrs_err=measured,
+        floor_frac=0.05)
+
+    assert np.all(np.isfinite(varRrs))
+    assert np.all(varRrs > 0)
+    np.testing.assert_allclose(np.sqrt(varRrs), 0.05 * np.abs(Rrs_clean))
+    # Wholly imputed weights are a different claim from floored measured ones.
+    assert tag == 'insitu+imputed:0.05'
+
+
+def test_floor_keeps_the_measured_errors_it_has():
+    wave, Rrs = _synthetic()
+    measured = np.full_like(Rrs, 1e-6)          # tiny, so the floor bites
+    measured[::3] = np.nan                      # ... but absent every third band
+    varRrs, _, Rrs_clean, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False, Rrs_err=measured,
+        floor_frac=0.05)
+
+    assert np.all(np.isfinite(varRrs))
+    # Partly measured -> still 'floor', not 'imputed': something was measured.
+    assert tag == 'insitu+floor:0.05'
+    np.testing.assert_allclose(np.sqrt(varRrs), 0.05 * np.abs(Rrs_clean))
+
+
+def test_floor_never_produces_a_zero_sigma():
+    # A band at Rrs == 0 would floor to sigma = 0, i.e. an infinite weight;
+    # the spectrum's own scale stands in there.
+    wave, Rrs = _synthetic()
+    Rrs = Rrs.copy()
+    Rrs[4] = 0.0
+    varRrs, _, _, _, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False,
+        Rrs_err=np.full_like(Rrs, np.nan), floor_frac=0.05)
+    assert np.all(varRrs > 0)
+    assert np.all(np.isfinite(varRrs))
+
+
+def test_floorless_missing_errors_stay_missing():
+    # Without a floor the NaN is *not* invented away: an absent uncertainty is
+    # a data gap, and only an explicit floor decides what to do about it.
+    wave, Rrs = _synthetic()
+    varRrs, _, _, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False,
+        Rrs_err=np.full_like(Rrs, np.nan))
+    assert np.all(~np.isfinite(varRrs))
+    assert tag == 'insitu'

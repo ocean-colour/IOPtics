@@ -63,6 +63,7 @@ Leaderboard
      - mae
      - coverage68
      - coverage95
+     - frac_ok
      - caveat
    * - GLORIA
      - a
@@ -75,6 +76,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -87,6 +89,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -99,6 +102,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -111,6 +115,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -123,6 +128,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a
@@ -135,6 +141,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a
@@ -147,6 +154,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a
@@ -159,6 +167,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - a
@@ -171,6 +232,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -183,6 +245,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -195,6 +258,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -207,6 +271,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -219,6 +284,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -231,6 +297,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -243,6 +310,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -255,6 +323,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a
@@ -267,6 +336,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a
@@ -279,6 +349,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a
@@ -291,6 +362,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a
@@ -303,6 +375,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - a
@@ -315,6 +440,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -327,6 +453,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -339,6 +466,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a
@@ -351,126 +479,189 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_dg
      - 440
      - all
      - 1
-     - expb_pow2
-     - 0.714
-     - -0.597
-     - 1.48
-     - 1
-     - 1
+     - expb_pow2flat
+     - 0.611
+     - 0.442
+     - 1.31
+     - 0.5
+     - 0.833
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - all
      - 2
-     - expb_pow2flat
-     - 0.571
-     - -0.411
-     - 0.966
-     - 1
-     - 1
+     - expb_pow
+     - 0.5
+     - 0.136
+     - 1.86
+     - 0.5
+     - 0.667
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - all
      - 3
-     - expb_pow
+     - expb_powflex
+     - 0.5
+     - -0.627
+     - 6.49
      - 0.333
-     - 0.215
-     - 0.215
-     - 1
-     - 1
+     - 0.667
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - all
      - 4
-     - expb_powflex
-     - 0.286
-     - -0.758
-     - 3.14
-     - 1
-     - 1
+     - expb_pow2
+     - 0.389
+     - 0.302
+     - 1.36
+     - 0.833
+     - 0.833
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - eutrophic
      - 1
-     - expb_pow2
-     - 0.8
-     - -0.412
-     - 0.701
-     - 1
-     - 1
+     - expb_pow2flat
+     - 0.667
+     - 0.406
+     - 1.84
+     - 0.5
+     - 0.75
+     - 0.0909
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - eutrophic
      - 2
-     - expb_pow2flat
-     - 0.4
-     - -0.273
-     - 0.714
-     - 1
-     - 1
+     - expb_powflex
+     - 0.583
+     - -0.787
+     - 14.7
+     - 0.5
+     - 0.5
+     - 0.0909
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - eutrophic
      - 3
-     - expb_powflex
-     - 0.4
-     - -0.709
-     - 2.44
-     - 1
-     - 1
-     - CDOM_vs_adg
-   * - GLORIA
-     - a_dg
-     - 440
-     - eutrophic
-     - 4
-     - expb_pow
-     - 0.333
-     - 0.215
-     - 0.215
-     - 1
-     - 1
-     - CDOM_vs_adg
-   * - GLORIA
-     - a_dg
-     - 440
-     - unknown
-     - 1
-     - expb_pow2flat
-     - 1
-     - -0.614
-     - 1.59
-     - 1
-     - 1
-     - CDOM_vs_adg
-   * - GLORIA
-     - a_dg
-     - 440
-     - unknown
-     - 2
      - expb_pow2
      - 0.5
-     - -0.81
-     - 4.28
+     - 0.303
+     - 1.89
+     - 0.75
+     - 0.75
+     - 0.0909
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow
+     - 0.25
+     - -0.00451
+     - 2.98
+     - 0.5
+     - 0.5
+     - 0.0909
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
      - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
      - 1
+     - expb_pow
+     - 1
+     - 0.479
+     - 0.479
+     - 0.5
+     - 1
+     - 0.111
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 2
+     - expb_pow2flat
+     - 0.5
+     - 0.515
+     - 0.515
+     - 0.5
+     - 1
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -478,23 +669,25 @@ Leaderboard
      - unknown
      - 3
      - expb_powflex
+     - 0.333
+     - 0.145
+     - 0.702
      - 0
-     - -0.833
-     - 4.99
      - 1
-     - 1
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
      - 440
      - unknown
      - 4
-     - expb_pow
-     - nan
-     - nan
-     - nan
-     - nan
-     - nan
+     - expb_pow2
+     - 0.167
+     - 0.299
+     - 0.575
+     - 1
+     - 1
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -507,6 +700,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -519,6 +713,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -531,6 +726,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -543,6 +739,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -555,6 +752,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -567,6 +765,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -579,6 +778,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -591,6 +791,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -603,6 +856,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -615,6 +869,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -627,6 +882,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_dg
@@ -639,6 +895,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - CDOM_vs_adg
    * - GLORIA
      - a_ph
@@ -651,6 +908,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -663,6 +921,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -675,6 +934,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -687,6 +947,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -699,6 +960,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a_ph
@@ -711,6 +973,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a_ph
@@ -723,6 +986,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a_ph
@@ -735,6 +999,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - a_ph
@@ -747,6 +1064,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -759,6 +1077,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -771,6 +1090,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -783,6 +1103,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -795,6 +1116,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -807,6 +1129,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -819,6 +1142,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -831,6 +1155,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - a_ph
@@ -843,6 +1168,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a_ph
@@ -855,6 +1181,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a_ph
@@ -867,6 +1194,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - a_ph
@@ -879,6 +1207,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - a_ph
@@ -891,6 +1272,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -903,6 +1285,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -915,6 +1298,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - a_ph
@@ -927,6 +1311,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -939,6 +1324,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -951,6 +1337,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -963,6 +1350,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -975,6 +1363,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -987,6 +1376,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb
@@ -999,6 +1389,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb
@@ -1011,6 +1402,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb
@@ -1023,6 +1415,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - bb
@@ -1035,6 +1480,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1047,6 +1493,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1059,6 +1506,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1071,6 +1519,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1083,6 +1532,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -1095,6 +1545,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -1107,6 +1558,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -1119,6 +1571,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb
@@ -1131,6 +1584,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb
@@ -1143,6 +1597,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb
@@ -1155,6 +1610,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb
@@ -1167,6 +1623,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - bb
@@ -1179,6 +1688,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1191,6 +1701,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1203,6 +1714,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb
@@ -1215,6 +1727,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1227,6 +1740,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1239,6 +1753,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1251,6 +1766,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1263,6 +1779,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1275,6 +1792,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb_p
@@ -1287,6 +1805,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb_p
@@ -1299,6 +1818,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb_p
@@ -1311,6 +1831,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - bb_p
@@ -1323,6 +1896,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1335,6 +1909,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1347,6 +1922,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1359,6 +1935,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1371,6 +1948,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1383,6 +1961,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1395,6 +1974,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1407,6 +1987,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.1
      - 
    * - GLORIA
      - bb_p
@@ -1419,6 +2000,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb_p
@@ -1431,6 +2013,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb_p
@@ -1443,6 +2026,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
      - 
    * - GLORIA
      - bb_p
@@ -1455,6 +2039,59 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.0909
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.143
      - 
    * - GLORIA
      - bb_p
@@ -1467,6 +2104,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1479,6 +2117,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1491,6 +2130,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
    * - GLORIA
      - bb_p
@@ -1503,6 +2143,7 @@ Leaderboard
      - nan
      - nan
      - nan
+     - 0.111
      - 
 
 

@@ -643,7 +643,228 @@ module/addition.
   rate.
 >A. Let's run 100 samples.
 
+**Task 16 (the GLORIA blocker was missing uncertainties, not convergence).**
+
+- **Should the 70% of GLORIA spectra with no measured uncertainty be fit at
+  all?** They can be now, but only against an *assumed* 5% error, so their
+  χ²ᵥ measures the assumption as much as the model. Three defensible
+  positions: (a) fit them and keep them separate — the tag already says
+  `insitu+imputed:0.05`, so metrics could stratify on it and report the
+  measured-uncertainty subset as the headline; (b) fit them but never pool
+  them with measured-error spectra in a single χ²ᵥ median; (c) restrict
+  GLORIA work to the 2208 spectra with real uncertainties and treat the
+  rest as `Rrs`-shape-only data. I lean (a): the imputed spectra are still
+  the turbid ones we care about, and the tag makes honesty cheap. But it is
+  a scientific call about what the numbers mean, so it is yours.
+
+- **Near-zero and negative `Rrs` bands are over-weighted.** GLORIA spectra
+  contain bands with `Rrs <= 0` (35 of 351 on GID_5691, 32 on GID_6390).
+  A fractional floor computed from a band whose value is ~0 gives a
+  near-zero σ, hence an enormous weight on a band that is really just
+  noise — on GID_5691 those 35 bands carry **78%** of the total χ². I
+  guarded only the exactly-zero case (which is a hard failure: infinite
+  weight). The real options are (a) drop non-positive `Rrs` bands in
+  `prep`; (b) add an *absolute* noise floor, e.g. σ ≥ 5%·median|Rrs|, so
+  dim bands cannot dominate; (c) leave it and report it. I did **not**
+  choose (b) unilaterally because it de-weights the red tail, which is
+  exactly where the turbid diagnostics live — it could make the misfit look
+  better by hiding it. Which?
+
+- **What next, now that the seed and the backscattering form are both
+  eliminated?** Two of your three candidates are answered: (ii) the seed
+  moves converged GLORIA solutions by <0.1%, and the form was settled in
+  Task 15 and re-confirmed here on 100 spectra. That leaves (iii) the
+  **Gordon coefficients** — `variable_Gordon` is off in this sweep, and the
+  Gordon relation itself is a clear-water parameterization — and (i) MCMC,
+  which is now less interesting for convergence (nothing fails to
+  converge) but would still say whether the posteriors are multi-modal. My
+  order: (iii) first, since a 50-90% misfit with every model agreeing
+  points at the forward model rather than at any IOP parameterization.
+  Fourth possibility worth naming: the 66% `out_of_scope` share says most
+  of these spectra are simply outside the family, and the honest next step
+  might be a turbid-water *forward* model rather than another `bbp` shape.
+
+- **Should the earlier GLORIA sweeps be re-run and their reports
+  regenerated?** `gloria_turbid_v3` is current, but `gloria_*` sweeps from
+  Tasks 7-10 and everything in `reports/gloria_fits_report.md` were
+  computed with the NaN weights, i.e. on the ~30% measured-uncertainty
+  subset without saying so. The report's *conclusions* (it's backscatter,
+  not CDOM/NAP) do not obviously change, but its numbers were drawn from a
+  biased subset. Re-run them, add a caveat note, or leave them as the
+  historical record?
+
 ## Logs
+
+### 2026-07-31 (Stage 6, Task 16: the GLORIA "convergence failure" was missing uncertainties)
+
+All four Task-15 answers implemented, plus the finding that reframes the
+GLORIA investigation. Suite **247 passed, 4 skipped**; `sphinx-build -W`
+green; the 100-spectrum sweep re-run through all three stages.
+
+#### THE FINDING: GLORIA's fits were never failing to converge
+
+I started on your answer (ii) — the turbid-robust initial guess — and while
+A/B-ing it against the old seed the failures turned out not to be optimizer
+failures at all. Every one raised
+
+```
+ValueError: Residuals are not finite in the initial point.
+```
+
+scipy's complaint that the *residual vector* at the starting point is
+non-finite. The fits never started. The cause:
+
+**70.5% of GLORIA spectra (5338 of 7572) quote no `Rrs` uncertainty at any
+band.** Only 29.2% (2208) have full coverage; 26 are partial. And the 5%
+error floor I added in Task 15 could not rescue them, because it was
+`np.maximum(sigma_measured, floor)` — and `np.maximum(nan, x)` is `nan`.
+The floor silently no-op'd on exactly the spectra that needed it most, so
+those records reached the fitter with an all-NaN variance vector and
+`curve_fit` refused the initial point. That is my bug from last task, and
+it is the whole of what we have been reading as a convergence problem
+since Task 8.
+
+The fix is one `np.where`: bands with no measured error take the floor
+outright. Effect, same 12 spectra × 4 algorithms, `maxfev=40000` both ways:
+
+| | convergence |
+|---|---|
+| before | 12 of 48 (25%) |
+| after | **48 of 48 (100%)** |
+
+and on the full 100-spectrum sweep, **0 of 400 fits failed** (was 18-20 of
+24). Two consequences worth stating plainly:
+
+- The `maxfev` work (bing Prompt 5, `TURBID_MAXFEV`) was treating a
+  symptom. It does help — it moved bing's own benchmark from 12.5% to
+  37.5% — but the residual failures it could not fix were all this.
+- Anything computed from GLORIA before this fix was computed on the
+  ~30% of spectra that happen to carry uncertainties, i.e. a biased
+  subset, and never announced itself as one.
+
+#### Your answer (ii): the turbid-robust initial guess
+
+Implemented as asked, and it is **not** the lever. `run.initial_guess`
+gained a per-spectrum turbid branch, chosen by `run.is_turbid` on QAA_v6's
+own switch (`Rrs(670) >= 0.0015` sr⁻¹, verified against the IOCCG QAA_v6
+document):
+
+- **Red anchor.** The old code assumed `a(670) ≈ a_w(670)`, the clear-water
+  simplification. The turbid branch adds QAA_v6's Step-2 empirical term,
+  `a_nw(670) = 0.39·[Rrs(670)/(Rrs(443)+Rrs(490))]^1.14`. This is not a
+  small correction in principle: on GID_6390 it gives `a_nw(670) = 1.15`
+  m⁻¹ against `a_w(670) = 0.44`, so neglecting it under-estimated the
+  anchor `bb` — and every amplitude seeded from it — by 3.6×.
+  (Note SeaDAS ships different coefficients for this step, 0.07 with an
+  `Rrs(670)/Rrs(440)` ratio; I used the IOCCG document's.)
+- **Exponent.** `bbNWPow.init_guess` returns a fixed `beta = 1` whatever
+  the spectrum looks like. The turbid branch seeds it from the QAA `Y`
+  already in `record.init`, which for turbid water is ≤ 0 — the flat/rising
+  shape. Applied only to the one-component `Pow`; `Pow2`/`Pow2Flat`
+  exponents are per-component and bing seeds them deliberately.
+- **Bounds.** The seed is now held `BOUND_INSET` inside the priors instead
+  of clipped onto them — a bounded solver has no direction to search from a
+  parameter pinned to its bound.
+
+On a clear spectrum the seed is byte-identical to the old one (tested), so
+L23/PANGAEA cannot move. On turbid GLORIA the converged solutions move by
+**less than 0.1%** — these fits are insensitive to their starting point. I
+kept the change: it removes a genuinely wrong assumption and the
+insensitivity is itself a result (it says the seed was not what was wrong),
+but it earns nothing on its own. Documented as such in `models.rst`.
+
+#### The 100-spectrum sweep
+
+`--n-sample 100`, four algorithms, χ², 400-750 nm, the 5% floor. One
+confound fixed first: `expb_pow` was the only spec without
+`TURBID_MAXFEV`, and at scipy's default it failed 72 of 100 while the
+turbid specs failed none — the contest was measuring the optimizer budget.
+Stage 1 now stamps the same budget on the baseline.
+
+Status split, **identical for all four algorithms**:
+
+| status | share |
+|---|---|
+| `ok` | 10% |
+| `poor_fit` | 24% |
+| `out_of_scope` | 66% |
+| `fit_failed` | **0%** |
+
+Paired χ²ᵥ on the 10 spectra all four solved:
+
+| | expb_pow | expb_powflex | expb_pow2flat | expb_pow2 |
+|---|---|---|---|---|
+| median χ²ᵥ | 2.91 | 2.55 | 2.92 | 2.72 |
+
+Per spectrum they track each other to ~0.01 except where all four are
+mediocre together (GID_4343: 3.27 / 2.49 / 3.28 / 2.81). **Task 15's
+conclusion survives on 4× the data and with every fit converging: the
+two-component backscattering models do not fix GLORIA.** `expb_powflex` —
+the same single power law with a wider prior — is if anything the best of
+the four, which says the same thing from the other side.
+
+What the misfit actually looks like, now that it can be measured: median
+|residual|/Rrs runs 0.04 to 0.93 across spectra. The worst are missed by
+~80-90%, matching `reports/gloria_fits_report.md`.
+
+#### Your answer (a): score `ok` rows only
+
+`metrics.SCORE_STATUSES = ('ok',)`, applied to every reduction — spectral
+accuracy, ref-band accuracy, derived scalars, wins, ΔBIC. `status` lives on
+`results_scalar` (one row per fit) so `_with_status` joins it onto the
+spectral table first. `score_statuses=records.STATUSES` scores everything,
+for when that is what you want.
+
+The statuses are reported as coverage on the `component='Rrs'` closure row,
+which is now grouped over **all attempted** rows: `n_attempted` plus one
+`frac_<status>` each. So an algorithm that solves nothing still appears,
+with its reasons, instead of vanishing. `leaderboard` carries `frac_ok`
+beside each rank and renders it; `tables.qc` gains the full breakdown.
+
+One thing this exposed: `frac_qc_fail` computed on the scored subset is
+identically **zero**, because `ok` *is* χ²ᵥ ≤ 5. A table reading "0% QC
+fail" beside 10% coverage would be a lie of omission, so `frac_qc_fail`
+now counts attempted fits (0.9, consistent with `frac_ok` 0.1).
+
+#### Your answer: `out_of_scope` confirmed
+
+No code change — `evaluate._fit_status` already implements exactly what you
+confirmed: the χ²ᵥ test comes **first**, so a turbid spectrum that is
+fitted well stays `ok`; the red-peak test (`RED_PEAK_NM = 560`) only
+chooses which *label* a bad fit gets. Both constants are one line each in
+`records.py`. Now documented in `models.rst` as a table.
+
+#### Also fixed / found
+
+- **`test_micro.py::test_fit_mcmc_accepts_string_obs_id` was flaky.** It
+  asserted `status == 'ok'` — i.e. χ²ᵥ ≤ 5 — from a deliberately tiny
+  120-step chain seeded off BING's *global* RNG, so it passed or failed on
+  test order. Its own docstring says "only completion matters"; it now
+  asserts that. It failed once in this session's runs before I fixed it.
+- **`test_turbid.py::test_lookup_before_opt_in_explains_itself` skipped
+  itself** when another test had already opted into the registry. It now
+  saves and restores the entries instead of skipping on order.
+- **`docs/source/datasets.rst` was wrong about GLORIA**, stating it "does
+  ship a per-band Rrs standard deviation, so it uses genuine `insitu`
+  weighting". Corrected, with the 29%/70% numbers and the tag table.
+- **Provenance now distinguishes imputed from floored.** A χ²ᵥ against a
+  wholly assumed 5% error is a different claim from one against a measured
+  error floored at 5%, so the tag is `insitu+imputed:0.05` in the first
+  case and `insitu+floor:0.05` in the second. Most of this sweep is the
+  former.
+
+#### Files touched
+
+`ioptics/noise.py` (the floor fix), `ioptics/run.py` (turbid seed +
+`is_turbid`/`_anw_anchor`/`_seed_bb_exponent`/`ANCHOR_NM`/
+`TURBID_RRS_ANCHOR`/`QAA_ANW_ANCHOR`/`BOUND_INSET`), `ioptics/metrics.py`
+(`SCORE_STATUSES`, `_with_status`, `_scored`, coverage block),
+`ioptics/report/leaderboard.py` (`_coverage`, `frac_ok`),
+`ioptics/report/tables.py` (qc breakdown),
+`runs/prototypes/gloria_turbid_v3/build_v3.py` (100 default, equal budget),
+`docs/source/{datasets,models}.rst`, tests
+(`test_noise` +5, `test_run` +5, `test_metrics` +3, `test_leaderboard` +1,
+`test_micro`/`test_turbid` repairs).
 
 ### 2026-07-30 (Stage 6, Task 15: statuses, noise floor, shape scalars, GLORIA sweep)
 

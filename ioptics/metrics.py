@@ -576,14 +576,23 @@ def _scalar_var_rows(scalar):
     return pd.DataFrame(out)
 
 
-def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX):
-    """metrics_scalar §2 closure rows (component='Rrs'), from **χ²ᵥ**.
+def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
+                  score_statuses=SCORE_STATUSES):
+    """metrics_scalar §2 closure + **coverage** rows (component='Rrs').
 
     Fit quality is the noise-weighted reduced χ²ᵥ (from ``run``/BING ``stats``):
     ``chi2_nu_median`` + the dof-scaled ``frac_good/overfit/underfit`` band, and
     ``frac_qc_fail`` = fraction of fits that are non-solutions (χ²ᵥ > ``qc_max``).
     The log-space Rrs MAE is intentionally **not** used here — it is ill-defined
     where ``Rrs`` crosses zero (see :data:`CHI2NU_QC_MAX`).
+
+    Unlike every other reduction, this one is grouped over **all** attempted
+    rows, so it is where an algorithm's *coverage* is reported: ``n_attempted``,
+    one ``frac_<status>`` per :data:`ioptics.records.STATUSES` value, and
+    ``frac_qc_fail``. The remaining χ²ᵥ columns are computed from the scored
+    subset (``score_statuses``) and describe ``n`` of those ``n_attempted``
+    spectra. An algorithm that fits nothing therefore still gets a row — with
+    ``frac_fit_failed = 1`` — rather than vanishing from the table.
     """
     out = []
     for kvals, g in scalar.groupby(_KEYS, sort=False):
@@ -592,6 +601,23 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX):
         row['ref_wave'] = np.nan
         row['ref_match'] = np.nan
         row['caveat'] = ''
+        # Coverage: over every attempted row in this group.
+        status = (g['status'] if 'status' in g else
+                  pd.Series(['ok'] * len(g), index=g.index)).to_numpy()
+        row['n_attempted'] = int(status.size)
+        for name in records.STATUSES:
+            row[f'frac_{name}'] = (float(np.mean(status == name))
+                                   if status.size else np.nan)
+        # frac_qc_fail keeps its original meaning -- the share of *attempted*
+        # fits that are non-solutions. Computed on the scored subset it would
+        # be identically zero, since 'ok' is *defined* by chi2_nu <= qc_max,
+        # and a table reading "0% QC fail" beside 10% coverage would be a lie
+        # of omission.
+        cn_all = g['chi2_nu'].to_numpy(dtype=float)
+        row['frac_qc_fail'] = (float(np.mean(cn_all > qc_max))
+                               if cn_all.size else np.nan)
+        # Closure: over the scored rows only -- these describe the solutions.
+        g = g[np.isin(status, list(score_statuses))]
         cn = g['chi2_nu'].to_numpy(dtype=float)
         dof = (g['n_bands'].to_numpy(dtype=float)
                - g['k'].to_numpy(dtype=float))
@@ -603,8 +629,6 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX):
         row['frac_good'] = float(np.mean(labels == 'good')) if nq else np.nan
         row['frac_overfit'] = float(np.mean(labels == 'overfit')) if nq else np.nan
         row['frac_underfit'] = float(np.mean(labels == 'underfit')) if nq else np.nan
-        row['frac_qc_fail'] = (float(np.mean(cn > qc_max))
-                               if nq else np.nan)   # χ²ᵥ non-solution
         out.append(row)
     return pd.DataFrame(out)
 
@@ -643,9 +667,37 @@ def _pairwise_metrics(ref, scalar, *, dbic_pair):
             else pd.DataFrame())
 
 
+_STATUS_KEYS = ['dataset', 'obs_id', 'algorithm', 'fit_method']
+
+
+def _with_status(spectral_df, scalar_df):
+    """Carry each row's ``status`` from the scalar table onto the spectral one.
+
+    ``status`` is a property of the *fit*, so it lives on ``results_scalar``
+    (one row per fit) while ``results_spectral`` holds many rows per fit.
+    Joining it across lets both tables be filtered by the same rule. Rows with
+    no matching scalar row (there should be none) are left ``'ok'`` so a join
+    slip cannot silently drop data.
+    """
+    if 'status' in spectral_df.columns or 'status' not in scalar_df.columns:
+        return spectral_df
+    out = spectral_df.merge(scalar_df[_STATUS_KEYS + ['status']],
+                            on=_STATUS_KEYS, how='left')
+    out['status'] = out['status'].fillna('ok')
+    return out
+
+
+def _scored(df, statuses):
+    """Rows whose ``status`` is scorable (everything, if there is no column)."""
+    if 'status' not in df.columns:
+        return df
+    return df[df['status'].isin(list(statuses))]
+
+
 def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
             ref_tol=REF_TOL, n_sigma=2.0, chi2nu_qc_max=CHI2NU_QC_MAX,
-            dbic_pair=('expb_pow', 'giop'), write=True):
+            dbic_pair=('expb_pow', 'giop'), score_statuses=SCORE_STATUSES,
+            write=True):
     """Score a sweep: read its results tables and emit the metrics tables.
 
     Reads ``runs/<sweep_id>/results_{spectral,scalar}.parquet`` via
@@ -663,12 +715,20 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
       derived-scalar accuracy (``Chl``/``a_cdom440``/``Sdg``, ``ref_wave`` NaN),
       and the §2 **closure** row (``component='Rrs'``: χ²ᵥ ``chi2_nu_median`` +
       ``frac_good/overfit/underfit`` + ``frac_qc_fail`` = fraction with
-      χ²ᵥ > ``chi2nu_qc_max``); accuracy metrics carry cross-algorithm ranks.
+      χ²ᵥ > ``chi2nu_qc_max``, plus the coverage block ``n_attempted`` +
+      ``frac_<status>``); accuracy metrics carry cross-algorithm ranks.
       GLORIA ``a_dg`` rows are flagged ``caveat``.
     - **metrics_pairwise** — §5 ``wins`` head-to-head per ``(dataset,
       fit_method, stratum, component, ref_wave)`` and the §3 ΔBIC contest
       (``dbic_pair``, default ``expb_pow`` vs ``giop``) per ``(dataset,
       fit_method, stratum)``.
+
+    **Only rows whose ``status`` is in ``score_statuses`` are scored**
+    (default :data:`SCORE_STATUSES`, i.e. ``'ok'`` alone). The rest are
+    reported as coverage on the closure row and otherwise excluded — a
+    ``poor_fit`` or ``fit_failed`` retrieval is not a solution, and averaging
+    one in makes each algorithm's number a median over its own private subset
+    of spectra. Pass ``score_statuses=records.STATUSES`` to score everything.
 
     Strata are Chl bins (:data:`CHL_BINS`) assigned from truth Chl where
     available (else retrieved); every reduction is emitted for ``stratum='all'``
@@ -676,13 +736,17 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
     :func:`ioptics.io.sweep_dir`. Returns a :class:`MetricsTables` namedtuple.
     """
     spectral_df, scalar_df = io.read_results(sweep_id, root=root)
+    spectral_df = _with_status(spectral_df, scalar_df)
 
     strata = _strata_map(scalar_df)
     spectral_df = spectral_df.merge(strata, on=['dataset', 'obs_id'], how='left')
     scalar_df = scalar_df.merge(strata, on=['dataset', 'obs_id'], how='left')
 
-    spec_scoped = _scoped(spectral_df)
-    scal_scoped = _scoped(scalar_df)
+    # Every reduction below scores solutions only; the closure row is the one
+    # exception (it reports the coverage of the rest), so it keeps the full frame.
+    scal_all = _scoped(scalar_df)
+    spec_scoped = _scored(_scoped(spectral_df), score_statuses)
+    scal_scoped = _scored(scal_all, score_statuses)
 
     # §1 accuracy needs a truth; Rrs_model/Rrs_obs (truth NaN) drop out here.
     acc_spec = spec_scoped[spec_scoped['component'].isin(ACCURACY_COMPONENTS)]
@@ -699,8 +763,9 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
             scalar_acc,
             by=('dataset', 'fit_method', 'stratum', 'component', 'ref_wave'))
 
-    closure = _closure_rows(scal_scoped, n_sigma=n_sigma,
-                            qc_max=chi2nu_qc_max)
+    closure = _closure_rows(scal_all, n_sigma=n_sigma,
+                            qc_max=chi2nu_qc_max,
+                            score_statuses=score_statuses)
 
     metrics_scalar = pd.concat(
         [df for df in (scalar_acc, closure) if not df.empty],

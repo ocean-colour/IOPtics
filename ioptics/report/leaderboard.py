@@ -10,7 +10,13 @@ for the site landing page.
 
 Default ranking (design Q23): **wins** first, then ``|bias|`` and log-space
 **MAE** at the reference wavelengths, per ``(dataset, component, ref_wave)``;
-MAE / bias / coverage ride along as adjacent columns. The GLORIA
+MAE / bias / coverage ride along as adjacent columns.
+
+The ranked numbers come from :mod:`ioptics.metrics`, which scores **solutions
+only** (``status == 'ok'``), so each entry also carries ``frac_ok`` — the share
+of attempted spectra that produced one. Read the two together: a top rank over
+10% of the spectra is not a better algorithm than a lower rank over all of
+them. The GLORIA
 ``CDOM_vs_adg`` **caveat** is folded through and shown in the rendered table, so
 the accumulated leaderboard surfaces the CDOM-vs-``a_dg`` truth-mapping mismatch
 on GLORIA ``a_dg`` rows.
@@ -59,8 +65,24 @@ def _version_stamp(sweep_dir):
         return ''
 
 
+def _coverage(ms):
+    """Per-(dataset, algorithm, stratum) coverage from the closure rows.
+
+    ``metrics`` scores only ``'ok'`` rows, so a leaderboard entry says nothing
+    about *how many* spectra an algorithm actually solved — which is half the
+    story when algorithms differ in what they can fit. The closure row carries
+    that: ``frac_ok`` over ``n_attempted`` spectra. Returns an empty frame if
+    the sweep predates the coverage block.
+    """
+    cov = ms[(ms['fit_method'] == 'chisq') & (ms['component'] == 'Rrs')]
+    cols = [c for c in ('frac_ok', 'n_attempted') if c in cov.columns]
+    if cov.empty or not cols:
+        return pd.DataFrame()
+    return cov[['dataset', 'algorithm', 'stratum'] + cols]
+
+
 def _fold_sweep(sweep_id, runs_root):
-    """Ref-band accuracy rows (+ win_frac + version) for one sweep, or ``None``.
+    """Ref-band accuracy rows (+ win_frac + coverage + version) for one sweep.
 
     Uses the χ² population at all strata (the shared, like-for-like set); returns
     ``None`` if the sweep has no ``metrics_scalar`` yet.
@@ -96,6 +118,9 @@ def _fold_sweep(sweep_id, runs_root):
                     how='left')
     if 'win_frac' not in out.columns:
         out['win_frac'] = float('nan')
+    cov = _coverage(ms)
+    if not cov.empty:
+        out = out.merge(cov, on=['dataset', 'algorithm', 'stratum'], how='left')
     out['versions'] = _version_stamp(d)
     return out
 
@@ -170,7 +195,8 @@ def render(board=None, *, runs_root=None, root=None, out=None, fmt='rst',
         df['caveat'] = df['caveat'].fillna('')
 
     cols = ['dataset', 'component', 'ref_wave', 'stratum', 'rank', 'algorithm',
-            'win_frac', 'bias', 'mae', 'coverage68', 'coverage95', 'caveat']
+            'win_frac', 'bias', 'mae', 'coverage68', 'coverage95', 'frac_ok',
+            'caveat']
     cols = [c for c in cols if c in df.columns]
 
     def _cell(v):

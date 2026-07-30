@@ -49,13 +49,17 @@ def test_turbid_not_in_standard_seed():
 
 def test_lookup_before_opt_in_explains_itself():
     # Whatever else happens, a config naming a turbid algorithm should not
-    # get a bare "unknown algorithm" with no way forward.
-    if 'expb_pow2flat' in registry.REGISTRY:            # pragma: no cover
-        pytest.skip('turbid algorithms already registered in this session')
-    with pytest.raises(KeyError) as exc:
-        registry.get('expb_pow2flat')
-    msg = str(exc.value)
-    assert 'register_turbid' in msg
+    # get a bare "unknown algorithm" with no way forward. The registry is
+    # module state that another test may already have opted in, so restore
+    # whatever was there rather than skipping on test order.
+    saved = {name: registry.REGISTRY.pop(name)
+             for name in TURBID_NAMES if name in registry.REGISTRY}
+    try:
+        with pytest.raises(KeyError) as exc:
+            registry.get('expb_pow2flat')
+        assert 'register_turbid' in str(exc.value)
+    finally:
+        registry.REGISTRY.update(saved)
 
 
 def test_register_turbid_adds_all_three(turbid_registered):

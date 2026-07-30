@@ -36,7 +36,9 @@ Two things differ from ``build_v2.py``:
 
 1. The turbid algorithms are **opt-in** (they would otherwise dilute the
    open-ocean leaderboard with near-duplicate rows), so stage 1 calls
-   ``registry.register_turbid()`` before running the sweep.
+   ``registry.register_turbid()`` before running the sweep — and gives the
+   ``expb_pow`` baseline the same ``maxfev``, so the four algorithms are
+   compared on the model rather than on the optimizer budget.
 2. GLORIA ids are strings (``'GID_1'``), so ``--obs-ids A:B`` is useless
    here. ``--n-sample N`` takes a deterministic even spread across the
    catalogue instead, which keeps clear and turbid spectra both represented.
@@ -45,7 +47,11 @@ Note the noise model: GLORIA's quoted per-band error is so tight that
 chi-squared is uninterpretable, so ``prep`` applies a 5% error **floor** for
 this dataset (tag ``'insitu+floor:0.05'``). Every number from this sweep is
 therefore an *inflated-noise* result — the floor makes chi-squared readable,
-it does not improve any fit.
+it does not improve any fit. And for ~70% of the catalogue the floor is the
+*only* uncertainty there is: those spectra quote none, so their weights are
+wholly imputed and the tag says ``'insitu+imputed:0.05'``. Before that case
+was handled they reached the fitter with all-NaN weights and could not be
+fit at all, which is what the earlier "convergence failure" on GLORIA was.
 
 ``run_v3.yaml`` beside this file is the source of truth. Paths derive from
 ``$OS_COLOR`` + the sweep id (see ``ioptics.io``).
@@ -59,9 +65,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, 'run_v3.yaml')
 
 #: Default number of GLORIA spectra to fit. The catalogue holds ~7.5k; a
-#: deterministic spread of a few dozen is enough to compare four algorithms
-#: across the clear-to-turbid range, and keeps a stage-1 run to minutes.
-DEFAULT_N_SAMPLE = 48
+#: deterministic spread of 100 compares four algorithms across the
+#: clear-to-turbid range with enough spectra to read a per-status rate off the
+#: result, while keeping a stage-1 run to ~tens of minutes. ``0`` runs all of
+#: them (hours).
+DEFAULT_N_SAMPLE = 100
 
 
 def sample_obs_ids(dataset='GLORIA', n_sample=DEFAULT_N_SAMPLE):
@@ -103,6 +111,8 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None,
     cfg = config.load(CONFIG)
 
     if flg == 1:
+        import dataclasses
+
         from ioptics.algorithms import registry
 
         # The turbid models are not in the standard seed; opt in before the
@@ -110,6 +120,15 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None,
         # optimizer budget (registry.TURBID_MAXFEV) onto their specs, without
         # which they run out of evaluations on a large share of spectra.
         registry.register_turbid()
+        # ... and the baseline needs the *same* budget, or the contest measures
+        # the budget instead of the model: on 100 GLORIA spectra expb_pow at
+        # scipy's default failed 72 of 100 while the turbid specs failed none.
+        # A raised budget governs whether a fit returns, not how well it fits,
+        # so equalizing it is what makes the comparison like-for-like.
+        base = registry.get('expb_pow')
+        registry.register(dataclasses.replace(base,
+                                              maxfev=registry.TURBID_MAXFEV),
+                          overwrite=True)
         if obs_ids is None:
             obs_ids = sample_obs_ids(cfg.datasets[0], n_sample)
         run.run_sweep(cfg, obs_ids=obs_ids, n_cores=n_cores, strict=strict)

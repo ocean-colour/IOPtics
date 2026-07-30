@@ -126,9 +126,13 @@ def test_fit_mcmc_accepts_string_obs_id():
     spec.mcmc.nsteps, spec.mcmc.nburn = 120, 30
 
     res = run.run_algorithm(spec, record, fit_method='mcmc')
-    assert res.status == 'ok'
+    # Completion, not quality: a 120-step chain seeded from BING's global-RNG
+    # walker init cannot be relied on to land inside the chi^2_nu <= 5 that
+    # 'ok' requires, so asserting 'ok' here made the test order-dependent.
+    assert res.status != 'fit_failed'
     assert res.obs_id == 'GID_str'                  # real id preserved on the result
     assert 'a' in res.components
+    assert np.all(np.isfinite(res.components['a'].med))
 
 
 @needs_l23

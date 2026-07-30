@@ -334,13 +334,15 @@ def _cf(values):
 
 
 def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
-               fit_method='chisq', rrs_factor=1.0, dataset='L23'):
+               fit_method='chisq', rrs_factor=1.0, dataset='L23',
+               status='ok'):
     """One (RetrievalResult, PreparedRecord) for the synthetic sweep.
 
     ``factor`` scales every retrieved value above truth (1.0 = perfect, 2.0 =
     2x over). ``rrs_factor`` scales the model Rrs above the observed Rrs.
     ``dataset`` names the source (defaults to ``'L23'``); pass ``'GLORIA'`` to
     exercise the CDOM-vs-a_dg caveat, ``'PANGAEA'`` for a genuine-``a_dg`` set.
+    ``status`` is the row's fit status — only ``'ok'`` rows are scored.
     """
     comps = {c: _cf(np.full(_WAVE.size, factor * b)) for c, b in _BASE.items()}
     comps['Rrs_model'] = _cf(rrs_factor * _RRS)
@@ -353,7 +355,7 @@ def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
                  'beta': (factor * 1.0, 0.1)},
         stats={'chi2': 10.0, 'chi2_nu': 1.0, 'AIC': 30.0, 'BIC': float(bic),
                'n_bands': 10, 'k': k},
-        status='ok', provenance_id='p',
+        status=status, provenance_id='p',
         chain_file=None if fit_method == 'chisq' else 'c.npz')
     truth = {c: _Spec(np.full(_WAVE.size, b)) for c, b in _BASE.items()}
     truth.update({'Chl': chl_truth, 'Sdg': 0.017})
@@ -458,6 +460,69 @@ def test_compute_strata_present(tmp_path):
     sc = _synthetic_sweep(tmp_path).scalar
     strata = set(sc['stratum'])
     assert {'all', 'oligotrophic', 'mesotrophic', 'eutrophic'} <= strata
+
+
+def _mixed_status_sweep(tmp_path, **kwargs):
+    """``expb_pow`` all-``ok`` vs ``giop`` never scorable, over 4 spectra.
+
+    ``giop``'s rows are 2x high, so if any of them reached the reductions its
+    ``mae`` would be 1.0 rather than absent — which is the whole point of the
+    filter: an unscorable row must not contribute a number.
+    """
+    bad = ['poor_fit', 'out_of_scope', 'fit_failed', 'poor_fit']
+    pairs = []
+    for obs_id in range(4):
+        pairs.append(_make_pair(obs_id, 'expb_pow', 1.0, 0.5, 10))
+        pairs.append(_make_pair(obs_id, 'giop', 2.0, 0.5, 15,
+                                status=bad[obs_id]))
+    io.write_results('sweep_s', pairs, root=tmp_path)
+    return metrics.compute('sweep_s', root=tmp_path, **kwargs)
+
+
+def test_scoring_skips_rows_that_are_not_solutions(tmp_path):
+    tables = _mixed_status_sweep(tmp_path)
+    for df in (tables.spectral, tables.scalar):
+        scored = df[df['component'] != 'Rrs']       # closure row covers all
+        assert set(scored['algorithm']) == {'expb_pow'}
+    # ... and with one algorithm left standing there is no contest to hold:
+    # a head-to-head against an unscorable opponent is not a win.
+    pw = tables.pairwise
+    assert pw.empty or 'contest' not in pw.columns \
+        or set(pw['algorithm']) == {'expb_pow'}
+
+
+def test_closure_row_reports_coverage_for_every_algorithm(tmp_path):
+    sc = _mixed_status_sweep(tmp_path).scalar
+    rrs = sc[(sc.stratum == 'all') & (sc.fit_method == 'chisq')
+             & (sc.component == 'Rrs')].set_index('algorithm')
+    # An algorithm that solved nothing still appears -- with its reasons.
+    assert 'giop' in rrs.index
+    assert rrs.loc['giop', 'n_attempted'] == 4
+    assert rrs.loc['giop', 'n'] == 0                 # nothing scored
+    assert np.isnan(rrs.loc['giop', 'chi2_nu_median'])
+    assert rrs.loc['giop', 'frac_ok'] == 0.0
+    assert np.isclose(rrs.loc['giop', 'frac_poor_fit'], 0.5)
+    assert np.isclose(rrs.loc['giop', 'frac_out_of_scope'], 0.25)
+    assert np.isclose(rrs.loc['giop', 'frac_fit_failed'], 0.25)
+    # and the healthy one reports full coverage
+    assert rrs.loc['expb_pow', 'frac_ok'] == 1.0
+    assert rrs.loc['expb_pow', 'n'] == 4
+    # frac_qc_fail counts *attempted* fits, not scored ones -- on the scored
+    # subset it would be identically zero, since 'ok' means chi2_nu <= qc_max.
+    assert rrs.loc['giop', 'frac_qc_fail'] == 0.0    # synthetic chi2_nu == 1
+
+
+def test_score_statuses_is_overridable(tmp_path):
+    # Scoring everything is a supported (documented) choice, so the filter has
+    # to be a parameter rather than a hard-wired rule.
+    from ioptics import records as rec_mod
+
+    sc = _mixed_status_sweep(
+        tmp_path, score_statuses=rec_mod.STATUSES).scalar
+    a440 = sc[(sc.stratum == 'all') & (sc.component == 'a')
+              & (sc.ref_wave == 440.0)].set_index('algorithm')
+    assert 'giop' in a440.index
+    assert np.isclose(a440.loc['giop', 'mae'], 1.0)   # the 2x-high rows are back
 
 
 def test_compute_parquet_roundtrip(tmp_path):

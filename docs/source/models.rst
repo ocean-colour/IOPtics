@@ -187,6 +187,77 @@ cosmetic: at scipy's default budget these models fail to converge on a
 substantial fraction of spectra. It governs *whether* a fit returns, not how
 well the model can fit.
 
+Seeding a turbid fit
+--------------------
+
+Every fit starts from :func:`ioptics.run.initial_guess`, a truth-free
+QAA-style band inversion of the observed :math:`R_{rs}`. It is anchored in the
+red (:data:`~ioptics.run.ANCHOR_NM`, 670 nm), where the water's own absorption
+dominates, and that anchor is read differently depending on the water — the
+branch chosen per spectrum by :func:`ioptics.run.is_turbid`, using QAA_v6's own
+switch :math:`R_{rs}(670) \ge 0.0015` sr\ :sup:`-1`:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 78
+
+   * - Branch
+     - Anchor
+   * - open ocean
+     - :math:`a(670) \approx a_w(670)`; non-water absorption in the red is
+       neglected, and the backscattering exponent takes BING's own seed.
+   * - turbid
+     - :math:`a(670) = a_w(670) + a_{nw}(670)` with QAA_v6's empirical red-band
+       term, and a *one-component* power law's exponent seeded from the QAA
+       :math:`Y` instead of a fixed :math:`\beta = 1`.
+
+The turbid term matters in principle: mineral-rich water can carry
+:math:`a_{nw}(670)` larger than :math:`a_w(670)` itself (a factor ~3.6 on the
+worst GLORIA spectrum measured), and neglecting it under-estimates the anchor
+:math:`b_b` — and every amplitude seeded from it — by that factor. In practice
+it moves the *converged* GLORIA solutions by less than 0.1%: these fits are
+insensitive to their starting point. The two-component exponents are
+deliberately left on BING's seeds, which are per-component and chosen for the
+MCMC walker spread.
+
+The seed is also held strictly *inside* the prior bounds
+(:data:`~ioptics.run.BOUND_INSET`) rather than clipped onto them, since a
+bounded solver has no direction to search from a parameter pinned to its bound.
+
+Fit status: what counts as a solution
+=====================================
+
+Every retrieval carries a ``status`` (:data:`ioptics.records.STATUSES`), and
+**only** ``'ok'`` rows are scored by :mod:`ioptics.metrics` — a leaderboard
+ranks solutions, and averaging in a failed fit makes each algorithm's number a
+median over its own private subset of spectra.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Status
+     - Meaning
+   * - ``ok``
+     - converged with :math:`\chi^2_\nu \le`
+       :data:`~ioptics.records.CHI2NU_POOR_FIT` (5). A turbid spectrum that
+       *is* fitted well is ``ok``: the regime alone never disqualifies a fit.
+   * - ``poor_fit``
+     - converged, but :math:`\chi^2_\nu` above that threshold — not a solution.
+   * - ``out_of_scope``
+     - a poor fit *explained by the regime*: the spectrum peaks redward of
+       :data:`~ioptics.records.RED_PEAK_NM` (560 nm), i.e. outside what this
+       model family is built for. "No algorithm here should be expected to
+       work" is a different finding from "this algorithm did badly".
+   * - ``fit_failed``
+     - no usable parameters (the optimizer raised, or returned non-finite).
+
+What is *not* scored is reported instead as **coverage**: the
+``component='Rrs'`` row of ``metrics_scalar`` carries ``n_attempted`` and one
+``frac_<status>`` per status, and the leaderboard carries ``frac_ok`` beside
+each rank. Read them together — a top rank over 10% of the spectra does not
+beat a lower rank over all of them.
+
 Fitting and how the two are judged
 ==================================
 
