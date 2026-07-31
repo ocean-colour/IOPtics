@@ -70,6 +70,42 @@ def test_from_chisq_assembles_result():
 
 
 @needs_l23
+def test_central_values_survive_a_useless_covariance():
+    """A near-singular ``cov`` must not corrupt the reported retrieval.
+
+    The least-squares draws come from ``MultivariateNormal(ans, cov)``, and the
+    two-component backscattering models routinely return covariances with
+    condition numbers of 1e10-1e15. Taking a median over the forward-modelled
+    draws then yields a curve tens of times away from the data (or NaN, once
+    the forward model overflows) while ``ans`` itself still fits — so central
+    values are read off the point estimate, not off the draws.
+    """
+    from bing.fitting import chisq_fit
+
+    from ioptics import prep, run
+    from ioptics.algorithms.spec import AlgorithmSpec
+
+    record = prep.prep_one('L23', 0, seed=1234)
+    spec = AlgorithmSpec.from_standard('expb_pow')
+    models, rt_dict, ans, cov = run.fit_chisq(spec, record)
+
+    best = np.asarray(chisq_fit.fit_func(None, *ans, models=models,
+                                         rt_dict=rt_dict)).ravel()
+    # 1e6x the fitted covariance: the draws become garbage, ``ans`` does not.
+    res = evaluate.from_chisq(spec, record, models, rt_dict, ans, cov * 1e6)
+
+    np.testing.assert_allclose(res.components['Rrs_model'].med, best, rtol=1e-8)
+    # and the reported parameters are the fitted ones, not a draw median
+    for i, pname in enumerate(list(models[0].pnames) + list(models[1].pnames)):
+        assert np.isclose(res.params[pname][0], ans[i])
+    # chi^2 from the persisted curve therefore matches the reported statistic
+    resid = (np.asarray(record.Rrs, float)
+             - res.components['Rrs_model'].med) ** 2
+    chi2 = float(np.sum(resid / np.asarray(record.varRrs, float)))
+    assert np.isclose(chi2, res.stats['chi2'], rtol=1e-6)
+
+
+@needs_l23
 def test_run_algorithm_end_to_end_returns_result():
     from ioptics import prep, run
     from ioptics.algorithms.spec import AlgorithmSpec

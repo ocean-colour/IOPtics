@@ -6,11 +6,13 @@ Tier-1 (data-independent) drives a synthetic adapter through ``prep_one`` /
 """
 
 import pickle
+import warnings
 
 import numpy as np
 import pytest
 
 from ioptics import datasets as D
+from ioptics import noise
 from ioptics import prep
 from ioptics.datasets import RawObs
 from ioptics.records import PreparedRecord
@@ -348,3 +350,82 @@ def test_prep_dataset_gloria_smoke():
         if 'a_dg' in r.truth:
             vals = r.truth['a_dg'].values
             assert np.isfinite(vals).sum() == 1
+
+
+@needs_gloria
+def test_prep_gloria_floor_can_be_turned_off_explicitly():
+    """``noise_floor=False`` is a different request from ``None``.
+
+    ``None`` means "apply the dataset's default"; ``False`` means "apply no
+    floor", which is what the analysis scripts need in order to study the
+    un-floored case at all. Without the distinction the default would silently
+    overwrite the very thing being measured.
+    """
+    ids = D.get_adapter('GLORIA').obs_ids()
+    default = prep.prep_one('GLORIA', ids[0])
+    raw = prep.prep_one('GLORIA', ids[0], noise_floor=False,
+                        noise_imputed=False)
+
+    assert default.noise_model.startswith('insitu+')
+    assert raw.noise_model == 'insitu'
+    # the floor only ever raises an uncertainty, so the raw weights are tighter
+    assert np.all(np.sqrt(raw.varRrs) <= np.sqrt(default.varRrs) + 1e-18)
+
+
+def _gloria_ids_without_errors():
+    """GLORIA ids whose spectra quote no measured std at any finite-Rrs band."""
+    _, _, rrs_all, std_all, ids = D.get_adapter('GLORIA')._load()
+    finite_rrs = np.isfinite(rrs_all)
+    n_std = (finite_rrs & np.isfinite(std_all)).sum(axis=0)
+    bare = np.flatnonzero(n_std == 0)
+    assert bare.size > 0, 'expected GLORIA spectra with no measured Rrs std'
+    return [ids[i] for i in bare]
+
+
+@needs_gloria
+def test_prep_gloria_without_measured_errors_is_usable():
+    """The 70% of GLORIA that quotes no uncertainty must still be fittable.
+
+    Weighted by an all-NaN variance those records cannot be fit at all (the
+    bounded solver rejects the initial point), so prep imputes -- and the
+    record's own provenance tag says so, because chi-squared then measures the
+    assumption as much as the model.
+    """
+    rec = prep.prep_one('GLORIA', _gloria_ids_without_errors()[0])
+
+    assert np.all(np.isfinite(rec.varRrs)) and np.all(rec.varRrs > 0)
+    assert rec.noise_model == f'insitu+imputed:{prep._GLORIA_IMPUTED_ERROR}'
+    assert noise.is_imputed(rec.noise_model)
+
+
+@needs_gloria
+def test_prep_dataset_warns_once_for_the_whole_batch():
+    """One warning per batch, carrying the count -- not one per record.
+
+    A per-record warning fires ~70 times on a 100-spectrum GLORIA sweep, and
+    under ``prep_dataset``'s process pool it is raised inside a worker where
+    nobody sees it. The count is the part a reader can act on.
+    """
+    bare = _gloria_ids_without_errors()[:3]
+    have = [i for i in D.get_adapter('GLORIA').obs_ids()
+            if i not in set(bare)][:2]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        recs = prep.prep_dataset('GLORIA', obs_ids=bare + have)
+
+    imputed = [w for w in caught
+               if issubclass(w.category, noise.ImputedUncertaintyWarning)]
+    assert len(imputed) == 1
+    msg = str(imputed[0].message)
+    assert f'{len(bare)} of {len(recs)}' in msg
+    assert 'may not be valid' in msg
+
+
+@needs_gloria
+def test_prep_dataset_is_quiet_when_everything_was_measured():
+    have = [i for i in D.get_adapter('GLORIA').obs_ids()
+            if i not in set(_gloria_ids_without_errors())][:3]
+    with warnings.catch_warnings():
+        warnings.simplefilter('error', noise.ImputedUncertaintyWarning)
+        prep.prep_dataset('GLORIA', obs_ids=have)

@@ -5,9 +5,12 @@ reproducibility of the seeded perturbation. The ``pace`` model is exercised
 under Tier-2 (it reads ocpy's PACE error table).
 """
 
+import warnings
+
 import numpy as np
 import pytest
 
+from ioptics import noise
 from ioptics.noise import attach_noise
 from ioptics.tests.conftest import needs_pace
 
@@ -94,6 +97,12 @@ def test_pace_model_native_grid():
 # --------------------------------------------------------------------
 # Inflated-noise floor (GLORIA's default; see prep._GLORIA_NOISE_FLOOR)
 # --------------------------------------------------------------------
+def _expected_floor(Rrs, frac):
+    """The two-part floor: ``frac * max(|Rrs|, median|Rrs|)`` per band."""
+    Rrs = np.abs(np.asarray(Rrs, dtype=float))
+    return frac * np.maximum(Rrs, np.median(Rrs))
+
+
 def test_floor_raises_tight_errors_only_where_needed():
     # GLORIA-like: a quoted error far tighter than any model's misfit.
     wave, Rrs = _synthetic()
@@ -103,16 +112,39 @@ def test_floor_raises_tight_errors_only_where_needed():
         floor_frac=0.05)
 
     sigma = np.sqrt(varRrs)
-    expected = np.maximum(measured, 0.05 * np.abs(Rrs_clean))
+    expected = np.maximum(measured, _expected_floor(Rrs_clean, 0.05))
     assert np.allclose(sigma, expected)
     # It is a max: never below the measured error, and strictly above it
-    # wherever 5% of Rrs is the larger of the two.
+    # wherever the floor is the larger of the two.
     assert np.all(sigma >= measured - 1e-15)
     assert np.any(sigma > measured)
-    # ... and where Rrs is small the measured error stays in charge
-    small = 0.05 * np.abs(Rrs_clean) < measured
+    # ... and where the floor is small the measured error stays in charge
+    small = _expected_floor(Rrs_clean, 0.05) < measured
     if small.any():
         assert np.allclose(sigma[small], measured[small])
+
+
+def test_absolute_floor_comes_from_the_other_bands():
+    # A purely fractional floor collapses to ~0 wherever Rrs does, which hands
+    # a dim band an enormous weight. The floor therefore never falls below the
+    # same fraction of the spectrum's own scale.
+    wave, Rrs = _synthetic()
+    Rrs = Rrs.copy()
+    Rrs[-1] = 1e-6                       # a near-dark band
+    varRrs, _, _, _, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False,
+        Rrs_err=np.full_like(Rrs, np.nan), floor_frac=0.05, impute_frac=0.05)
+
+    sigma = np.sqrt(varRrs)
+    scale = float(np.median(np.abs(Rrs)))
+    # the dark band is held at the spectrum's scale, not at its own value
+    assert np.isclose(sigma[-1], 0.05 * scale)
+    assert sigma[-1] > 0.05 * abs(Rrs[-1]) * 100
+    # the brightest band still uses its own value (fractional part governs)
+    bright = int(np.argmax(np.abs(Rrs)))
+    assert np.isclose(sigma[bright], 0.05 * abs(Rrs[bright]))
+    # every sigma is at least the absolute floor
+    assert np.all(sigma >= 0.05 * scale - 1e-18)
 
 
 def test_floor_labels_itself_in_the_tag():
@@ -168,12 +200,27 @@ def test_floor_fills_missing_errors_and_says_so():
     measured = np.full_like(Rrs, np.nan)        # nothing measured, anywhere
     varRrs, _, Rrs_clean, tag, _ = attach_noise(
         wave, Rrs, model='insitu', add_noise=False, Rrs_err=measured,
-        floor_frac=0.05)
+        floor_frac=0.05, impute_frac=0.10)
 
     assert np.all(np.isfinite(varRrs))
     assert np.all(varRrs > 0)
-    np.testing.assert_allclose(np.sqrt(varRrs), 0.05 * np.abs(Rrs_clean))
-    # Wholly imputed weights are a different claim from floored measured ones.
+    # Imputed bands use the wider impute_frac, not the floor fraction: an
+    # invented uncertainty is worth less than a measured one that was floored.
+    np.testing.assert_allclose(np.sqrt(varRrs),
+                               _expected_floor(Rrs_clean, 0.10))
+    # The tag is where a single record records the fact; the warning about it
+    # is raised once per batch, by prep_dataset.
+    assert tag == 'insitu+imputed:0.1'
+    assert noise.is_imputed(tag)
+
+
+def test_impute_frac_defaults_to_the_floor():
+    wave, Rrs = _synthetic()
+    varRrs, _, Rrs_clean, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False,
+        Rrs_err=np.full_like(Rrs, np.nan), floor_frac=0.05)
+    np.testing.assert_allclose(np.sqrt(varRrs),
+                               _expected_floor(Rrs_clean, 0.05))
     assert tag == 'insitu+imputed:0.05'
 
 
@@ -183,12 +230,35 @@ def test_floor_keeps_the_measured_errors_it_has():
     measured[::3] = np.nan                      # ... but absent every third band
     varRrs, _, Rrs_clean, tag, _ = attach_noise(
         wave, Rrs, model='insitu', add_noise=False, Rrs_err=measured,
-        floor_frac=0.05)
+        floor_frac=0.05, impute_frac=0.10)
 
     assert np.all(np.isfinite(varRrs))
     # Partly measured -> still 'floor', not 'imputed': something was measured.
     assert tag == 'insitu+floor:0.05'
-    np.testing.assert_allclose(np.sqrt(varRrs), 0.05 * np.abs(Rrs_clean))
+    assert not noise.is_imputed(tag)
+    sigma = np.sqrt(varRrs)
+    gap = ~np.isfinite(measured)
+    np.testing.assert_allclose(sigma[gap], _expected_floor(Rrs_clean, 0.10)[gap])
+    np.testing.assert_allclose(sigma[~gap], _expected_floor(Rrs_clean, 0.05)[~gap])
+
+
+def test_attach_noise_itself_does_not_warn():
+    # The warning belongs to the batch, not the band: warning here fires once
+    # per record (~70 times on a GLORIA sweep) and, under a process pool, from
+    # inside a worker where nobody sees it.
+    wave, Rrs = _synthetic()
+    with warnings.catch_warnings():
+        warnings.simplefilter('error', noise.ImputedUncertaintyWarning)
+        attach_noise(wave, Rrs, model='insitu', add_noise=False,
+                     Rrs_err=np.full_like(Rrs, np.nan), floor_frac=0.05,
+                     impute_frac=0.10)
+
+
+def test_bad_impute_frac_raises():
+    wave, Rrs = _synthetic()
+    with pytest.raises(ValueError, match='impute_frac'):
+        attach_noise(wave, Rrs, model='pct:0.05', add_noise=False,
+                     floor_frac=0.05, impute_frac=0.0)
 
 
 def test_floor_never_produces_a_zero_sigma():

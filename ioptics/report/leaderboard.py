@@ -71,11 +71,15 @@ def _coverage(ms):
     ``metrics`` scores only ``'ok'`` rows, so a leaderboard entry says nothing
     about *how many* spectra an algorithm actually solved — which is half the
     story when algorithms differ in what they can fit. The closure row carries
-    that: ``frac_ok`` over ``n_attempted`` spectra. Returns an empty frame if
-    the sweep predates the coverage block.
+    that: ``frac_ok`` over ``n_attempted`` spectra, plus ``frac_overfit`` (the
+    share of the solved ones that agree with the data *better* than its stated
+    uncertainty, which on an inflated-noise dataset is most of them) and the
+    noise-model-free ``rel_misfit_median_all``. Returns an empty frame if the
+    sweep predates the coverage block.
     """
     cov = ms[(ms['fit_method'] == 'chisq') & (ms['component'] == 'Rrs')]
-    cols = [c for c in ('frac_ok', 'n_attempted') if c in cov.columns]
+    cols = [c for c in ('frac_ok', 'n_attempted', 'frac_overfit',
+                        'rel_misfit_median_all') if c in cov.columns]
     if cov.empty or not cols:
         return pd.DataFrame()
     return cov[['dataset', 'algorithm', 'stratum'] + cols]
@@ -196,7 +200,7 @@ def render(board=None, *, runs_root=None, root=None, out=None, fmt='rst',
 
     cols = ['dataset', 'component', 'ref_wave', 'stratum', 'rank', 'algorithm',
             'win_frac', 'bias', 'mae', 'coverage68', 'coverage95', 'frac_ok',
-            'caveat']
+            'frac_overfit', 'rel_misfit_median_all', 'caveat']
     cols = [c for c in cols if c in df.columns]
 
     def _cell(v):

@@ -175,6 +175,10 @@ module/addition.
 
 16. **More yet** I have answered the Task 15 questions.  Please read those and proceed accordingly.  Log your work.  Use Fable if you can.
 
+17. **More yet** I have answered the Task 16 questions.  Please read those and proceed to rerun all of the GLORIA fits.  Log your work.  Use Fable if you can.
+
+18. **Finishing up** I have answered the Task 17 questions.  Please read those and act accordingly.  Log your work.  Use Fable if you can.  I will then submit a PR
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered — JXP answers before the next
@@ -656,6 +660,7 @@ module/addition.
   rest as `Rrs`-shape-only data. I lean (a): the imputed spectra are still
   the turbid ones we care about, and the tag makes honesty cheap. But it is
   a scientific call about what the numbers mean, so it is yours.
+>A. Let's adopt a 10% error for missing data for now, and warn the user that the results may not be valid.
 
 - **Near-zero and negative `Rrs` bands are over-weighted.** GLORIA spectra
   contain bands with `Rrs <= 0` (35 of 351 on GID_5691, 32 on GID_6390).
@@ -669,6 +674,7 @@ module/addition.
   choose (b) unilaterally because it de-weights the red tail, which is
   exactly where the turbid diagnostics live — it could make the misfit look
   better by hiding it. Which?
+>A. Adopt a minimum absolute error based on the other bands.
 
 - **What next, now that the seed and the backscattering form are both
   eliminated?** Two of your three candidates are answered: (ii) the seed
@@ -683,6 +689,7 @@ module/addition.
   Fourth possibility worth naming: the 66% `out_of_scope` share says most
   of these spectra are simply outside the family, and the honest next step
   might be a turbid-water *forward* model rather than another `bbp` shape.
+>A. I am working on the *forward* model in another project.  We will implement it when I am done.
 
 - **Should the earlier GLORIA sweeps be re-run and their reports
   regenerated?** `gloria_turbid_v3` is current, but `gloria_*` sweeps from
@@ -692,8 +699,300 @@ module/addition.
   not CDOM/NAP) do not obviously change, but its numbers were drawn from a
   biased subset. Re-run them, add a caveat note, or leave them as the
   historical record?
+>A. Yes, re-run everything.
+
+**Task 17 (re-ran everything; found the draw-median bug).**
+
+- **Should `expb_pow2` / `expb_pow2flat` stay registered at all?** On 100
+  GLORIA spectra with every fit converging they reproduce `expb_pow` to three
+  decimals in both χ²ᵥ and relative misfit, and their covariances are
+  numerically degenerate (condition numbers 1e10-1e15, which is what exposed
+  the draw-median bug). They cost a real maintenance surface — the
+  polymorphic `eval_bbnw` refactor, `log_params`, the shape-scalar plumbing,
+  `register_turbid`. Options: (a) keep them registered and documented as
+  "tried, does not help" — the negative result has value and the code is
+  written; (b) keep the BING models but drop the IOPtics registry entries;
+  (c) leave everything as-is and revisit once your forward model lands, since
+  a better forward model might finally give the extra `b_bp` freedom
+  something to do. I lean (c), then (a) — but you may not want three
+  algorithms in the registry that provably do nothing.
+>A. (c)
+
+- **Is `frac_ok` = 21% the number to put on the leaderboard for GLORIA?**
+  With the absolute floor in place, 21% of spectra reach χ²ᵥ ≤ 5 and 63% are
+  `out_of_scope`. But the solved ones now sit at χ²ᵥ ≈ 0.46, i.e. *overfit*
+  relative to the assumed error (`frac_overfit` = 0.57). So `ok` currently
+  means "the assumed 5-10% error is larger than the residuals", not "the fit
+  is good". Should the `ok` criterion gain a lower bound too (e.g. flag
+  χ²ᵥ < 0.5 as `overfit` rather than `ok`), or is a one-sided threshold
+  right and the overfit fraction sufficient as a separate column?
+>A.  A one-sided threshold is right and the overfit fraction sufficient as a separate column.
+
+- **Do you want a relative-misfit metric as a first-class column?** This task
+  needed it twice: χ²ᵥ moved by 5x when the floor changed while the fits did
+  not move at all, and the report's "~48%" was wrong for a reason χ² could
+  not reveal. `metrics` currently derives fit quality from χ²ᵥ only (the
+  log-space Rrs MAE was dropped in Stage 2 because Rrs crosses zero in the
+  red). A median \|resid\|/Rrs over the strictly-positive bands would be
+  noise-model-independent and is what I would trust first on turbid data.
+  Add it to `metrics_scalar`'s closure row?
+>A. Yes, add it to `metrics_scalar`'s closure row.
+
+- **Should the imputed-uncertainty warning fire once per sweep instead of
+  once per record?** A 100-spectrum GLORIA sweep now emits ~70 identical
+  `ImputedUncertaintyWarning`s (Python's default dedup collapses them, but
+  `prep_dataset` under a process pool does not). Per-record is the honest
+  granularity, but a summary at the `prep_dataset` / `run_sweep` level ("70
+  of 100 records have imputed weights") is what a reader would actually act
+  on. Keep both, or move to the summary?
+>A. Yes, once per sweep.
 
 ## Logs
+
+### 2026-07-31 (Stage 6, Task 18: relative misfit as a first-class metric; ready for PR)
+
+All four Task-17 answers implemented. Suite **260 passed, 4 skipped**;
+CI-equivalent (no `$OS_COLOR`) **226 passed, 38 skipped**; `sphinx-build -W`
+green. Stages 2-3 of `gloria_turbid_v3` re-run so the persisted metrics carry
+the new column.
+
+#### 1. Relative misfit on the closure row (your answer: yes)
+
+`metrics.rel_misfit(Rrs_model, Rrs_obs)` = `median(|M-O|/O)` over the bands
+where the *observation* is strictly positive — a median of ratios survives that
+restriction where the log-space MAE dropped in Stage 2 could not, because it
+needs only `O > 0`. It reduces onto the `component='Rrs'` row in two forms:
+
+- `rel_misfit_median` — over the scored (`ok`) fits;
+- `rel_misfit_median_all` — over **every attempted** fit.
+
+Both come from `results_spectral`'s existing `Rrs_model` / `Rrs_obs` rows, so
+it is a pure table reduction — no re-fitting.
+
+On GLORIA the pair immediately says something χ²ᵥ could not:
+
+| | expb_pow | expb_powflex | expb_pow2flat | expb_pow2 |
+|---|---|---|---|---|
+| χ²ᵥ median (solved) | 0.460 | 0.460 | 0.462 | 0.463 |
+| **rel. misfit (solved)** | **0.0545** | 0.0545 | 0.0545 | 0.0545 |
+| **rel. misfit (all 100)** | **0.5945** | 0.5952 | 0.5946 | 0.5949 |
+
+The 21% that solve fit to **5.4%** — genuinely well — while the population
+median is **59.5%**. χ²ᵥ 0.46 conflated those two facts into one
+uninterpretable number, since it is a statement about the assumed 5-10% error.
+This is now the metric I would read first on GLORIA, and it re-confirms the
+four algorithms are identical to three decimals on a measure that owes nothing
+to the noise model.
+
+Surfaced in `tables.qc` and on the leaderboard fold. Four tests, including one
+that re-scores the same fit against 100x looser weights and asserts the misfit
+does not move (with an honest note that the χ² half of that contrast cannot be
+tested on a fixture whose `chi2_nu` is a canned input — that evidence is the
+report's 247 → 122 → 30).
+
+#### 2. One-sided threshold (your answer: confirmed)
+
+No code change — `evaluate._fit_status` was already one-sided and
+`frac_overfit` already existed on the closure row. I did fold `frac_overfit`
+into the leaderboard beside `frac_ok`, since "sufficient as a separate column"
+only holds if the column is actually visible where the ranking is read. Now
+documented in `models.rst`: on this sweep χ²ᵥ ≈ 0.46 with `frac_overfit` =
+0.57, so `ok` means "the assumed error exceeds the residuals" — which is
+exactly the confusion the relative-misfit column resolves.
+
+#### 3. Warning once per sweep (your answer: yes)
+
+Moved out of `attach_noise` (per-record, ~70 times per GLORIA sweep, and raised
+inside process-pool workers where nobody sees it) into
+`prep._warn_if_imputed`, called once by `prep_dataset` with the count:
+*"GLORIA: 70 of 100 records have no measured Rrs uncertainty at any band..."*.
+It reads the records' own `noise_model` tags, which is what makes one warning
+possible at all across the pool. Added `noise.IMPUTED_TAG` and
+`noise.is_imputed()` so the test is not a scattered string literal. A bare
+`prep_one` no longer warns — the tag carries the fact, on the record and on
+every persisted row.
+
+#### 4. Turbid models stay (your answer: (c))
+
+No code change; the decision is now recorded where someone will hit it, as a
+note in `docs/source/models.rst`: tried on real turbid water, returns the
+*same* fit as the single power law (three decimals, both measures), retained so
+the comparison can be re-run against your forward model — which is where the
+extra `b_bp` freedom would finally have something to do.
+
+#### Ready for PR
+
+Nothing outstanding from Tasks 14-18. State of the branch: 260 tests pass with
+data present and 226 pass / 38 skip without it (so CI stays green regardless of
+the `$OS_COLOR` tree), docs build under `-W`, and `gloria_turbid_v3` is
+consistent end-to-end with the current code.
+
+Two things a reviewer should know, both already in the logs above but worth
+repeating here because they change what earlier numbers mean:
+
+- **`reports/gloria_fits_report.md` carries a Round-4 correction notice.** Its
+  Rounds 1-3 convergence rates (12.5-37.5%) and misfit (~48%) were artifacts of
+  a NaN-propagating error floor; the corrected figures are 100% and ~64%.
+- **Any GLORIA result predating Task 17 came from the ~30% of spectra that
+  quote an uncertainty**, and the turbid algorithms' spectral outputs predating
+  Task 17 were medians of degenerate covariance draws. Both are fixed; neither
+  changed a conclusion, but both changed numbers.
+
+#### Files touched
+
+`ioptics/metrics.py` (`rel_misfit`, `_rel_misfit_map`, `REL_MISFIT_COL`,
+closure-row columns), `ioptics/noise.py` (`IMPUTED_TAG`, `is_imputed`, warning
+removed), `ioptics/prep.py` (`_warn_if_imputed`),
+`ioptics/report/{tables,leaderboard}.py`, `docs/source/{models,datasets}.rst`,
+tests (`test_metrics` +4, `test_prep` +2 and one rewritten, `test_noise`
+updated), `gloria_turbid_v3` metrics/report artifacts.
+
+### 2026-07-31 (Stage 6, Task 17: re-run everything — and a second silent-corruption bug)
+
+All four Task-16 answers implemented, every GLORIA fit re-run, and the report
+corrected in place. Suite **254 passed, 4 skipped**; `sphinx-build -W` green.
+
+#### THE RESULT: with every fit converging, the four algorithms are identical
+
+`gloria_turbid_v3`, 100 spectra, four algorithms, all three stages re-run:
+
+| status | share (all four algorithms) |
+|---|---|
+| `ok` | 21% |
+| `poor_fit` | 16% |
+| `out_of_scope` | 63% |
+| `fit_failed` | **0%** |
+
+Paired on the 21 spectra all four solve, and — the number that settles it —
+the median relative misfit over all 100:
+
+| | expb_pow | expb_powflex | expb_pow2flat | expb_pow2 |
+|---|---|---|---|---|
+| median χ²ᵥ (paired) | 0.460 | 0.460 | 0.462 | 0.463 |
+| median \|resid\|/Rrs | 0.594 | 0.595 | 0.595 | 0.595 |
+
+Identical to three decimals on both measures. **The two-component
+backscattering models do not merely fail to help — they produce the same fit.**
+That is now established on 100 spectra with zero convergence failures and with
+the per-spectrum misfit reported directly rather than through χ², so it no
+longer depends on any noise assumption.
+
+The median GLORIA spectrum is missed by **59%**. The quartiles are 27% / 59% /
+85%, max 98%.
+
+#### The second bug: retrieved spectra were medians of garbage draws
+
+Found while checking the sweep, and worse than the first one. `evaluate`
+assembled every component (`a`, `bb`, `a_dg`, `bb_p`, `Rrs_model`) and every
+derived scalar as the **median over 1000 draws from
+`MultivariateNormal(ans, cov)`**. For the turbid models `cov` is
+catastrophically ill-conditioned — condition numbers **1e10 to 1e15** — so the
+draws explode and their median is not a fit at all:
+
+| algorithm | χ²ᵥ from `ans` | χ²ᵥ from the persisted `Rrs_model.med` |
+|---|---|---|
+| `expb_pow` (GID_239) | 12.0 | 42.8 |
+| `expb_pow2flat` (GID_1) | 60.0 | **1.6e6** |
+| `expb_pow2` (GID_1) | 60.1 | **NaN** |
+
+So every *spectral* number IOPtics persisted for the turbid algorithms was
+junk while `chi2_nu` — computed separately, from the point estimate — looked
+fine. It also explains the nonsensical `a_dg`(440) accuracy in the Task-16
+table (`expb_powflex` MAE 6.49 vs `expb_pow2flat` 1.31: noise, not signal).
+`expb_pow` was affected too, just less visibly (3-4x, not 1e6x).
+
+Fixed by making the rule explicit and uniform: **central values come from the
+point estimate, uncertainties from the samples.** The draws now supply only
+standard deviations and the 68/95 intervals. Verified: the persisted
+`Rrs_model` reproduces the point fit's χ² to 1e-6 for all four algorithms, and
+a regression test inflates `cov` by 1e6 and asserts the retrieval is unmoved.
+
+A median-of-draws is only a sound estimator when the draws are sound, and
+nothing was checking that they were.
+
+#### Your answer: 10% for missing data, with a warning
+
+`prep._GLORIA_IMPUTED_ERROR = 0.10`, separate from the 5% floor on measured
+errors, because an invented uncertainty deserves less confidence than a
+measured one that was merely floored. Distinguished everywhere:
+
+- tag `insitu+imputed:0.1` vs `insitu+floor:0.05`;
+- a new `noise.ImputedUncertaintyWarning` on every such record — *"fit weights
+  are imputed at 10% of the spectrum, so chi-squared and anything derived from
+  it may not be valid"*;
+- `docs/source/datasets.rst` carries the tag table and the 29%/70% split.
+
+#### Your answer: a minimum absolute error from the other bands
+
+The floor is now `f * max(|Rrs|, median|Rrs|)` — fractional in the bright
+bands, floored on the spectrum's own scale in the dim ones. Effect on the
+sweep: `ok` coverage 10% → **21%**, and median χ²ᵥ on the solved spectra falls
+to 0.46.
+
+Both numbers move for the reason you'd expect and I flagged last task: the
+dim red tail is de-weighted, so bands that were dominating χ² no longer do.
+Two honest consequences:
+
+- χ²ᵥ **0.46 < 1** means the assumed errors now exceed the residuals on the
+  spectra that fit (`frac_overfit` = 0.57). χ²ᵥ on GLORIA is now largely a
+  statement about the assumed 5-10%.
+- The **relative** misfit is unaffected by any of this — 59% median — which is
+  why I now report it alongside χ²ᵥ everywhere. The conclusion above rests on
+  it, not on χ².
+
+I also removed the duplication that caused the original bug: the floor exists
+once, as `noise.error_floor`, used by both `attach_noise` and
+`reports/scripts/gloria_fits_report.py`. The report script had its own copy
+with the same NaN flaw, which is precisely why its numbers were restricted to
+the measured-uncertainty subset.
+
+#### Your answer: re-run everything
+
+- **`gloria_turbid_v3`** — all three stages, results above.
+- **`reports/gloria_fits_report.py`** — re-run; all 11 figures regenerated.
+  The headline change:
+
+  | noise model | convergence | median χ²ᵥ | median rel. misfit |
+  |---|---|---|---|
+  | measured | 15/40 | 2.47e2 | 0.48 |
+  | 5% floor | **40/40** | 1.22e2 | **0.64** |
+  | 10% floor | **40/40** | 3.05e1 | **0.64** |
+
+  Rounds 1-3 said the floor leaves convergence "unchanged at 15/40" and the
+  misfit at "~48%". Both were artifacts of the NaN floor: convergence is
+  **100%**, and the misfit is **64%** — the fits are *worse* than the report
+  claimed, because the 25 excluded spectra are the harder, more turbid ones.
+  Note the 5% row's χ²ᵥ *rose* (72 → 122) for the same reason.
+- **`reports/gloria_fits_report.md`** — corrected in place, following its own
+  established pattern: a Round-4 correction notice at the top, the two wrong
+  numbers fixed where they appear, the `varRrs x100` row reinterpreted (100 ×
+  NaN is still NaN, so it could never have moved), the "genuine LM
+  non-convergence" framing in *Problem* qualified, and a follow-up note
+  recording that the richer backscattering it recommended was built and does
+  not close the gap.
+- The `gloria_*` sweeps from Tasks 7-10 no longer exist on disk (only
+  `gloria_turbid_v3` is under `runs/`), so there was nothing to re-run there;
+  the report was the surviving artifact.
+
+`prep_one` gained `noise_floor=False` (distinct from `None` = "use the
+default") so the report can still study the un-floored case at all — without
+it the new per-dataset default would have silently overwritten the very thing
+that section measures.
+
+#### Not done, by your instruction
+
+The **forward model** — you are developing it in another project, so I left it
+alone. It is the remaining suspect: four different `b_bp` parameterizations,
+one Gordon relation, one answer.
+
+#### Files touched
+
+`ioptics/noise.py` (`error_floor`, `ImputedUncertaintyWarning`, `impute_frac`),
+`ioptics/prep.py` (`_GLORIA_IMPUTED_ERROR`, `noise_imputed`, the `False`
+off-switch), `ioptics/evaluate.py` (point-estimate central values),
+`docs/source/datasets.rst`, `reports/gloria_fits_report.{md,py}` + 11 figures,
+`runs/prototypes/gloria_turbid_v3` artifacts, tests (`test_noise` +5,
+`test_prep` +2, `test_evaluate` +1).
 
 ### 2026-07-31 (Stage 6, Task 16: the GLORIA "convergence failure" was missing uncertainties)
 

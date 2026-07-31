@@ -157,12 +157,12 @@ GLORIA error floor
 
 Where GLORIA does quote an uncertainty it is far tighter than any model's
 misfit, which makes :math:`\chi^2_\nu` uninterpretable (thousands, not units).
-:mod:`ioptics.prep` therefore applies a **5% fractional error floor** to this
-dataset by default (``prep._GLORIA_NOISE_FLOOR``), i.e.
-:math:`\sigma \ge 0.05\,|R_{rs}|` at every band, filling in outright where
-nothing was measured. The floor makes :math:`\chi^2_\nu` readable; it does
-**not** improve any fit, so it announces itself in the record's
-``noise_model`` provenance tag:
+:mod:`ioptics.prep` therefore applies a **5% error floor** to this dataset by
+default (``prep._GLORIA_NOISE_FLOOR``), and where nothing was measured it
+**imputes at 10%** (``prep._GLORIA_IMPUTED_ERROR``) — an invented uncertainty
+earns less confidence than a measured one that was merely floored. The floor
+makes :math:`\chi^2_\nu` readable; it does **not** improve any fit, so it
+announces itself in the record's ``noise_model`` provenance tag:
 
 .. list-table::
    :header-rows: 1
@@ -174,9 +174,32 @@ nothing was measured. The floor makes :math:`\chi^2_\nu` readable; it does
      - measured errors, used as-is (no floor requested)
    * - ``insitu+floor:0.05``
      - at least one band had a measured error; the floor raised the tight ones
-   * - ``insitu+imputed:0.05``
-     - **nothing** was measured; every weight comes from the 5% assumption
+   * - ``insitu+imputed:0.1``
+     - **nothing** was measured; every weight comes from the 10% assumption
+       (test it with :func:`~ioptics.noise.is_imputed`)
 
 A :math:`\chi^2_\nu` computed against an imputed error is a statement about an
-assumed 5%, not about GLORIA's measured uncertainty — the two must not be
-pooled without saying so.
+assumed 10%, not about GLORIA's measured uncertainty — the two must not be
+pooled without saying so. **Results from imputed-uncertainty spectra may not be
+valid.** :func:`~ioptics.prep.prep_dataset` therefore raises
+:class:`~ioptics.noise.ImputedUncertaintyWarning` **once per batch**, carrying
+the count ("70 of 100 records..."): a per-record warning fires ~70 times on a
+GLORIA sweep and, under the process pool, from inside a worker where nobody
+sees it. The count is the part a reader can act on; the per-record fact lives
+in the tag.
+
+The floor has two parts, :math:`\sigma \ge f\cdot\max(|R_{rs}|,\,
+\mathrm{median}|R_{rs}|)`:
+
+- **fractional** — :math:`f\,|R_{rs}|`, the per-band relative error.
+- **absolute** — :math:`f\cdot\mathrm{median}|R_{rs}|`, derived from the
+  *other* bands of the same spectrum. A purely fractional floor collapses to
+  ~0 wherever :math:`R_{rs}` does, which hands a dim or negative band an
+  enormous weight: on GID_5691 the 35 bands with :math:`R_{rs}\le 0` carried
+  **78% of the entire** :math:`\chi^2` between them. Real instrument noise is
+  roughly constant in absolute terms, so the spectrum's own scale is the right
+  stand-in.
+
+The absolute part de-weights the dim red tail — where turbid diagnostics live
+— by design. It makes :math:`\chi^2` honest about which bands carry
+information; it does not make the misfit smaller.

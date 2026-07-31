@@ -168,6 +168,23 @@ one, and IOPtics exposes three algorithms built on it:
     *range* without adding a component, so a spectrum that ``expb_powflex``
     still cannot fit implicates the functional *form*.
 
+.. note::
+
+   **Tried on real turbid water; they do not help — retained deliberately.**
+   On 100 GLORIA spectra with every fit converging
+   (``runs/prototypes/gloria_turbid_v3``) all four algorithms reproduce each
+   other to three decimals in both reduced :math:`\chi^2_\nu` (0.460 / 0.463 /
+   0.462 / 0.460) and median relative misfit (0.594 / 0.595 / 0.595 / 0.595).
+   They do not merely fail to improve the fit — they return the *same* fit.
+   ``expb_powflex``, the control, says the same thing from the other side: the
+   prior *range* was never the constraint either.
+
+   The remaining suspect is the forward model. The Gordon relation is a
+   clear-water parameterization, and four different :math:`b_{bp}` shapes
+   through one forward model give one answer. These models are kept registered
+   so the comparison can be re-run against a turbid-water forward model, which
+   is where the extra freedom would finally have something to do.
+
 These are **not** registered by default — on open-ocean spectra they simply
 reproduce the single-power-law solution, so seeding them would fill the
 cross-algorithm leaderboard with near-duplicate rows. A turbid sweep opts
@@ -252,11 +269,21 @@ median over its own private subset of spectra.
    * - ``fit_failed``
      - no usable parameters (the optimizer raised, or returned non-finite).
 
+The threshold is deliberately **one-sided**. A fit that agrees with the data
+*better* than its stated uncertainty is still ``ok``; over-fitting is reported
+separately as ``frac_overfit`` rather than disqualifying the row. That
+distinction matters on an inflated-noise dataset, where a generous assumed
+error makes most solved fits formally over-fit: on the GLORIA turbid sweep
+:math:`\chi^2_\nu\approx0.46` and ``frac_overfit`` = 0.57, so ``ok`` there means
+"the assumed 5–10% error exceeds the residuals", which the relative misfit
+column keeps honest.
+
 What is *not* scored is reported instead as **coverage**: the
 ``component='Rrs'`` row of ``metrics_scalar`` carries ``n_attempted`` and one
-``frac_<status>`` per status, and the leaderboard carries ``frac_ok`` beside
-each rank. Read them together — a top rank over 10% of the spectra does not
-beat a lower rank over all of them.
+``frac_<status>`` per status, and the leaderboard carries ``frac_ok``,
+``frac_overfit`` and ``rel_misfit_median_all`` beside each rank. Read them
+together — a top rank over 10% of the spectra does not beat a lower rank over
+all of them.
 
 Fitting and how the two are judged
 ==================================
@@ -277,6 +304,29 @@ The **reduced** :math:`\chi^2_\nu` divides by the degrees of freedom
 (:math:`n` bands minus :math:`k` parameters): :math:`\chi^2_\nu\approx1` means the
 fit matches the data to within the noise, :math:`>1` under-fits, :math:`<1`
 over-fits.
+
+Because :math:`\chi^2_\nu` is weighted by :math:`\sigma`, it answers *"does the
+model agree with the data to within the stated uncertainty"* — and moves
+whenever that uncertainty is re-stated, even though the fit has not changed.
+The reports therefore carry a second, noise-model-free measure alongside it
+(:func:`~ioptics.metrics.rel_misfit`):
+
+.. math::
+
+   \text{rel. misfit} = \mathrm{median}_\lambda
+     \frac{\big|R_{rs}^{\text{model}}(\lambda)-R_{rs}^{\text{obs}}(\lambda)\big|}
+          {R_{rs}^{\text{obs}}(\lambda)},
+   \qquad R_{rs}^{\text{obs}}>0 .
+
+*"How far off is it, in fractions of the observation."* Read together the two
+separate a real misfit from a mis-stated error bar; either alone can mislead.
+On GLORIA, raising the assumed error floor moved :math:`\chi^2_\nu` by 5× while
+the relative misfit did not budge — the fits were identical, only the yardstick
+changed. It is restricted to bands with a strictly positive observation, since
+the ratio is meaningless where :math:`R_{rs}` crosses zero (as hyperspectral
+red tails routinely do). Both appear on the ``component='Rrs'`` closure row as
+``chi2_nu_median`` and ``rel_misfit_median`` / ``rel_misfit_median_all``, the
+latter over every attempted fit rather than only the solved ones.
 
 A better-fitting model is not automatically better — extra parameters can fit
 noise. The **Bayesian Information Criterion** penalizes complexity,

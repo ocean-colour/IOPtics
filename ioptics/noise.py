@@ -24,6 +24,8 @@ ocpy; nothing downstream of :mod:`ioptics.prep` imports it.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 
@@ -39,8 +41,72 @@ def _parse_pct(model):
     return frac
 
 
+#: Provenance-tag marker for wholly imputed fit weights.
+#:
+#: :func:`attach_noise` writes ``'<model>+imputed:<frac>'`` when ``impute_frac``
+#: had to supply the uncertainty for *every* band, because the dataset quoted
+#: none. It is a substring test rather than an equality test so it holds
+#: whatever fraction was used.
+IMPUTED_TAG = '+imputed:'
+
+
+class ImputedUncertaintyWarning(UserWarning):
+    """Some records' fit weights were **invented**, not measured.
+
+    Anything derived from such a fit — chi-squared above all — is a statement
+    about the assumed error as much as about the model, so it warns rather than
+    defaulting quietly. Raised **once per batch** by
+    :func:`ioptics.prep.prep_dataset` (and so once per sweep), with the count of
+    affected records: a per-record warning on a 100-spectrum GLORIA sweep fires
+    ~70 identical times, and the count is what a reader can act on anyway. A
+    single :func:`ioptics.prep.prep_one` does not warn — its
+    ``PreparedRecord.noise_model`` tag carries the fact (see
+    :data:`IMPUTED_TAG`), as does every persisted results row.
+    """
+
+
+def is_imputed(noise_model):
+    """Whether a ``noise_model`` provenance tag marks wholly imputed weights."""
+    return IMPUTED_TAG in str(noise_model)
+
+
+def error_floor(Rrs, frac):
+    """The two-part error floor, ``frac * max(|Rrs|, median|Rrs|)``.
+
+    The single implementation of the floor, shared by :func:`attach_noise` and
+    by the analysis scripts under ``reports/scripts`` — two copies of it is how
+    the two drifted apart in the first place.
+
+    - The **fractional** part, ``frac * |Rrs|``, is the per-band relative error.
+    - The **absolute** part, ``frac * median|Rrs|``, is derived from the *other*
+      bands of the same spectrum. A purely fractional floor collapses to ~0
+      wherever ``Rrs`` does, handing a dim or negative band an enormous weight;
+      real instrument noise is roughly constant in absolute terms, so the
+      spectrum's own scale is the right stand-in. It de-weights the dim red
+      tail on purpose: that makes chi-squared honest about which bands carry
+      information, not the misfit smaller.
+
+    Parameters
+    ----------
+    Rrs : numpy.ndarray
+        Reflectance spectrum (the un-perturbed one, where that distinction
+        applies). Non-finite entries are ignored in the median.
+    frac : float
+        Fraction to apply.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 1-sigma floor per band, same shape as ``Rrs``.
+    """
+    Rrs = np.abs(np.asarray(Rrs, dtype=float))
+    finite = Rrs[np.isfinite(Rrs)]
+    scale = float(np.median(finite)) if finite.size else 0.0
+    return float(frac) * np.maximum(Rrs, scale)
+
+
 def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
-                 Rrs_err=None, floor_frac=None):
+                 Rrs_err=None, floor_frac=None, impute_frac=None):
     """Build ``varRrs`` for a record and optionally perturb ``Rrs``.
 
     Parameters
@@ -63,11 +129,18 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
         ``model='insitu'``. Non-finite entries mean *no measured error at that
         band*, which only ``floor_frac`` can make usable.
     floor_frac : float or None, optional
-        Fractional **error floor**: raise each ``sigma`` to at least
-        ``floor_frac * |Rrs|``, and supply that value outright where no error
-        was measured. ``None`` (default) leaves the variance as the model gave
-        it. An inflated-noise result — it makes chi-squared interpretable
-        without improving any fit, so it is stamped on ``tag``.
+        Fractional **error floor** for bands that *were* measured: raise each
+        ``sigma`` to at least ``floor_frac * max(|Rrs|, median|Rrs|)``.
+        ``None`` (default) leaves the variance as the model gave it. An
+        inflated-noise result — it makes chi-squared interpretable without
+        improving any fit, so it is stamped on ``tag``.
+    impute_frac : float or None, optional
+        Fraction used where **nothing** was measured. Defaults to
+        ``floor_frac`` when omitted; set it larger to say that an invented
+        uncertainty deserves less confidence than a measured one that was
+        merely floored. Imputing every band stamps :data:`IMPUTED_TAG` on
+        ``tag``; the warning about it is raised once per batch, by
+        :func:`ioptics.prep.prep_dataset`.
 
     Returns
     -------
@@ -113,7 +186,7 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
             "(expected 'pace', 'insitu', or 'pct:X')")
 
     # --- optional error floor (inflated noise) ---
-    # sigma = max(sigma_measured, floor_frac * |Rrs|), elementwise: the same
+    # sigma = max(sigma_measured, floor), elementwise: the same
     # max-of-measured-or-fractional idea as the PANGAEA percentage fallback,
     # but applied *on top of* a measured error rather than instead of it. The
     # tag gains a '+floor:X' suffix so a result is never mistaken for one
@@ -121,32 +194,47 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
     # announce itself, because the floor makes chi-squared interpretable
     # without improving the fit.
     #
+    # The floor has two parts, ``frac * max(|Rrs|, median|Rrs|)``:
+    #
+    # * **fractional** -- ``frac * |Rrs|``, the per-band relative error.
+    # * **absolute** -- ``frac * median|Rrs|``, a floor derived from the
+    #   *other* bands of the same spectrum. A purely fractional floor
+    #   collapses to ~0 wherever ``Rrs`` does, handing a dim or negative band
+    #   an enormous weight: on GLORIA's GID_5691 the 35 bands with
+    #   ``Rrs <= 0`` carried **78% of the entire chi-squared** between them.
+    #   Real instrument noise is roughly constant in absolute terms, so the
+    #   spectrum's own scale is the right stand-in. Note the consequence:
+    #   this de-weights the dim red tail, which is where turbid diagnostics
+    #   live -- it makes chi-squared honest about which bands carry
+    #   information, not the misfit smaller.
+    #
     # Bands whose measured error is **missing** (non-finite) take the floor
-    # outright. This is not a detail: 70% of GLORIA spectra carry no measured
-    # ``Rrs`` uncertainty at any band, and a plain ``np.maximum`` propagates
-    # the NaN, so those records reach the fitter with all-NaN weights and the
-    # bounded least-squares solver refuses to start ("Residuals are not finite
-    # in the initial point") -- a data gap that reads as a convergence
-    # failure. Where **no** band had a measured error the weights are wholly
-    # imputed rather than floored, and the tag says so (``+imputed:X``): a
-    # chi-squared against an assumed 5% error is a different claim from one
-    # against a measured error that was floored at 5%.
+    # outright, at ``impute_frac``. This is not a detail: 70% of GLORIA
+    # spectra carry no measured ``Rrs`` uncertainty at any band, and a plain
+    # ``np.maximum`` propagates the NaN, so those records reach the fitter
+    # with all-NaN weights and the bounded least-squares solver refuses to
+    # start ("Residuals are not finite in the initial point") -- a data gap
+    # that reads as a convergence failure. Where **no** band had a measured
+    # error the weights are wholly imputed rather than floored and the tag says
+    # so (``+imputed:X``): a chi-squared against an assumed error is a
+    # different claim from one against a measured error that was floored.
+    # ``prep_dataset`` turns those tags into one warning per batch.
     if floor_frac is not None:
         frac = float(floor_frac)
         if frac <= 0:
             raise ValueError(f'floor_frac must be > 0, got {floor_frac!r}')
+        imp = frac if impute_frac is None else float(impute_frac)
+        if imp <= 0:
+            raise ValueError(f'impute_frac must be > 0, got {impute_frac!r}')
+
         sigma_meas = np.sqrt(varRrs)
         measured = np.isfinite(sigma_meas)
-        floor = frac * np.abs(Rrs_clean)
-        # A band with Rrs == 0 would floor to sigma = 0 (an infinite weight),
-        # so fall back there to the same fraction of the spectrum's own scale.
-        scale = np.abs(Rrs_clean[np.isfinite(Rrs_clean)])
-        scale = float(np.median(scale)) if scale.size else 0.0
-        floor = np.where(floor > 0, floor, frac * scale)
-        sigma = np.where(measured, np.maximum(sigma_meas, floor), floor)
+        sigma = np.where(measured,
+                         np.maximum(sigma_meas, error_floor(Rrs_clean, frac)),
+                         error_floor(Rrs_clean, imp))
         varRrs = sigma ** 2
-        tag = f'{tag}+floor:{frac}' if measured.any() \
-            else f'{tag}+imputed:{frac}'
+        tag = (f'{tag}+floor:{frac}' if measured.any()
+               else f'{tag}{IMPUTED_TAG}{imp}')
 
     # --- optional single noise realization ---
     if add_noise:

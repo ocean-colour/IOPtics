@@ -7,6 +7,8 @@ forms, the NaN-drop (intersection) rule, the Rrs dual-sided window, and the
 ΔBIC per-spectrum contest / CDF.
 """
 
+import dataclasses
+
 import numpy as np
 import pandas as pd
 
@@ -426,6 +428,72 @@ def test_compute_scalar_closure_and_ranks(tmp_path):
     assert a440.loc['expb_pow', 'ref_match'] == 440.0
     assert a440.loc['expb_pow', 'mae_rank'] == 1
     assert a440.loc['giop', 'mae_rank'] == 2
+
+
+def test_rel_misfit_is_a_median_of_ratios():
+    O = np.array([1.0, 2.0, 4.0, 10.0])
+    M = np.array([1.1, 2.4, 4.0, 10.0])          # 10%, 20%, 0, 0
+    assert np.isclose(metrics.rel_misfit(M, O), 0.05)   # median of 0,0,.1,.2
+    # perfect closure -> 0
+    assert metrics.rel_misfit(O, O) == 0.0
+
+
+def test_rel_misfit_skips_non_positive_observations():
+    # The ratio is meaningless where the observation crosses zero, which the
+    # red tail of a hyperspectral spectrum routinely does.
+    O = np.array([1.0, 0.0, -0.5, 2.0])
+    M = np.array([1.5, 5.0, 5.0, 2.0])
+    # only bands 0 and 3 count: ratios 0.5 and 0.0 -> median 0.25
+    assert np.isclose(metrics.rel_misfit(M, O), 0.25)
+    assert np.isnan(metrics.rel_misfit(np.array([1.0]), np.array([0.0])))
+    assert np.isnan(metrics.rel_misfit(np.array([np.nan]), np.array([1.0])))
+
+
+def test_rel_misfit_is_independent_of_the_noise_model(tmp_path):
+    """The point of the metric: re-stating the uncertainty must not move it.
+
+    chi2_nu is noise-weighted and moved by 5x on GLORIA when the assumed error
+    floor changed, while the fits themselves did not move at all. The relative
+    misfit is the number that stays put, so the two together separate a real
+    misfit from a mis-stated error bar.
+
+    Only the misfit side is asserted here: this fixture's ``chi2_nu`` is a
+    canned ``stats`` entry rather than something recomputed from ``varRrs``, so
+    varying the weights cannot move it. The χ² half of the contrast is on real
+    data in ``reports/gloria_fits_report.md`` (247 -> 122 -> 30 across floors,
+    misfit unchanged).
+    """
+    pairs = [_make_pair(0, 'expb_pow', 1.0, 0.5, 10, rrs_factor=1.5)]
+    io.write_results('sweep_r', pairs, root=tmp_path)
+    a = metrics.compute('sweep_r', root=tmp_path, write=False).scalar
+
+    # same fit, hundred-fold looser weights
+    rec = pairs[0][1]
+    pairs2 = [(pairs[0][0],
+               dataclasses.replace(rec, varRrs=rec.varRrs * 100.0))]
+    io.write_results('sweep_r2', pairs2, root=tmp_path)
+    b = metrics.compute('sweep_r2', root=tmp_path, write=False).scalar
+
+    def _closure(df, col):
+        row = df[(df.component == 'Rrs') & (df.stratum == 'all')]
+        return float(row[col].iloc[0])
+
+    # the model Rrs is 1.5x the observed everywhere -> 50% misfit, either way
+    for df in (a, b):
+        assert np.isclose(_closure(df, 'rel_misfit_median'), 0.5)
+        assert np.isclose(_closure(df, 'rel_misfit_median_all'), 0.5)
+
+
+def test_rel_misfit_all_covers_unscored_rows(tmp_path):
+    # The all-attempted figure is the honest one for a dataset most of whose
+    # spectra are not solutions -- it is what corrected the GLORIA report's
+    # headline misfit from 48% (fittable subset) to 64% (everything).
+    sc = _mixed_status_sweep(tmp_path).scalar
+    rrs = sc[(sc.stratum == 'all') & (sc.fit_method == 'chisq')
+             & (sc.component == 'Rrs')].set_index('algorithm')
+    # giop solved nothing, so it has no scored misfit but still has one overall
+    assert np.isnan(rrs.loc['giop', 'rel_misfit_median'])
+    assert np.isfinite(rrs.loc['giop', 'rel_misfit_median_all'])
 
 
 def test_closure_qc_from_chi2nu():

@@ -66,8 +66,9 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     """Per-algorithm QC summary: non-solution rate + §2 closure fractions.
 
     ``frac_not_ok`` is the fraction of ``results_scalar`` rows whose ``status``
-    is not ``'ok'`` (fit failures / QC flags), over all strata; the χ²ᵥ closure
-    fractions (``chi2_nu_median``, ``frac_good``, ``frac_overfit``,
+    is not ``'ok'`` (fit failures / QC flags), over all strata; the closure
+    columns (``chi2_nu_median``, the noise-model-free ``rel_misfit_median`` /
+    ``rel_misfit_median_all``, ``frac_good``, ``frac_overfit``,
     ``frac_underfit``, ``frac_qc_fail``) and the per-status **coverage** block
     (``n_attempted`` + one ``frac_<status>`` per
     :data:`ioptics.records.STATUSES`) come from the ``metrics_scalar``
@@ -87,6 +88,7 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     closure = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
                  & (ms['component'] == 'Rrs')]
     cols = [c for c in ('algorithm', 'n_attempted', 'n', 'chi2_nu_median',
+                        'rel_misfit_median', 'rel_misfit_median_all',
                         'frac_good', 'frac_overfit', 'frac_underfit',
                         'frac_qc_fail')
             + tuple(f'frac_{s}' for s in records.STATUSES)

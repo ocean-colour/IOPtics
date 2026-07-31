@@ -27,12 +27,25 @@ from ioptics.records import (CHI2NU_POOR_FIT, RED_PEAK_NM,
 _SPECTRAL = ('a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'Rrs_model')
 
 
-def _component_fit(wave, samples, perc):
-    """Build a :class:`ComponentFit` from ``(n_samples, n_wave)`` draws."""
+def _component_fit(wave, samples, perc, point=None):
+    """Build a :class:`ComponentFit` from ``(n_samples, n_wave)`` draws.
+
+    ``point``, when given, supplies ``med`` — the curve evaluated at the fit's
+    **point estimate** — and the draws are used only for the intervals. That
+    split matters for the least-squares path: its draws come from
+    ``MultivariateNormal(ans, cov)``, and a near-singular ``cov`` (routine for
+    the two-component backscattering models, condition numbers of
+    1e10--1e15) throws samples so far from ``ans`` that the median of the
+    *forward-modelled* draws is meaningless — off by ~80x, or NaN once the
+    forward model overflows — while ``ans`` itself is a perfectly good fit.
+    A median-of-draws is only a sound estimator when the draws are sound.
+    """
     (lo1, hi1), (lo2, hi2) = perc
+    med = (np.median(samples, axis=0) if point is None
+           else np.asarray(point, dtype=float).ravel())
     return ComponentFit(
         wave=np.asarray(wave, dtype=float),
-        med=np.median(samples, axis=0),
+        med=med,
         lo68=np.percentile(samples, lo1, axis=0),
         hi68=np.percentile(samples, hi1, axis=0),
         lo95=np.percentile(samples, lo2, axis=0),
@@ -119,7 +132,15 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     Shared by both fit methods so χ² (covariance draws) and MCMC (chain) yield
     identically-assembled components, params, scalars, and stats. ``aparams`` /
     ``bparams`` are ``(n_samples, nparam)`` draws; ``point_params`` is the
-    point-estimate parameter vector used for the fit statistics.
+    point-estimate parameter vector.
+
+    **Central values come from the point estimate, uncertainties from the
+    samples.** Every ``med``, every fitted parameter value, every derived
+    scalar is the quantity evaluated at ``point_params``; the draws contribute
+    only standard deviations and the 68/95 intervals. The alternative — a
+    median over the forward-modelled draws — silently fails whenever the draws
+    are unreliable, which for a least-squares fit means whenever ``cov`` is
+    near-singular (see :func:`_component_fit`).
     """
     from bing.evaluate import calc_Rrs_from_models
     from bing import stats as bing_stats
@@ -135,20 +156,36 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     bb_p_s = models[1].eval_bbnw(bparams)
     arrays = {'a': a_s, 'bb': bb_s, 'a_ph': a_ph_s, 'a_dg': a_dg_s,
               'bb_p': bb_p_s, 'Rrs_model': Rrs_s}
-    components = {key: _component_fit(record.wave, arrays[key], perc)
+
+    # The same curves at the **point estimate**. Every central value below is
+    # taken from these; the samples supply only spreads and intervals. See
+    # :func:`_component_fit` for why a median over the draws will not do.
+    pp = np.atleast_2d(np.asarray(point_params, dtype=float))   # (1, k)
+    Rrs_pt, a_pt, bb_pt = calc_Rrs_from_models(
+        models[0], pp[:, :na], models[1], pp[:, na:], rt_dict, full_return=True)
+    a_dg_pt, a_ph_pt = models[0].eval_anw(pp[:, :na], retsub_comps=True)
+    bb_p_pt = models[1].eval_bbnw(pp[:, na:])
+    points = {'a': a_pt, 'bb': bb_pt, 'a_ph': a_ph_pt, 'a_dg': a_dg_pt,
+              'bb_p': bb_p_pt, 'Rrs_model': Rrs_pt}
+
+    components = {key: _component_fit(record.wave, arrays[key], perc,
+                                      point=points[key])
                   for key in _SPECTRAL}
 
-    # Fit parameters: sample median + 1-sigma (fit space; log10 for amplitudes).
+    # Fit parameters: point estimate + sample 1-sigma (fit space; log10 for
+    # amplitudes).
     samples = np.concatenate([np.atleast_2d(aparams), np.atleast_2d(bparams)],
                              axis=1)
     pnames = list(models[0].pnames) + list(models[1].pnames)
-    med, std = np.median(samples, axis=0), np.std(samples, axis=0)
-    params = {pn: (float(med[i]), float(std[i])) for i, pn in enumerate(pnames)}
+    pvals, std = pp.ravel(), np.std(samples, axis=0)
+    params = {pn: (float(pvals[i]), float(std[i]))
+              for i, pn in enumerate(pnames)}
 
     # Derived scalars.
     i440 = int(np.argmin(np.abs(record.wave - 440.0)))
     adg440 = np.asarray(a_dg_s)[:, i440]
-    scalars = {'a_cdom440': (float(np.median(adg440)), float(np.std(adg440)))}
+    scalars = {'a_cdom440': (float(np.ravel(a_dg_pt)[i440]),
+                             float(np.std(adg440)))}
     # Promote the model's shape parameters (its linear-space ones). For the
     # open-ocean models this is exactly Sdg and beta, as before.
     for key in _shape_param_names(models):
@@ -156,9 +193,6 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
             scalars[key] = params[key]
 
     # Fit statistics at the point estimate (on the native variable-Gordon model).
-    pp = np.atleast_2d(np.asarray(point_params, dtype=float))   # (1, k)
-    Rrs_pt = calc_Rrs_from_models(models[0], pp[:, :na], models[1], pp[:, na:],
-                                  rt_dict, full_return=True)[0]
     Rrs_pt = np.atleast_1d(np.squeeze(np.asarray(Rrs_pt, dtype=float)))
     sigma = np.sqrt(np.asarray(record.varRrs, dtype=float))
     chi2 = float(bing_stats.calc_chisq(Rrs_pt,

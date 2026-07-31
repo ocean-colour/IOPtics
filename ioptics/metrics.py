@@ -161,6 +161,40 @@ CHI2NU_QC_MAX = records.CHI2NU_POOR_FIT
 SCORE_STATUSES = ('ok',)
 
 
+def rel_misfit(Rrs_model, Rrs_obs):
+    """Median absolute **relative** misfit, ``median(|M - O| / O)``.
+
+    The one fit-quality number that owes nothing to the noise model: it is a
+    direct statement about how far the model spectrum sits from the observed
+    one, in fractions of the observation. That independence is the point.
+    Reduced χ²ᵥ moved by 5x on GLORIA when the assumed error floor changed
+    while the fits themselves did not move at all, and the GLORIA report's
+    headline misfit was wrong by a third for a reason χ² could not reveal
+    (``reports/gloria_fits_report.md``, Round-4 notice) — on data whose quoted
+    uncertainties are absent or untrustworthy, this is the number to read
+    first.
+
+    Restricted to bands where ``Rrs_obs`` is **strictly positive** and both
+    values are finite: the ratio is meaningless where the observation crosses
+    zero, which hyperspectral red tails routinely do. (That is also why the
+    log-space Rrs MAE was dropped from the closure row in Stage 2 — but a
+    median of ratios survives the restriction where a log does not, because it
+    needs only the *observation* to be positive.)
+
+    Returns ``np.nan`` if no band qualifies.
+    """
+    M = np.asarray(Rrs_model, dtype=float).ravel()
+    O = np.asarray(Rrs_obs, dtype=float).ravel()
+    if M.shape != O.shape:
+        raise ValueError(
+            f"Rrs_model and Rrs_obs must have the same shape; "
+            f"got {M.shape} and {O.shape}")
+    keep = np.isfinite(M) & np.isfinite(O) & (O > 0)
+    if not keep.any():
+        return np.nan
+    return float(np.median(np.abs(M[keep] - O[keep]) / O[keep]))
+
+
 def chi2nu_quality(chi2_nu, dof, *, n_sigma=2.0):
     """Headline single-fit flag from reduced χ²ᵥ, with a dof-scaled good band.
 
@@ -588,11 +622,19 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
 
     Unlike every other reduction, this one is grouped over **all** attempted
     rows, so it is where an algorithm's *coverage* is reported: ``n_attempted``,
-    one ``frac_<status>`` per :data:`ioptics.records.STATUSES` value, and
-    ``frac_qc_fail``. The remaining χ²ᵥ columns are computed from the scored
-    subset (``score_statuses``) and describe ``n`` of those ``n_attempted``
-    spectra. An algorithm that fits nothing therefore still gets a row — with
-    ``frac_fit_failed = 1`` — rather than vanishing from the table.
+    one ``frac_<status>`` per :data:`ioptics.records.STATUSES` value,
+    ``frac_qc_fail`` and ``rel_misfit_median_all``. The remaining columns are
+    computed from the scored subset (``score_statuses``) and describe ``n`` of
+    those ``n_attempted`` spectra. An algorithm that fits nothing therefore
+    still gets a row — with ``frac_fit_failed = 1`` — rather than vanishing
+    from the table.
+
+    Note the pairing of the two fit-quality measures. ``chi2_nu_median`` is
+    noise-weighted, so it answers "does the model agree with the data to within
+    the stated uncertainty" and moves whenever that uncertainty is re-stated.
+    ``rel_misfit_median`` answers "how far off is it, in fractions of the
+    observation" and does not. Read together they separate a misfit from a
+    mis-stated error bar; either alone can mislead.
     """
     out = []
     for kvals, g in scalar.groupby(_KEYS, sort=False):
@@ -616,6 +658,15 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
         cn_all = g['chi2_nu'].to_numpy(dtype=float)
         row['frac_qc_fail'] = (float(np.mean(cn_all > qc_max))
                                if cn_all.size else np.nan)
+        # Relative misfit, reported over **all attempted** fits as well as over
+        # the scored ones. Unlike chi-squared it needs no noise model, so it is
+        # the one closure number that stays comparable when the assumed error
+        # changes -- and the all-attempted figure is the honest one for a
+        # dataset most of whose spectra are not solutions.
+        if REL_MISFIT_COL in g:
+            rm_all = g[REL_MISFIT_COL].to_numpy(dtype=float)
+            row['rel_misfit_median_all'] = (float(np.nanmedian(rm_all))
+                                            if rm_all.size else np.nan)
         # Closure: over the scored rows only -- these describe the solutions.
         g = g[np.isin(status, list(score_statuses))]
         cn = g['chi2_nu'].to_numpy(dtype=float)
@@ -629,6 +680,10 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
         row['frac_good'] = float(np.mean(labels == 'good')) if nq else np.nan
         row['frac_overfit'] = float(np.mean(labels == 'overfit')) if nq else np.nan
         row['frac_underfit'] = float(np.mean(labels == 'underfit')) if nq else np.nan
+        if REL_MISFIT_COL in g:
+            rm = g[REL_MISFIT_COL].to_numpy(dtype=float)
+            row['rel_misfit_median'] = (float(np.nanmedian(rm)) if rm.size
+                                        else np.nan)
         out.append(row)
     return pd.DataFrame(out)
 
@@ -694,6 +749,35 @@ def _scored(df, statuses):
     return df[df['status'].isin(list(statuses))]
 
 
+REL_MISFIT_COL = 'rel_misfit'
+
+
+def _rel_misfit_map(spectral_df):
+    """Per-fit :func:`rel_misfit` from the ``Rrs_model`` / ``Rrs_obs`` rows.
+
+    Both live in ``results_spectral`` (``Rrs_obs`` is the observation the fit
+    saw, carried there precisely so closure can be scored without re-reading
+    the dataset), so this is a pure table reduction. Returns a frame keyed by
+    :data:`_STATUS_KEYS` with one :data:`REL_MISFIT_COL` column; empty if the
+    sweep predates ``Rrs_obs``.
+    """
+    need = {'Rrs_model', 'Rrs_obs'}
+    if not need <= set(spectral_df.get('component', pd.Series(dtype=str))):
+        return pd.DataFrame()
+    cols = _STATUS_KEYS + ['wavelength', 'value']
+    mod = spectral_df[spectral_df['component'] == 'Rrs_model'][cols]
+    obs = (spectral_df[spectral_df['component'] == 'Rrs_obs'][cols]
+           .rename(columns={'value': 'obs'}))
+    both = mod.merge(obs, on=_STATUS_KEYS + ['wavelength'])
+    rows = []
+    for kvals, g in both.groupby(_STATUS_KEYS, sort=False):
+        row = dict(zip(_STATUS_KEYS, kvals))
+        row[REL_MISFIT_COL] = rel_misfit(g['value'].to_numpy(dtype=float),
+                                         g['obs'].to_numpy(dtype=float))
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
             ref_tol=REF_TOL, n_sigma=2.0, chi2nu_qc_max=CHI2NU_QC_MAX,
             dbic_pair=('expb_pow', 'giop'), score_statuses=SCORE_STATUSES,
@@ -715,9 +799,10 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
       derived-scalar accuracy (``Chl``/``a_cdom440``/``Sdg``, ``ref_wave`` NaN),
       and the §2 **closure** row (``component='Rrs'``: χ²ᵥ ``chi2_nu_median`` +
       ``frac_good/overfit/underfit`` + ``frac_qc_fail`` = fraction with
-      χ²ᵥ > ``chi2nu_qc_max``, plus the coverage block ``n_attempted`` +
-      ``frac_<status>``); accuracy metrics carry cross-algorithm ranks.
-      GLORIA ``a_dg`` rows are flagged ``caveat``.
+      χ²ᵥ > ``chi2nu_qc_max``, the noise-model-free ``rel_misfit_median`` /
+      ``rel_misfit_median_all`` (:func:`rel_misfit`), plus the coverage block
+      ``n_attempted`` + ``frac_<status>``); accuracy metrics carry
+      cross-algorithm ranks. GLORIA ``a_dg`` rows are flagged ``caveat``.
     - **metrics_pairwise** — §5 ``wins`` head-to-head per ``(dataset,
       fit_method, stratum, component, ref_wave)`` and the §3 ΔBIC contest
       (``dbic_pair``, default ``expb_pow`` vs ``giop``) per ``(dataset,
@@ -737,6 +822,12 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
     """
     spectral_df, scalar_df = io.read_results(sweep_id, root=root)
     spectral_df = _with_status(spectral_df, scalar_df)
+
+    # Per-fit relative misfit rides along on the scalar frame, so the closure
+    # row can reduce it exactly like chi^2 (per key, scored and attempted).
+    rm = _rel_misfit_map(spectral_df)
+    if not rm.empty:
+        scalar_df = scalar_df.merge(rm, on=_STATUS_KEYS, how='left')
 
     strata = _strata_map(scalar_df)
     spectral_df = spectral_df.merge(strata, on=['dataset', 'obs_id'], how='left')

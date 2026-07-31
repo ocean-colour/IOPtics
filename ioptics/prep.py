@@ -26,8 +26,11 @@ provenance and reports show the model that was actually applied.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
+from ioptics import noise
 from ioptics.datasets import get_adapter
 from ioptics.noise import attach_noise
 from ioptics.records import PreparedRecord
@@ -48,6 +51,14 @@ _INSITU_PCT_FALLBACK = 0.05
 # It is applied as a **per-dataset default for GLORIA only**; the resulting
 # noise_model tag says so ('insitu+floor:0.05').
 _GLORIA_NOISE_FLOOR = 0.05
+
+# ... but only 29% of GLORIA spectra quote an uncertainty at all: 70% quote
+# none at any band, and those weights have to be invented outright. An invented
+# error deserves less confidence than a measured one that was merely floored,
+# so imputation uses a **wider** fraction, and the tag records which happened
+# ('insitu+imputed:0.1' vs 'insitu+floor:0.05'). Every such record also raises
+# ``noise.ImputedUncertaintyWarning``: results from those fits may not be valid.
+_GLORIA_IMPUTED_ERROR = 0.10
 
 
 def _is_gloria(dataset):
@@ -147,7 +158,8 @@ def _init_from_rrs(wave, Rrs):
 
 
 def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
-             wv_min=None, wv_max=None, noise_floor=None, **load_opts):
+             wv_min=None, wv_max=None, noise_floor=None, noise_imputed=None,
+             **load_opts):
     """Prepare one observation into a :class:`~ioptics.records.PreparedRecord`.
 
     Loads the observation on its native grid via the dataset adapter, optionally
@@ -173,6 +185,16 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         RNG seed for the perturbation (recorded in ``noise_seed``).
     wv_min, wv_max : float or None, optional
         Optional native-grid wavelength trim.
+    noise_floor : float, False or None, optional
+        Fractional error floor (:func:`ioptics.noise.attach_noise`
+        ``floor_frac``). ``None`` applies the dataset's default — GLORIA's
+        ``_GLORIA_NOISE_FLOOR``, nothing elsewhere; ``False`` applies **no**
+        floor even where a default exists.
+    noise_imputed : float, False or None, optional
+        Fraction used where the dataset measured no uncertainty at all
+        (``impute_frac``). ``None`` applies GLORIA's ``_GLORIA_IMPUTED_ERROR``,
+        else falls back to ``noise_floor``; ``False`` leaves missing errors
+        missing (the record's ``varRrs`` then carries NaN and cannot be fit).
     **load_opts
         Adapter load options (e.g. L23 ``X``, ``Y``).
 
@@ -184,10 +206,19 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         noise = 'pace' if dataset == 'L23' else 'insitu'
     if add_noise is None:
         add_noise = (dataset == 'L23')
-    if noise_floor is None and _is_gloria(dataset):
-        # Per-dataset default: GLORIA's quoted errors are too tight for
-        # chi-squared to mean anything (see _GLORIA_NOISE_FLOOR).
-        noise_floor = _GLORIA_NOISE_FLOOR
+    if _is_gloria(dataset):
+        # Per-dataset defaults: GLORIA's quoted errors are too tight for
+        # chi-squared to mean anything, and most spectra quote none at all
+        # (see _GLORIA_NOISE_FLOOR / _GLORIA_IMPUTED_ERROR).
+        if noise_floor is None:
+            noise_floor = _GLORIA_NOISE_FLOOR
+        if noise_imputed is None:
+            noise_imputed = _GLORIA_IMPUTED_ERROR
+    # ``False`` (or 0) means *explicitly no floor*, overriding the per-dataset
+    # default -- what the analysis scripts need to study the un-floored case.
+    # ``None`` is "use the default", which is not the same request.
+    noise_floor = noise_floor or None
+    noise_imputed = noise_imputed or None
 
     raw = get_adapter(dataset).load_obs(obs_id, **load_opts)
 
@@ -210,7 +241,8 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
     # Uncertainty (+ optional perturbation).
     varRrs, Rrs_out, Rrs_clean, tag, seed_used = attach_noise(
         wave, Rrs_in, model=noise, add_noise=add_noise, seed=seed,
-        Rrs_err=Rrs_err, floor_frac=noise_floor)
+        Rrs_err=Rrs_err, floor_frac=noise_floor,
+        impute_frac=noise_imputed)
 
     # Truth pre-aligned onto `wave`; init from the observed (post-noise) Rrs.
     truth, truth_interp = _build_truth(raw, wave)
@@ -224,17 +256,18 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
 
 
 def _prep_one_star(item, dataset, noise, add_noise, wv_min, wv_max, load_opts,
-                   noise_floor=None):
+                   noise_floor=None, noise_imputed=None):
     """Top-level worker for :func:`prep_dataset`'s process pool (picklable)."""
     obs_id, seed = item
     return prep_one(dataset, obs_id, noise=noise, add_noise=add_noise,
                     seed=seed, wv_min=wv_min, wv_max=wv_max,
-                    noise_floor=noise_floor, **load_opts)
+                    noise_floor=noise_floor, noise_imputed=noise_imputed,
+                    **load_opts)
 
 
 def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
                  seed=None, n_cores=1, wv_min=None, wv_max=None,
-                 noise_floor=None, **load_opts):
+                 noise_floor=None, noise_imputed=None, **load_opts):
     """Prepare many observations into a list of ``PreparedRecord``.
 
     Maps :func:`prep_one` over ``obs_ids`` (default: every observation the
@@ -248,10 +281,10 @@ def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
         Registered dataset name.
     obs_ids : iterable or None, optional
         Observation ids to prepare; ``None`` → all (``adapter.obs_ids``).
-    noise, add_noise, wv_min, wv_max, noise_floor, **load_opts
-        Forwarded to :func:`prep_one`. ``noise_floor`` is normally left
-        ``None``, which lets each dataset's default apply (an error floor
-        for GLORIA, none elsewhere).
+    noise, add_noise, wv_min, wv_max, noise_floor, noise_imputed, **load_opts
+        Forwarded to :func:`prep_one`. ``noise_floor`` / ``noise_imputed`` are
+        normally left ``None``, which lets each dataset's default apply (an
+        error floor and an imputation fraction for GLORIA, none elsewhere).
     seed : int or None, optional
         Master seed; record ``i`` uses ``seed + i`` (``None`` → unseeded).
     n_cores : int, optional
@@ -276,12 +309,35 @@ def prep_dataset(dataset, *, obs_ids=None, noise=None, add_noise=None,
         from functools import partial
         fn = partial(_prep_one_star, dataset=dataset, noise=noise,
                      add_noise=add_noise, wv_min=wv_min, wv_max=wv_max,
-                     noise_floor=noise_floor,
+                     noise_floor=noise_floor, noise_imputed=noise_imputed,
                      load_opts=load_opts)
         with ProcessPoolExecutor(max_workers=n_cores) as ex:
-            return list(ex.map(fn, work))
+            records = list(ex.map(fn, work))
+    else:
+        records = [prep_one(dataset, oid, noise=noise, add_noise=add_noise,
+                            seed=s, wv_min=wv_min, wv_max=wv_max,
+                            noise_floor=noise_floor,
+                            noise_imputed=noise_imputed, **load_opts)
+                   for oid, s in work]
 
-    return [prep_one(dataset, oid, noise=noise, add_noise=add_noise, seed=s,
-                     wv_min=wv_min, wv_max=wv_max, noise_floor=noise_floor,
-                     **load_opts)
-            for oid, s in work]
+    _warn_if_imputed(records, dataset)
+    return records
+
+
+def _warn_if_imputed(records, dataset):
+    """Raise one :class:`~ioptics.noise.ImputedUncertaintyWarning` per batch.
+
+    Reads the records' own ``noise_model`` tags rather than warning inside
+    :func:`ioptics.noise.attach_noise`, which is what makes a single warning
+    possible: the per-record site fires ~70 times on a 100-spectrum GLORIA
+    batch, and under a process pool those warnings are raised in the workers
+    and lost. The count is the actionable part anyway.
+    """
+    n_imputed = sum(1 for r in records if noise.is_imputed(r.noise_model))
+    if n_imputed:
+        warnings.warn(
+            f'{dataset}: {n_imputed} of {len(records)} records have no '
+            f'measured Rrs uncertainty at any band, so their fit weights are '
+            f'imputed (noise_model {noise.IMPUTED_TAG!r}). Chi-squared and '
+            f'anything derived from it may not be valid for those records.',
+            noise.ImputedUncertaintyWarning, stacklevel=3)

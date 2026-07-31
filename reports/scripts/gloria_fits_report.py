@@ -45,7 +45,7 @@ if _REPO not in sys.path:
 _FIGDIR = os.path.join(_REPO, 'reports', 'figures')
 os.makedirs(_FIGDIR, exist_ok=True)
 
-from ioptics import prep, run, datasets as D          # noqa: E402
+from ioptics import prep, run, noise, datasets as D    # noqa: E402
 from ioptics.algorithms import registry                # noqa: E402
 from ioptics.algorithms.spec import MCMCOptions         # noqa: E402
 from bing.fitting.chisq_fit import fit_func             # noqa: E402
@@ -94,14 +94,20 @@ def fit_sigma(rec, *, var_inflate=1.0, floor_frac=None):
     """The 1-sigma weight vector for a fit.
 
     Base is the record's measured ``sqrt(varRrs)`` (optionally ``var_inflate``d).
-    When ``floor_frac`` is given, an **error floor** is applied,
-    ``sigma = max(sigma_measured, floor_frac * |Rrs|)`` -- the same
-    max-of-measured-or-fractional idea as the project's PANGAEA percentage
-    fallback. Every result using ``floor_frac`` is an *inflated-noise* result.
+    When ``floor_frac`` is given, the project's **error floor** is applied via
+    ``ioptics.noise.error_floor`` -- the same single implementation the pipeline
+    uses, deliberately not a second copy of the formula here (an earlier local
+    copy propagated NaNs, which silently restricted every number in this report
+    to the ~30% of GLORIA spectra that quote an uncertainty). Every result
+    using ``floor_frac`` is an *inflated-noise* result.
+
+    Bands whose measured error is missing take the floor outright, so a
+    spectrum with no quoted uncertainty is weighted rather than unusable.
     """
     sigma = np.sqrt(np.asarray(rec.varRrs, dtype=float) * var_inflate)
     if floor_frac is not None:
-        sigma = np.maximum(sigma, floor_frac * np.abs(np.asarray(rec.Rrs, float)))
+        floor = noise.error_floor(rec.Rrs, floor_frac)
+        sigma = np.where(np.isfinite(sigma), np.maximum(sigma, floor), floor)
     return sigma
 
 
@@ -178,7 +184,14 @@ def main():
     print("Preparing GLORIA + L23 samples ...")
     gsample = gloria_sample()
     lsample = l23_sample()
-    grecs = [prep.prep_one('GLORIA', g, noise='insitu',
+    # noise_floor=False: prep the GLORIA records with their *raw* measured
+    # errors, overriding the per-dataset floor default, because this report's
+    # whole argument is the before/after of applying a floor -- the variants
+    # below add it explicitly via ``floor_frac``. Spectra that quote no error
+    # therefore arrive with NaN weights here, exactly as the raw data has them;
+    # only the floored variants can fit those.
+    grecs = [prep.prep_one('GLORIA', g, noise='insitu', noise_floor=False,
+                           noise_imputed=False,
                            wv_min=WV_MIN, wv_max=WV_MAX) for g in gsample]
     lrecs = [prep.prep_one('L23', i, wv_min=WV_MIN, wv_max=WV_MAX)
              for i in lsample]

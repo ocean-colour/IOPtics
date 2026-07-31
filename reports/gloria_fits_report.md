@@ -6,13 +6,36 @@ a fixed sample of 40 GLORIA and 40 L23 spectra trimmed to 400-750 nm.*
 
 ## Summary
 
-> **Reading order / correction notice.** This report was built over three
+> **Reading order / correction notice.** This report was built over four
 > rounds. Round 2 framed the failure as "range vs form" by widening the
 > **CDOM/NAP** priors — a **physically confounded** test, because CDOM/NAP
 > absorption is ~0 across 500-750 nm and so has no leverage there. JXP caught
 > this. The corrected diagnosis is in *"Correction: what governs Rrs at
 > 500-750 nm"* below; the Round-2 section is retained (marked superseded) for
 > the audit trail. The summary here is the corrected one.
+>
+> **Round-4 correction (2026-07-31): the low convergence rates were a data
+> gap, not an optimizer failure.** Rounds 1-3 reported that only 12.5-37.5% of
+> GLORIA spectra converge. That number was an artifact. **70.5% of GLORIA
+> spectra (5338 of 7572) quote no `Rrs` uncertainty at any band**, and both this
+> script and the pipeline floored the error with `np.maximum(sigma, floor)`,
+> which propagates NaN — so those spectra reached the fitter with all-NaN
+> weights and `curve_fit` rejected the initial point before taking a single
+> step. With the floor made NaN-aware, **convergence is 40/40 (100%)**.
+>
+> Two numbers in the Round-1-3 text change as a result, and both are corrected
+> in place below:
+>
+> - the convergence rate the floor achieves (was "unchanged at 15/40" —
+>   in fact 40/40);
+> - the median relative misfit (was "~48%" — that was measured on the
+>   ~30%-of-spectra subset that happened to carry uncertainties; across all 40
+>   it is **~64%**, i.e. the fits are *worse* than reported, not better).
+>
+> Everything about the *diagnosis* survives: the wall is still backscatter in
+> the red, the floor is still bookkeeping rather than a cure, and `maxfev` is
+> still secondary. What changes is that "GLORIA does not converge" was never
+> the right framing.
 
 **Root cause.**
 
@@ -33,13 +56,21 @@ a fixed sample of 40 GLORIA and 40 L23 spectra trimmed to 400-750 nm.*
    construction.
 2. **Tight measured noise makes chi² look catastrophic, but the misfit is real.**
    GLORIA's per-band `varRrs` is tiny (~2.3e-8, σ~1.5e-4). An error floor
-   (5-10%) drops median reduced chi² from **247** to **20**, but leaves the
-   convergence rate (15/40) and the true median relative Rrs misfit (**~48%**)
-   unchanged — bookkeeping, not a cure.
-3. **The `curve_fit` evaluation budget is a secondary, convergence-only issue.**
+   (5-10%) drops median reduced chi² from **247** to **30**, and it *does*
+   change the convergence rate (15/40 → 40/40, for the data-gap reason in the
+   Round-4 notice) — but it does not improve any fit: the true median relative
+   Rrs misfit stays at **~64%**. Bookkeeping, not a cure.
+3. **Most GLORIA spectra carry no uncertainty at all, and that — not the
+   optimizer — is what stopped them being fit.** 70.5% quote no `Rrs_std` at
+   any band. Weighted by NaN they cannot be fit at all; given an assumed error
+   they all can. Any GLORIA statistic computed before this was silently
+   restricted to the 29% that do quote one, which is a biased subset (it skews
+   clear).
+4. **The `curve_fit` evaluation budget is a secondary, convergence-only issue.**
    Raising `maxfev` ~40x lifts convergence **12.5% -> 37.5%** for `expb_pow`;
    band down-sampling and `varRrs` inflation do nothing. This governs *whether*
-   LM returns, not *how well* the model can fit.
+   LM returns, not *how well* the model can fit — and in hindsight it was a
+   partial workaround for point 3, since the floor alone reaches 100%.
 
 The model *does* fit **clear** GLORIA spectra well (reduced chi² ~0.1, ~6%
 misfit, Rrs peak ~505 nm); quality collapses as the Rrs peak moves red (turbid
@@ -53,6 +84,19 @@ noise floor. Keep `a_w`/`a_ph` as-is (adequate). Short term: bump `maxfev` and
 flag turbid GLORIA (red-shifted peak / high chi²_ν) as out-of-scope for the
 current open-ocean models.
 
+> **Follow-up (2026-07-31): the richer backscattering was built, and it does
+> not help.** BING gained two-component particulate backscatter (`Pow2`,
+> `Pow2Flat`) plus a wide-prior control (`PowFlex`), and IOPtics compared all
+> four on 100 GLORIA spectra with every fit converging
+> (`runs/prototypes/gloria_turbid_v3`). Paired on the spectra all four solve,
+> median χ²ᵥ is 0.460 / 0.463 / 0.462 / 0.460 for
+> `expb_pow` / `expb_pow2` / `expb_pow2flat` / `expb_powflex`, and the median
+> relative misfit is 0.594 / 0.595 / 0.595 / 0.595 — the four produce *the
+> same fits*. The recommendation above was right about where the deficiency is
+> and wrong that a better `b_bp` shape would close it. The remaining suspect is
+> the **forward model** (the Gordon relation is a clear-water
+> parameterization), which JXP is developing separately.
+
 ## Problem
 
 A real GLORIA chi-squared sweep with `expb_pow` fails with scipy
@@ -60,6 +104,12 @@ A real GLORIA chi-squared sweep with `expb_pow` fails with scipy
 function evaluations is exceeded.` The initial guess is in-bounds (this is
 genuine LM non-convergence, not prior rejection). The task is to quantify the
 failure across variants and attribute the cause.
+
+> **Round-4:** that framing holds for the ~30% of spectra that carry an
+> uncertainty. For the other 70% the failure is a *different* exception —
+> `ValueError: Residuals are not finite in the initial point` — raised because
+> their weights are NaN. Two failure modes were being counted as one, and the
+> larger one was not about the optimizer.
 
 ## Data characterisation
 
@@ -112,12 +162,26 @@ alternative sampler.
 ![Convergence rates](figures/convergence_rates.png)
 
 Reading the table: L23 converges 100% out of the box; GLORIA converges 12.5%.
-Raising `maxfev` ~40x (to 20000) lifts GLORIA to 37.5% — the only lever that
-moves the needle — but down-sampling to 30 nm and inflating `varRrs` 100x change
-nothing. Fewer-parameter models (`giop` 3 params, `gsm` 3 params) do marginally
-better at baseline than `expb_pow` (5 params), consistent with a smaller
-Jacobian needing fewer evaluations, but all three converge on the same subset
-(~37.5%) once the budget is lifted.
+Raising `maxfev` ~40x (to 20000) lifts GLORIA to 37.5% — the only lever *in this
+table* that moves the needle — but down-sampling to 30 nm and inflating `varRrs`
+100x change nothing. Fewer-parameter models (`giop` 3 params, `gsm` 3 params) do
+marginally better at baseline than `expb_pow` (5 params), consistent with a
+smaller Jacobian needing fewer evaluations, but all three converge on the same
+subset (~37.5%) once the budget is lifted.
+
+> **Round-4: the 37.5% ceiling is the share of GLORIA that quotes an
+> uncertainty, and nothing deeper.** Every variant above weights the fit by the
+> record's raw measured `varRrs`, which is **NaN at every band for 70.5% of
+> GLORIA**. Those fits never start — scipy raises `ValueError: Residuals are
+> not finite in the initial point` before the first step, and the surrounding
+> code recorded it as a non-convergence like any other. Supply an assumed error
+> for the missing bands and the same fits reach **40/40 (100%)** at both a 5%
+> and a 10% floor (see the Round-3 table). That reframes this whole section: it
+> is not a table of how hard GLORIA is to fit, it is a table of how much of
+> GLORIA can be weighted.
+>
+> Read `varRrs x100` in that light too: multiplying NaN by 100 is still NaN, so
+> that row could never have moved.
 
 > Note on the earlier "0/20" measurement: the first 20 contiguous GLORIA ids
 > happen to be a benign cluster where `maxfev` alone reaches 100%. Across a
@@ -322,21 +386,33 @@ windows.)
 
 GLORIA's measured per-band `varRrs` is tiny (~2.3e-8, σ~1.5e-4 sr⁻¹), so it
 dominates chi². With JXP's approval we refit with an error floor
-`σ = max(σ_measured, f·|Rrs|)` (the same max-of-measured-or-fractional idea as
-the project's PANGAEA pct fallback). **Every row below is an inflated-noise
-result:**
+`σ = max(σ_measured, f·max(|Rrs|, median|Rrs|))` — fractional in the bright
+bands, and floored on the spectrum's own scale in the dim ones so a near-zero
+band cannot acquire a near-zero σ and dominate chi² (on GID_5691 the 35 bands
+with `Rrs ≤ 0` were carrying 78% of it). Bands with no measured error take the
+floor outright. **Every row below is an inflated-noise result:**
 
 | noise model | convergence | median chi²_ν | median rel. misfit |
 |---|---|---|---|
 | measured | 15/40 | 2.47e2 | 0.48 |
-| **5% floor (inflated)** | 15/40 | **7.2e1** | 0.50 |
-| **10% floor (inflated)** | 15/40 | **2.0e1** | 0.48 |
+| **5% floor (inflated)** | **40/40** | **1.22e2** | 0.64 |
+| **10% floor (inflated)** | **40/40** | **3.05e1** | 0.64 |
 
-Inflating the noise lowers reduced chi² (247 -> 72 -> 20) — pure bookkeeping —
-but does **not** change the convergence rate (15/40 throughout) and does **not**
-improve the actual fit: the median absolute relative Rrs misfit stays ~**48%**.
-The tight measured noise explains why chi²_ν is enormous, but even a generous
-10% floor leaves the model ~50% off across the sample. The misfit is real.
+Two things happen, and only one of them is bookkeeping:
+
+- **Convergence goes 15/40 → 40/40.** Not because the objective got easier, but
+  because the floor is the only thing that gives the 70% of spectra with no
+  quoted uncertainty a usable weight at all (Round-4 notice).
+- **Reduced chi² falls, 247 → 122 → 30.** Pure bookkeeping — a larger assumed σ
+  divided into the same residuals. Note the 5% row's chi²_ν is *higher* than the
+  7.2e1 reported in Rounds 1-3: the median now includes the 25 spectra that
+  previously could not be fit, and they fit worse than average.
+
+What does **not** happen is any improvement in the fit. The median absolute
+relative Rrs misfit is **0.64** at both floors — and that is the honest number
+for this sample. The **~48%** quoted in Rounds 1-3 was measured over the 15
+fittable spectra only; the 25 that were silently excluded are the harder,
+more turbid ones. The misfit is real, and larger than we reported.
 
 ### New example fits (inflated 5% noise floor, clear -> turbid)
 
@@ -475,10 +551,17 @@ multi-component mineral+organic) backscattering parameterisation.
    500-750 nm.
 2. **Short term:** raise `curve_fit`'s `maxfev` (or expose it via IOPtics) —
    cheap, roughly triples convergence (12.5% -> 37.5%). It only affects *whether*
-   LM returns, not fit quality.
-3. **Optionally apply an error floor** (`σ = max(σ_measured, 5%·Rrs)`) so chi²_ν
-   is interpretable, but label it as inflated-noise and do not mistake it for a
-   fix — the relative misfit is unchanged (~48%).
+   LM returns, not fit quality. *(Round-4: done — `AlgorithmSpec.maxfev` — but
+   it turned out to be a partial workaround for recommendation 3, which reaches
+   100% on its own.)*
+3. **Apply an error floor** (`σ = max(σ_measured, f·max(|Rrs|, median|Rrs|))`) so
+   chi²_ν is interpretable, but label it as inflated-noise and do not mistake it
+   for a fix — the relative misfit is unchanged (~64%). *(Round-4: this is no
+   longer optional. It is the only thing that makes the 70% of GLORIA spectra
+   with no quoted uncertainty fittable at all, and it takes convergence to
+   40/40. Implemented as a per-dataset default: 5% floor on measured errors, 10%
+   imputed where none were measured, with the provenance tag and a warning
+   distinguishing the two.)*
 4. **Flag by regime, not globally.** The current models fit *clear* GLORIA well
    (reduced chi² ~0.1, ~6% misfit); IOPtics should mark turbid spectra
    (red-shifted Rrs peak / high chi²_ν / large relative misfit) as out-of-scope
