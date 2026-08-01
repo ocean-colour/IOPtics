@@ -199,15 +199,17 @@ Here are guidelines for coding:
 
 4. **MOANA Report**.  I have answered the latest round of Q&A; read them.  Now that you have all of these papers and code, generate a report -- `reports/MOANA_Claude_Report.md` with your complete understanding of the MOANA algorithm.  You should include any of the inconsistencies you have identified in your exploration.  Be sure to explain how it works.  And, explain how you'd improve it. Use Fable if you can. Log your work.  If you have any additional questions, please write them in the Q&A section below.
 
-5. **Data**.  We are going to reproduce the MOANA algorithm using the AMT24 data.  Please download the data from the AMT24 website and put it in the folder `$OS_COLOR/AMT24`.  If you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+5. **MOANA Report 2**.  I have answered the latest round of Q&A; read them and update the report accordingly.  Use Fable if you can. Log your work.  If you have any additional questions, please write them in the Q&A section below.
 
-6. **Design**.  Let us generate a design doc for the MOANA algorithm.  We will write it in the file `docs/design/moana_design.md`.  This doc will both describe the algorithm and our approach to coding it.  We will use the files in the Context section above to help us.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+6. **Data**.  We are going to reproduce the MOANA algorithm using the AMT24 data.  Please download the data from the AMT24 website and put it in the folder `$OS_COLOR/AMT24`.  If you can't find it, provide a list of the places you searched.  If you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
-7. **Code**.  Let us generate the code for the MOANA algorithm.  We will write it in the file `code/moana.py`.  This code will implement the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+7. **Design**.  Let us generate a design doc for the MOANA algorithm.  We will write it in the file `docs/design/moana_design.md`.  This doc will both describe the algorithm and our approach to coding it.  We will use the files in the Context section above to help us.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
-8. **Test**.  Let us generate the tests for the MOANA algorithm.  We will write it in the file `tests/moana_tests.py`.  This code will test the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+8. **Code**.  Let us generate the code for the MOANA algorithm.  We will write it in the file `code/moana.py`.  This code will implement the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
-9. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `validation/moana_validation.py`.  This code will validate the algorithm described in the Design doc.  Our goal is to apply MOANA on held out data, ideally from a cruise distinct from AMT24. Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+9. **Test**.  Let us generate the tests for the MOANA algorithm.  We will write it in the file `tests/moana_tests.py`.  This code will test the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+
+10. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `validation/moana_validation.py`.  This code will validate the algorithm described in the Design doc.  Our goal is to apply MOANA on held out data, ideally from a cruise distinct from AMT24. Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
 ## Q&A
 
@@ -408,6 +410,7 @@ documented.)*
     standardisation discards) both require *retraining*, so they are blocked on the
     same AMT24 training data as validation target (i). Do you want me to scope any of
     these in, or is the report the deliverable and we stay descriptive?
+>A. The report is the first deliverable, so we should stay descriptive.  We will then code up MOANA in Python.
 
 18. **Should we ask NASA for the PCA eigenvalues?** They are published nowhere —
     not in the paper, not the ATBD, not even in the LUT, which ships only the
@@ -415,6 +418,7 @@ documented.)*
     cannot whiten or variance-weight the scores, and cannot reproduce the original
     component-selection decisions. Worth adding to your contact list alongside the
     §7.1 discrepancy?
+>A. Yes, add the list of things to ask/tell NASA.
 
 19. **Where should the report live?** It is at `reports/MOANA_Claude_Report.md` as
     instructed, with its figure in `reports/figures/` and its generator in
@@ -422,6 +426,7 @@ documented.)*
     want it rendered into the Sphinx/readthedocs tree
     (`docs/source/reports/moana/`) like the IOP sweep reports, or does the MOANA
     track stay outside the published site until it is further along?
+>A. It stays outside for now.
 
 20. **How many more figures do you want?** The report currently has one (the PC
     loadings basis). Obvious further candidates, all cheap: a map of the PACE MOANA
@@ -429,6 +434,7 @@ documented.)*
     clipped fraction by taxon; and — once we run the bit-exactness test — a
     scatter of our retrieval against NASA's. Say the word and I will add them via
     `reports/scripts/moana_report_figs.py`, which is already structured for it.
+>A. I like you suggestions, please add all of them.
 
 ## Reports
 
