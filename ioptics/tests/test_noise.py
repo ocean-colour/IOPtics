@@ -258,7 +258,43 @@ def test_bad_impute_frac_raises():
     wave, Rrs = _synthetic()
     with pytest.raises(ValueError, match='impute_frac'):
         attach_noise(wave, Rrs, model='pct:0.05', add_noise=False,
-                     floor_frac=0.05, impute_frac=0.0)
+                     floor_frac=0.05, impute_frac=-0.1)
+
+
+@pytest.mark.parametrize('declined', [False, 0])
+def test_imputation_can_be_declined_while_flooring(declined):
+    """``impute_frac=False`` floors what was measured and invents nothing.
+
+    The two knobs are independent: a caller may want chi-squared made
+    interpretable on the measured bands without an assumed uncertainty being
+    invented for the un-measured ones. Folding ``False`` into ``None`` would
+    impute at ``floor_frac`` instead -- and tag it ``+floor:``, so the invented
+    weights would not even announce themselves.
+    """
+    wave, Rrs = _synthetic()
+    measured = np.full_like(Rrs, 1e-6)          # tiny, so the floor bites
+    measured[::3] = np.nan                      # ... absent every third band
+    varRrs, _, Rrs_clean, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False, Rrs_err=measured,
+        floor_frac=0.05, impute_frac=declined)
+
+    gap = ~np.isfinite(measured)
+    assert np.all(~np.isfinite(varRrs[gap]))    # nothing invented
+    np.testing.assert_allclose(np.sqrt(varRrs[~gap]),
+                               _expected_floor(Rrs_clean, 0.05)[~gap])
+    assert tag == 'insitu+floor:0.05'
+    assert not noise.is_imputed(tag)
+
+
+def test_declined_imputation_with_nothing_measured_stays_bare():
+    # Neither the floor nor an imputed error touched this record, so the tag
+    # claims neither: the weights are the (absent) measured ones.
+    wave, Rrs = _synthetic()
+    varRrs, _, _, tag, _ = attach_noise(
+        wave, Rrs, model='insitu', add_noise=False,
+        Rrs_err=np.full_like(Rrs, np.nan), floor_frac=0.05, impute_frac=False)
+    assert np.all(~np.isfinite(varRrs))
+    assert tag == 'insitu'
 
 
 def test_floor_never_produces_a_zero_sigma():

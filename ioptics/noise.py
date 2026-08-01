@@ -134,13 +134,16 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
         ``None`` (default) leaves the variance as the model gave it. An
         inflated-noise result — it makes chi-squared interpretable without
         improving any fit, so it is stamped on ``tag``.
-    impute_frac : float or None, optional
+    impute_frac : float, False or None, optional
         Fraction used where **nothing** was measured. Defaults to
         ``floor_frac`` when omitted; set it larger to say that an invented
         uncertainty deserves less confidence than a measured one that was
         merely floored. Imputing every band stamps :data:`IMPUTED_TAG` on
         ``tag``; the warning about it is raised once per batch, by
-        :func:`ioptics.prep.prep_dataset`.
+        :func:`ioptics.prep.prep_dataset`. ``False`` (or ``0``) **imputes
+        nothing**: un-measured bands keep their non-finite variance, so the
+        record announces the data gap instead of hiding it behind an assumed
+        error — measured bands are still floored.
 
     Returns
     -------
@@ -219,22 +222,40 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None,
     # so (``+imputed:X``): a chi-squared against an assumed error is a
     # different claim from one against a measured error that was floored.
     # ``prep_dataset`` turns those tags into one warning per batch.
+    #
+    # ``impute_frac=False`` declines that imputation: the un-measured bands keep
+    # their non-finite variance and the record cannot be fit at all, which is
+    # the honest outcome when the point is to study the measured errors alone.
+    # Floor and imputation are separately switchable on purpose -- flooring the
+    # measured bands while inventing nothing is a legitimate request.
     if floor_frac is not None:
         frac = float(floor_frac)
         if frac <= 0:
             raise ValueError(f'floor_frac must be > 0, got {floor_frac!r}')
-        imp = frac if impute_frac is None else float(impute_frac)
-        if imp <= 0:
-            raise ValueError(f'impute_frac must be > 0, got {impute_frac!r}')
+        if impute_frac is None:
+            imp = frac
+        elif impute_frac:
+            imp = float(impute_frac)
+            if imp <= 0:
+                raise ValueError(f'impute_frac must be > 0, got {impute_frac!r}')
+        else:
+            imp = None                      # explicitly: impute nothing
 
         sigma_meas = np.sqrt(varRrs)
         measured = np.isfinite(sigma_meas)
-        sigma = np.where(measured,
-                         np.maximum(sigma_meas, error_floor(Rrs_clean, frac)),
-                         error_floor(Rrs_clean, imp))
+        floored = np.maximum(sigma_meas, error_floor(Rrs_clean, frac))
+        # Where nothing was measured: the imputed floor, or the original
+        # non-finite sigma when imputation was declined.
+        sigma = np.where(measured, floored,
+                         sigma_meas if imp is None
+                         else error_floor(Rrs_clean, imp))
         varRrs = sigma ** 2
-        tag = (f'{tag}+floor:{frac}' if measured.any()
-               else f'{tag}{IMPUTED_TAG}{imp}')
+        if measured.any():
+            tag = f'{tag}+floor:{frac}'
+        elif imp is not None:
+            tag = f'{tag}{IMPUTED_TAG}{imp}'
+        # else nothing was measured and nothing invented: the tag stays bare,
+        # since neither the floor nor an imputed error touched this record.
 
     # --- optional single noise realization ---
     if add_noise:

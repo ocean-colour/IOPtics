@@ -218,7 +218,12 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
     # default -- what the analysis scripts need to study the un-floored case.
     # ``None`` is "use the default", which is not the same request.
     noise_floor = noise_floor or None
-    noise_imputed = noise_imputed or None
+    # ``noise_imputed`` is deliberately NOT collapsed the same way:
+    # ``attach_noise`` reads ``None`` as "impute at ``floor_frac``", so folding
+    # ``False`` into it would invent the very uncertainties the caller declined
+    # -- and silently, since the tag would then read '+floor:' rather than
+    # '+imputed:'. It goes through as given; ``attach_noise`` reads a falsy
+    # value as "impute nothing" (un-measured bands stay non-finite).
 
     raw = get_adapter(dataset).load_obs(obs_id, **load_opts)
 

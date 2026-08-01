@@ -244,6 +244,48 @@ def test_prep_gloria_single_point_adg_and_caveat():
         D.ADAPTERS.pop(name, None)
 
 
+def test_prep_gloria_imputation_declined_while_the_floor_applies():
+    """``noise_imputed=False`` must survive the per-dataset defaults.
+
+    Data-free regression test for a coercion (``noise_imputed or None``) that
+    turned "invent nothing" into "use the default", so the bands GLORIA never
+    measured were quietly weighted at the floor fraction -- and tagged
+    ``+floor:``, which claims a measured error. Declining imputation has to
+    leave those bands non-finite (the record then cannot be fit, honestly)
+    while the measured bands are still floored.
+    """
+    wave = np.arange(400.0, 701.0, 5.0)
+    Rrs = 0.01 * np.exp(-0.003 * (wave - 400.0)) + 1e-3
+    Rrs_err = 1e-6 * np.ones_like(Rrs)          # tiny, so the floor bites
+    Rrs_err[:10] = np.nan                       # ten bands measured nothing
+
+    class FakeGloria:
+        def obs_ids(self, **opts):
+            return [0]
+
+        def load_obs(self, obs_id, **opts):
+            return RawObs(wave=wave, Rrs=Rrs, truth={'Chl': 2.0},
+                          Rrs_err=Rrs_err,
+                          meta={'dataset': 'GLORIA', 'obs_id': obs_id})
+
+    name = 'GLORIA_FAKE'
+    D.register_dataset(name, FakeGloria())
+    try:
+        gap = ~np.isfinite(Rrs_err)
+        # Default: GLORIA imputes the un-measured bands (at the wider fraction).
+        default = prep.prep_one(name, 0)
+        assert np.all(np.isfinite(default.varRrs))
+
+        declined = prep.prep_one(name, 0, noise_imputed=False)
+        assert np.all(~np.isfinite(declined.varRrs[gap]))       # invented nothing
+        # ... and the floor still did its job on the bands that were measured.
+        assert np.all(np.isfinite(declined.varRrs[~gap]))
+        np.testing.assert_allclose(declined.varRrs[~gap], default.varRrs[~gap])
+        assert declined.noise_model == f'insitu+floor:{prep._GLORIA_NOISE_FLOOR}'
+    finally:
+        D.ADAPTERS.pop(name, None)
+
+
 # --------------------------------------------------------------------
 # Tier 2 — requires the L23 data tree
 # --------------------------------------------------------------------

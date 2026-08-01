@@ -116,8 +116,7 @@ module/addition.
 
 ### Pull Requests
 
-1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate any CI issues and fix them. Please log your work in the Logs section below.
-2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
+1. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
 ## Modules
 
@@ -747,7 +746,97 @@ module/addition.
   on. Keep both, or move to the summary?
 >A. Yes, once per sweep.
 
+**PR review (PR #9 — addressing the review comments).**
+
+- **Is `impute_frac=0` an error or a request?** Fixing the `noise_imputed=False`
+  coercion, I made *any* falsy `impute_frac` (`False` **or** `0`) mean "impute
+  nothing" in `attach_noise`, because `prep_one` already treats a falsy
+  `noise_floor` (`False` or `0`) as "no floor" — having `0` mean "no floor" at
+  one knob and "invalid" at the other is the kind of asymmetry that produced
+  this bug in the first place. The cost: `test_bad_impute_frac_raises` asserted
+  that `impute_frac=0.0` raises, so I retargeted it at a negative fraction
+  (nonsense values still raise; `0` now declines). Say the word if you would
+  rather `0` keep raising and only the literal `False` decline.
+
+- **Do the GLORIA sweeps need re-running after this fix?** No, as far as I can
+  tell: the only two callers that pass `noise_imputed=False`
+  (`test_prep_gloria_floor_can_be_turned_off_explicitly` and
+  `reports/scripts/gloria_fits_report.py`) also pass `noise_floor=False`, which
+  skipped the floor/impute block entirely — so they already got the NaN weights
+  they asked for and their numbers are unaffected. The bug was reachable only by
+  a caller that declined imputation while leaving the floor on, which nothing in
+  the repo does yet. Flag it if you know of a sweep run that way outside the
+  repo.
+
 ## Logs
+
+### 2026-08-02 (Stage 6, PR #9: addressed the review comments)
+
+Read every comment on **PR #9 "First go"** (`first-go` → `develop`, 29 commits,
+90 files, +11803/-210) via the GitHub API — `gh` is not authenticated in this
+session, so I used the public REST endpoints (`issues/9/comments`,
+`pulls/9/reviews`, `pulls/9/comments`) read-only. What is actually there:
+
+- **3 issue comments:** two `cursor review` triggers from you and one Bugbot
+  "not enabled for your account" upsell. Nothing to address.
+- **1 review** (Cursor Bugbot, COMMENTED) carrying **one inline finding**, on
+  `ioptics/prep.py`. That is the whole substance of the review.
+- **CI on the PR head (`eed3b32`) is green**: Tier-1 pytest passed on py3.12 and
+  py3.14, for both the PR and the push event (4 jobs). Bugbot's own check is
+  `neutral`. Nothing to fix there.
+
+#### The finding: `noise_imputed=False` was coerced away (real — fixed)
+
+Bugbot flagged `noise_imputed = noise_imputed or None` in `prep_one`. It is
+right, and it is worse than it reads, so I reproduced it first on a fake GLORIA
+record with ten bands quoting no error:
+
+| call | un-measured bands | tag |
+|---|---|---|
+| default | σ = imputed 10% | `insitu+floor:0.05` |
+| `noise_imputed=False` (**before**) | σ = imputed **5%** | `insitu+floor:0.05` |
+| `noise_imputed=False` (**after**) | σ stays NaN | `insitu+floor:0.05` |
+
+`False` became `None`, and `attach_noise` reads `impute_frac=None` as "impute at
+`floor_frac`" — so declining imputation invented an uncertainty anyway, at the
+floor fraction, for exactly the bands the dataset never measured. The provenance
+tag then said `+floor:` (a measured error that was floored) rather than
+`+imputed:`, and `noise.is_imputed` returned `False`, so the record claimed a
+measured pedigree it did not have and `prep_dataset`'s
+`ImputedUncertaintyWarning` never fired. That is the part that mattered: a
+fittable record with silently invented weights, against the documented promise
+("``False`` leaves missing errors missing").
+
+Not reachable by anything in the repo today, though — both callers that pass
+`noise_imputed=False` also pass `noise_floor=False`, which skips the
+floor/impute block outright, so **no GLORIA result needs re-running** (see Q&A).
+It was a latent trap for the next caller who floors and declines imputation.
+
+**Fix** — the two knobs are now genuinely independent:
+
+- `noise.attach_noise`: a falsy `impute_frac` (`False`/`0`) means *impute
+  nothing* — measured bands are still floored, un-measured bands keep their
+  non-finite variance, and the tag stays honest (`+floor:` when something was
+  measured, bare `insitu` when nothing was measured **and** nothing invented, so
+  it no longer claims `+imputed:` for weights that do not exist). Negative
+  fractions still raise.
+- `ioptics/prep.py`: dropped the `or None` for `noise_imputed`, with a comment
+  saying why it must not be folded (the floor's `or None` is fine — `False` and
+  `0` both correctly mean "no floor" there).
+
+**Tests** (+4, all Tier-1/data-free): `test_imputation_can_be_declined_while_flooring`
+(parametrized over `False` and `0` — floors the measured, invents nothing, tag
+unchanged), `test_declined_imputation_with_nothing_measured_stays_bare`, and
+`test_prep_gloria_imputation_declined_while_the_floor_applies` — the regression
+test at the layer where the coercion actually bit. `test_bad_impute_frac_raises`
+retargeted from `0.0` to `-0.1` (Q&A).
+
+**Verification:** CI-equivalent (no `$OS_COLOR`) **230 passed, 38 skipped** (was
+226/38 — the four new tests); full suite **with** the data tree
+**264 passed, 4 skipped**; `sphinx-build -W` on the whole site green. Files
+touched: `ioptics/noise.py`, `ioptics/prep.py`, `ioptics/tests/test_noise.py`,
+`ioptics/tests/test_prep.py`. No git run (JXP runs git); I did not post anything
+to the PR (unauthenticated, and this prompt asks for code changes, not a reply).
 
 ### 2026-07-31 (Stage 6, Task 18: relative misfit as a first-class metric; ready for PR)
 
