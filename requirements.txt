@@ -12,6 +12,9 @@ scikit-learn
 tqdm
 IPython
 pytest
+# NASA Earthdata access (MOANA track: PACE OCI granules, GHRSST SST).
+# Needs Earthdata credentials in ~/.netrc; tests that use it skip when absent.
+earthaccess
 # Retrieval / inference engine and plotting
 emcee
 corner
