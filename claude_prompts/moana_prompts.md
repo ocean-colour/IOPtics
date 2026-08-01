@@ -436,6 +436,40 @@ documented.)*
     `reports/scripts/moana_report_figs.py`, which is already structured for it.
 >A. I like you suggestions, please add all of them.
 
+### From prompt 5 (2026-08-01) — Claude
+
+*(All four answers are acted on. #17 → §9 stays descriptive and says so explicitly;
+#18 → new report §11 consolidates everything to ask/tell NASA, and the §10 reminder
+now points at it; #19 → nothing added to the Sphinx tree; #20 → two of the three
+figures are in, the third is deferred because it needs the implementation.)*
+
+21. **The clipping turns out to be diagnosable, which changes its status.** Making
+    the mask figure exposed something I had not seen from summary statistics: the
+    18 % clipped *Prochlorococcus* pixels are strongly spatially organised — median
+    |latitude| 47.9° vs 31.7°, 74.6 % poleward of 40°, and 4.5× the picoeukaryote
+    abundance where the model fails versus where it succeeds. So the failures are
+    **out-of-domain extrapolation into cold productive water**, not noise. That makes
+    the §9.3 out-of-domain flag testable *without any retraining*: compute the
+    truncated-basis reconstruction residual per pixel and check whether it predicts
+    the clipping. Given #17 says stay descriptive, I have only written this up — but
+    it is a one-afternoon experiment that would likely be a genuine contribution, and
+    it needs no data we do not already have. Worth slotting in after the Python
+    implementation?
+
+22. **Should the report get a "how to read the product" section?** Between the
+    land-254 trap, the unflagged clipped zeros, the unenforced `valid_max` and the
+    `INT32_MIN` pixels, there is now enough for a short, practical "if you are using
+    PACE MOANA, mask these four things" recipe. That would be the most immediately
+    useful thing in the document for anyone outside this project, and it is
+    orthogonal to the accuracy analysis. Add it as a §12, or keep the report
+    analytical and save it for a community-facing note later?
+
+23. Minor, and only if you care: the figures are light-mode PNGs, matching the
+    existing `gloria_fits_report.md` figures. The house data-viz guidance wants a
+    dark-mode variant for anything rendered as a web page. Since #19 keeps this out
+    of the Sphinx site, I have not made dark variants. Flag it if the report is ever
+    published so I can add them.
+
 ## Reports
 
 ### Prompt 3 (2026-08-01) — Answers reviewed; decisions locked in; access verified
