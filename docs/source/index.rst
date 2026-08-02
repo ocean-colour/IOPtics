@@ -49,6 +49,8 @@ Contents
    :caption: Documentation
 
    installation
+   datasets
+   models
    reports/index
    api/index
 

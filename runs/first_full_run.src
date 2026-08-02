@@ -1,0 +1,49 @@
+#!/bin/sh
+# full_run.src — IOPtics first sweep (expb_giop_L23_v1), unattended full run.
+#
+# Runs the whole pipeline in the background on your workstation:
+#   stage 1 = sweep (chi^2 over all 3320 L23 spectra + expb_pow MCMC on the
+#             200-subset — the ~3 h long pole, MCMC is serial),
+#   stage 2 = metrics.compute,
+#   stage 3 = report.standard.build + leaderboard.update + landing.
+#
+# Launch with `at` (recommended — survives logout):
+#     at now -f full_run.src
+# or plain background:
+#     nohup sh full_run.src >/dev/null 2>&1 &
+#
+# Progress/results are appended to  $REPO/full_run.log  (tail -f it).
+#
+# ---- EDIT for your workstation if these differ -----------------------------
+OS_COLOR="${OS_COLOR:-/home/xavier/Projects/Oceanography/data/Color/}"  # data tree
+PY="${PY:-/home/xavier/miniforge3/envs/os_313/bin/python}"            # ocean14 python
+#PY="${PY:-/home/xavier/miniforge3/envs/ocean14/bin/python}"            # ocean14 python
+REPO="${REPO:-/home/xavier/Oceanography/python/IOPtics}"               # repo root
+# ---- knobs -----------------------------------------------------------------
+STAGES="${STAGES:-1 2 3}"   # set to "1" for run-only; "1 2 3" = full report
+N_CORES="${N_CORES:-10}"    # chi^2 pool size (MCMC subset is serial regardless)
+STRICT="${STRICT:-false}"   # false = robust (failed fits -> fit_failed rows)
+# ----------------------------------------------------------------------------
+
+export OS_COLOR
+BUILD="$REPO/ioptics/runs/prototypes/expb_giop/build_v1.py"
+LOG="$REPO/full_run.log"
+
+set -eu
+{
+  echo "================================================================"
+  echo "IOPtics full run — start $(date)"
+  echo "OS_COLOR=$OS_COLOR"
+  echo "PY=$PY"
+  echo "REPO=$REPO  STAGES='$STAGES'  N_CORES=$N_CORES  STRICT=$STRICT"
+  echo "================================================================"
+  cd "$REPO"
+  for s in $STAGES; do
+    echo "--- stage $s : start $(date) ---"
+    "$PY" "$BUILD" "$s" --n-cores "$N_CORES" --strict "$STRICT"
+    echo "--- stage $s : done  $(date) ---"
+  done
+  echo "=== ALL STAGES DONE $(date) ==="
+  echo "results: \$OS_COLOR/IOPtics/runs/expb_giop_L23_v1/  (parquet + chains)"
+  echo "report : \$REPO/docs/source/reports/expb_giop_L23_v1/  (review, then commit)"
+} >> "$LOG" 2>&1

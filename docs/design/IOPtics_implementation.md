@@ -492,9 +492,15 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None):
   (provenance) so the sweep is reproducible, and `Rrs_clean` retains the
   noiseless input. (`bing.noise.scale_noise`/`add_noise` remain available for the
   satellite-band conventions BING already encodes.)
-- **PANGAEA / GLORIA** use `model='insitu'` (the loader's measured `Rrs` errors;
-  `pct` fallback otherwise) with **`add_noise=False`** — the in-situ `Rrs` is
-  already a real, noisy observation, so no synthetic perturbation is added.
+- **PANGAEA / GLORIA** use `model='insitu'` with **`add_noise=False`** — the
+  in-situ `Rrs` is already a real, noisy observation, so no synthetic
+  perturbation is added. **GLORIA** ships a per-band `Rrs` std, so `varRrs =
+  Rrs_std**2` (genuine `insitu`). **PANGAEA V3 ships no per-band `Rrs`
+  uncertainty**, so `prep` falls back to a **flat 5% fractional** model
+  (`varRrs = (0.05*Rrs)**2`; constant `prep._INSITU_PCT_FALLBACK`) and records
+  the honest tag `noise_model='pct:0.05'` (never `'insitu'`), so the assumption
+  is explicit in every prepared record, `provenance.yaml`, and report — it never
+  masquerades as a measured error.
 
 ### Prep API (`ioptics.prep`)
 
@@ -1305,6 +1311,26 @@ tree is mounted:
   that the leaderboard folds.
 - One short **MCMC** fit on a single spectrum (tiny `nsteps`) → chains persisted,
   corner data loads — guards the `inference`/chains path without a long run.
+
+### Hang guard (per-test wall-clock ceiling)
+
+An autouse fixture in `conftest.py` (`_guard_against_hangs`) puts every test
+under a **wall-clock ceiling** so a wedged test — a deadlocked
+`ProcessPoolExecutor` batch fit, a data load blocked on I/O, an MCMC that never
+returns — **fails fast with a traceback** instead of hanging the whole run (and
+whoever is watching it). It is dependency-free (Unix `SIGALRM`/`setitimer`,
+main thread only), dumps all thread tracebacks via `faulthandler` before
+failing so the culprit is obvious, and **defers to `pytest-timeout`** when that
+plugin is installed. Tunables:
+
+- `$IOPTICS_TEST_TIMEOUT` — the ceiling in seconds (default **120**; the whole
+  suite runs in well under a minute, so this only ever trips on a genuine hang).
+  Set to `0` to disable the guard entirely.
+- `@pytest.mark.timeout(seconds)` — override for a single test (`0` disables it
+  for that test); marker is compatible with `pytest-timeout`.
+
+The guard no-ops where `SIGALRM` is unavailable (non-Unix) or when the test is
+not on the main thread, so it never interferes with CI on other platforms.
 
 ### Test data & speed
 

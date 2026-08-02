@@ -15,12 +15,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from bokeh.embed import file_html
+from bokeh.embed import components, file_html
 from bokeh.layouts import column
 from bokeh.models import (ColumnDataSource, CustomJS, DataTable, HoverTool,
                           Select, TableColumn)
 from bokeh.plotting import figure
-from bokeh.resources import INLINE
+from bokeh.resources import CDN, INLINE
 
 from ioptics import metrics
 from ioptics.report import figures
@@ -28,10 +28,38 @@ from ioptics.report import figures
 # Fields carried in the scatter data source (all filterable keys + coords).
 _SCATTER_FIELDS = ['x', 'y', 'dataset', 'algorithm', 'component', 'stratum',
                    'wavelength']
+# Cap on points serialized into the interactive scatter: the whole cloud is
+# baked into the page (self-contained HTML / inline embed), so an un-capped
+# full sweep (~5M points) would be hundreds of MB. Downsample to keep the
+# artifact light; the static PNG scatters already summarize the full population.
+SCATTER_MAX_POINTS = 3000
+SCATTER_SEED = 1234
 
 
-def _scatter_points(sweep, fit_method):
-    """Long retrieved-vs-true points (+ per-obs stratum, incl. an 'all' scope)."""
+def _downsample(pts, max_points=SCATTER_MAX_POINTS, seed=SCATTER_SEED):
+    """Cap ``pts`` near ``max_points``, stratified by algorithm/component/stratum.
+
+    Each ``(algorithm, component, stratum)`` group is capped at
+    ``max_points // n_groups`` (seeded) so every selectable combination keeps a
+    representative sample and the total never exceeds ``max_points``.
+    """
+    if len(pts) <= max_points:
+        return pts
+    by = ['algorithm', 'component', 'stratum']
+    per = max(1, max_points // max(pts.groupby(by).ngroups, 1))
+    # shuffle (seeded) then take the first `per` of each group -> a random,
+    # reproducible per-group cap that keeps every group and all columns.
+    shuffled = pts.sample(frac=1, random_state=seed)
+    return (shuffled.groupby(by, group_keys=False, sort=False)
+                    .head(per).reset_index(drop=True))
+
+
+def _scatter_points(sweep, fit_method, *, max_points=SCATTER_MAX_POINTS):
+    """Long retrieved-vs-true points (+ per-obs stratum, incl. an 'all' scope).
+
+    Downsampled to ``max_points`` (stratified) so the interactive figure stays
+    light when baked into the page (see :data:`SCATTER_MAX_POINTS`).
+    """
     import pandas as pd
 
     sp = sweep.spectral
@@ -51,7 +79,8 @@ def _scatter_points(sweep, fit_method):
         'wavelength': sp['wavelength'].to_numpy(dtype=float),
     })
     # add an 'all' stratum scope (mirrors the metrics `_scoped` union)
-    return pd.concat([pts.assign(stratum='all'), pts], ignore_index=True)
+    pts = pd.concat([pts.assign(stratum='all'), pts], ignore_index=True)
+    return _downsample(pts, max_points=max_points)
 
 
 def _filter_js(fields):
@@ -80,9 +109,16 @@ def interactive_scatter(sweep, *, root=None, fit_method='chisq',
     stratum selectors (hover/pan/zoom, log-log, 1:1 guide).
 
     ``sweep`` is a ``sweep_id`` or a :class:`~ioptics.report.figures.SweepArtifacts`
-    bundle. Returns the standalone HTML string.
+    bundle. Returns the standalone HTML string (BokehJS inlined). For embedding
+    inside a Sphinx page use :func:`scatter_embed` instead.
     """
     sweep = figures.resolve(sweep, root)
+    layout = _scatter_layout(sweep, fit_method, title)
+    return file_html(layout, INLINE, title)
+
+
+def _scatter_layout(sweep, fit_method, title):
+    """Build the interactive scatter Bokeh layout (selectors + figure)."""
     pts = _scatter_points(sweep, fit_method)
 
     datasets = sorted(pts['dataset'].unique())
@@ -121,9 +157,25 @@ def interactive_scatter(sweep, *, root=None, fit_method='chisq',
                'selC': sel_c, 'selS': sel_s}
     for sel in (sel_d, sel_a, sel_c, sel_s):
         sel.js_on_change('value', cb)
+    return column(sel_d, sel_a, sel_c, sel_s, fig)
 
-    layout = column(sel_d, sel_a, sel_c, sel_s, fig)
-    return file_html(layout, INLINE, title)
+
+def scatter_embed(sweep, *, root=None, fit_method='chisq',
+                  title='Retrieved vs. true'):
+    """Embeddable interactive scatter for a **Sphinx page** (no separate file).
+
+    Returns an HTML fragment — the BokehJS **CDN** ``<script>`` tags plus the
+    ``bokeh.embed.components`` ``<div>``+``<script>`` — to drop straight into a
+    page via ``.. raw:: html``. Unlike :func:`interactive_scatter` (a standalone
+    file), this renders inline so it survives a Sphinx/RTD build without needing
+    the HTML file copied into the output tree. The component ``script``/``div``
+    are pre-generated here, so RTD needs no Bokeh install (only the CDN at view
+    time).
+    """
+    sweep = figures.resolve(sweep, root)
+    layout = _scatter_layout(sweep, fit_method, title)
+    script, div = components(layout)
+    return f'{CDN.render()}\n{div}\n{script}'
 
 
 def interactive_leaderboard(runs_root=None, *, root=None, out=None, board=None,

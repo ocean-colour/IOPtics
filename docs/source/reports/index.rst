@@ -13,12 +13,2465 @@ Report pages are generated **on demand** by a sweep's build script
 Docs builds them directly. The heavy artifacts (parquet tables, raw MCMC
 chains) stay under ``$OS_COLOR/IOPtics/runs/`` and are not committed.
 
-.. note::
+Reading the leaderboard
+-----------------------
 
-   No sweeps have been published yet (the run/metrics/report layers arrive in
-   Stages 2–5). As each ``<sweep_id>.rst`` page is generated it is linked from
-   the toctree below — :mod:`ioptics.report.rst` (Stage 5) will switch this to a
-   glob so new pages are picked up automatically.
+The table below is the **persistent, cross-sweep leaderboard**: every sweep's
+accuracy at the diagnostic reference wavelengths (e.g. 440, 555 nm) is folded
+into one ranked store (:func:`ioptics.report.leaderboard.update`), so the
+standing comparison grows as algorithms and datasets accumulate. (The fold is
+idempotent — re-running a sweep just replaces its rows.) Each row is one
+algorithm's score for one contest — a ``(dataset, component, reference
+wavelength, trophic stratum)`` combination:
 
+- **rank** — 1 = best in that contest. The default ordering is by **wins**,
+  breaking ties by :math:`|\text{bias}|` then MAE (see below).
+- **win_frac** — the head-to-head win fraction: for each individual spectrum,
+  the algorithm whose retrieval is *closer to the true value* wins; ``win_frac``
+  is the share of spectra it wins. 0.5 = a tie, 1.0 = always closest.
+- **mae** — *mean absolute error*, computed on :math:`\log_{10}` values so it
+  reads as a **multiplicative** (fractional) error: ``0`` is perfect, ``0.1`` ≈
+  “typically off by ~10 %”, ``0.3`` ≈ ~2× off. (Log space is used because IOPs
+  span orders of magnitude.)
+- **bias** — the *signed* version of MAE: positive = the algorithm systematically
+  over-estimates, negative = under-estimates (again multiplicative; 0 =
+  unbiased).
+- **coverage68 / coverage95** — a **calibration** check on the reported
+  uncertainties: the fraction of truth values that fall inside the retrieval's
+  68 % / 95 % confidence interval. Well-calibrated error bars land near 0.68 /
+  0.95; much lower means the stated uncertainties are too tight (over-confident).
+
+Each sweep also gets its own provenance-stamped page (linked below) with the
+figures and tables behind these numbers.
+
+.. LEADERBOARD_START (auto-generated; do not edit)
+
+Leaderboard
+-----------
+
+.. list-table:: Leaderboard
+   :header-rows: 1
+
+   * - dataset
+     - component
+     - ref_wave
+     - stratum
+     - rank
+     - algorithm
+     - win_frac
+     - bias
+     - mae
+     - coverage68
+     - coverage95
+     - frac_ok
+     - frac_overfit
+     - rel_misfit_median_all
+     - caveat
+   * - GLORIA
+     - a
+     - 440
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a
+     - 440
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a
+     - 443
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 1
+     - expb_pow2
+     - 0.639
+     - 0.194
+     - 1.01
+     - 0.5
+     - 0.917
+     - 0.21
+     - 0.571
+     - 0.595
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 2
+     - expb_powflex
+     - 0.569
+     - 0.0989
+     - 1.06
+     - 0.333
+     - 0.75
+     - 0.21
+     - 0.571
+     - 0.595
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 3
+     - expb_pow
+     - 0.431
+     - 0.289
+     - 1
+     - 0.417
+     - 0.75
+     - 0.21
+     - 0.571
+     - 0.594
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - all
+     - 4
+     - expb_pow2flat
+     - 0.361
+     - 0.301
+     - 1
+     - 0.417
+     - 0.917
+     - 0.21
+     - 0.571
+     - 0.595
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 1
+     - expb_powflex
+     - 0.667
+     - 0.18
+     - 1
+     - 0.6
+     - 0.6
+     - 0.136
+     - 0.556
+     - 0.697
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 2
+     - expb_pow2
+     - 0.6
+     - 0.327
+     - 0.985
+     - 0.6
+     - 1
+     - 0.136
+     - 0.556
+     - 0.697
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 3
+     - expb_pow
+     - 0.4
+     - 0.519
+     - 0.958
+     - 0.6
+     - 0.6
+     - 0.136
+     - 0.556
+     - 0.698
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow2flat
+     - 0.333
+     - 0.523
+     - 0.945
+     - 0.6
+     - 1
+     - 0.136
+     - 0.556
+     - 0.698
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 1
+     - expb_pow2
+     - 0.667
+     - -0.108
+     - 1.39
+     - 0
+     - 0.75
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - 0.625
+     - -0.116
+     - 1.41
+     - 0
+     - 0.75
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 3
+     - expb_pow
+     - 0.375
+     - -0.116
+     - 1.41
+     - 0
+     - 0.75
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 4
+     - expb_pow2flat
+     - 0.333
+     - -0.11
+     - 1.39
+     - 0
+     - 0.75
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 1
+     - expb_pow2
+     - 0.667
+     - 0.479
+     - 0.621
+     - 1
+     - 1
+     - 0.222
+     - 0.167
+     - 0.607
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 2
+     - expb_pow
+     - 0.556
+     - 0.62
+     - 0.62
+     - 0.667
+     - 1
+     - 0.222
+     - 0.167
+     - 0.606
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 3
+     - expb_pow2flat
+     - 0.444
+     - 0.657
+     - 0.657
+     - 0.667
+     - 1
+     - 0.222
+     - 0.167
+     - 0.606
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 440
+     - unknown
+     - 4
+     - expb_powflex
+     - 0.333
+     - 0.303
+     - 0.753
+     - 0.333
+     - 1
+     - 0.222
+     - 0.167
+     - 0.606
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_dg
+     - 443
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - CDOM_vs_adg
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a_ph
+     - 440
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - a_ph
+     - 443
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb
+     - 555
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb
+     - 670
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb_p
+     - 555
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - all
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.594
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - all
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - all
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - all
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.21
+     - 0.571
+     - 0.595
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - eutrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - eutrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - eutrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.698
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - eutrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.136
+     - 0.556
+     - 0.697
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - mesotrophic
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.857
+     - 1
+     - 0.0412
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
+     - 1
+     - expb_pow
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
+     - 2
+     - expb_powflex
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
+     - 3
+     - expb_pow2flat
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.606
+     - 
+   * - GLORIA
+     - bb_p
+     - 670
+     - unknown
+     - 4
+     - expb_pow2
+     - nan
+     - nan
+     - nan
+     - nan
+     - nan
+     - 0.222
+     - 0.167
+     - 0.607
+     - 
+
+
+.. LEADERBOARD_END
 .. toctree::
    :maxdepth: 1
+   :glob:
+
+   */*

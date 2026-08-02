@@ -85,12 +85,14 @@ def test_build_cross_algorithm(tmp_path):
     assert (rd / 'scatter_a_440.png').is_file()
     assert (rd / 'accuracy_chisq_all.csv').is_file()
     assert (rd / 'qc_chisq_all.csv').is_file()
-    assert (rd / 'interactive_scatter.html').is_file()
+    # interactive scatter is embedded inline (no separate .html file / iframe)
+    assert not (rd / 'interactive_scatter.html').exists()
     text = out.read_text()
     assert f':Sweep: {_SID}' in text
     assert '.. figure:: scatter_a_440.png' in text
     assert '.. csv-table::' in text
-    assert '<iframe src="interactive_scatter.html"' in text
+    assert '.. raw:: html' in text and 'iframe' not in text
+    assert 'Bokeh' in text or 'bokeh' in text          # inline CDN + components
     # toctree globs the new page in
     assert ':glob:' in (docs / 'reports' / 'index.rst').read_text()
 
@@ -113,6 +115,22 @@ def test_build_bad_kind(tmp_path):
         standard.build(_SID, kind='nope', root=tmp_path, docs_root=tmp_path / 'd')
 
 
+def _scaffold_min_docs(src):
+    """Minimal Sphinx tree so a generated report page builds standalone.
+
+    Includes stub ``datasets``/``models`` pages because the report cross-links
+    them via ``:doc:`` (they exist in the real docs tree).
+    """
+    (src / 'conf.py').write_text(
+        "project = 'test'\nextensions = []\nhtml_theme = 'basic'\n"
+        "exclude_patterns = ['_build']\n")
+    (src / 'datasets.rst').write_text('Datasets\n========\n\nstub.\n')
+    (src / 'models.rst').write_text('IOP models\n==========\n\nstub.\n')
+    (src / 'index.rst').write_text(
+        'Test\n====\n\n.. toctree::\n   :maxdepth: 2\n\n'
+        '   datasets\n   models\n   reports/index\n')
+
+
 @needs_sphinx
 def test_generated_page_renders_under_sphinx(tmp_path):
     """The generated report page must build under ``sphinx-build -W``."""
@@ -122,11 +140,7 @@ def test_generated_page_renders_under_sphinx(tmp_path):
     _build_sweep(tmp_path)
     src = tmp_path / 'docs'
     standard.build(_SID, kind='cross_algorithm', root=tmp_path, docs_root=src)
-    (src / 'conf.py').write_text(
-        "project = 'test'\nextensions = []\nhtml_theme = 'basic'\n"
-        "exclude_patterns = ['_build']\n")
-    (src / 'index.rst').write_text(
-        'Test\n====\n\n.. toctree::\n   :maxdepth: 2\n\n   reports/index\n')
+    _scaffold_min_docs(src)
 
     proc = subprocess.run(
         [sys.executable, '-m', 'sphinx', '-W', '-q', '-b', 'html',
@@ -175,11 +189,7 @@ def test_report_end_to_end_l23(tmp_path):
     assert rst.LEADERBOARD_START in landing and 'expb_pow' in landing
 
     # the whole reports tree (page + landing) builds under sphinx -W
-    (src / 'conf.py').write_text(
-        "project = 'test'\nextensions = []\nhtml_theme = 'basic'\n"
-        "exclude_patterns = ['_build']\n")
-    (src / 'index.rst').write_text(
-        'Test\n====\n\n.. toctree::\n   :maxdepth: 2\n\n   reports/index\n')
+    _scaffold_min_docs(src)
     proc = subprocess.run(
         [sys.executable, '-m', 'sphinx', '-W', '-q', '-b', 'html',
          str(src), str(src / '_build')],

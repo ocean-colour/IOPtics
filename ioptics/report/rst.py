@@ -80,6 +80,18 @@ def bokeh_raw(relpath, *, height=560):
         'frameborder="0"></iframe>', ''])
 
 
+def bokeh_embed(fragment):
+    """Inline a pre-rendered Bokeh HTML fragment (CDN + components) via ``raw:: html``.
+
+    ``fragment`` is the BokehJS CDN ``<script>`` tags + the ``components``
+    ``<div>``/``<script>`` (from :func:`ioptics.report.bokeh.scatter_embed`). The
+    figure renders **inside** the page — no separate file to copy — so it
+    survives a Sphinx/RTD build. Every line is indented into the directive body.
+    """
+    body = '\n'.join('   ' + line for line in fragment.splitlines())
+    return '.. raw:: html\n\n' + body + '\n'
+
+
 def page(*blocks):
     """Join RST blocks with a blank line between each (+ trailing newline).
 

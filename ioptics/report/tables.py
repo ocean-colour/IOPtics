@@ -10,7 +10,7 @@ fractions (``metrics_scalar`` ``component='Rrs'`` rows). Each returns a tidy
 
 from __future__ import annotations
 
-from ioptics import metrics
+from ioptics import metrics, records
 from ioptics.report import figures
 
 # Accuracy columns surfaced per (algorithm, component, ref_wave).
@@ -66,10 +66,17 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     """Per-algorithm QC summary: non-solution rate + §2 closure fractions.
 
     ``frac_not_ok`` is the fraction of ``results_scalar`` rows whose ``status``
-    is not ``'ok'`` (fit failures / QC flags); the closure fractions
-    (``frac_good``, ``frac_fit_noise``, ``frac_qc_fail``, ``chi2_nu_median``)
-    come from the ``metrics_scalar`` ``component='Rrs'`` rows. Writes
-    ``qc_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
+    is not ``'ok'`` (fit failures / QC flags), over all strata; the closure
+    columns (``chi2_nu_median``, the noise-model-free ``rel_misfit_median`` /
+    ``rel_misfit_median_all``, ``frac_good``, ``frac_overfit``,
+    ``frac_underfit``, ``frac_qc_fail``) and the per-status **coverage** block
+    (``n_attempted`` + one ``frac_<status>`` per
+    :data:`ioptics.records.STATUSES`) come from the ``metrics_scalar``
+    ``component='Rrs'`` rows. The coverage block is what says *why* rows were
+    not scored — a ``frac_out_of_scope`` of 0.8 and a ``frac_fit_failed`` of
+    0.8 are the same ``frac_not_ok`` and very different findings.
+
+    Writes ``qc_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
     """
     sweep = figures.resolve(sweep, root)
     sc = sweep.scalar[sweep.scalar['fit_method'] == fit_method]
@@ -80,8 +87,12 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     ms = _require(sweep.metrics_scalar, 'metrics_scalar')
     closure = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
                  & (ms['component'] == 'Rrs')]
-    cols = [c for c in ('algorithm', 'chi2_nu_median', 'frac_good',
-                        'frac_fit_noise', 'frac_qc_fail') if c in closure.columns]
+    cols = [c for c in ('algorithm', 'n_attempted', 'n', 'chi2_nu_median',
+                        'rel_misfit_median', 'rel_misfit_median_all',
+                        'frac_good', 'frac_overfit', 'frac_underfit',
+                        'frac_qc_fail')
+            + tuple(f'frac_{s}' for s in records.STATUSES)
+            if c in closure.columns]
     out = not_ok.merge(closure[cols], on='algorithm', how='left') \
                 .sort_values('algorithm').reset_index(drop=True)
     if write:

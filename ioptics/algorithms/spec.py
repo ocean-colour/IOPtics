@@ -82,6 +82,15 @@ class AlgorithmSpec:
     noise_model : str
         Provenance tag for the (sweep-level) noise model. The fit always uses
         ``record.varRrs``; this field is descriptive only.
+    maxfev : int or None
+        Optimizer evaluation budget handed to ``bing.fitting.chisq_fit.fit``
+        for the ``'chisq'`` method. ``None`` (default) leaves scipy's own
+        default in place. It governs *whether* the fit converges, not how
+        well the model can fit, and parameter-rich models need it -- the
+        two-component turbid backscattering models fail to converge on a
+        substantial fraction of spectra at the default budget. Ignored by
+        the MCMC path, which seeds from :func:`ioptics.run.initial_guess`
+        rather than a least-squares pre-fit.
     """
 
     name:          str
@@ -98,6 +107,7 @@ class AlgorithmSpec:
     fit_method:    str = 'chisq'
     mcmc:          MCMCOptions = field(default_factory=MCMCOptions)
     noise_model:   str = 'pace'
+    maxfev:        int | None = None
 
     # --- BING interop -------------------------------------------------
     def to_bing_p(self, **overrides):

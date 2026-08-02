@@ -37,6 +37,19 @@ def test_from_standard_giop():
     assert len(spec.apriors) + len(spec.bpriors) == 3     # free params k
 
 
+def test_from_standard_gsm():
+    spec = AlgorithmSpec.from_standard('gsm', label='GSM')
+    assert spec.name == 'gsm'
+    assert spec.label == 'GSM'
+    assert spec.anw_model == 'GSM'
+    assert spec.bbnw_model == 'GSM'
+    assert len(spec.apriors) == 2       # Adg, Aph
+    assert len(spec.bpriors) == 1       # Bbp
+    assert len(spec.apriors) + len(spec.bpriors) == 3     # free params k
+    assert spec.othera_priors is None
+    assert spec.fit_method == 'chisq'   # IOPtics default (gsm is chisq-first)
+
+
 def test_label_defaults_to_name():
     spec = AlgorithmSpec.from_standard('giop')
     assert spec.label == 'giop'

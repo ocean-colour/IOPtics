@@ -7,6 +7,8 @@ forms, the NaN-drop (intersection) rule, the Rrs dual-sided window, and the
 ΔBIC per-spectrum contest / CDF.
 """
 
+import dataclasses
+
 import numpy as np
 import pandas as pd
 
@@ -334,29 +336,33 @@ def _cf(values):
 
 
 def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
-               fit_method='chisq', rrs_factor=1.0):
+               fit_method='chisq', rrs_factor=1.0, dataset='L23',
+               status='ok'):
     """One (RetrievalResult, PreparedRecord) for the synthetic sweep.
 
     ``factor`` scales every retrieved value above truth (1.0 = perfect, 2.0 =
     2x over). ``rrs_factor`` scales the model Rrs above the observed Rrs.
+    ``dataset`` names the source (defaults to ``'L23'``); pass ``'GLORIA'`` to
+    exercise the CDOM-vs-a_dg caveat, ``'PANGAEA'`` for a genuine-``a_dg`` set.
+    ``status`` is the row's fit status — only ``'ok'`` rows are scored.
     """
     comps = {c: _cf(np.full(_WAVE.size, factor * b)) for c, b in _BASE.items()}
     comps['Rrs_model'] = _cf(rrs_factor * _RRS)
     k = 5 if algo == 'expb_pow' else 3
     result = RetrievalResult(
-        dataset='L23', obs_id=obs_id, algorithm=algo, fit_method=fit_method,
+        dataset=dataset, obs_id=obs_id, algorithm=algo, fit_method=fit_method,
         components=comps,
         scalars={'Chl': (factor * chl_truth, 0.1), 'Sdg': (factor * 0.017, 1e-3),
                  'a_cdom440': (factor * _BASE['a_dg'], 1e-3),
                  'beta': (factor * 1.0, 0.1)},
         stats={'chi2': 10.0, 'chi2_nu': 1.0, 'AIC': 30.0, 'BIC': float(bic),
                'n_bands': 10, 'k': k},
-        status='ok', provenance_id='p',
+        status=status, provenance_id='p',
         chain_file=None if fit_method == 'chisq' else 'c.npz')
     truth = {c: _Spec(np.full(_WAVE.size, b)) for c, b in _BASE.items()}
     truth.update({'Chl': chl_truth, 'Sdg': 0.017})
     record = PreparedRecord(
-        dataset='L23', obs_id=obs_id, wave=_WAVE, Rrs=_RRS,
+        dataset=dataset, obs_id=obs_id, wave=_WAVE, Rrs=_RRS,
         varRrs=np.full(_WAVE.size, 1e-6), Rrs_clean=_RRS,
         truth=truth, truth_interp={}, init={'Chl': 1.0, 'Y': 0.5},
         noise_model='pace', noise_seed=1)
@@ -407,19 +413,99 @@ def test_compute_spectral_accuracy_and_coverage(tmp_path):
 def test_compute_scalar_closure_and_ranks(tmp_path):
     sc = _synthetic_sweep(tmp_path).scalar
     allc = sc[(sc.stratum == 'all') & (sc.fit_method == 'chisq')]
-    # §2 closure row (component='Rrs')
+    # §2 closure row (component='Rrs') — χ²ᵥ-based QC (Q10a)
     rrs = allc[allc.component == 'Rrs'].set_index('algorithm')
+    # synthetic chi2_nu == 1.0 -> all 'good', none a non-solution
     assert rrs.loc['expb_pow', 'frac_good'] == 1.0
-    assert np.isclose(rrs.loc['expb_pow', 'mae'], 0.0)
-    assert rrs.loc['expb_pow', 'frac_fit_noise'] == 1.0
-    assert np.isclose(rrs.loc['giop', 'mae'], 0.5)       # Rrs 1.5x -> MAE 0.5
-    assert rrs.loc['giop', 'frac_qc_fail'] == 1.0
+    assert rrs.loc['expb_pow', 'frac_qc_fail'] == 0.0
+    assert rrs.loc['giop', 'frac_qc_fail'] == 0.0
+    assert np.isclose(rrs.loc['expb_pow', 'chi2_nu_median'], 1.0)
+    # the log-space Rrs MAE is no longer part of the closure row
+    assert 'frac_fit_noise' not in rrs.columns
     # ref-band accuracy ranks: expb_pow (mae 0) beats giop.
     a440 = allc[(allc.component == 'a') & (allc.ref_wave == 440.0)]
     a440 = a440.set_index('algorithm')
     assert a440.loc['expb_pow', 'ref_match'] == 440.0
     assert a440.loc['expb_pow', 'mae_rank'] == 1
     assert a440.loc['giop', 'mae_rank'] == 2
+
+
+def test_rel_misfit_is_a_median_of_ratios():
+    O = np.array([1.0, 2.0, 4.0, 10.0])
+    M = np.array([1.1, 2.4, 4.0, 10.0])          # 10%, 20%, 0, 0
+    assert np.isclose(metrics.rel_misfit(M, O), 0.05)   # median of 0,0,.1,.2
+    # perfect closure -> 0
+    assert metrics.rel_misfit(O, O) == 0.0
+
+
+def test_rel_misfit_skips_non_positive_observations():
+    # The ratio is meaningless where the observation crosses zero, which the
+    # red tail of a hyperspectral spectrum routinely does.
+    O = np.array([1.0, 0.0, -0.5, 2.0])
+    M = np.array([1.5, 5.0, 5.0, 2.0])
+    # only bands 0 and 3 count: ratios 0.5 and 0.0 -> median 0.25
+    assert np.isclose(metrics.rel_misfit(M, O), 0.25)
+    assert np.isnan(metrics.rel_misfit(np.array([1.0]), np.array([0.0])))
+    assert np.isnan(metrics.rel_misfit(np.array([np.nan]), np.array([1.0])))
+
+
+def test_rel_misfit_is_independent_of_the_noise_model(tmp_path):
+    """The point of the metric: re-stating the uncertainty must not move it.
+
+    chi2_nu is noise-weighted and moved by 5x on GLORIA when the assumed error
+    floor changed, while the fits themselves did not move at all. The relative
+    misfit is the number that stays put, so the two together separate a real
+    misfit from a mis-stated error bar.
+
+    Only the misfit side is asserted here: this fixture's ``chi2_nu`` is a
+    canned ``stats`` entry rather than something recomputed from ``varRrs``, so
+    varying the weights cannot move it. The χ² half of the contrast is on real
+    data in ``reports/gloria_fits_report.md`` (247 -> 122 -> 30 across floors,
+    misfit unchanged).
+    """
+    pairs = [_make_pair(0, 'expb_pow', 1.0, 0.5, 10, rrs_factor=1.5)]
+    io.write_results('sweep_r', pairs, root=tmp_path)
+    a = metrics.compute('sweep_r', root=tmp_path, write=False).scalar
+
+    # same fit, hundred-fold looser weights
+    rec = pairs[0][1]
+    pairs2 = [(pairs[0][0],
+               dataclasses.replace(rec, varRrs=rec.varRrs * 100.0))]
+    io.write_results('sweep_r2', pairs2, root=tmp_path)
+    b = metrics.compute('sweep_r2', root=tmp_path, write=False).scalar
+
+    def _closure(df, col):
+        row = df[(df.component == 'Rrs') & (df.stratum == 'all')]
+        return float(row[col].iloc[0])
+
+    # the model Rrs is 1.5x the observed everywhere -> 50% misfit, either way
+    for df in (a, b):
+        assert np.isclose(_closure(df, 'rel_misfit_median'), 0.5)
+        assert np.isclose(_closure(df, 'rel_misfit_median_all'), 0.5)
+
+
+def test_rel_misfit_all_covers_unscored_rows(tmp_path):
+    # The all-attempted figure is the honest one for a dataset most of whose
+    # spectra are not solutions -- it is what corrected the GLORIA report's
+    # headline misfit from 48% (fittable subset) to 64% (everything).
+    sc = _mixed_status_sweep(tmp_path).scalar
+    rrs = sc[(sc.stratum == 'all') & (sc.fit_method == 'chisq')
+             & (sc.component == 'Rrs')].set_index('algorithm')
+    # giop solved nothing, so it has no scored misfit but still has one overall
+    assert np.isnan(rrs.loc['giop', 'rel_misfit_median'])
+    assert np.isfinite(rrs.loc['giop', 'rel_misfit_median_all'])
+
+
+def test_closure_qc_from_chi2nu():
+    """§2 QC-fail is χ²ᵥ-based: fraction with χ²ᵥ > CHI2NU_QC_MAX (Q10a)."""
+    scal = pd.DataFrame({
+        'dataset': ['L23'] * 4, 'algorithm': ['x'] * 4,
+        'fit_method': ['chisq'] * 4, 'stratum': ['all'] * 4,
+        'chi2_nu': [1.0, 1.0, 9.0, 20.0], 'n_bands': [81] * 4, 'k': [5] * 4})
+    row = metrics._closure_rows(scal, n_sigma=2.0).iloc[0]
+    assert row['component'] == 'Rrs'
+    assert row['frac_qc_fail'] == 0.5              # 2 of 4 exceed 5.0
+    assert 'mae' not in row.index or np.isnan(row.get('mae', np.nan))
 
 
 def test_compute_pairwise_wins_and_dbic(tmp_path):
@@ -442,6 +528,69 @@ def test_compute_strata_present(tmp_path):
     sc = _synthetic_sweep(tmp_path).scalar
     strata = set(sc['stratum'])
     assert {'all', 'oligotrophic', 'mesotrophic', 'eutrophic'} <= strata
+
+
+def _mixed_status_sweep(tmp_path, **kwargs):
+    """``expb_pow`` all-``ok`` vs ``giop`` never scorable, over 4 spectra.
+
+    ``giop``'s rows are 2x high, so if any of them reached the reductions its
+    ``mae`` would be 1.0 rather than absent — which is the whole point of the
+    filter: an unscorable row must not contribute a number.
+    """
+    bad = ['poor_fit', 'out_of_scope', 'fit_failed', 'poor_fit']
+    pairs = []
+    for obs_id in range(4):
+        pairs.append(_make_pair(obs_id, 'expb_pow', 1.0, 0.5, 10))
+        pairs.append(_make_pair(obs_id, 'giop', 2.0, 0.5, 15,
+                                status=bad[obs_id]))
+    io.write_results('sweep_s', pairs, root=tmp_path)
+    return metrics.compute('sweep_s', root=tmp_path, **kwargs)
+
+
+def test_scoring_skips_rows_that_are_not_solutions(tmp_path):
+    tables = _mixed_status_sweep(tmp_path)
+    for df in (tables.spectral, tables.scalar):
+        scored = df[df['component'] != 'Rrs']       # closure row covers all
+        assert set(scored['algorithm']) == {'expb_pow'}
+    # ... and with one algorithm left standing there is no contest to hold:
+    # a head-to-head against an unscorable opponent is not a win.
+    pw = tables.pairwise
+    assert pw.empty or 'contest' not in pw.columns \
+        or set(pw['algorithm']) == {'expb_pow'}
+
+
+def test_closure_row_reports_coverage_for_every_algorithm(tmp_path):
+    sc = _mixed_status_sweep(tmp_path).scalar
+    rrs = sc[(sc.stratum == 'all') & (sc.fit_method == 'chisq')
+             & (sc.component == 'Rrs')].set_index('algorithm')
+    # An algorithm that solved nothing still appears -- with its reasons.
+    assert 'giop' in rrs.index
+    assert rrs.loc['giop', 'n_attempted'] == 4
+    assert rrs.loc['giop', 'n'] == 0                 # nothing scored
+    assert np.isnan(rrs.loc['giop', 'chi2_nu_median'])
+    assert rrs.loc['giop', 'frac_ok'] == 0.0
+    assert np.isclose(rrs.loc['giop', 'frac_poor_fit'], 0.5)
+    assert np.isclose(rrs.loc['giop', 'frac_out_of_scope'], 0.25)
+    assert np.isclose(rrs.loc['giop', 'frac_fit_failed'], 0.25)
+    # and the healthy one reports full coverage
+    assert rrs.loc['expb_pow', 'frac_ok'] == 1.0
+    assert rrs.loc['expb_pow', 'n'] == 4
+    # frac_qc_fail counts *attempted* fits, not scored ones -- on the scored
+    # subset it would be identically zero, since 'ok' means chi2_nu <= qc_max.
+    assert rrs.loc['giop', 'frac_qc_fail'] == 0.0    # synthetic chi2_nu == 1
+
+
+def test_score_statuses_is_overridable(tmp_path):
+    # Scoring everything is a supported (documented) choice, so the filter has
+    # to be a parameter rather than a hard-wired rule.
+    from ioptics import records as rec_mod
+
+    sc = _mixed_status_sweep(
+        tmp_path, score_statuses=rec_mod.STATUSES).scalar
+    a440 = sc[(sc.stratum == 'all') & (sc.component == 'a')
+              & (sc.ref_wave == 440.0)].set_index('algorithm')
+    assert 'giop' in a440.index
+    assert np.isclose(a440.loc['giop', 'mae'], 1.0)   # the 2x-high rows are back
 
 
 def test_compute_parquet_roundtrip(tmp_path):

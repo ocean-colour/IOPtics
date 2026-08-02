@@ -77,3 +77,19 @@ def test_render_rst_and_md(tmp_path):
     assert 'expb_pow' in rst and 'giop' in rst
     md = leaderboard.render(runs_root=tmp_path, out=_lb(tmp_path), fmt='md')
     assert md.startswith('| dataset |')
+
+
+def test_board_carries_coverage(tmp_path):
+    """A rank is only meaningful next to the share of spectra it covers."""
+    from ioptics.tests.test_metrics import _mixed_status_sweep
+
+    # expb_pow solves all 4; giop solves none (its rows are all non-'ok').
+    _mixed_status_sweep(tmp_path)
+    board = leaderboard.update(runs_root=tmp_path, out=_lb(tmp_path))
+    assert 'frac_ok' in board.columns
+    cov = board.groupby('algorithm')['frac_ok'].max()
+    assert cov['expb_pow'] == 1.0
+    # giop has no scored accuracy rows at all, so it is absent from the fold --
+    # which is why frac_ok has to be read from the report's QC table too.
+    assert 'giop' not in cov.index
+    assert 'frac_ok' in leaderboard.render(board=board)

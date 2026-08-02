@@ -134,6 +134,10 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
 1. I have issued a PR for this stage. Please review it and post it to GitHub.  Also, investigate any CI issues and fix them. Use Fable. Please log your work in the Logs section below.
 2. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
+### First sweep
+
+1. I believe now that Stage 5 is complete that we can build out our first Report with L23 and GIOP.  If that is true, please create a new prompt file `first_sweep.md` to guide the process.
+
 ### Stage 6
 
 1. We are ready to start Stage 6.  Modify the prompt file `coding_prompts_stage06.md` to reflect the changes in this stage.
@@ -573,3 +577,24 @@ Implements **Reporting** and the **Staged plan / Stage 5** of
     caveat auto-stamp, `build_v2.py` mirroring `build_v1.py` +
     `report.standard.build`/`leaderboard.update`).
 - No code changes; prompt-file edit only.
+
+### Stage 5 — First sweep prep: create `first_sweep.md` (2026-07-03)
+
+- Confirmed Stage 5 **is** complete (exit criterion met; PR #8 green on all
+  matrix jobs) — so the first real report is unblocked.
+- Created [`first_sweep.md`](first_sweep.md): an execution **runbook** (not code)
+  for building the first report from the canonical `expb_giop_L23_v1` sweep via
+  `build_v1.py` stages `1`→`2`→`3` (run → metrics → report + leaderboard), then a
+  `sphinx -W` review and a docs commit (Q22 split: page+assets committed, parquet/
+  chains not).
+- Surfaced the two real gotchas up front so they're decided before running:
+  `build_v1.main(1)` runs the **full** L23 dataset **serial + fail-fast**
+  (`n_cores=1, strict=True`, no `obs_ids`) with 200 giop MCMC fits — so the
+  runbook opens with **Decisions D1–D5** (run scope, `n_cores`, flip to
+  `strict=False` per the run-error-policy TODO, `mcmc_subset`, publish-now) and
+  notes `build_v1.main` doesn't expose those knobs (call the stages directly, or
+  extend `main`).
+- Structured as one prompt per step (0 preflight → 1 run → 2 metrics → 3 report
+  → 4 sphinx review → 5 commit), each with a verify + Q&A + Log, matching the
+  repo's prompt conventions.
+- No code changes; new prompt file only.

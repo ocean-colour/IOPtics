@@ -22,6 +22,15 @@ def test_seeded_with_both_in_tandem():
     assert registry.get('giop').label == 'GIOP'
 
 
+def test_seeded_with_gsm():
+    # gsm registered alongside the in-tandem pair via one _STANDARD_SEED entry
+    assert 'gsm' in registry.available()
+    gsm = registry.get('gsm')
+    assert gsm.anw_model == 'GSM' and gsm.bbnw_model == 'GSM'
+    assert gsm.label == 'GSM'
+    assert gsm.fit_method == 'chisq'
+
+
 def test_available_is_sorted():
     assert registry.available() == sorted(registry.available())
 

@@ -1,0 +1,16 @@
+sweep_id: gloria_turbid_v3
+datasets: [GLORIA]             # real turbid in-situ spectra (7572 available)
+noise_model: insitu            # GLORIA ships a per-band Rrs std; prep adds the
+                               #   GLORIA-only 5% error floor on top, so the
+                               #   effective tag is 'insitu+floor:0.05' (an
+                               #   inflated-noise result, by design)
+algorithms:                    # the turbid contest
+  - expb_pow                   #   open-ocean baseline
+  - expb_powflex               #   control: same form, beta free to go negative
+  - expb_pow2flat              #   two components, mineral exponent fixed
+  - expb_pow2                  #   two components, mineral exponent free
+fit_method: chisq              # chi^2 throughout; MCMC is a separate sweep
+seed: 1234
+wv_min: 400                    # <750 nm keeps every fit inside the Gordon
+wv_max: 750                    #   coefficient table, and keeps 440 nm (where
+                               #   GLORIA's a_dg truth lives) in the window

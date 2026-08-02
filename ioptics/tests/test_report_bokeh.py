@@ -41,6 +41,28 @@ def test_interactive_scatter(tmp_path):
     assert 'expb_pow' in html and 'giop' in html          # data embedded
 
 
+def test_scatter_points_downsampled(tmp_path):
+    sw = _build(tmp_path)
+    full = bokeh._scatter_points(sw, 'chisq', max_points=10 ** 9)
+    capped = bokeh._scatter_points(sw, 'chisq', max_points=50)  # force downsample
+    assert len(full) > 50 and len(capped) <= 50
+    # every selectable (algorithm, component, stratum) combo survives the cap
+    combos = lambda df: set(map(tuple,
+                                df[['algorithm', 'component', 'stratum']].values))
+    assert combos(full) == combos(capped)
+
+
+def test_scatter_embed(tmp_path):
+    sw = _build(tmp_path)
+    frag = bokeh.scatter_embed(sw)
+    assert isinstance(frag, str) and len(frag) > 500
+    # an embeddable fragment (components + CDN), NOT a standalone document
+    assert '<html' not in frag.lower()
+    assert 'Bokeh' in frag or 'bokeh' in frag
+    assert 'cdn.bokeh.org' in frag                       # BokehJS from CDN
+    assert '<div' in frag and '<script' in frag          # components div+script
+
+
 def test_interactive_leaderboard(tmp_path):
     sw = _build(tmp_path)
     lb_path = tmp_path / 'leaderboard.parquet'
