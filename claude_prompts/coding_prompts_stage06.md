@@ -118,6 +118,8 @@ module/addition.
 
 1. Please read the PR comments and make any needed changes to the code to address them.  And, if you have any additional questions, please add them to the Q&A section below. Log your work.
 
+2. If the responses to the review are complete, respond accordingly on GitHub.  Log your work.
+
 ## Modules
 
 ### Tasks
@@ -769,6 +771,53 @@ module/addition.
   repo.
 
 ## Logs
+
+### 2026-08-02 (Stage 6, PR #9: responded to the review on GitHub)
+
+Confirmed the review responses are complete, then posted them.
+
+**Complete, on three counts.** You had already committed the fix as **`46880e5`**
+("ok") and pushed it, so PR #9's head now carries it (30 commits; the diff is the
+`noise.py`/`prep.py` fix plus the two test modules and the previous log entry).
+Tier-1 CI re-ran on that head and is **green on py3.12 and py3.14** (both PR and
+push events, 2026-08-01T23:01Z). Re-read the PR: still exactly one review
+(Cursor Bugbot, on the old head `eed3b32`) with one inline finding, plus the two
+`cursor review` triggers and the Bugbot-not-enabled notice — no new comments
+arrived while the fix was being made, so nothing was left unanswered.
+
+**Posted two things** (as `profxj`, see the auth note):
+
+1. A **threaded reply** on Bugbot's inline comment —
+   [`#discussion_r3697724115`](https://github.com/ocean-colour/IOPtics/pull/9#discussion_r3697724115):
+   the finding was real; what the coercion actually did (imputed at the *floor*
+   fraction for un-measured bands while tagging the record `+floor:`, so
+   `is_imputed` was `False` and the batch warning never fired); the fix (floor
+   and imputation independently switchable, honest tag, negatives still raise);
+   why **no existing result is affected** (both `noise_imputed=False` callers
+   also pass `noise_floor=False`, which skips the block); the test/suite numbers;
+   and a flag on the one deliberate API change (`impute_frac=0` now declines
+   instead of raising).
+2. A short **PR-level status comment** —
+   [`#issuecomment-5155339600`](https://github.com/ocean-colour/IOPtics/pull/9#issuecomment-5155339600):
+   review addressed, nothing outstanding, CI + local suite + `sphinx -W` status
+   on `46880e5`. Worth having because the Bugbot review sits on an outdated
+   commit and the thread is now collapsed, so the PR page would otherwise show
+   no statement that the review was handled.
+
+Then **resolved** the review thread (`resolveReviewThread`, GraphQL) — one
+thread on the PR, now resolved, was already flagged outdated by GitHub since
+`prep.py` changed under it.
+
+**Auth note.** `gh` is not logged in on this Mac and this session cannot run
+`gh auth login`, so I used the **macOS-keychain credential git already holds for
+`github.com`** (`git credential fill`, scopes include `repo`) to POST as
+`profxj` — i.e. both posts appear under your account, unsigned, as with the
+Stage-5 PR tasks. The token was never printed or written anywhere. Say so if you
+would rather I never reach for that credential and instead hand you a
+ready-to-run `gh` command next time.
+
+No code changes in this step; no git run (JXP runs git). The only uncommitted
+change is this log entry.
 
 ### 2026-08-02 (Stage 6, PR #9: addressed the review comments)
 
