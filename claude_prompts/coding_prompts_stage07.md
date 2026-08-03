@@ -203,7 +203,9 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
    correlation-labelled azimuth + centred-RMSD arcs, or demote per Q&A. Tier-1 tests
    on the mapping's stability. Q&A. Log.
 
-2. **Data-driven artifact selection.** Replace `standard._REP_REFS` and the
+2. **Data-driven artifact selection.** 
+   Read my answers in the Q&A section below and react accordingly. Then:
+   Replace `standard._REP_REFS` and the
    `dbic_cdf` default pair with selection **derived from the sweep**: components and
    ref-λ that actually carry truth, and ΔBIC pairs that exist among the sweep's
    algorithms (all pairs, or the k-extremes — propose). Suppress any section whose
@@ -306,6 +308,8 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   encodes what *you* consider a scientifically meaningful difference, so it needs
   your number.
 
+>A. Use 10%
+
 **Blocking Task 6:**
 
 - **Page/URL scheme** (permanent once published): `reports/algorithms/<name>` +
@@ -313,18 +317,22 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   collision with the existing *reference* pages `models.rst` / `datasets.rst` — I
   would rename those to "Model reference" / "Dataset reference" to keep them
   distinct.
+>A. That is fine.
 - **Generated, curated, or hybrid?** Fully generated profiles stay current
   automatically but can only say what the metrics say; hybrid (generated
   tables/figures + a hand-written findings block) is what makes them worth reading.
+>A. Hybrid
 - **How opinionated should the site be?** Publish a per-water-type *recommendation*,
   or only ranked evidence? On the turbid data today an honest recommendation would
   read "none of these four work".
+>A. No recommendations yet
 
 **Blocking Task 9:**
 
 - **Cross-sweep identity.** If the same algorithm name ran with different
   `maxfev`/priors/RT in two sweeps, is its profile (a) one page pooling them with a
   "what varied between sweeps" block, or (b) split per spec digest?
+>A. (a)
 
 **Affects Task 1:**
 
@@ -341,11 +349,31 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **not** as a page section: with four algorithms clustered at corr ≈ 0.3 it says
   > far less than the annotated scatter, whose legend states ratio and MPD outright.
 
+>A. Yes, keep Taylor
+
 - **Should `ratio_hist` get a page section now that it is styled?** It is the one
   builder with no `figures.*` wrapper, and the community convention is to pair every
   scatter with a **distribution of the ratios** (GIOP Figs. 1-2). It would slot in
   beside each scatter in Task 2 rather than waiting for Task 7 — say if you want that
   pulled forward.
+
+>A. Yes, give it a page section
+  > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
+  > <comp>(<ref>)" section now follows each scatter.
+
+**New after Task 2:**
+
+- **How many `(component, ref-λ)` panels should a page carry?** `MAX_REF_PANELS` is
+  3 today, best-covered first, so a full L23 sweep (which scores `a`, `bb`, `a_ph`,
+  `a_dg`, `bb_p` at 440/443/555/670) shows 3 of up to ~10 rather than all of them —
+  each now costing two figures, since every scatter is paired with a ratio
+  distribution. Options: keep 3; raise it; or show all *total* components (`a`, `bb`)
+  plus the best-covered decomposed one, which matches the community's
+  total-before-decomposed convention. My lean is the last.
+- **Should the ΔBIC contest stay a single k-extreme pair per page?** I implemented
+  the k-extremes because that is the "does complexity pay" question. An all-pairs
+  ΔBIC/win matrix would say more, but it belongs with the leaderboard work in Task 5
+  — confirm you are happy for it to land there rather than on each sweep page.
 
 **Affects Tasks 3 and 5:**
 
@@ -357,6 +385,8 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   with the IOP literature (nearly free — we compute both), and MdSA/SSPB for the
   inland/coastal audience that GLORIA belongs to?
 
+>A. Follow Erickson 2023
+
 **Scope questions:**
 
 - **Is computational cost in scope?** Runtime per fit and MCMC step counts are
@@ -364,14 +394,99 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   calls `curve_fit(..., full_output=False)`). Reporting cost needs instrumentation in
   Task 9 plus a re-run. A community comparison of a k=3 against a k=7 model usually
   wants it.
+>A. No, for now computational cost is not in scope
+
 - **Is the "add your own model" on-ramp part of this stage?** A page showing an
   outsider how to register their parameterization, run a bounded sweep, and get the
   standard report is the highest-leverage item for the stage goal — but it wants the
   profile pages solid first. In Stage 7, or a Stage 8?
+>A. No, add your own model is not part of this yet
 - **Task 11 execution:** run the bounded `multi_v2` here on the laptop (both datasets
   resolve), or defer it to the workstation alongside the full L23 sweep?
+>A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-03 (Stage 7, Task 2: data-driven artifact selection)
+
+**The blank GLORIA page is gone — from the committed docs tree, not just in
+principle.** `docs/source/reports/gloria_turbid_v3/` now holds
+`scatter_a_dg_440.png`, `ratio_hist_a_dg_440.png`, `taylor_a_dg_440.png`,
+`target_a_dg_440.png` and `dbic_cdf_expb_pow2_vs_expb_pow.png`, and the five blank
+placeholders are deleted. The page has **zero** occurrences of "no data".
+
+**How the figure set is chosen now.**
+
+- `figures.scored_refs(sweep)` returns the `(component, ref_wave, n)` combinations
+  the sweep can actually score — from `metrics_scalar` (`n > 0` at a matched
+  `ref_wave`), falling back to counting finite truth pairs in `results_spectral`
+  when metrics have not been computed. Ordered best-covered first; the page takes
+  the top `MAX_REF_PANELS` (3). On `gloria_turbid_v3` that is exactly
+  `[('a_dg', 440.0, 12)]`, which is the whole truth GLORIA carries.
+- `figures.dbic_pair(sweep)` picks the **k-extremes** — highest- against
+  lowest-parameter algorithm — and returns `None` when there are fewer than two
+  algorithms or every `k` is identical (then ΔBIC is not asking the
+  does-complexity-pay question). On the GLORIA sweep it picks
+  `expb_pow2` (k=7) vs `expb_pow` (k=5), a contest that actually ran, instead of the
+  phantom `giop`. I implemented k-extremes rather than an all-pairs matrix; an
+  all-pairs win/ΔBIC matrix is a better fit for Task 5's leaderboard work than for a
+  per-sweep page, so I left it there.
+- Taylor/Target follow the best-covered component instead of a hardcoded `a`/440,
+  and **keep their page section** per your answer.
+
+**Blank figures are now unpublishable by construction, not by vigilance.**
+`plotting._annotate_empty` stamps `EMPTY_FLAG` on a degenerate figure;
+`figures._save` refuses to write such a figure and returns no paths; `_fig_section`
+already omits a section with no paths. So a blank panel cannot be saved, copied, or
+described — the three places it previously slipped through.
+
+**Suppression is stated, not silent.** A new "Not shown for this sweep" section
+lists what was omitted and why (e.g. no spectral truth at any reference wavelength;
+no ΔBIC contest available), so a reader can tell "we did not measure this" from "we
+measured it and it was fine".
+
+**Also in this task:** `ratio_hist` promoted to a page section beside each scatter,
+per your answer, with a `figures.ratio_hist` builder it never had; `taylor_target`
+output names now carry the reference band (two refs used to overwrite each other's
+file — there is a test); `_curated_obs` replaces `int(obs_id.min())` with the
+**median-χ²ᵥ `ok` fit** and no int cast, so `per_algorithm` builds on GLORIA's string
+ids and shows a typical rather than a flattering fit; `_prune_stale` deletes display
+assets a build did not regenerate, while leaving `.rst` alone (a hand-written
+`findings.rst` must survive — also tested).
+
+**Tests:** new `ioptics/tests/test_report_selection.py`, **10 Tier-1 tests** covering
+the derived set, the metrics-absent fallback, k-extremes and the two no-contest cases,
+non-writing of degenerate figures, the honest "Not shown" note, pruning-but-not-of-RST,
+and `per_algorithm` on string obs ids.
+
+**Two test-suite corrections that were findings in their own right:**
+
+- `test_report_figures.test_taylor_target` asserted `taylor_a.png` exists. It passed
+  before only because a **blank** figure was being written; with blank figures no
+  longer saved, it failed. The real cause is that the synthetic fixture gave every
+  observation *identical truth*, so the correlation is undefined and a Taylor diagram
+  is genuinely degenerate. Fixed properly by adding a `truth_factor` to the shared
+  `_make_pair` helper and spreading truth across observations in that fixture — the
+  test now exercises a real Taylor diagram rather than asserting the existence of a
+  blank one.
+- My own pruning test picked `scatter_a_440.png` as the "stale" file, which that
+  fixture legitimately regenerates; the test was wrong, not the pruning.
+
+**Verification:** CI-equivalent **255 passed / 38 skipped** (was 245); with data
+**293 passed**; `sphinx-build -W` clean on the regenerated tree; the rebuilt GLORIA
+page is 54 KB.
+
+**Files:** modified `ioptics/plotting.py` (`EMPTY_FLAG`/`is_empty`),
+`ioptics/report/figures.py` (`scored_refs`, `dbic_pair`, `ratio_hist`, ref in
+taylor/target names, non-saving of empties), `ioptics/report/standard.py` (derived
+plan, "Not shown", `_curated_obs`, `_prune_stale`), `ioptics/tests/test_metrics.py`
+(+`truth_factor`), `ioptics/tests/test_report_figures.py`,
+`docs/source/reports/gloria_turbid_v3/*`; new
+`ioptics/tests/test_report_selection.py`.
+
+**Not done here, deliberately:** the L23 smoke page still carries the old figure set,
+because that sweep's artifacts are not on this laptop — it is re-run in Task 11, and
+its page regenerates then.
 
 ### 2026-08-03 (Stage 7, Task 1: figure style module + per-algorithm identity)
 

@@ -17,6 +17,8 @@ builder calls ``plt.show``.
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -35,10 +37,27 @@ def _axes(ax=None, *, figsize=(5, 5), projection=None):
     return fig, ax
 
 
+#: Attribute stamped on a figure whose input was degenerate. The ``report`` layer
+#: reads it (:func:`is_empty`) and declines to save or publish the figure, so a
+#: blank panel can never reach a page — the first published GLORIA report was five
+#: blank panels under captions explaining how to read them.
+EMPTY_FLAG = '_ioptics_no_data'
+
+
 def _annotate_empty(ax, msg='no data'):
-    """Place a centered 'no data' note on otherwise-empty axes (degenerate input)."""
+    """Place a centered 'no data' note on otherwise-empty axes (degenerate input).
+
+    Also stamps :data:`EMPTY_FLAG` on the figure so callers can tell a degenerate
+    figure from a real one without inspecting pixels.
+    """
     ax.text(0.5, 0.5, msg, ha='center', va='center', transform=ax.transAxes,
             fontsize=11, color='0.5')
+    setattr(ax.figure, EMPTY_FLAG, True)
+
+
+def is_empty(fig):
+    """Whether ``fig`` was built from degenerate input (see :data:`EMPTY_FLAG`)."""
+    return bool(getattr(fig, EMPTY_FLAG, False))
 
 
 @style.styled
@@ -85,6 +104,21 @@ def scatter_log(data, *, guides=SCATTER_GUIDES, ax=None, component=None,
     return fig
 
 
+def _ratio_edge_label(edge):
+    """Label a ratio-bucket edge as an exact fraction where it is one.
+
+    :data:`metrics.RATIO_EDGES` are thirds and quarters, so ``'%g'`` rendered them
+    as ``0.333333`` — a bucket boundary the reader has to decode. ``1/3`` is what
+    was meant.
+    """
+    if not np.isfinite(edge):
+        return '∞'
+    frac = Fraction(float(edge)).limit_denominator(12)
+    if frac.denominator == 1:
+        return f'{frac.numerator:d}'
+    return f'{frac.numerator:d}/{frac.denominator:d}'
+
+
 @style.styled
 def ratio_hist(data, *, ax=None):
     """Grouped bar chart of M/O ratio counts per :data:`metrics.RATIO_EDGES` bucket.
@@ -107,7 +141,7 @@ def ratio_hist(data, *, ax=None):
     for i, algo in enumerate(algos):
         ax.bar(x + i * width, counts.loc[algo].to_numpy(), width=width,
                label=str(algo), align='edge', color=style.algo_color(algo))
-    labels = [('%g' % e if np.isfinite(e) else '∞') for e in edges]
+    labels = [_ratio_edge_label(e) for e in edges]
     ax.set_xticks(x)
     ax.set_xticklabels([f'{labels[i]}–{labels[i + 1]}' for i in range(nbins)],
                        rotation=45, ha='right', fontsize=7)

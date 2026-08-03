@@ -73,7 +73,16 @@ def _figdir(sweep):
 
 
 def _save(fig, figdir, name, *, formats=FORMATS):
-    """Write ``fig`` as ``name.<ext>`` for each format, close it, return paths."""
+    """Write ``fig`` as ``name.<ext>`` for each format, close it, return paths.
+
+    A figure built from degenerate input (:func:`ioptics.plotting.is_empty`) is
+    **not written at all** and returns no paths, so an empty panel can neither be
+    saved nor copied onto a page. Callers treat an empty path list as "nothing to
+    show here" and suppress the section.
+    """
+    if plotting.is_empty(fig):
+        plt.close(fig)
+        return []
     paths = []
     for ext in formats:
         p = figdir / f'{name}.{ext}'
@@ -81,6 +90,88 @@ def _save(fig, figdir, name, *, formats=FORMATS):
         paths.append(p)
     plt.close(fig)
     return paths
+
+
+# --------------------------------------------------------------------------- #
+# what this sweep can actually show (data-driven figure planning)
+# --------------------------------------------------------------------------- #
+
+def scored_refs(sweep, *, fit_method='chisq', root=None, components=None):
+    """The ``(component, ref_wave, n)`` combinations this sweep can actually score.
+
+    The report's figure set is derived from this rather than fixed, because a fixed
+    set publishes blank panels the moment a dataset's truth differs: the first
+    GLORIA report asked for ``a(440)`` and ``bb(555)`` when GLORIA's only spectral
+    truth is ``a_dg(440)`` (from ``a_cdom440``), so every static figure came out
+    blank.
+
+    Prefers ``metrics_scalar`` (already the authority on what was scored, ``n > 0``
+    at a matched ``ref_wave``) and falls back to counting finite truth pairs in
+    ``results_spectral`` when metrics have not been computed yet. Ordered by
+    ``n`` descending, so the best-covered combination leads.
+    """
+    sweep = resolve(sweep, root)
+    keep = tuple(components or metrics.ACCURACY_COMPONENTS)
+    ms = sweep.metrics_scalar
+    if ms is not None and {'n', 'ref_wave', 'component'} <= set(ms.columns):
+        rows = ms[(ms['fit_method'] == fit_method)
+                  & (ms.get('stratum', 'all') == 'all')
+                  & ms['component'].isin(keep)
+                  & ms['ref_wave'].notna()
+                  & (ms['n'].fillna(0) > 0)]
+        if not rows.empty:
+            agg = (rows.groupby(['component', 'ref_wave'])['n'].max()
+                       .reset_index().sort_values('n', ascending=False))
+            return [(str(r.component), float(r.ref_wave), int(r.n))
+                    for r in agg.itertuples()]
+
+    # Fallback: count finite (retrieval, truth) pairs per (component, wavelength).
+    sp = sweep.spectral
+    if sp is None or sp.empty or 'truth' not in sp.columns:
+        return []
+    sub = sp[(sp['fit_method'] == fit_method) & sp['component'].isin(keep)]
+    sub = sub[sub['truth'].notna() & sub['value'].notna()]
+    if sub.empty:
+        return []
+    agg = (sub.groupby(['component', 'wavelength'])['value'].size()
+              .reset_index(name='n').sort_values('n', ascending=False))
+    out = []
+    for r in agg.itertuples():
+        for nominal in (440, 443, 555, 670):
+            if abs(float(r.wavelength) - nominal) <= 3.0:
+                out.append((str(r.component), float(nominal), int(r.n)))
+                break
+    # de-duplicate, keeping the best-covered entry per (component, ref)
+    best = {}
+    for comp, ref, n in out:
+        if n > best.get((comp, ref), (0,))[0]:
+            best[(comp, ref)] = (n,)
+    return sorted(((c, r, n) for (c, r), (n,) in best.items()),
+                  key=lambda t: -t[2])
+
+
+def dbic_pair(sweep, *, fit_method='chisq', root=None):
+    """The two algorithms to contest with ΔBIC, or ``None`` if there is no contest.
+
+    ΔBIC compares a *more* against a *less* complex model, so the pair is chosen by
+    parameter count: the sweep's highest-``k`` algorithm against its lowest. Fixing
+    the pair to ``expb_pow``-vs-``giop`` (the old default) produced a blank panel
+    plus prose about ``giop`` on a sweep that never ran it.
+
+    Returns ``(model_a, model_b)`` with ``k(a) > k(b)`` — or ``None`` when fewer
+    than two algorithms are present, or when every algorithm has the same ``k``
+    (then ΔBIC reduces to a χ² difference and the "does complexity pay" question
+    is not being asked).
+    """
+    sweep = resolve(sweep, root)
+    sc = sweep.scalar
+    if sc is None or sc.empty or 'k' not in sc.columns:
+        return None
+    sub = sc[sc['fit_method'] == fit_method] if 'fit_method' in sc.columns else sc
+    ks = (sub.groupby('algorithm')['k'].max().dropna().sort_values())
+    if len(ks) < 2 or ks.iloc[0] == ks.iloc[-1]:
+        return None
+    return str(ks.index[-1]), str(ks.index[0])
 
 
 # --------------------------------------------------------------------------- #
@@ -97,17 +188,39 @@ def scatter_set(sweep, component, *, ref=None, fit_method='chisq', root=None):
     return _save(fig, _figdir(sweep), f'scatter_{tag}')
 
 
+def ratio_hist(sweep, component, *, ref=None, fit_method='chisq', root=None):
+    """Distribution of retrieved/true ratios per accuracy bucket, per algorithm.
+
+    The companion every scatter is conventionally paired with (GIOP Figs. 1-2):
+    the scatter shows where the points lie, this shows how the population is
+    distributed about 1:1 — central tendency alone hides the spread that decides
+    whether a retrieval is usable.
+    """
+    sweep = resolve(sweep, root)
+    data = diagnostics.ratio_hist_data(sweep.spectral, component, ref,
+                                       fit_method=fit_method)
+    fig = plotting.ratio_hist(data)
+    tag = f'{component}' + (f'_{int(ref)}' if ref is not None else '')
+    return _save(fig, _figdir(sweep), f'ratio_hist_{tag}')
+
+
 def taylor_target(sweep, component='a', *, ref=None, fit_method='chisq',
                   root=None):
-    """Taylor + Target diagrams (all algorithms) for one component."""
+    """Taylor + Target diagrams (all algorithms) for one component.
+
+    The output names carry the reference band as well as the component: with only
+    the component in the name, two reference wavelengths silently overwrote each
+    other's file.
+    """
     sweep = resolve(sweep, root)
     figdir = _figdir(sweep)
     ts = diagnostics.taylor_stats(sweep.spectral, component, ref,
                                   fit_method=fit_method)
     tg = diagnostics.target_stats(sweep.spectral, component, ref,
                                   fit_method=fit_method)
-    paths = _save(plotting.taylor(ts), figdir, f'taylor_{component}')
-    paths += _save(plotting.target(tg), figdir, f'target_{component}')
+    tag = f'{component}' + (f'_{int(ref)}' if ref is not None else '')
+    paths = _save(plotting.taylor(ts), figdir, f'taylor_{tag}')
+    paths += _save(plotting.target(tg), figdir, f'target_{tag}')
     return paths
 
 

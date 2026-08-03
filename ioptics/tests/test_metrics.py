@@ -337,7 +337,7 @@ def _cf(values):
 
 def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
                fit_method='chisq', rrs_factor=1.0, dataset='L23',
-               status='ok'):
+               status='ok', truth_factor=1.0):
     """One (RetrievalResult, PreparedRecord) for the synthetic sweep.
 
     ``factor`` scales every retrieved value above truth (1.0 = perfect, 2.0 =
@@ -345,8 +345,13 @@ def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
     ``dataset`` names the source (defaults to ``'L23'``); pass ``'GLORIA'`` to
     exercise the CDOM-vs-a_dg caveat, ``'PANGAEA'`` for a genuine-``a_dg`` set.
     ``status`` is the row's fit status — only ``'ok'`` rows are scored.
+    ``truth_factor`` scales the *truth* itself (retrieved stays ``factor`` x truth),
+    so a caller can give a sweep real spread across observations — without it every
+    obs has identical truth, which leaves correlation undefined and makes a
+    Taylor/Target diagram degenerate.
     """
-    comps = {c: _cf(np.full(_WAVE.size, factor * b)) for c, b in _BASE.items()}
+    comps = {c: _cf(np.full(_WAVE.size, factor * truth_factor * b))
+             for c, b in _BASE.items()}
     comps['Rrs_model'] = _cf(rrs_factor * _RRS)
     k = 5 if algo == 'expb_pow' else 3
     result = RetrievalResult(
@@ -359,7 +364,8 @@ def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
                'n_bands': 10, 'k': k},
         status=status, provenance_id='p',
         chain_file=None if fit_method == 'chisq' else 'c.npz')
-    truth = {c: _Spec(np.full(_WAVE.size, b)) for c, b in _BASE.items()}
+    truth = {c: _Spec(np.full(_WAVE.size, truth_factor * b))
+             for c, b in _BASE.items()}
     truth.update({'Chl': chl_truth, 'Sdg': 0.017})
     record = PreparedRecord(
         dataset=dataset, obs_id=obs_id, wave=_WAVE, Rrs=_RRS,

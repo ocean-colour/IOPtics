@@ -22,10 +22,15 @@ _SID = 'rep_v1'
 def _build_sweep(tmp_path):
     """expb_pow (perfect) vs giop (2x-high) over 3 obs + one giop MCMC chain."""
     chl = {0: 0.05, 1: 0.5, 2: 2.0}                # oligo / meso / eutro
+    # truth_factor spreads the truth across observations; without spread the
+    # correlation is undefined and Taylor/Target have nothing to plot.
+    spread = {0: 0.5, 1: 1.0, 2: 2.5}
     pairs = []
     for obs in range(3):
-        pairs.append(_make_pair(obs, 'expb_pow', 1.0, chl[obs], 10 + obs))
-        pairs.append(_make_pair(obs, 'giop', 2.0, chl[obs], 15, rrs_factor=1.5))
+        pairs.append(_make_pair(obs, 'expb_pow', 1.0, chl[obs], 10 + obs,
+                                truth_factor=spread[obs]))
+        pairs.append(_make_pair(obs, 'giop', 2.0, chl[obs], 15, rrs_factor=1.5,
+                                truth_factor=spread[obs]))
     # one giop MCMC row with a real saved chain (for corner_set)
     res, rec = _make_pair(0, 'giop', 2.0, chl[0], 15, fit_method='mcmc')
     chains = np.random.default_rng(0).normal(size=(20, 6, 3))
@@ -56,8 +61,14 @@ def test_taylor_target(tmp_path):
     sw = _build_sweep(tmp_path)
     paths = figures.taylor_target(sw, 'a', ref=440)
     _exists(paths)
-    assert (figures.subdir(sw, 'figures') / 'taylor_a.png').is_file()
-    assert (figures.subdir(sw, 'figures') / 'target_a.png').is_file()
+    figdir = figures.subdir(sw, 'figures')
+    # the reference band is part of the name, so two refs cannot overwrite each
+    # other (with only the component in the name, they silently did)
+    assert (figdir / 'taylor_a_440.png').is_file()
+    assert (figdir / 'target_a_440.png').is_file()
+    figures.taylor_target(sw, 'a', ref=555)
+    assert (figdir / 'taylor_a_555.png').is_file()
+    assert (figdir / 'taylor_a_440.png').is_file()      # still there
 
 
 def test_dbic_cdf(tmp_path):
