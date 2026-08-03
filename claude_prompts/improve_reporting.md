@@ -758,6 +758,36 @@ Q8 answer asks for has never once been exercised on real data.
 
 ## Logs
 
+### 2026-08-03 (Improve reporting: Stage-7 prompt doc created)
+
+You asked whether I had made the prompt docs for the next steps. **I had not** —
+prompt 3 was scoped to `docs/design/`, and the Stage 7 I added to the implementation
+doc left its own convention line ("each stage has a dedicated code-generation prompt
+doc, `claude_prompts/coding_prompts_stage<NN>.md`, with one prompt per module") owing a
+file that did not exist. Now written: **`claude_prompts/coding_prompts_stage07.md`**,
+following the Stage 0-6 house structure (Goal + exit criterion, Conventions, Context
+with carryover, Prompts, Modules/Tasks, Q&A, Logs).
+
+- **11 tasks**, in dependency order: style module + per-algorithm visual identity →
+  data-driven artifact selection → metrics/table correctness → pairwise stats that can
+  detect a tie → leaderboard fold + landing page + vendored BokehJS → profile pages +
+  coverage matrix + glossary → exemplar-fits page → the three discarded slices →
+  provenance hardening → publish the GLORIA report and fix the stale prose → generate
+  the missing evidence (bounded `multi_v2`, L23 smoke re-run, re-fold).
+- **Context carries the 13 condensed defects** with the file each lives in, so a fresh
+  session does not have to re-derive them, plus a "decided by JXP — do not re-litigate"
+  block holding your Q1-Q12 answers.
+- **Q&A restates P1-P10** grouped by which task they block, so the doc stands alone;
+  answer in either file. Two are hard blockers (the tie statistic for Task 4; the URL
+  scheme and generated-vs-curated split for Task 6), and one flags that the community
+  evidence argues against your Q6 Taylor answer.
+- **Conventions corrected for this machine:** the env interpreter here is under
+  `miniforge3`, not the `miniconda3` path the older prompt docs carry, and the current
+  test baselines (230/38 without `$OS_COLOR`, 264/4 with it) are recorded so a
+  regression is attributable.
+
+No code or design-doc changes in this step.
+
 ### 2026-08-03 (Improve reporting, prompt 3: design docs updated)
 
 Updated **both** docs in `docs/design/` to reflect the decisions and the findings, and

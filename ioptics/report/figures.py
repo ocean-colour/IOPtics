@@ -92,7 +92,7 @@ def scatter_set(sweep, component, *, ref=None, fit_method='chisq', root=None):
     sweep = resolve(sweep, root)
     data = diagnostics.scatter_data(sweep.spectral, component, ref,
                                     fit_method=fit_method)
-    fig = plotting.scatter_log(data)
+    fig = plotting.scatter_log(data, component=component, ref=ref)
     tag = f'{component}' + (f'_{int(ref)}' if ref is not None else '')
     return _save(fig, _figdir(sweep), f'scatter_{tag}')
 
@@ -136,7 +136,7 @@ def spectra_set(sweep, obs_id, *, algorithm, fit_method='chisq',
         cf = sub[sub['component'] == comp]
         if cf.empty:
             continue
-        fig = plotting.spectra_band(cf, label=comp)
+        fig = plotting.spectra_band(cf, label=algorithm, component=comp)
         paths += _save(fig, figdir, f'spectra_{algorithm}_{obs_id}_{comp}')
     return paths
 

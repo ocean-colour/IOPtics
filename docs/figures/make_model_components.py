@@ -16,6 +16,17 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
+# --- repo-root import guard (these run as scripts, so sys.path[0] is
+# docs/figures/, not the repo root) ---------------------------------------
+import os
+import sys
+_REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     '..', '..'))
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+
+from ioptics import style   # noqa: E402  (after the path guard)
+
 OUT = Path(__file__).resolve().parent.parent / 'source' / '_static' / 'model_components.png'
 WAVE = np.linspace(400, 700, 301)
 OCEAN = {'a_dg': '#0b6fa4', 'a_ph': '#178a5a', 'b_bp': '#7b4fb0'}
@@ -39,6 +50,7 @@ def b_bp(wave, Bnw=0.006, beta=1.0, lam0=550.0):
 
 
 def main():
+    style.use_ioptics_style()
     fig, axes = plt.subplots(1, 3, figsize=(11, 3.4), constrained_layout=True)
 
     ax = axes[0]
