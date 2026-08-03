@@ -1,7 +1,7 @@
 # IOPtics Design Document
 
-**Version:** 0.15
-**Date:** 2026-06-21
+**Version:** 0.16
+**Date:** 2026-08-03
 **Authors:** JXP and Claude
 
 ---
@@ -42,6 +42,16 @@ IOPtics is expected to, at minimum:
 - Share results (figures, reports, etc.) with the community via GitHub and
   readthedocs.io.
 - Generate reports and publications on the main findings.
+
+**The primary goal, sharpened (2026-08).** IOPtics exists so that **a member of the
+ocean-colour community can compare the performance of different IOP models** — both
+by reading the published comparison and by running IOPtics on a model of their own.
+That reframes the deliverable: the site must answer *"which model should I use for
+water like mine, and can I trust its uncertainties?"* rather than *"what did sweep
+`X` do"*, and the package must make adding a competing model cheap enough that an
+outsider will actually do it (the registry's one-call registration is the mechanism;
+a documented on-ramp is the missing half). Every reporting decision in the Reporting
+section below is downstream of this sentence.
 
 ### Supporting material
 
@@ -111,7 +121,14 @@ many archives (MOBY, BOUSSOLE, AERONET-OC, SeaBASS, NOMAD, Tara, …), so it
 subsumes most other public in-situ sources.
 
 - **Location / loader:** `$OS_COLOR/PANGAEA/V3`, via `ocpy.insitu.pangaea`
-  (ID-indexed tables; native-wavelength and satellite-band variants).
+  (ID-indexed tables; native-wavelength and satellite-band variants). *(On the
+  current data tree the directory is spelled `PANAGEA`; resolution works regardless,
+  so leave it alone until someone checks what ocpy keys on.)*
+- **Scale, and the subset that can be scored (measured 2026-08):** the adapter
+  enumerates **64 071** observations with usable `Rrs`, but only **3 247** of those
+  ids appear in the IOP table — so ~95% carry no spectral truth. A PANGAEA sweep
+  should be bounded to the truth-carrying subset (comparable in size to L23's 3 320),
+  and any report must state that selection explicitly.
 - **Provides:** `Rrs`, `a_ph`, `a_dg` (the **combined CDOM + detrital** term;
   the ocpy column is named `acdom`), `bb_p` (single particulate term), `kd`, plus
   scalar `chla`, `tss`.
@@ -124,13 +141,20 @@ A globally representative **hyperspectral** in-situ Rrs dataset (7,572 spectra,
 350–900 nm at 1 nm, 450 water bodies, coastal/inland-heavy) with co-located
 **scalar** water-quality measurements only — no spectral IOPs.
 
-- **Loader:** `ocpy.insitu.gloria`. **The data are not yet downloaded locally**
-  (the package ships a README pointing to PANGAEA 948492); they must be fetched
-  before use.
+- **Loader:** `ocpy.insitu.gloria`. **Data acquired 2026-07** into
+  `$OS_COLOR/GLORIA` (PANGAEA 948492) and wired through the `GLORIA` adapter.
 - **Provides:** hyperspectral `Rrs`; scalar `a_cdom(440)`, `Chla`, `TSS`, Secchi.
-- **Use:** **scalar / band-product validation only** (e.g. retrieved
-  `a_cdom(440)`). We are **not** using GLORIA for Rrs-space closure or for
-  out-of-distribution / representativeness testing at this stage.
+- **Use:** **scalar / band-product validation** (e.g. retrieved `a_cdom(440)`)
+  — extended in practice to **Rrs-space closure**, which is where GLORIA turned out
+  to be most informative: the fits fail in turbid water because the required
+  backscattering in the red far exceeds what a power-law `b_bp` can produce, not
+  because of CDOM/detritus absorption. See `reports/gloria_fits_report.md`.
+- **Two data properties that shape any GLORIA result**, both learned the hard way:
+  only ~29% of spectra quote an `Rrs` uncertainty at any band (70% quote none at
+  all), so fit weights are largely **imputed** and must be tagged as such; and the
+  quoted uncertainties are tight enough that χ²ᵥ is uninterpretable without an
+  error floor. Statistics computed on the uncertainty-carrying subset are therefore
+  drawn from a biased ~29% of the dataset unless said otherwise.
 - **Caveat (flagged):** GLORIA's truth is `a_cdom(440)` — **CDOM only** — whereas
   algorithms typically retrieve the **combined `a_dg`** (CDOM + detritus). When
   comparing retrieved `a_dg(440)` against GLORIA's `a_cdom(440)`, this
@@ -281,6 +305,29 @@ Frouin 2025) and Erickson et al. (2023).
   `a_ph`, `a_dg`, and `bb_p`, matched to the truth the dataset supports.
 - **Stratification.** Results are stratified by trophic level / Chl bins, water
   type (Case I/II), sensor/spectral sampling, and wavelength.
+- **Which form of the number is published (2026-08).** The accuracy metrics are
+  reported in the **fractional multiplicative** form — `mae = 10^mean|log10(M/O)|
+  − 1`, so `0.109` means **10.9%** and `0` is perfect (Erickson 2023). Note that
+  Seegers et al. 2018 publishes the **un-subtracted factor** (`1.109`, where
+  "1.5 = 50% error"), so every table and glossary entry must **state which
+  convention it uses**; an unlabelled `0.109` is misread as a factor by readers
+  from that lineage. Seegers' companion guidance is adopted as well: report **no
+  more than one metric each** for bias, accuracy and precision, and treat RMSE,
+  r² and regression slope as supporting detail rather than headline scores (they
+  assume Gaussian residuals and amplify outliers). "Wins" remains the ranking
+  metric, which is Seegers' own recommendation.
+- **Total before decomposed.** Report total `a(λ)` / `bb(λ)` separately from the
+  decomposed `a_dg`, `a_ph`, `bb_p`, never blended into one aggregate score: the
+  decomposed products are consistently the weaker retrievals, and an aggregate
+  that hides that is (rightly) distrusted. This mirrors IOCCG Report 5 and GIOP
+  (Werdell et al. 2013), whose evaluation tables the IOP community reads as the
+  reference form — `Ratio = median(M/O)` and `MPD = median(100|M/O − 1|)` are
+  worth carrying under those names for continuity, since IOPtics already computes
+  both (`median_ratio`, and `rel_misfit` for GIOP's spectral ΔRrs).
+- **Synthetic and in-situ are parallel tracks, never pooled.** L23 (Hydrolight,
+  radiometric closure by construction) isolates inversion skill; PANGAEA/GLORIA do
+  not. Following IOCCG Report 5's design — and GIOP's — every comparison reports
+  the two tracks side by side rather than producing one blended winner.
 
 ### 1. Retrieval accuracy vs. truth (IOP space)
 
@@ -308,12 +355,19 @@ Applicable to **every** dataset (all carry `Rrs`), including GLORIA:
   (Erickson Eq. 10; BING Eq. 4 likelihood).
 - **Reduced χ²ᵥ** as the headline single-fit diagnostic: ≈1 good; **<1 signals
   overfitting**; >1 underfitting (BING).
-- **Rrs MAE / bias** (the multiplicative log-space form of §1, applied to `Rrs`)
-  with a **dual-sided acceptance window** (Erickson): a good fit reproduces `Rrs`
-  to ≈ the measurement
-  uncertainty (~5%), and a MAE *much below* the noise floor is also flagged as
-  **fitting noise**. A QC failure bound (Erickson uses **>25% Rrs MAE**) marks
-  non-solutions.
+- ~~**Rrs MAE / bias** with a dual-sided acceptance window and a **>25% Rrs MAE**
+  QC bound~~ — **superseded 2026-07.** The log-space multiplicative MAE is invalid
+  for `Rrs`, which **crosses zero in the red**: L23 `Rrs` above ~600 nm is ≈0 and
+  goes negative under PACE noise, so the red tail dominated the ratio and tripped
+  the 25% bound on fits whose χ²ᵥ was ≈1. Replaced by:
+- **χ²ᵥ-based QC.** The closure flag derives from the noise-weighted reduced χ²ᵥ
+  (a fit above `CHI2NU_QC_MAX` is a non-solution), reported with the dof-scaled
+  `frac_good` / `frac_overfit` / `frac_underfit` split.
+- **Relative misfit** — median `|Rrs_model − Rrs_obs| / Rrs_obs` over the
+  strictly-positive bands: noise-model-independent, and the metric that exposed a
+  case where χ²ᵥ moved 5× when the assumed error floor changed while the fits did
+  not move at all. This is GIOP's **ΔRrs** in all but name, so it is reported as
+  such.
 
 ### 3. Model selection / complexity
 
@@ -345,12 +399,50 @@ Per the Analysis section, uncertainty is a first-class output; here it is *score
   fraction of retrievals whose X% interval contains truth should be ≈X%, evaluated
   at the **68% and 95%** levels — so that uncertainty quality is itself a
   comparable metric.
+  - **Promoted to a headline result (2026-08).** Coverage is reported next to its
+    **nominal target** and **flagged when it misses**, because the first real sweep
+    produced exactly the case this metric exists for: on L23, `giop` is the more
+    accurate retrieval (mae 0.062 vs 0.109, winning 85% of head-to-head contests)
+    yet its 68%/95% intervals contain truth only 45%/65% of the time, while
+    `expb_pow` sits at 65%/100%. "More accurate but over-confident" is a
+    first-class finding, not a footnote in a CSV.
+  - **This is genuinely novel, and must be labelled as such.** A survey of the
+    community's practice (IOCCG Report 18; McKinna et al. 2019) found an
+    established convention for *propagating* per-retrieval uncertainty but **no
+    established convention for validating whether the stated uncertainty is
+    calibrated**. IOPtics' coverage diagnostic is therefore a contribution, and
+    reports should present it as new rather than as standard practice.
 
 ### 5. Cross-algorithm comparison
 
 - **"Wins"** — the fraction of head-to-head contests in which an algorithm gives
   the more accurate estimate per variable (Erickson / Seegers).
 - **Per-variable ranking** by `|bias|`, MAE, and wins (Erickson Table 2 style).
+- **Ties are reported as ties (2026-08).** Where algorithms are statistically
+  indistinguishable the comparison **says so instead of ranking them 1..N**. The
+  first turbid sweep made this unavoidable: four `bb_p` parameterizations returned
+  χ²ᵥ medians of 0.4602 / 0.4629 / 0.4616 / 0.4602 and identical status fractions,
+  and presenting that as a 1-4 ranking invents a result. Two consequences for the
+  implementation: a contest whose metrics are all undefined must **never** be
+  assigned a rank, and the tie rule needs a stated statistical basis (the
+  ocean-colour precedent is Brewin et al. 2015's round-robin, which derives rank
+  uncertainty from **1000 bootstrap resamples** with each model's score normalised
+  by the all-model average — overlapping intervals mean indistinguishable). Note
+  that the *current* pairwise table cannot support a paired test: it tallies wins
+  per algorithm and discards the opponent's identity, so this needs a new metrics
+  pass over the per-spectrum results (no re-fitting).
+- **Retrieval success is a scored metric, not a footnote.** Brewin's round-robin
+  scores **η, the percentage of possible retrievals**, on the stated grounds that an
+  algorithm "should not be a source of more gaps in the data than would be the case
+  if other algorithms were used". IOPtics' `frac_ok` is that quantity and is
+  promoted accordingly, alongside the honest denominators (below).
+- **Name the denominators.** Three different `n`s coexist and must be labelled
+  distinctly wherever they appear: `n_attempted` (spectra the sweep tried),
+  spectra **scored** (status `ok`), and surviving **(retrieved, truth) pairs** after
+  the positivity/NaN intersection. On the first GLORIA sweep these were 100, 21 and
+  12 for the same contest. IOCCG Report 5 sets the precedent by tabulating both
+  `N` (tested) and `n` (valid) and stating plainly that excluding failures yields
+  "likely better statistical results".
 
 ### 6. Diagnostic figures
 
@@ -367,6 +459,28 @@ two community-standard summary diagrams for ranking many algorithms at once:
   from random error.
 
 These extend BING/Erickson (which use neither) and complement the scalar metrics.
+
+**Figure conventions added 2026-08**, from a survey of how the community presents
+IOP-algorithm inter-comparisons:
+
+- **Annotate the statistics inside the panel** (`N`, valid `n`, ratio, MPD). Both
+  IOCCG Report 5 and GIOP put the numbers in the plot corner; a scatter with no
+  numbers on it cannot be read without the table.
+- **Pair every scatter with a distribution of the ratios** (GIOP's ratio-histogram
+  panels; a violin or box plot of log ratios is a legitimate modern rendering).
+  Central tendency alone hides the spread that decides whether a model is usable.
+- **Metric-vs-wavelength is mandatory, not optional**, in IOP work — as small
+  multiples over (component × algorithm) where space allows. IOPtics already
+  computes the per-wavelength table for this.
+- **Type-II (major-axis) regression** wherever a fit line is drawn; never OLS, since
+  both axes carry error.
+- **Taylor is demoted to optional.** It stays available, but the community signal is
+  against leaning on it: Brewin et al. 2015 computed the full Taylor triple and
+  deliberately did not draw the diagram, and Seegers' critique undercuts the
+  r²/RMSE basis it rests on. Target (bias vs unbiased RMSD) maps cleanly onto the
+  bias/accuracy split and is retained. Neither may be the *only* summary.
+- **A pairwise win-rate matrix** per band and per stratum, which is what "wins"
+  supports and what a reader scanning for "who wins where" actually looks for.
 
 ### Handling non-uniformity
 
@@ -407,6 +521,37 @@ Each sweep produces a consistent set of artifacts:
   per-dataset and per-stratum (trophic level / water type), and QC summaries
   (fraction flagged as non-solutions).
 
+**Artifact selection rules (added 2026-08, after the first published reports.)** The
+first cross-algorithm pages exposed a structural flaw: the figure set was fixed at
+`a(440)` / `bb(555)` / `expb_pow`-vs-`giop`, so a sweep on a dataset with different
+truth (GLORIA, whose only spectral truth is `a_dg(440)`) published **five blank "no
+data" panels beneath confident captions explaining how to read them**. Therefore:
+
+- **The figure set is data-driven, never hardcoded.** Components, reference
+  wavelengths and the ΔBIC pair are chosen from what the sweep actually has truth
+  and algorithms for.
+- **A section with no data is suppressed, not published empty.** A degenerate panel
+  must never reach a page; where a whole class of figures is unavailable the page
+  says why in prose.
+- **Every page states results, not just how to read figures.** Generated prose must
+  interpolate the actual numbers (winner, its error, its calibration, the `n` it was
+  scored on); a page whose text would be identical for any sweep is not a report.
+  Hand-written findings live in a per-sweep include the generator will not clobber.
+- **A curated set of exemplar spectra per sweep** on its own page: the **best fit,
+  the worst fit, and eight median fits** (10 total), each panel labelled with its
+  `obs_id`, χ²ᵥ and relative misfit. This is the "look at an actual fit" view that
+  aggregate scatter plots cannot provide.
+- **One figure style for the whole project.** A single style module (fonts,
+  constrained layout, the docs' ocean palette, axis units) is applied by the
+  plotting primitives, the documentation figure generators and the standalone
+  analysis scripts alike — the first reports shipped colliding tick labels and
+  default-matplotlib colours against ocean-palette documentation figures.
+- **A fixed colour and marker per algorithm, project-wide.** Colour must be assigned
+  from the registry, not from within-figure appearance order, so an algorithm is the
+  same colour on every page and adding an algorithm does not reshuffle the others.
+  Marker shape as well as colour, so the figures survive colour-blind readers and
+  greyscale printing.
+
 ### Report types
 
 - **Per-algorithm report** — one algorithm across datasets and strata; the
@@ -420,6 +565,34 @@ Each sweep produces a consistent set of artifacts:
 A **standard report** template covers these; reports are generated **on demand**
 (not auto-built by CI on every commit).
 
+**All three are first-class (confirmed 2026-08).** Both audiences are real — "how
+does *my* algorithm do across datasets?" and "which algorithm should I use for *this*
+water?" — so per-algorithm and per-dataset reports are built, not just the
+cross-algorithm page. Two refinements follow from the community's reading habits:
+
+- **Standing answers vs. audit trail.** Every published URL is currently a *sweep
+  id*, which only answers "what did this run do" — a question no outside reader
+  arrives with. The report types therefore split by lifetime: **profiles**
+  (per-algorithm and per-dataset, folded across *all* sweeps) are the entry points
+  and stable citable URLs, while the **per-sweep pages** remain the
+  provenance-stamped record, reachable from the profiles rather than being the front
+  door. *(URL scheme and generated-vs-curated split still open — see Open
+  Questions.)*
+- **A coverage matrix as the site's opening figure**: algorithms × datasets, each
+  cell carrying the headline skill and `n`, and each *empty* cell reading **"not
+  evaluated"**. It answers "has anyone tested X on Y?" before any ranking matters.
+  Note that "not evaluated" must be distinguished from "evaluated and failed", and
+  that absence of a row is currently ambiguous in the persisted artifacts (it
+  conflates never-run, run-but-unscored, and run-under-MCMC), so the matrix is built
+  by walking the runs tree rather than trusting the leaderboard alone.
+
+**Reader-facing slices to surface.** Three dimensions are computed today and then
+discarded before they reach a page: **per-stratum** results (tables are pinned to
+`stratum='all'`), the **MCMC population** (pinned to χ²), and **wavelength-resolved**
+accuracy (the per-λ metrics table is written, loaded, and consumed by nothing). All
+three belong on the profile pages; the per-λ figure is the one an ocean-colour reader
+looks for first.
+
 ### Leaderboard
 
 The cross-algorithm comparison is anchored by a **persistent leaderboard** that
@@ -427,6 +600,26 @@ ranks algorithms by the headline metrics across datasets and strata. Starting
 from the initial `expb_pow`/`giop` pair and growing as algorithms are added to the
 registry, the leaderboard **accumulates and updates** as each new algorithm is
 evaluated, giving the community a single, evolving view of relative performance.
+
+**Rules added 2026-08, from what the first published leaderboard actually did:**
+
+- **Never rank a contest with no data.** 144 of the 160 published rows had no finite
+  metric and yet each carried a rank of 1-4, because ranks were assigned by position
+  after sorting. A row without a measurement gets no rank.
+- **Fold every sweep.** The published board contained one sweep; re-folding must
+  restore the others, and the fold has to be **dataset-aware** — the current wins
+  merge omits `dataset`, which row-multiplies a multi-dataset sweep and cross-assigns
+  win fractions between datasets. It must also carry **`fit_method`**, or an
+  MCMC-only algorithm is invisible on the board no matter how well it performed.
+- **Keep the upstream stamps.** The fold reduces provenance to an `ioptics`
+  commit; the **`bing` and `ocpy` commits are dropped**, though BING is where the
+  model forms and the fitter live. Two rows sharing an algorithm name are not
+  otherwise guaranteed to be the same algorithm.
+- **Landing page presentation:** a headline table per `(dataset, component)` with the
+  full grid on a drill-down page, all-undefined rows hidden, per-sweep **summary
+  cards** (date, dataset, algorithms, `n`, one-line finding) in place of a bare glob
+  toctree, and the interactive leaderboard widget — already implemented and unused —
+  wired up.
 
 ### Interactive figures
 
@@ -437,6 +630,22 @@ bands, and the leaderboard interactively. These are delivered as
 **standalone/static BokehJS** (self-contained HTML with JS callbacks — dropdown
 select, hover, pan/zoom), so they embed directly in the readthedocs site with no
 running Bokeh server.
+
+**Refinements 2026-08:**
+
+- **BokehJS is vendored into the docs' static assets**, not loaded from
+  `cdn.bokeh.org`. The published pages currently carry five CDN script tags with the
+  version pinned into committed RST (and already drifting — 3.9.0 on one page, 3.9.1
+  on another), so the interactive figures break offline, behind a restrictive CSP,
+  and eventually when the CDN moves. *(Longer term, dropping interactivity in favour
+  of richer static panels remains on the table.)*
+- **Point counts are capped and the sampling is stated.** The embedded payload is
+  downsampled (stratified, seeded) so page size is independent of sweep size; the
+  figure must say what fraction of the population it is showing, since a reader
+  otherwise assumes they are seeing everything.
+- **Hover carries `obs_id`**, so an outlier can be traced back to a spectrum — and
+  the interactive figure must use the same 1:1 / 3:1 / 1:3 guide convention as the
+  static scatters rather than its own.
 
 ### Format & delivery
 
@@ -449,6 +658,38 @@ running Bokeh server.
   table + provenance, and is stamped with the versions it depends on (design-doc
   version, algorithm-registry entry, dataset version, and code commit), so a
   reader can reconstruct exactly what was run.
+
+**Added 2026-08:**
+
+- **Hand-written analyses are published too.** A generated page cannot state a
+  diagnosis. The GLORIA fit investigation — which established that the wall in turbid
+  water is backscattering, not CDOM/detritus absorption, and that 70% of GLORIA
+  spectra quote no `Rrs` uncertainty at all — lived only as a repository markdown
+  file with its figures outside the docs tree, while the published pages depended on
+  its conclusions through code comments. Such analyses are **converted to RST and
+  published on the site**, with the original markdown retained for posterity.
+- **The numbers are reusable, not just readable.** Each page offers the table behind
+  it as CSV, the leaderboard as a single downloadable file, and a snippet that
+  regenerates the page from the persisted artifacts.
+- **Citable, frozen releases alongside the live site.** The community norm for
+  comparison products is a versioned, DOI'd deliverable (IOCCG reports carry ISBN +
+  DOI via Ocean Best Practices; OC-CCI ships numbered validation reports), while the
+  best evaluation dashboards elsewhere in earth science — WeatherBench 2, ILAMB —
+  publish open evaluation code plus baseline data and generate leaderboard and
+  diagnostics as one artifact. IOPtics follows both: **pin and DOI a frozen benchmark
+  release** (data snapshot + algorithm versions + evaluation code) that a paper can
+  cite, while the live site tracks HEAD and shows its release tag on every page.
+- **Structural borrowings from the NASA ATBD form**, which this audience reads
+  fluently: a **plain-language summary**, an explicit **usage-constraints** section,
+  and validation split into methods / uncertainties / errors.
+- **Provenance must survive to be trustworthy (see also Analysis §Provenance).** The
+  first sweeps revealed that the persisted algorithm block omits the fit budget
+  (`maxfev`) and the MCMC block, records a stale `noise_model`, and ignores
+  config-level per-algorithm overrides entirely — so a sweep whose fits only
+  converged because of a raised iteration budget is indistinguishable from one run at
+  the default. Cross-sweep profiles are only honest once the block carries those
+  fields plus a digest, and once a results row can be traced back to its
+  configuration.
 
 ### Publications
 
@@ -472,8 +713,16 @@ are not lost. Items are resolved (and removed or struck) as the design matures.
 | 1 | **Canonical IOP-component scheme** | Deferred | Whether all algorithms report into one fixed component set (e.g. `a_w, a_ph, a_dg, bb_w, bb_p`). Until decided, each dataset's truth is compared at the granularity it supports. |
 | 2 | **PACE field validation dataset** | Deferred | No single consolidated "released" PACE validation product to point at yet; revisit once a concrete source/DOI is identified. (Distinct from the PACE *noise model*, which is adopted.) |
 | 3 | **IOCCG synthetic dataset** | Deferred | Standard sets are dated; L23 serves as the synthetic benchmark for now. |
-| 4 | **Metrics section** | Drafted | Initial battery from BING (Prochaska & Frouin 2025) and Erickson et al. (2023); log-space MAE/bias adopted, coverage test at 68%/95%, Taylor + Target diagrams added. Battery expected to grow. |
-| 5 | **GLORIA data acquisition** | Pending | Data not yet downloaded locally (ocpy ships only a README → PANGAEA 948492); JXP to source. |
+| 4 | **Metrics section** | Drafted | Initial battery from BING (Prochaska & Frouin 2025) and Erickson et al. (2023); log-space MAE/bias adopted, coverage test at 68%/95%, Taylor + Target diagrams added. Battery expected to grow. Revised 2026-08: χ²ᵥ-based closure QC replaces the Rrs-MAE window; relative misfit added; coverage promoted to a headline result; ties reported as ties; Taylor demoted to optional. |
+| 5 | ~~**GLORIA data acquisition**~~ | **Resolved** (Stage 6) | Data downloaded to `$OS_COLOR/GLORIA` and the adapter wired; the resulting fit investigation is `reports/gloria_fits_report.md`, to be published as RST. |
+| 6 | **Metric family to lead with** | Open | Fractional multiplicative `mae`/`bias` + wins (current, Erickson form) vs. Seegers' un-subtracted factor as the published form, with GIOP's `Ratio`/`MPD` alongside for continuity; whether to add MdSA/SSPB for the inland/coastal audience (relevant to GLORIA). |
+| 7 | **Statistical basis for "indistinguishable"** | Open | Bootstrap-resampled score intervals (Brewin et al. 2015 precedent) vs. a declared effect-size floor vs. both. Needs a new metrics pass either way — the current pairwise table discards opponent identity. |
+| 8 | **Cross-sweep algorithm identity** | Open | Whether one profile page pools sweeps that ran the same algorithm name under different `maxfev`/priors/RT (with a "what varied" block) or splits by spec digest. Blocked on the provenance hardening above. |
+| 9 | **How opinionated the site is** | Open | Publish a per-water-type *recommendation*, or only ranked evidence? On the turbid data the honest recommendation today would be "none of these four work". |
+| 10 | **Profile page URLs and generation** | Open | Where profiles live in the docs tree (a permanent choice), and whether they are fully generated, hand-curated, or generated tables plus a hand-written findings block. |
+| 11 | **Computational cost as a metric** | Open | Runtime per fit / MCMC steps are recorded **nowhere** and are not retrievable downstream (the χ² fitter discards scipy's `infodict`). Reporting cost requires new instrumentation and a re-run; in or out of scope? |
+| 12 | **Community on-ramp ("add your own model")** | Open | A documented path — register your parameterization in one call, run a bounded sweep, get the standard report, optionally contribute the numbers — is the highest-leverage item for the stated goal, but wants the profile pages solid first. |
+| 13 | **MOANA** | Out of scope | Tracked as a separate IOPtics effort; its report may be exposed on the docs site eventually but it is not part of the model-comparison reporting. |
 
 ---
 
@@ -485,9 +734,23 @@ Works cited in this design document. A fuller scientific reference list is in
 - Erickson, Z. K., McKinna, L., Werdell, P. J., Cetinić, I. (2023). "Bayesian
   approach to a generalized inherent optical property model." *Optics Express*
   31(14), 22790–22801. https://doi.org/10.1364/OE.486581
+- Brewin, R. J. W., et al. (2015). "The ocean colour climate change initiative:
+  III. A round-robin comparison on in-water bio-optical algorithms." *Remote Sensing
+  of Environment* 162, 271–294. https://doi.org/10.1016/j.rse.2013.09.016 (the
+  round-robin scoring model: η as a scored test; bootstrap-resampled rank
+  uncertainty)
+- IOCCG (2006). *Remote Sensing of Inherent Optical Properties: Fundamentals, Tests
+  of Algorithms, and Applications.* Lee, Z.-P. (ed.), IOCCG Report 5.
+  https://ioccg.org/reports/report5.pdf (the IOP algorithm inter-comparison
+  precedent: log-space statistics, Type-II regression, `N` tested vs `n` valid)
+- IOCCG (2019). *Uncertainties in Ocean Colour Remote Sensing.* IOCCG Report 18.
+  https://ioccg.org/group/uncertainties/
 - Jolliff, J. K., et al. (2009). "Summary diagrams for coupled hydrodynamic-
   ecosystem model skill assessment." *J. Marine Systems* 76(1–2), 64–82.
   https://doi.org/10.1016/j.jmarsys.2008.05.014
+- McKinna, L. I. W., et al. (2019). "Approach for propagating radiometric data
+  uncertainties through NASA ocean color algorithms." *Frontiers in Earth Science* 7,
+  176. https://doi.org/10.3389/feart.2019.00176
 - Lehmann, M. K., et al. (2023). "GLORIA – A globally representative hyperspectral
   in situ dataset for optical sensing of water quality." *Scientific Data* 10, 100.
   https://doi.org/10.1038/s41597-023-01973-y (PANGAEA 948492)

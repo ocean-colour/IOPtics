@@ -47,7 +47,7 @@ Now that we have our first reports, let's make them all the better.  In presenta
 
 2. I have answered your questions; see the answers. One of the major goals of IOPtics is for a member of the ocean color community to use IOPtics to compare the performance of different IOP models.  We need to make it easier for them to do so.  Please suggest ways to do this in the Q&A section below.  I think it should include summary Reports for each of the datasets and algorithms.  Log your work. Use Fable.  Still no coding yet.
 
-3. Please update the two design docs in the `docs/design/` directory to reflect the changes we have discussed.  Log your work. Use Fable.
+3. Ok, read my responses to your questions and then please update the two design docs in the `docs/design/` directory to reflect the changes we have discussed.  Log your work. Use Fable.  Then generate a new set of one or more prompt docs to execute the next steps.  Call them `improve_reporting_##.md`.
 
 ## Reports
 
@@ -327,6 +327,7 @@ through it**.
   multiply; profiles are stable URLs a paper can cite. This is the structural
   version of your Q8 answer ("some folks want one algorithm across datasets,
   others want one dataset across algorithms").
+>A. I like this
 
 - **S2. Make a coverage matrix the centrepiece of the landing page.** One grid:
   **algorithms (rows) × datasets (columns)**, each cell carrying the headline
@@ -338,6 +339,7 @@ through it**.
   is the question a community member asks before any ranking matters. It sits
   above your Q7(a) headline table, which then does the per-`(dataset, component)`
   detail.
+>A. I like this too.
 
 - **S3. Per-dataset summary report** (the "how do all models do on this data?"
   page). Proposed contents, in reading order:
@@ -470,6 +472,8 @@ through it**.
   persisted sweep artifacts. Add a citation block naming the version, so a paper
   can cite a specific state of the comparison rather than "the website".
 
+>A. Ok, all of this is great.  I have no push back.
+
 ### Decisions I need before building any of this (P1-P10)
 
 - **P1. Cross-sweep identity of an algorithm.** If `expb_pow` ran with different
@@ -479,6 +483,7 @@ through it**.
   shows a "what varied between sweeps" block, because silently pooling two
   different configurations under one name is the sort of thing a reviewer will
   catch. **See S12 below — the feasibility audit turned this from a preference into a bug: the variation is currently not even detectable from the artifacts.**
+>A.  Ok, (a) is ok.  But, yes, let's make sure we track the variations
 
 - **P2. What counts as "statistically indistinguishable"?** Q12 says report it —
   I need the rule. Options: (a) a paired test on the per-spectrum differences
@@ -488,12 +493,14 @@ through it**.
   by statistics, and separately flag differences too small to matter. I lean (c),
   with the threshold in (b) set by you since it encodes what *you* consider
   scientifically meaningful.
+>A. Both is good, but the fixed effect-size floor should be 20%.
 
 - **P3. How opinionated should the site be?** Does it publish a
   **recommendation** ("for eutrophic water, prefer X"), or only ranked evidence
   and let the reader decide? A recommendation is far more useful and far more
   exposed — on GLORIA today it would have to say "none of these four work", which
   is honest and useful but is a strong public statement about published models.
+>A. For now, no recommendations
 
 - **P4. URL and page scheme** (permanent, so worth one minute now):
   `reports/algorithms/<name>` + `reports/datasets/<name>` under the existing
@@ -502,16 +509,19 @@ through it**.
   then have a *reference* page called `datasets.rst` and a *results* page called
   `datasets/<name>` — I would rename the reference pages (e.g. `models.rst` →
   "Model reference") to keep them distinct.
+>A. I am agnostic.  Go with the one you prefer
 
 - **P5. Generated, curated, or hybrid profiles?** Fully generated profiles stay
   current automatically but can only say what the metrics say; hybrid (generated
   tables/figures + a hand-written findings block per profile) is what makes the
   pages worth reading. I lean hybrid, same pattern as S9's `findings.rst`.
+>A. Ok, hybrid is good.
 
 - **P6. Is S8 (the "add your own model" on-ramp) in scope for this pass**, or a
   follow-up once the profile pages exist? It is the highest-leverage item for
   your stated goal but it is also the one that most needs the rest to be solid
   first.
+>A. No add your own model on-ramp yet.
 
 - **P7. Build order.** My proposed sequence, given your Q3(b) answer (polish on
   the smoke, full L23 later) and your note that you will re-run the L23 smoke on
@@ -524,6 +534,7 @@ through it**.
   and the doc corrections (Q9). Object anywhere this order does not match your
   priorities — in particular, if you want the GLORIA report published early
   because it is the strongest science, it can move to the front.
+>A. This order looks good
 
 - **P8. Do we run `multi_v2` as part of this pass (S10), and over which PANGAEA
   subset?** Both datasets resolve on this laptop, so I can run it here — but see
@@ -536,6 +547,7 @@ through it**.
   `maxfev` on PANGAEA the way it did on GLORIA, that is a reportable result rather
   than a blocker — and it is exactly the kind of thing the profile pages should
   say out loud.
+>A. Let's do (a).  I think my laptop can handle running these.
 
 ### Feasibility check — what the persisted artifacts can and cannot support
 
@@ -634,10 +646,17 @@ into a bug.
      explicitly (verified quote) that "a reported log10 value of 0.3 does not
      indicate 30% uncertainty, but rather approximately a 100% uncertainty
      (10^0.3 = 1.995), suggesting a preferred practice of reporting 1.995 in lieu
-     of 0.3." **Our tables publish the raw log₁₀ number** — the L23 `expb_pow`
-     mae of 0.109 is really a factor 1.29, i.e. ~29% — which is exactly the
-     misreading that paper is warning about. Report the multiplicative form
-     (optionally with the dex value beside it).
+     of 0.3." **Correction to what I first wrote here:** I claimed our tables
+     publish the raw dex value. They do not — `metrics.mae` is
+     `10**mean|log10(M/O)| - 1` and `metrics.bias` likewise, so the L23
+     `expb_pow` mae of 0.109 already means **10.9%** (the underlying log error is
+     0.045 dex). That matches Erickson 2023 and this design's own definition, and
+     the numbers are right. The residual risk is narrower and purely
+     presentational: ours is the **fractional** form (0 = perfect) while Seegers
+     reports the **un-subtracted factor** (1.109; "1.5 = 50% error"), so a reader
+     from that lineage can misread `0.109` as a factor of 0.109. Fix = state the
+     convention in the column header and the glossary, and consider showing the
+     factor form alongside. No metric change needed.
   2. **Cut the metric count.** Same paper: "Select no more than one metric for each
      estimate of bias, accuracy, and precision to reduce the likelihood of decision
      bias caused by redundant metrics." We ship 17 columns including `mae`,
@@ -739,6 +758,85 @@ Q8 answer asks for has never once been exercised on real data.
 
 ## Logs
 
+### 2026-08-03 (Improve reporting, prompt 3: design docs updated)
+
+Updated **both** docs in `docs/design/` to reflect the decisions and the findings, and
+bumped their versions — `IOPtics_design.md` **0.15 → 0.16**, `IOPtics_implementation.md`
+**0.22 → 0.23** — since `provenance._doc_version` parses those lines and stamps them
+into every sweep (verified it now reads 0.16 / 0.23). No package code touched.
+
+**Ground rule I held to:** your Q1-Q12 answers are recorded as design; my S1-S13
+suggestions that you have **not** yet ruled on are written as proposals and their
+decisions are parked in the design doc's Open Questions table (new items 6-12), so the
+docs never silently self-answer a live question.
+
+**`IOPtics_design.md`:**
+- **§Scope and goals** — added the sharpened primary goal: a community member comparing
+  IOP models, both by reading the comparison and by running IOPtics on their own model.
+  Every reporting decision is declared downstream of that sentence.
+- **§Data** — GLORIA is no longer "not yet downloaded"; recorded that it was acquired,
+  that its use extended to Rrs-space closure (where it proved most informative), and the
+  two data properties that shape any GLORIA result (29% quote uncertainties, tight enough
+  to need a floor). PANGAEA gained the measured 64 071-vs-3 247 scale note and the
+  `PANAGEA` spelling caveat.
+- **§Metrics** — pinned which *form* of the accuracy number is published (fractional
+  multiplicative, 0 = perfect) and required tables to say so, since Seegers publishes the
+  un-subtracted factor; adopted "one metric each for bias/accuracy/precision" and
+  demoted RMSE/r²/slope; added total-before-decomposed reporting and synthetic-vs-in-situ
+  as parallel tracks (IOCCG R5 / GIOP); struck the superseded Rrs-MAE QC window in favour
+  of χ²ᵥ-based QC + relative misfit (= GIOP's ΔRrs); promoted coverage to a headline
+  result **and** flagged it as genuinely novel, since no community convention for
+  validating calibration appears to exist; added ties-reported-as-ties with the Brewin
+  bootstrap precedent, η as a scored metric, and the three named denominators.
+- **§Metrics §6** — new figure conventions: statistics annotated in-panel, ratio
+  distributions beside every scatter, metric-vs-wavelength as mandatory, Type-II
+  regression, pairwise win-rate matrices, and **Taylor demoted to optional** (flagged
+  as cutting against your Q6 answer rather than quietly overriding it).
+- **§Reporting** — artifact-selection rules (data-driven figure sets, suppress empty
+  sections, numbers in prose, the 10-exemplar page, one style module, registry-assigned
+  colour/marker); all three report kinds first-class with the profiles-vs-audit-trail
+  split and the coverage matrix; the three discarded slices to surface; leaderboard rules
+  (no ranks without data, fold every sweep, dataset-aware, carry `fit_method` and the
+  bing/ocpy stamps, landing-page shape); vendored BokehJS; publishing hand-written
+  analyses as RST; reusable numbers and a DOI'd frozen release; ATBD structural
+  borrowings; and a pointer that provenance must be hardened first.
+- **§Open Questions** — marked GLORIA acquisition resolved, revised the metrics row, and
+  added items 6-13 (metric family, tie statistic, cross-sweep identity, how opinionated
+  the site is, profile URLs/generation, cost, the on-ramp, MOANA as out of scope).
+- **§References** — added Brewin et al. 2015, IOCCG Report 5, IOCCG Report 18 and
+  McKinna et al. 2019, since the new text leans on them.
+
+**`IOPtics_implementation.md`:**
+- **§Provenance record** — a ⚠ block listing the gaps that make cross-sweep identity
+  unreliable: `maxfev` and the `mcmc` block missing from the emitted algorithm block (the
+  turbid sweep's 40 000-iteration budget is invisible), the stale `noise_model: pace`, the
+  per-record noise tag never persisted, `AlgorithmConfig.overrides` accepted-but-ignored,
+  `provenance_id` stopping at `results_scalar`, and no cost recorded anywhere.
+- **§Metrics** — §2 rewritten around χ²ᵥ QC + relative misfit with the old Rrs-MAE window
+  struck and the reason (Rrs crosses zero in the red); §5 gained the "`wins` cannot
+  support a paired test" revisit with what a new pass must keep; §Stratification gained
+  the "computed but never surfaced" warning (stratum/MCMC/per-λ) plus the optical-water-
+  type note.
+- **§Reporting** — a new ⚠ subsection at the top tabulating **15 verified defects** with
+  the file each lives in, followed by the contract changes that follow. Also corrected the
+  `report.figures` status (only three builders have ever rendered; the "curated handful"
+  is now pinned at best/worst/8-median), the leaderboard's required fold changes, and the
+  `report.bokeh` reality (inline `components` embed, CDN dependency to vendor,
+  `interactive_leaderboard` unused).
+- **§Staged plan** — added **Stage 7 — Reporting rework** with build order, exit
+  criterion ("a reader arriving cold can answer *which model should I use for water like
+  mine, and can I trust its uncertainties?*"), the evidence still to generate
+  (`multi_v2`, the full L23 sweep), and the gating open decisions; extended the
+  dependency diagram.
+
+**One correction I made to my own prompt-2 write-up before it could propagate.** I had
+claimed our tables publish raw log₁₀ errors needing back-transformation. `metrics.mae` is
+`10**mean|log10(M/O)| - 1`, so the L23 `expb_pow` value of 0.109 already means 10.9%
+(0.045 dex underlying) and is consistent with both Erickson 2023 and this design's own
+definition. S13.1 and the prompt-2 log now carry the correction, and the design doc
+records the real (narrower) issue: ours is the fractional form, Seegers' is the factor
+form, so the convention must be labelled.
+
 ### 2026-08-03 (Improve reporting, prompt 2: how to make model comparison easy)
 
 No code changed, per your instruction.
@@ -821,9 +919,13 @@ error, not 30%, so report 1.995), and the Brewin et al. 2015 round-robin for η 
 with scores normalised by the all-model average (read out of the paper PDF directly,
 since it would not convert). Three consequences worth naming:
 
-- **Our published `mae` numbers are in a form the field considers a misreading
-  hazard.** The L23 `expb_pow` mae of 0.109 is a factor of 1.29 (~29% error). Fixing
-  the display is trivial and materially changes how the tables read.
+- **I got one thing wrong here and caught it before it reached the design docs.** I
+  wrote that our `mae`/`bias` publish raw log₁₀ values needing back-transformation.
+  Checking `metrics.py` shows they are already `10**mean|log10(M/O)| - 1`, so 0.109
+  means 10.9% (0.045 dex underlying) — correct, and matching both Erickson 2023 and
+  this project's own design doc. What survives is only a labelling issue: Seegers
+  reports the un-subtracted factor, so our fractional 0.109 should say which
+  convention it is. Corrected in S13.1 rather than left standing.
 - **P2 now has precedent instead of an invented threshold**: overlapping bootstrap
   intervals mean the ranks are indistinguishable. That is a better answer than the
   |Δmae| floor I proposed, and it composes with the new metrics pass P2 already
