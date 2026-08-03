@@ -470,7 +470,7 @@ through it**.
   persisted sweep artifacts. Add a citation block naming the version, so a paper
   can cite a specific state of the comparison rather than "the website".
 
-### Decisions I need before building any of this (P1-P9)
+### Decisions I need before building any of this (P1-P10)
 
 - **P1. Cross-sweep identity of an algorithm.** If `expb_pow` ran with different
   priors, RT toggles or `maxfev` in two sweeps, is its profile page (a) one
@@ -623,6 +623,115 @@ into a bug.
   the community will ask for when comparing a k=3 model against a k=7 one, but it
   needs instrumentation plus a re-run to exist at all. In scope, or explicitly out?
 
+- **S13. Present quantities the community already recognizes.** The good news from
+  the conventions research: we compute nearly the right things and *display* them in
+  the wrong form. Specifics, with the two load-bearing ones verified at source:
+
+  1. **Back-transform the log-space errors.** Seegers et al. 2018
+     ([doi:10.1364/OE.26.007404](https://doi.org/10.1364/OE.26.007404)) — now the
+     NASA-aligned default — defines `bias = 10^mean(log₁₀M − log₁₀O)` (1.0 =
+     unbiased) and `MAE = 10^mean|log₁₀M − log₁₀O|` (1.5 = 50% error), and says
+     explicitly (verified quote) that "a reported log10 value of 0.3 does not
+     indicate 30% uncertainty, but rather approximately a 100% uncertainty
+     (10^0.3 = 1.995), suggesting a preferred practice of reporting 1.995 in lieu
+     of 0.3." **Our tables publish the raw log₁₀ number** — the L23 `expb_pow`
+     mae of 0.109 is really a factor 1.29, i.e. ~29% — which is exactly the
+     misreading that paper is warning about. Report the multiplicative form
+     (optionally with the dex value beside it).
+  2. **Cut the metric count.** Same paper: "Select no more than one metric for each
+     estimate of bias, accuracy, and precision to reduce the likelihood of decision
+     bias caused by redundant metrics." We ship 17 columns including `mae`,
+     `abs_bias`, `rms_log` and `median_ratio` plus three rank columns. Also worth
+     knowing: it explicitly **discourages RMSE, r² and regression slope** as
+     headline scores (non-Gaussian, outlier-amplifying) — and it recommends
+     **percent wins** as the ranking metric, which is what our `win_frac` already
+     is. We are aligned on ranking and merely bury it.
+  3. **Keep continuity with the IOP literature specifically.** Werdell et al. 2013
+     (GIOP, [doi:10.1364/AO.52.002019](https://doi.org/10.1364/AO.52.002019)) is
+     *the* reference evaluation table for this exact problem: `N`, `Ratio =
+     median(M/O)`, `MPD = median(100|M/O − 1|)`, plus the IOP-specific closure
+     metrics **ΔRrs** and **ΔIOP** as median + SIQR. We already compute
+     `median_ratio` (= their Ratio) and `rel_misfit` (≈ ΔRrs), so naming them the
+     way that audience names them is nearly free recognition.
+  4. **The leaderboard already has a published blueprint** — Brewin et al. 2015
+     ([doi:10.1016/j.rse.2013.09.016](https://doi.org/10.1016/j.rse.2013.09.016)),
+     the ocean-colour round-robin. Two features to copy, both verified in the
+     paper: **η, "percentage of possible retrievals" (`η = N_E/N_M × 100`, Eq. 13),
+     is one of the *scored* tests** — not a footnote — on the stated grounds that an
+     algorithm "should not be a source of more gaps in the data than would be the
+     case if other algorithms were used" (that is our `frac_ok` promoted to a first-
+     class score); and **rank uncertainty comes from bootstrapping — 1000
+     resamples with replacement** — with each model's total score normalised by the
+     all-model average. **This answers P2 with precedent instead of an invented
+     threshold: overlapping bootstrap intervals mean the ranks are
+     indistinguishable.** (I verified η, the 1000-resample bootstrap and the
+     normalisation; I did not read their per-test 0/1/2 point rules line by line.)
+     One more Brewin practice worth mirroring: plausibility screening is applied
+     **per variable, not per spectrum**, so a spectrum rejected for `a_ph` still
+     contributes to `a` — which is a different policy from our per-fit `status`.
+  5. **Stratification conventions align with what we already have, with one
+     addition.** Wavelength always; trophic bins All/Oligo/Meso/Eutrophic (GIOP
+     Table 4 — matches our strata, though their exact Chl edges were **not**
+     verified, so check before hard-coding); and the addition — **separate the
+     total products (`a`, `bb`) from the decomposed ones (`a_dg`, `a_ph`)**,
+     because the decomposed ones are consistently worse and an aggregate that
+     hides that is distrusted. Optical water types are where the field is heading
+     but there is **no agreed scheme** (an IOCCG working group exists precisely
+     because of that), so if we go there, name the scheme and make it swappable.
+  6. **Synthetic and in-situ are two parallel tracks, never pooled.** That is
+     IOCCG Report 5's design (a HydroLight synthetic set *and* an in-situ set,
+     with every algorithm chapter reporting both) and GIOP's. It maps exactly onto
+     our L23 vs GLORIA/PANGAEA split: synthetic has radiometric closure by
+     construction and isolates inversion skill, in-situ does not. So the S2 matrix
+     and any ranking should keep the two tracks visually and statistically
+     separate rather than producing one blended winner.
+  7. **Figure conventions we currently miss:** put the statistics **inside the
+     panel** (N, n, ratio, MPD) — ours annotate nothing; pair each scatter with a
+     **ratio distribution** (a violin/box of log ratios is a legitimate modern
+     rendering of GIOP's ratio-histogram panels); use **Type-II / major-axis**
+     regression if a fit line is drawn at all, never OLS, since both axes carry
+     error; and metric-vs-wavelength small multiples are treated as **mandatory**
+     in IOP work, which independently confirms Q11's first slice. **On Q6's Taylor
+     question the community verdict cuts against investing in it:** Target (bias
+     vs unbiased RMSD) is well established, but Brewin computed the full Taylor
+     triple and chose *not* to draw Taylor diagrams, and Seegers undercuts the
+     r²/RMSE basis Taylor rests on. Suggest demoting Taylor to optional and
+     spending that effort on the annotated scatter + ratio distributions instead —
+     which changes your Q6 answer, so flagging it rather than acting on it.
+  8. **Failure reporting has explicit precedent** — IOCCG R5 tabulates both `N`
+     (tested) and `n` (valid) and states outright that excluding failures yields a
+     smaller dataset and "likely better statistical results"; GIOP reports
+     `N% = 100 × N_valid/N_total` per bin plus an overall 10% failure rate with its
+     causes named. That is precisely the three-denominator fix, and it means our
+     status taxonomy is an asset to publish, not an embarrassment to hide.
+  9. **One place where we would be ahead of convention, and should say so.** There
+     appears to be **no established community convention for validating whether
+     stated uncertainties are calibrated** — the propagation practice exists
+     (McKinna et al. 2019, IOCCG Report 18) but the coverage diagnostic does not.
+     So Q12's calibration panel is a genuine contribution; it should be labelled as
+     new rather than presented as standard practice.
+  10. **Archival norms for S11:** IOCCG reports carry ISBN + DOI minted through
+     Ocean Best Practices (`10.25607/OBP-…`); the NASA ATBD structure is worth
+     copying selectively — a **Plain Language Summary**, an explicit **Algorithm
+     Usage Constraints** section, and validation split into methods / uncertainties
+     / errors. The dashboard models are WeatherBench 2 and ILAMB: open evaluation
+     code plus published baseline data, with the leaderboard and the per-variable
+     diagnostics generated as the *same* artifact. Practical shape: **pin and DOI a
+     frozen benchmark release** (data snapshot + algorithm versions + evaluation
+     code) that a paper can cite, while the live site tracks HEAD and shows the
+     release tag on every page. Anti-pattern to avoid: OC-CCI's versioned reports
+     whose download links no longer resolve.
+
+- **P10. Which metric family leads?** Given S13, my recommendation is: headline
+  **Seegers-style multiplicative `bias`/`MAE` + percent wins**, with GIOP's
+  `Ratio`/`MPD` shown alongside for continuity with the IOP literature, and MdSA/
+  SSPB added only if you want the inland/coastal audience served explicitly (that
+  lineage matters for GLORIA; my source for it was summaries rather than the
+  paywalled full text, so treat it as unconfirmed). Do you agree — and do you want
+  the leaderboard rebuilt on **Brewin's bootstrap-scored** model (which also
+  resolves P2), or kept as the simpler wins → |bias| → MAE ordering with bootstrap
+  intervals added on top?
+
 Also found while checking: **`kind='per_algorithm'` cannot run on the only sweep we
 have.** `standard.py:172` does `int(sweep.spectral['obs_id'].min())` and GLORIA's
 `obs_id`s are strings (`GID_1`). A one-line fix, but it means the page family your
@@ -701,9 +810,36 @@ algorithm → S12), and **P2 needs a new metrics pass** because `metrics_pairwis
 throws away the opponent identity — though `results_spectral` retains everything
 needed, and the honest answer on GLORIA will often be "n = 12, underpowered".
 
-The community-conventions research was still running when this was written; when it
-lands I will add a short block on which statistics and figure types an OBPG/IOCCG
-reader expects, so S3/S4 present familiar quantities rather than ones we invented.
+**The community-conventions research also landed**, and produced **S13** + **P10**.
+Its verdict is encouraging: we compute nearly the right quantities and *display*
+them in the wrong form. I verified the two claims that would change our metric
+presentation at source rather than trusting the summary — Seegers et al. 2018 for
+the multiplicative `bias`/`MAE` definitions and the explicit instruction to
+back-transform out of log₁₀ before reporting (its own example: 0.3 dex is ~100%
+error, not 30%, so report 1.995), and the Brewin et al. 2015 round-robin for η as a
+*scored* test (Eq. 13) and for rank uncertainty from **1000 bootstrap resamples**
+with scores normalised by the all-model average (read out of the paper PDF directly,
+since it would not convert). Three consequences worth naming:
+
+- **Our published `mae` numbers are in a form the field considers a misreading
+  hazard.** The L23 `expb_pow` mae of 0.109 is a factor of 1.29 (~29% error). Fixing
+  the display is trivial and materially changes how the tables read.
+- **P2 now has precedent instead of an invented threshold**: overlapping bootstrap
+  intervals mean the ranks are indistinguishable. That is a better answer than the
+  |Δmae| floor I proposed, and it composes with the new metrics pass P2 already
+  needs.
+- **It argues against part of your Q6 answer.** Brewin computed the full Taylor
+  triple and deliberately did not draw Taylor diagrams, and Seegers undercuts the
+  r²/RMSE basis Taylor rests on. Rather than invest in fixing our Taylor diagram, I
+  would demote it to optional and spend the effort on annotated scatters and ratio
+  distributions — flagged in S13.7 for you to overrule rather than acted on.
+
+Carried-forward uncertainties from that research, so nobody treats them as settled:
+GIOP's exact trophic bin edges were not verified (check before hard-coding), the
+MdSA/SSPB inland-coastal lineage came from summaries rather than the paywalled full
+text, and there is apparently **no** community convention for validating uncertainty
+*coverage* — which makes Q12's calibration panel a contribution to label as new
+rather than standard.
 
 **Open on my side:** P1-P7 are genuine forks — especially P2 (what counts as
 indistinguishable, which needs your threshold, since it encodes what *you* call a
