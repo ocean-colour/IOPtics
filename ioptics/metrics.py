@@ -1144,10 +1144,13 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
 
     ref = _ref_frame(spec_scoped, ref_waves, ref_tol)
 
-    scalar_parts = [_ref_accuracy_rows(ref), _scalar_var_rows(scal_scoped)]
-    # rank the accuracy rows across algorithms within each variable/ref/stratum.
-    scalar_acc = pd.concat([p for p in scalar_parts if not p.empty],
-                           ignore_index=True)
+    scalar_parts = [p for p in (_ref_accuracy_rows(ref),
+                                _scalar_var_rows(scal_scoped)) if not p.empty]
+    # A sweep in which *every* fit failed has nothing to score — which is a real
+    # state (the GLORIA runs before the iteration budget was raised failed 72 of
+    # 100), and `pd.concat([])` raises, so it must not reach the concat.
+    scalar_acc = (pd.concat(scalar_parts, ignore_index=True) if scalar_parts
+                  else pd.DataFrame())
     if not scalar_acc.empty:
         scalar_acc = rankings(
             scalar_acc,

@@ -159,7 +159,8 @@ def ensure_glob_toctree(reports_index, *, extra_docs=()):
 
 
 def write_leaderboard_landing(reports_index, table_rst, *, cards_rst='',
-                              interactive_html='', full_grid_doc=None):
+                              interactive_html='', full_grid_doc=None,
+                              extra_docs=()):
     """Insert/replace the leaderboard block between sentinels on the landing page.
 
     Idempotent: re-rendering replaces the block; the surrounding prose and
@@ -173,9 +174,10 @@ def write_leaderboard_landing(reports_index, table_rst, *, cards_rst='',
     ``list-table`` again.
     """
     reports_index = Path(reports_index)
-    ensure_glob_toctree(reports_index,
-                        extra_docs=([Path(full_grid_doc).name]
-                                    if full_grid_doc else ()))
+    entries = list(extra_docs)
+    if full_grid_doc:
+        entries.insert(0, Path(full_grid_doc).name)
+    ensure_glob_toctree(reports_index, extra_docs=entries)
     text = reports_index.read_text(encoding='utf-8')
     body = table_rst
     if full_grid_doc:

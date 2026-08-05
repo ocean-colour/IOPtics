@@ -22,7 +22,8 @@ import yaml
 
 import ioptics
 from ioptics import io, metrics
-from ioptics.report import bokeh, figures, leaderboard, rst, tables
+from ioptics.report import (bokeh, figures, leaderboard, profiles, rst,
+                            tables)
 
 KINDS = ('per_algorithm', 'cross_algorithm', 'per_dataset')
 KIND_TITLES = {
@@ -399,7 +400,8 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
               'the cross-algorithm ranks (``*_rank``, 1 = best) and the '
               'head-to-head **win_frac** (0.5 = tie). ``n_pairs`` counts surviving '
               'retrieval-truth pairs; ``ref_match`` is the native band actually '
-              'used (±3 nm).' + unscored_note),
+              'used (±3 nm). Every column is defined on the '
+              ':doc:`/reports/glossary` page.' + unscored_note),
         published=published))
     h2h = tables.head_to_head(sweep)
     if h2h.empty:
@@ -503,16 +505,51 @@ def build_landing(*, docs_root=None, runs_root=None, root=None, board=None,
                     + leaderboard.render(board, headline=False))),
         encoding='utf-8')
 
+    # cross-sweep profile pages: the site's standing answer, keyed by algorithm
+    # and by dataset rather than by sweep id
+    try:
+        from ioptics.algorithms import registry
+        known = registry.available()
+    except Exception:
+        known = ()
+    try:
+        from ioptics import datasets as _datasets
+        known_datasets = _datasets.available_datasets()
+    except Exception:
+        known_datasets = ()
+    # Every registered algorithm and dataset gets a page, even one nothing has been
+    # run on: a page saying "not evaluated here" is more use to a reader than a
+    # missing page, and it is the honest state of the comparison.
+    profiles.build_profiles(docs_root=docs_root, runs_root=runs_root, root=root,
+                            board=board, algorithms=known,
+                            datasets=known_datasets)
+
     bokeh.vendor_bokehjs(docs_root / '_static', bundles=bokeh.TABLE_BUNDLES)
     try:
         widget = bokeh.leaderboard_embed(board=board, static_prefix='../')
     except Exception:                       # a widget is not worth failing a build
         widget = ''
+
+    # "what has been evaluated on what" — including the cells nobody has tried.
+    # Built by walking the runs tree, since a missing leaderboard row cannot tell
+    # "never run" from "run but unscoreable".
+    matrix = profiles.coverage_matrix(runs_root)
+    board_rst = (leaderboard.render(board, headline=True)
+                 + '\n' + rst.section(
+                     'What has been evaluated on what',
+                     'A blank cell would be ambiguous, so every pair states its '
+                     'state explicitly — and the profile pages below carry the '
+                     'detail.\n\n'
+                     + profiles.render_coverage_matrix(
+                         matrix, algorithms=known, datasets=known_datasets),
+                     char='~'))
     rst.write_leaderboard_landing(
         reports_dir / 'index.rst',
-        leaderboard.render(board, headline=True),
+        board_rst,
         cards_rst=leaderboard.sweep_cards(runs_root=runs_root, root=root,
                                           board=board, docs_root=docs_root),
         interactive_html=widget,
-        full_grid_doc='/reports/leaderboard_full')
+        full_grid_doc='/reports/leaderboard_full',
+        extra_docs=('glossary', f'{profiles.ALGORITHM_DIR}/*',
+                    f'{profiles.DATASET_DIR}/*'))
     return reports_dir / 'index.rst', full_grid

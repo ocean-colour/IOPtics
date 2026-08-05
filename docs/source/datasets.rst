@@ -1,6 +1,9 @@
-========
-Datasets
-========
+=================
+Dataset reference
+=================
+
+This page describes **the data**. For how algorithms scored on each dataset, see
+the per-dataset profile pages linked from :doc:`/reports/index`.
 
 IOPtics scores IOP-retrieval algorithms against a growing set of ocean-colour
 datasets. Each observation is a measured (or simulated) **remote-sensing

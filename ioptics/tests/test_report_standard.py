@@ -118,17 +118,21 @@ def test_build_bad_kind(tmp_path):
 def _scaffold_min_docs(src):
     """Minimal Sphinx tree so a generated report page builds standalone.
 
-    Includes stub ``datasets``/``models`` pages because the report cross-links
-    them via ``:doc:`` (they exist in the real docs tree).
+    Includes stub ``datasets``/``models``/``reports/glossary`` pages because the
+    report cross-links all three via ``:doc:`` (they exist in the real docs tree);
+    a missing target is a ``sphinx -W`` failure.
     """
     (src / 'conf.py').write_text(
         "project = 'test'\nextensions = []\nhtml_theme = 'basic'\n"
         "exclude_patterns = ['_build']\n")
     (src / 'datasets.rst').write_text('Datasets\n========\n\nstub.\n')
     (src / 'models.rst').write_text('IOP models\n==========\n\nstub.\n')
+    (src / 'reports').mkdir(parents=True, exist_ok=True)
+    (src / 'reports' / 'glossary.rst').write_text(
+        'Metrics and verdicts\n====================\n\nstub.\n')
     (src / 'index.rst').write_text(
         'Test\n====\n\n.. toctree::\n   :maxdepth: 2\n\n'
-        '   datasets\n   models\n   reports/index\n')
+        '   datasets\n   models\n   reports/glossary\n   reports/index\n')
 
 
 @needs_sphinx

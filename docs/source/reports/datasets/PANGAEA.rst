@@ -1,0 +1,20 @@
+=========================
+Dataset profile — PANGAEA
+=========================
+
+In one paragraph
+----------------
+
+No sweep in this runs tree has produced a scoreable result on **PANGAEA** yet.
+
+What this dataset can score
+---------------------------
+
+A dataset can only score what it carries truth for; a component with no truth here is absent rather than failing.
+
+No attempts recorded.
+
+See also
+--------
+
+Every column on this page is defined on the :doc:`/reports/glossary` page — including which value counts as *perfect* for each metric, the three different ``n`` denominators, and what the tie and calibration verdicts do and do not claim. For what the models are (rather than how they scored) see :doc:`/models`; for the data and its truth see :doc:`/datasets`.

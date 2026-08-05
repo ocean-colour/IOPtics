@@ -361,6 +361,23 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 6:**
+
+- **Do the profile pages belong in the top-level toctree, not just under Reports?**
+  They are currently reachable through `reports/index` (the `algorithms/*` and
+  `datasets/*` globs) and from the coverage matrix. A reader landing on the site's
+  front page sees Installation / Dataset reference / IOP model reference / Reports /
+  API — the profiles are one click deeper. Options: leave them under Reports; or add
+  "Algorithm profiles" and "Dataset profiles" as top-level toctree entries next to
+  the reference pages. My lean is the second, since the whole point of Task 6 was to
+  stop the site being sweep-first.
+- **Should a dataset profile show the dataset's own characterisation figures?**
+  `reports/figures/` holds hand-made GLORIA-vs-L23 plots (`rrs_shape_contrast.png`,
+  `peak_wavelength_hist.png`) from the GLORIA investigation that are exactly what a
+  dataset page wants, but they live outside `docs/` and are not copied by any build.
+  Pull them in (they would need copying into `_static` or the page dir), or leave the
+  dataset pages numbers-only until the investigation report is converted in Task 10?
+
 **New after Task 5:**
 
 - **Should the L23 smoke page be un-published rather than left stale?** It is the one
@@ -371,10 +388,12 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   a reader might trust), or drop it from the docs tree and re-add it when regenerated?
   My lean is to leave it and fix it in Task 11, since removing a published URL is the
   more disruptive act — but you may prefer the site carry nothing it knows is wrong.
+>A. Leave it
 - **Does `frac_ok` belong in the rank *ordering*, not just the headline columns?** I
   promoted it to a headline column (Brewin's η is a *scored* test in his round-robin,
   so it arguably belongs in the sort). Ordering is currently wins → |bias| → MAE per
   the design's Q23, and changing it is a design-level decision — say if you want η in.
+>A. No, not for now
 
 **New after Task 4:**
 
@@ -466,6 +485,84 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-05 (Stage 7, Task 6: profile pages + coverage matrix + glossary)
+
+**Your answers applied:** the L23 smoke page stays as-is (it will be regenerated in
+Task 11), and `frac_ok` stays out of the rank ordering — neither needed code. The
+earlier decisions this task rests on: profiles at `reports/algorithms/<name>` and
+`reports/datasets/<name>` with the reference pages retitled to keep them distinct,
+**hybrid** (generated tables plus a hand-written findings block), **no
+recommendations**, and one **pooled** profile per algorithm with a "what varied"
+note.
+
+**The site went from 3 published pages to 13.** New: 6 algorithm profiles, 3 dataset
+profiles, the metrics glossary, and the leaderboard drill-down from Task 5, on top of
+the two sweep pages and the landing page.
+
+**The coverage matrix is the piece I think matters most.** It is built by **walking
+the runs tree**, not by reading the leaderboard, because a missing leaderboard row
+cannot distinguish three quite different facts — and it now says which one applies:
+
+| state | meaning |
+|---|---|
+| `scored (n=…)` | evaluated, with truth to score against |
+| `no scoreable truth (k/N fits ok)` | evaluated, but the dataset carries no truth for it |
+| `all fits failed (N attempted)` | evaluated and the fitter got nothing |
+| `not evaluated` | nobody has tried this pair |
+
+On the real tree it reads: GLORIA scored for the four turbid variants, and **every
+other cell "not evaluated"** — `giop` and `gsm` have never been run at all, and
+neither L23 nor PANGAEA has a folded sweep. That is the map the site has never had,
+and it is on the landing page.
+
+**Profile pages.** Each algorithm page opens with a paragraph *containing numbers*
+(its best and worst contest, and the range of `frac_ok`), then its parameterization
+**read from the registry** so it cannot drift from what ran, where it has been
+evaluated, its accuracy by contest, a calibration section, its head-to-head verdicts,
+and — per your pooling decision — a **"What varied between sweeps"** block that
+appears only when the pooled runs were *not* identically configured (compared by
+`algo_digest`, not by sweep count). Each dataset page opens the same way, then says
+what the data can actually score, ranked contests with ties grouped, retrieval-success
+accounting, per-stratum and χ²-vs-MCMC breakdowns where they exist. A registered
+algorithm nobody has run still gets a page saying so — more use than a missing page.
+
+**The hybrid seam** is a `<name>_findings.rst` beside each profile: included if
+present, never written or overwritten by the builder. There is a test asserting the
+file survives a rebuild.
+
+**The glossary** (`reports/glossary.rst`) states, for every column, the value a
+*perfect* retrieval would produce — the point being that it is not always 0, which is
+what the old page-wide claim got wrong. I had a Fable subagent draft it from the
+source, then verified its two most specific claims myself (`RED_PEAK_NM = 560` for
+`out_of_scope`, and the χ²ᵥ band `1 ± 2√(2/dof)`). It carries the worked
+GLORIA denominators (12 pairs / 21 scored / 100 attempted), the coverage detection
+windows at n=12 versus n=3320, the equivalence-test verdict vocabulary, the
+`ranking` vocabulary, and the measured consequence of the absolute 10% floor. Every
+table blurb now links to it.
+
+**A pre-existing bug the new tests found.** `metrics.compute` **crashes** on a sweep
+in which every fit failed: `pd.concat([])` on the two empty scalar parts raises
+`ValueError: No objects to concatenate`. That is a real state — the GLORIA runs before
+the iteration budget was raised failed 72 of 100 — so this was reachable well before
+Task 6. Fixed, with the empty case producing an empty frame instead.
+
+**Three of my own bugs, all caught by running:** `io.RESULTS_SCALAR_FILE` does not
+exist (it is `io.SCALAR_FILE`); `_what_varied` compared *(sweep, config)* pairs rather
+than configurations, so two sweeps with identical configs falsely triggered the "not
+identically configured" warning; and my glossary heading had an underline one
+character short — which `sphinx -W` failed on, though only on a **clean** build: my
+first check passed because the cached environment skipped the file. Clean builds from
+here.
+
+**Verification:** CI-equivalent **321 passed / 38 skipped** (was 311); with data
+**359 passed**; `sphinx -W` exit 0 on a **fresh** build tree.
+
+**Files:** new `ioptics/report/profiles.py`, `ioptics/tests/test_profiles.py` (10
+tests), `docs/source/reports/glossary.rst`, `docs/source/reports/{algorithms,datasets}/*.rst`;
+modified `ioptics/metrics.py` (empty-concat guard), `ioptics/report/{standard,rst}.py`,
+`ioptics/tests/test_report_standard.py`, `docs/source/{models,datasets}.rst`
+(retitled + cross-linked), `docs/source/reports/index.rst`.
 
 ### 2026-08-05 (Stage 7, Task 5: leaderboard fold + landing page + vendored BokehJS)
 

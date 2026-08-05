@@ -1,6 +1,10 @@
-==========
-IOP models
-==========
+====================
+IOP model reference
+====================
+
+This page describes **what the models are**. For how they actually scored, see
+the per-algorithm profile pages linked from :doc:`/reports/index`, and
+:doc:`/reports/glossary` for what each metric means.
 
 **What is being retrieved.** Ocean colour is the spectrum of sunlight that
 leaves the sea surface, quantified as the *remote-sensing reflectance*
