@@ -335,9 +335,23 @@ def _cf(values):
                         lo95=med * 0.8, hi95=med * 1.2)
 
 
+def _rrs_peaking_at(peak_nm):
+    """An observed-Rrs spectrum whose maximum sits at ``peak_nm``.
+
+    The exemplar page orders panels clear→turbid by the wavelength of the observed
+    Rrs peak (blue peak = clear, green-red peak = turbid), so a fixture that cannot
+    move the peak cannot test the ordering at all — every ``_RRS`` peaks at 440 nm.
+    """
+    if peak_nm is None:
+        return _RRS
+    # a simple tent about the requested peak, kept strictly positive so the
+    # relative misfit (which needs Rrs_obs > 0) is defined at every band
+    return 0.002 + 0.008 * np.exp(-((_WAVE - float(peak_nm)) / 80.0) ** 2)
+
+
 def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
                fit_method='chisq', rrs_factor=1.0, dataset='L23',
-               status='ok', truth_factor=1.0):
+               status='ok', truth_factor=1.0, chi2_nu=1.0, rrs_peak=None):
     """One (RetrievalResult, PreparedRecord) for the synthetic sweep.
 
     ``factor`` scales every retrieved value above truth (1.0 = perfect, 2.0 =
@@ -349,10 +363,15 @@ def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
     so a caller can give a sweep real spread across observations — without it every
     obs has identical truth, which leaves correlation undefined and makes a
     Taylor/Target diagram degenerate.
+
+    ``chi2_nu`` sets the row's reduced χ² and ``rrs_peak`` the wavelength the
+    observed Rrs peaks at — the two axes the exemplar page selects and orders by.
+    Both default to the fixed values every other test relies on.
     """
     comps = {c: _cf(np.full(_WAVE.size, factor * truth_factor * b))
              for c, b in _BASE.items()}
-    comps['Rrs_model'] = _cf(rrs_factor * _RRS)
+    rrs_obs = _rrs_peaking_at(rrs_peak)
+    comps['Rrs_model'] = _cf(rrs_factor * rrs_obs)
     k = 5 if algo == 'expb_pow' else 3
     result = RetrievalResult(
         dataset=dataset, obs_id=obs_id, algorithm=algo, fit_method=fit_method,
@@ -360,16 +379,16 @@ def _make_pair(obs_id, algo, factor, chl_truth, bic, *,
         scalars={'Chl': (factor * chl_truth, 0.1), 'Sdg': (factor * 0.017, 1e-3),
                  'a_cdom440': (factor * _BASE['a_dg'], 1e-3),
                  'beta': (factor * 1.0, 0.1)},
-        stats={'chi2': 10.0, 'chi2_nu': 1.0, 'AIC': 30.0, 'BIC': float(bic),
-               'n_bands': 10, 'k': k},
+        stats={'chi2': 10.0, 'chi2_nu': float(chi2_nu), 'AIC': 30.0,
+               'BIC': float(bic), 'n_bands': 10, 'k': k},
         status=status, provenance_id='p',
         chain_file=None if fit_method == 'chisq' else 'c.npz')
     truth = {c: _Spec(np.full(_WAVE.size, truth_factor * b))
              for c, b in _BASE.items()}
     truth.update({'Chl': chl_truth, 'Sdg': 0.017})
     record = PreparedRecord(
-        dataset=dataset, obs_id=obs_id, wave=_WAVE, Rrs=_RRS,
-        varRrs=np.full(_WAVE.size, 1e-6), Rrs_clean=_RRS,
+        dataset=dataset, obs_id=obs_id, wave=_WAVE, Rrs=rrs_obs,
+        varRrs=np.full(_WAVE.size, 1e-6), Rrs_clean=rrs_obs,
         truth=truth, truth_interp={}, init={'Chl': 1.0, 'Y': 0.5},
         noise_model='pace', noise_seed=1)
     return result, record

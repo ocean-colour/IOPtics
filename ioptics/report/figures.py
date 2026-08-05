@@ -17,6 +17,7 @@ observation ids selected upstream.
 
 from __future__ import annotations
 
+import re
 from collections import namedtuple
 
 import matplotlib.pyplot as plt
@@ -70,6 +71,17 @@ def subdir(sweep, name):
 def _figdir(sweep):
     """The sweep's ``figures/`` directory (created)."""
     return subdir(sweep, 'figures')
+
+
+def _safe(part):
+    """Make a filename fragment out of a dataset-defined id.
+
+    ``obs_id`` comes from the dataset, not from us: GLORIA's are strings, and nothing
+    guarantees another dataset's are free of ``/``, spaces or other characters that
+    would send a figure outside its own directory or produce an unreferenceable
+    filename. Any character outside ``[A-Za-z0-9._-]`` becomes an underscore.
+    """
+    return re.sub(r'[^A-Za-z0-9._-]', '_', str(part))
 
 
 def _save(fig, figdir, name, *, formats=FORMATS):
@@ -250,28 +262,117 @@ def spectra_set(sweep, obs_id, *, algorithm, fit_method='chisq',
         if cf.empty:
             continue
         fig = plotting.spectra_band(cf, label=algorithm, component=comp)
-        paths += _save(fig, figdir, f'spectra_{algorithm}_{obs_id}_{comp}')
+        paths += _save(fig, figdir,
+                       f'spectra_{_safe(algorithm)}_{_safe(obs_id)}_{comp}')
     return paths
 
 
-def closure_set(sweep, obs_id, *, fit_method='chisq', root=None):
-    """Rrs closure residuals (all algorithms) for one observation."""
+def exemplars(sweep, *, fit_method='chisq', n=diagnostics.EXEMPLAR_N, root=None):
+    """The sweep's exemplar observations — planner for :func:`exemplar_fits`.
+
+    Thin wrapper over :func:`ioptics.diagnostics.exemplar_obs`, in the same
+    "planner + builder" shape as :func:`scored_refs` / :func:`dbic_pair`: the report
+    layer needs the selection itself (for the page's prose and to pick which
+    observations get a closure panel), not only the figure.
+    """
+    sweep = resolve(sweep, root)
+    return diagnostics.exemplar_obs(sweep.scalar, sweep.spectral,
+                                    fit_method=fit_method, n=n)
+
+
+def exemplar_fits(sweep, picks=None, *, fit_method='chisq',
+                  n=diagnostics.EXEMPLAR_N, ncols=2, root=None,
+                  ordered_by_peak=None):
+    """Grid of exemplar Rrs fits, ordered clear→turbid. Returns written paths.
+
+    ``picks`` is a selection frame from :func:`exemplars` (recomputed if omitted).
+    One asset per sweep rather than ten, which is both how the hand-made
+    ``reports/figures/wide_example_fits.png`` presents them and what keeps the page
+    from being ten near-identical figure blocks.
+
+    ``ordered_by_peak`` states whether the selection really is in turbidity order;
+    the suptitle follows it rather than asserting clear→turbid unconditionally,
+    because a sweep with no persisted ``Rrs_obs`` is ordered by fit quality instead.
+    Inferred from ``picks`` when not given — which is the whole reason the reference
+    figure's title was wrong about its own contents.
+    """
+    sweep = resolve(sweep, root)
+    if picks is None:
+        picks = exemplars(sweep, fit_method=fit_method, n=n)
+    if picks is None or picks.empty:
+        return []
+    # ``dataset`` must be passed, not left to default: obs ids are reused across
+    # datasets, so without it a panel blends two unrelated spectra and annotates
+    # them with whichever row came first.
+    panels = [diagnostics.rrs_fit_data(sweep.spectral, sweep.scalar, r.obs_id,
+                                       dataset=getattr(r, 'dataset', None),
+                                       fit_method=fit_method)
+              for r in picks.itertuples()]
+    if ordered_by_peak is None:
+        ordered_by_peak = bool(picks['peak_nm'].notna().any())
+    order = ('clear (top-left) to turbid (bottom-right)' if ordered_by_peak
+             else 'best (top-left) to worst (bottom-right) by fit quality')
+    fig = plotting.exemplar_grid(
+        panels, ncols=ncols, roles=list(picks['role']),
+        suptitle=f'Exemplar fits, {order}')
+    return _save(fig, _figdir(sweep), 'exemplar_fits')
+
+
+def closure_set(sweep, obs_id, *, dataset=None, fit_method='chisq', root=None):
+    """Rrs closure residuals (all algorithms) for one observation.
+
+    ``dataset`` disambiguates the observation: ids are reused across datasets, so
+    without it a multi-dataset sweep merges two unrelated spectra into one panel.
+    It also enters the filename, since ``closure_0.png`` would otherwise be claimed
+    by whichever dataset was drawn last.
+    """
     sweep = resolve(sweep, root)
     res = diagnostics.residual_spectra(sweep.spectral, sweep.scalar, obs_id,
-                                       fit_method=fit_method)
+                                       dataset=dataset, fit_method=fit_method)
     fig = plotting.residual_rrs(res)
-    return _save(fig, _figdir(sweep), f'closure_{obs_id}')
+    tag = _safe(obs_id) if dataset is None else f'{_safe(dataset)}_{_safe(obs_id)}'
+    return _save(fig, _figdir(sweep), f'closure_{tag}')
 
 
-def corner_set(sweep, *, root=None):
-    """Corner plots for every MCMC row that saved a chain (the MCMC subset)."""
+#: Default cap on how many corner plots a page build writes. A sweep with thousands
+#: of saved chains would otherwise put thousands of figures into the docs tree.
+MAX_CORNERS = 8
+
+
+def corner_set(sweep, *, root=None, limit=MAX_CORNERS):
+    """Corner plots for every MCMC row that saved a chain (the MCMC subset).
+
+    A ``chain_file`` recorded on disk is only a **path**, so it goes stale as soon
+    as a sweep dir is copied between machines or the chains are pruned to save
+    space. An unreadable chain is therefore **skipped rather than raised**: this
+    builder is wired into a page build, and one moved file must not take the whole
+    report down. Returns the paths actually written, so a caller can tell how many
+    chains survived by comparing against the MCMC row count.
+
+    ``limit`` caps how many are **drawn** (:data:`MAX_CORNERS` by default). It is
+    applied to the successful reads rather than to the candidate rows, so a handful
+    of stale paths at the head of the table cannot consume the whole budget and
+    leave the page with no corner plots at all.
+    """
     sweep = resolve(sweep, root)
     figdir = _figdir(sweep)
     sc = sweep.scalar
+    if sc is None or sc.empty or 'chain_file' not in sc.columns:
+        return []
     mcmc = sc[(sc['fit_method'] == 'mcmc') & sc['chain_file'].notna()]
-    paths = []
+    paths, drawn = [], 0
     for _, row in mcmc.iterrows():
-        data = diagnostics.corner_data(row['chain_file'])
-        fig = plotting.corner(data)
-        paths += _save(fig, figdir, f"corner_{row['algorithm']}_{row['obs_id']}")
+        if limit is not None and drawn >= int(limit):
+            break
+        try:
+            data = diagnostics.corner_data(row['chain_file'])
+            fig = plotting.corner(data)
+        except Exception:
+            # Any unreadable chain — missing, truncated, a non-NPZ, or a corrupt zip
+            # (``zipfile.BadZipFile`` is **not** an ``OSError``, so a narrow except
+            # tuple let a half-written chain take the whole page build down).
+            continue
+        paths += _save(fig, figdir,
+                       f"corner_{_safe(row['algorithm'])}_{_safe(row['obs_id'])}")
+        drawn += 1
     return paths

@@ -223,11 +223,105 @@ def residual_rrs(residuals, *, ax=None):
         lbl = f'{algo}' + (f' (χ²ᵥ={cn:.2f})' if np.isfinite(cn) else '')
         st = style.algo_style(algo)
         ax.plot(wave, resid, marker=st['marker'], ms=3.5, lw=1.0,
-                color=st['color'], label=lbl)
+                ls=st['linestyle'], color=st['color'], label=lbl)
     ax.axhline(0.0, color=style.GUIDE_COLOR, lw=0.8)
     ax.set_xlabel('wavelength [nm]')
     ax.set_ylabel(r'$R_{rs}^{obs} - R_{rs}^{model}$ [1/sr]')
     ax.legend()
+    return fig
+
+
+def _has_rrs(data):
+    """Whether an exemplar panel's data can actually be drawn."""
+    if not data:
+        return False
+    return bool(np.isfinite(np.asarray(data.get('rrs', []), dtype=float)).any()
+                or data.get('models'))
+
+
+@style.styled
+def rrs_fit(data, *, ax=None, role='', legend=True):
+    """One exemplar fit: observed Rrs with every algorithm's model laid over it.
+
+    ``data`` is the dict from :func:`ioptics.diagnostics.rrs_fit_data`. The
+    observation is black dots (it is the measurement, not a model, so it does not
+    take a series colour) and each algorithm its fixed colour. The panel title
+    carries the ``obs_id`` and the observed Rrs peak — the clear→turbid ordering
+    key — and each legend entry that algorithm's own **χ²ᵥ and relative misfit**,
+    so a panel can be judged without reference to a table.
+
+    Rrs is drawn on a **linear** y-axis, unlike the IOP spectra: hyperspectral red
+    tails routinely cross zero, which a log axis silently drops.
+    """
+    fig, ax = _axes(ax, figsize=(5.5, 3.4))
+    if not _has_rrs(data):
+        _annotate_empty(ax)
+        return fig
+    wave = np.asarray(data.get('wave', []), dtype=float)
+    rrs = np.asarray(data.get('rrs', []), dtype=float)
+    if wave.size:
+        ax.plot(wave, rrs, 'k.', ms=3.5, label='observed', zorder=3)
+    for algo, m in (data.get('models') or {}).items():
+        st = style.algo_style(algo)
+        bits = []
+        cn, rm = m.get('chi2_nu', np.nan), m.get('rel_misfit', np.nan)
+        if np.isfinite(cn):
+            bits.append(f'χ²ᵥ={cn:.3g}')
+        if np.isfinite(rm):
+            bits.append(f'Δ={rm:.0%}')
+        lbl = algo + (f' ({", ".join(bits)})' if bits else '')
+        # linestyle as well as colour: on GLORIA all four turbid variants model
+        # nearly the same Rrs, and with one linestyle three of them vanish under
+        # the fourth — leaving a reader unable to tell "identical" from "missing".
+        ax.plot(np.asarray(m['wave'], dtype=float),
+                np.asarray(m['rrs'], dtype=float),
+                color=st['color'], lw=1.4, ls=st['linestyle'], label=lbl)
+    ax.axhline(0.0, color=style.GUIDE_COLOR, lw=0.6, zorder=0)
+    peak = data.get('peak_nm', np.nan)
+    head = f"obs {data.get('obs_id', '?')}"
+    if role:
+        head += f' — {role}'
+    if np.isfinite(peak):
+        head += f' (peak {peak:.0f} nm)'
+    ax.set_title(head, fontsize=9)
+    ax.set_xlabel('wavelength [nm]')
+    ax.set_ylabel(r'$R_{rs}$ [1/sr]')
+    if legend:
+        ax.legend(fontsize=6.5, loc='best', framealpha=0.85)
+    return fig
+
+
+@style.styled
+def exemplar_grid(panels, *, ncols=2, roles=(), suptitle=''):
+    """A grid of :func:`rrs_fit` panels, in the order given.
+
+    ``panels`` is a list of :func:`ioptics.diagnostics.rrs_fit_data` dicts, already
+    ordered by the caller (clear→turbid). Empty panels are annotated individually,
+    but the **figure** is only flagged degenerate when *every* panel is empty —
+    :func:`_annotate_empty` stamps the flag on the shared figure, so without this a
+    single missing observation would suppress the whole grid.
+    """
+    panels = list(panels or [])
+    if not panels:
+        fig, ax = _axes(figsize=(6, 4))
+        _annotate_empty(ax)
+        return fig
+    ncols = max(1, int(ncols))
+    nrows = -(-len(panels) // ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5.6 * ncols, 3.3 * nrows),
+                             squeeze=False)
+    flat = axes.ravel()
+    drawn = 0
+    for i, ax in enumerate(flat):
+        if i >= len(panels):
+            ax.axis('off')
+            continue
+        role = roles[i] if i < len(roles) else ''
+        rrs_fit(panels[i], ax=ax, role=role)
+        drawn += bool(_has_rrs(panels[i]))
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=11)
+    setattr(fig, EMPTY_FLAG, drawn == 0)
     return fig
 
 

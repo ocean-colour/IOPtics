@@ -70,6 +70,20 @@ def test_marker_carries_the_same_information_as_colour():
         st = style.algo_style(a)
         assert st['marker'] in style.SERIES_MARKERS
         assert st['color'] in style.SERIES_COLORS
+        assert st['linestyle'] in style.SERIES_LINESTYLES
+
+
+def test_linestyle_separates_the_curves_that_actually_coincide():
+    """Markers separate points; only a linestyle separates overlapping *curves*.
+
+    GLORIA's four turbid variants model nearly identical Rrs, so on the exemplar
+    panels three of the four are drawn underneath the fourth.
+    """
+    shipped = ('expb_pow', 'giop', 'gsm', 'expb_pow2', 'expb_pow2flat',
+               'expb_powflex')
+    styles = [style.algo_linestyle(a) for a in shipped]
+    assert len(set(styles)) == len(shipped), 'every shipped model draws distinctly'
+    assert style.algo_linestyle('giop') == style.algo_linestyle('giop')
 
 
 # --------------------------------------------------------------------

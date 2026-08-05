@@ -15,13 +15,15 @@ fully regenerable.
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 import ioptics
-from ioptics import io, metrics
+from ioptics import diagnostics, io, metrics, records
 from ioptics.report import (bokeh, figures, leaderboard, profiles, rst,
                             tables)
 
@@ -170,16 +172,52 @@ def _curated_obs(sweep, *, fit_method='chisq'):
     return sorted(sub['obs_id'].unique())[0]
 
 
-def _prune_stale(report_dir, published):
-    """Delete display assets in ``report_dir`` this build did not (re)generate.
+def _referenced_elsewhere(report_dir, this_page):
+    """Asset names referenced by the *other* ``.rst`` pages in ``report_dir``.
+
+    Several pages share one report dir (``cross_algorithm.rst``,
+    ``per_algorithm.rst``, ``exemplar_fits.rst``, …), and each build knows only its
+    own assets. Pruning on that knowledge alone deletes the siblings' figures:
+    building ``per_algorithm`` after ``cross_algorithm`` removed all six of its
+    scatters, Taylor/Target and ΔBIC panels while ``cross_algorithm.rst`` went on
+    referencing them — a dangling image, and a ``sphinx -W`` failure. So an asset
+    survives if *any* surviving page still names it.
+    """
+    keep = set()
+    for page in sorted(report_dir.glob('*.rst')):
+        if page.name == this_page:
+            continue
+        try:
+            text = page.read_text(encoding='utf-8')
+        except OSError:
+            continue
+        # Match the **directive target**, not any substring: a plain
+        # ``name in text`` kept an orphaned ``fits.png`` alive purely because a
+        # sibling page referenced ``exemplar_fits.png``.
+        keep.update(_ASSET_REF.findall(text))
+    return keep
+
+
+#: Asset references in a report page: the target of a ``figure``/``image``
+#: directive, or the file of a ``csv-table``. Anchored on the directive so the
+#: match is a whole filename rather than a fragment of a longer one.
+_ASSET_REF = re.compile(
+    r'^\s*(?:\.\.\s+(?:figure|image)::\s*|:file:\s*)([^\s:]+)\s*$', re.MULTILINE)
+
+
+def _prune_stale(report_dir, published, *, this_page=None):
+    """Delete display assets in ``report_dir`` no surviving page references.
 
     Without this, changing the figure set leaves orphaned PNGs and CSVs committed
-    in the docs tree forever — the report dir stops describing the report.
+    in the docs tree forever — the report dir stops describing the report. Assets
+    still referenced by a *sibling* page are kept (see
+    :func:`_referenced_elsewhere`).
     """
+    keep = set(published) | _referenced_elsewhere(report_dir, this_page)
     removed = []
     for path in sorted(report_dir.iterdir()):
         if path.is_file() and path.suffix in _OWNED_SUFFIXES \
-                and path.name not in published:
+                and path.name not in keep:
             path.unlink()
             removed.append(path.name)
     return removed
@@ -464,13 +502,275 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
          + rst.bokeh_embed(bokeh.scatter_embed(
              sweep, static_prefix='../../')))))
 
+    # Link the exemplar page when it has been built — conditionally, because a
+    # ``:doc:`` reference to a page that does not exist is a ``sphinx -W`` failure.
+    if (report_dir / f'{EXEMPLAR_PAGE}.rst').is_file():
+        blocks.append(rst.section(
+            'Individual fits',
+            f'The figures above describe the population. For {sweep_id}\'s best, '
+            f'worst and median **individual fits** — observed Rrs with every '
+            f'algorithm\'s model laid over it — see :doc:`{EXEMPLAR_PAGE}`.'))
+
     blocks.append(_not_shown_section(not_shown))
 
     out = report_dir / f'{kind}.rst'
     out.write_text(rst.page(*blocks), encoding='utf-8')
-    _prune_stale(report_dir, published)
+    _prune_stale(report_dir, published, this_page=out.name)
     rst.ensure_glob_toctree(docs_root / 'reports' / 'index.rst')
     return out
+
+
+#: Page name for the exemplar report (a sibling of the ``KINDS`` pages in the same
+#: ``reports/<sweep_id>/`` dir, built by :func:`build_exemplars`).
+EXEMPLAR_PAGE = 'exemplar_fits'
+
+_SPELLED = ('zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+            'eight', 'nine', 'ten')
+
+
+def _spell(k):
+    """Small counts as words, so the prose reads like prose ("the eight nearest")."""
+    return _SPELLED[k] if 0 <= k < len(_SPELLED) else str(k)
+
+
+def _exemplar_table(picks, *, ordered_by_peak=True, multi_dataset=False):
+    """A ``list-table`` of the exemplar selection, so the figure has a key.
+
+    ``dataset`` is only a column when the sweep has more than one, because obs ids
+    are reused across datasets and ``0`` alone would not identify a row.
+    """
+    caption = ('The exemplar observations, clear → turbid' if ordered_by_peak
+               else 'The exemplar observations, by fit quality')
+    cols = (['dataset'] if multi_dataset else []) + [
+        'obs_id', 'role', 'χ²ᵥ (median)', 'rel. misfit', 'Rrs peak [nm]']
+    header = (f'.. list-table:: {caption}\n'
+              '   :header-rows: 1\n   :widths: auto\n\n'
+              + '   * - ' + '\n     - '.join(cols) + '\n')
+    def _num(v, fmt):
+        """Format a metric, or an em dash — guarding NaN, ±inf and non-numbers.
+
+        A cell that raises takes the whole page down, and an unguarded ``-inf``
+        would publish the literal string ``-inf`` under a χ²ᵥ heading.
+        """
+        try:
+            x = float(v)
+        except (TypeError, ValueError):
+            return '—'
+        return format(x, fmt) if np.isfinite(x) else '—'
+
+    rows = []
+    for r in picks.itertuples():
+        lead = (f'   * - {getattr(r, "dataset", "")}\n     - ``{r.obs_id}``\n'
+                if multi_dataset else f'   * - ``{r.obs_id}``\n')
+        rows.append(f'{lead}     - {r.role}\n'
+                    f'     - {_num(r.chi2_nu, ".3g")}\n'
+                    f'     - {_num(r.rel_misfit, ".0%")}\n'
+                    f'     - {_num(r.peak_nm, ".0f")}\n')
+    return header + ''.join(rows)
+
+
+def _exemplar_summary(sweep, picks, *, fit_method='chisq'):
+    """What the selected exemplars *are*, in numbers — stated, not left implied.
+
+    Without this the page prints "above χ²ᵥ = 5 a fit is not a solution" and then a
+    table of ten fits, eight of them at χ²ᵥ ≈ 30, and never connects the two. On
+    ``gloria_turbid_v3`` most exemplars are also redward of the turbid threshold, so
+    they are spectra the model family does not claim — which a reader has to be told
+    rather than left to infer from a wavelength column.
+    """
+    n_total = len(picks)
+    chi2 = picks['chi2_nu'].to_numpy(dtype=float)
+    n_bad = int((chi2 > records.CHI2NU_POOR_FIT).sum())
+    n_over = int((chi2 < 1.0).sum())
+    peaks = picks['peak_nm'].to_numpy(dtype=float)
+    n_red = int((peaks > records.RED_PEAK_NM).sum())
+
+    # the status the sweep itself recorded for these observations — matched on
+    # (dataset, obs_id), since an obs_id alone can name a row in another dataset
+    sc = sweep.scalar
+    if sc is not None and not sc.empty and 'status' in sc.columns:
+        keys = [k for k in diagnostics.OBS_KEYS
+                if k in sc.columns and k in picks.columns]
+        wanted = set(map(tuple, picks[keys].to_numpy()))
+        sub = sc[sc[keys].apply(tuple, axis=1).isin(wanted)]
+        if fit_method is not None and 'fit_method' in sub.columns:
+            sub = sub[sub['fit_method'] == fit_method]
+        counts = sub['status'].value_counts()
+        breakdown = ', '.join(f'``{s}`` {int(c)}' for s, c in counts.items())
+    else:
+        breakdown = ''
+
+    bits = [f'**What these {n_total} fits are.** ']
+    if n_bad:
+        bits.append(
+            f'{n_bad} of the {n_total} {"has" if n_bad == 1 else "have"} a median '
+            f'χ²ᵥ above {records.CHI2NU_POOR_FIT:g}, so by this package\'s own '
+            f'threshold {"it is" if n_bad == 1 else "they are"} **not '
+            f'{"a solution" if n_bad == 1 else "solutions"}** — the exemplars are '
+            f'not a gallery of successes, and on a dataset the model family '
+            f'struggles with, the median fit is expected to be one of the '
+            f'failures. ')
+    else:
+        bits.append(f'All {n_total} sit at or below the χ²ᵥ = '
+                    f'{records.CHI2NU_POOR_FIT:g} solution threshold. ')
+    if n_over:
+        bits.append(f'{n_over} {"sits" if n_over == 1 else "sit"} *below* '
+                    f'χ²ᵥ = 1, i.e. over-fit relative to the assumed noise. ')
+    if n_red:
+        one = n_red == 1
+        bits.append(
+            f'{n_red} {"peaks" if one else "peak"} redward of '
+            f'{records.RED_PEAK_NM:g} nm and {"is" if one else "are"} therefore '
+            f'outside the regime these open-ocean parameterizations claim at all; '
+            f'their misfit is a statement about **scope**, not about the fitter. ')
+    if breakdown:
+        bits.append(f'Recorded fit status across these observations and algorithms: '
+                    f'{breakdown}.')
+    return ''.join(bits)
+
+
+def build_exemplars(sweep_id, *, root=None, docs_root=None, fit_method='chisq',
+                    n=None):
+    """Build the ``exemplar_fits.rst`` page: exemplar fits + closure + corners.
+
+    The aggregate figures say how a population of retrievals behaves; none of them
+    shows a reader a *single fit*, which is what an ocean-colour reader asks for
+    when a summary statistic looks wrong ("show me a spectrum where it failed").
+    This page answers that with the sweep's **best, worst and the rest drawn from
+    around the median** by fit quality, laid out clear→turbid, plus the Rrs closure
+    residuals for the two extremes and the posterior corner plots wherever a chain
+    was saved.
+
+    Returns the ``.rst`` path, or ``None`` when the sweep has no rankable fit.
+    """
+    sweep = figures.load(sweep_id, root=root)
+    docs_root = Path(docs_root) if docs_root is not None else DEFAULT_DOCS_SRC
+    report_dir = docs_root / 'reports' / sweep_id
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    picks = figures.exemplars(sweep, fit_method=fit_method,
+                              **({'n': n} if n is not None else {}))
+    if picks.empty:
+        return None
+
+    published, not_shown = set(), []
+    # Every claim below is derived from the selection, not hard-coded: a thin sweep
+    # yields fewer than ten panels, and a sweep with no persisted ``Rrs_obs`` is not
+    # ordered by turbidity at all — prose asserting either would simply be false.
+    by_peak = bool(picks['peak_nm'].notna().any())
+    n_mid = int((picks['role'] == 'median').sum())
+    multi_ds = 'dataset' in picks.columns and picks['dataset'].nunique() > 1
+    ordered = ('by observed Rrs peak wavelength — clear water peaks in the blue, '
+               'turbid water in the green-red' if by_peak else
+               'by fit quality, because this sweep persisted no observed Rrs '
+               'spectrum to derive a turbidity ordering from')
+    middle = (f'the **{_spell(n_mid)}** nearest the median' if n_mid
+              else 'nothing in between (the sweep has too few rankable fits)')
+    grid_order = ('clear (top-left) to turbid (bottom-right)' if by_peak
+                  else 'best (top-left) to worst (bottom-right) by fit quality')
+
+    blocks = [rst.title(f'Exemplar fits — {sweep_id}'),
+              rst.provenance_header(sweep_id, _provenance(sweep)),
+              rst.section('Overview', _EXEMPLAR_INTRO.format(
+                  sweep_id=sweep_id, n=len(picks), ordered=ordered,
+                  middle=middle, chi2_max=records.CHI2NU_POOR_FIT,
+                  red_peak=records.RED_PEAK_NM))]
+
+    blocks.append(_fig_section(
+        sweep, report_dir, 'Exemplar fits',
+        _pngs(figures.exemplar_fits(sweep, picks, fit_method=fit_method,
+                                    ordered_by_peak=by_peak)),
+        caption=(f'{len(picks)} exemplar fits, {grid_order}. Black dots are the '
+                 f'observed Rrs; each coloured line is one algorithm\'s modelled '
+                 f'Rrs, its legend entry carrying that fit\'s own χ²ᵥ and relative '
+                 f'misfit.'),
+        desc=('Observed Rrs with every algorithm\'s modelled Rrs laid over it, one '
+              'panel per exemplar observation. Rrs is on a **linear** axis (unlike '
+              'the IOP spectra elsewhere) because hyperspectral red tails routinely '
+              'cross zero, which a log axis would silently drop — the grey rule '
+              'marks zero.'),
+        published=published))
+
+    blocks.append(rst.section(
+        'The exemplars',
+        _exemplar_summary(sweep, picks, fit_method=fit_method) + '\n\n'
+        + _exemplar_table(picks, ordered_by_peak=by_peak,
+                          multi_dataset=multi_ds)))
+
+    # Rrs closure for the two extremes — the residual view of the same two fits
+    extremes = [(r.role, r.obs_id, getattr(r, 'dataset', None))
+                for r in picks.itertuples() if r.role in ('best', 'worst')]
+    for role, obs_id, ds in extremes:
+        where = f'obs {obs_id}' + (f' of {ds}' if multi_ds and ds else '')
+        blocks.append(_fig_section(
+            sweep, report_dir, f'Rrs closure — {role} fit ({where})',
+            _pngs(figures.closure_set(sweep, obs_id, dataset=ds,
+                                      fit_method=fit_method)),
+            caption=(f'``Rrs_obs − Rrs_model`` for observation ``{obs_id}``, per '
+                     f'algorithm, with each algorithm\'s χ²ᵥ in the legend.'),
+            desc=('Closure residuals for the same fit as above, which is the view '
+                  'that shows *where* in the spectrum the model fails rather than '
+                  'by how much overall: a residual that is flat but offset is a '
+                  'different fault from one that swings sign across the green.'),
+            published=published))
+    if not extremes:
+        not_shown.append(
+            'the Rrs closure residuals — this sweep produced too few rankable fits '
+            'to have a distinct best and worst.')
+
+    # posterior corner plots, where chains exist
+    corner_paths = _pngs(figures.corner_set(sweep))
+    if corner_paths:
+        blocks.append(_fig_section(
+            sweep, report_dir, 'Posterior corner plots',
+            corner_paths,
+            caption='Marginal and joint posteriors for one MCMC fit.',
+            desc=('For the MCMC subset only. A corner plot is the one figure that '
+                  'shows whether a parameter is *constrained* or merely *fitted*: '
+                  'a banana-shaped joint posterior means the two parameters trade '
+                  'off and neither is individually determined, which a χ² fit '
+                  'reports as a confident number with a small error bar.'),
+            published=published))
+    else:
+        not_shown.append(
+            'the posterior corner plots — they need an MCMC fit with a saved chain, '
+            'and this sweep has none (χ² fits carry a covariance, not a chain).')
+
+    blocks.append(_not_shown_section(not_shown))
+
+    out = report_dir / f'{EXEMPLAR_PAGE}.rst'
+    out.write_text(rst.page(*blocks), encoding='utf-8')
+    _prune_stale(report_dir, published, this_page=out.name)
+    rst.ensure_glob_toctree(docs_root / 'reports' / 'index.rst')
+    return out
+
+
+_EXEMPLAR_INTRO = (
+    'Every other figure in this report describes a **population** of retrievals. '
+    'This page shows {n} individual fits from sweep ``{sweep_id}`` — the question an '
+    'ocean-colour reader asks as soon as a summary statistic looks wrong: *show me a '
+    'spectrum where it failed*.\n\n'
+    '**How they were chosen.** Fit quality is ranked by distance from '
+    ':math:`\\chi^2_\\nu = 1` in log space, and the page carries the **best**, the '
+    '**worst** and {middle}. Ranking by χ²ᵥ ascending instead '
+    'would name the most *over-fit* spectrum in the sweep the best one: χ²ᵥ below 1 '
+    'means the model is chasing noise, and on GLORIA χ²ᵥ moved by a factor of 5 when '
+    'the assumed error floor changed while the fits themselves did not move at all. '
+    'Both tails are therefore worse than the middle, and every panel prints its own '
+    'χ²ᵥ so you can see which tail it came from (above {chi2_max:g} a fit is not '
+    'considered a solution at all). Where several algorithms fit the same '
+    'observation it is ranked by their median χ²ᵥ, because the panel shows all of '
+    'them at once.\n\n'
+    '**How they are ordered.** Panels run left-to-right, top-to-bottom {ordered} '
+    '(the packaged clear/turbid threshold is {red_peak:g} nm — a poor fit whose peak '
+    'sits redward of it is recorded as ``out_of_scope`` rather than as a failure, '
+    'because the model family does not claim that water). Reading the grid in order '
+    'therefore shows how the retrieval degrades as the water gets more turbid, which '
+    'is the failure axis of every open-ocean parameterization applied to the coast. '
+    'The relative misfit ``Δ`` beside each χ²ᵥ is '
+    ':math:`\\mathrm{{median}}(|M-O|/O)` — it owes nothing to the assumed noise '
+    'model, so it is the number to trust when χ²ᵥ and it disagree. Both are defined '
+    'on the :doc:`/reports/glossary` page.')
 
 
 def build_landing(*, docs_root=None, runs_root=None, root=None, board=None,

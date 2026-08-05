@@ -64,6 +64,19 @@ SERIES_COLORS = (PALETTE['blue'], PALETTE['amber'], PALETTE['teal'],
 #: (colour, marker) pair does not repeat until 56 series).
 SERIES_MARKERS = ('o', 's', '^', 'D', 'v', 'P', 'X')
 
+#: Series linestyles, for figures drawing one **line** per algorithm. Markers work
+#: for scattered points but not for curves, and curves are the case where series
+#: genuinely coincide: on GLORIA all four turbid variants produce nearly the same
+#: modelled Rrs, so with a single linestyle three of the four are hidden under the
+#: last one drawn and a reader cannot tell "identical" from "missing".
+#:
+#: There are **six** of them, one per curated slot, so every algorithm IOPtics ships
+#: draws distinguishably — with five, ``expb_pow`` (slot 0) and ``expb_powflex``
+#: (slot 5) wrapped onto the same solid line, and those two coincide on exactly the
+#: turbid data where this matters.
+SERIES_LINESTYLES = ('-', '--', '-.', ':', (0, (3, 1, 1, 1, 1, 1)),
+                     (0, (5, 1)))
+
 #: Neutral ink for guides, zero lines and reference marks.
 GUIDE_COLOR = '0.45'
 
@@ -181,13 +194,19 @@ def algo_marker(name):
     return SERIES_MARKERS[_slot(name) % len(SERIES_MARKERS)]
 
 
+def algo_linestyle(name):
+    """The fixed linestyle for an algorithm name (see :data:`SERIES_LINESTYLES`)."""
+    return SERIES_LINESTYLES[_slot(name) % len(SERIES_LINESTYLES)]
+
+
 def algo_style(name):
-    """``{'color': ..., 'marker': ...}`` for an algorithm name.
+    """``{'color': ..., 'marker': ..., 'linestyle': ...}`` for an algorithm name.
 
     Stable across figures, processes and machines, and independent of which other
     algorithms appear alongside it.
     """
-    return {'color': algo_color(name), 'marker': algo_marker(name)}
+    return {'color': algo_color(name), 'marker': algo_marker(name),
+            'linestyle': algo_linestyle(name)}
 
 
 def component_label(component, ref=None, *, prefix='', unit=True):

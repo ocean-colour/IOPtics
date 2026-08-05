@@ -361,6 +361,37 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 7:**
+
+- **Is `|log10(χ²ᵥ)|` the fit-quality ranking you want for the exemplars?** I ranked
+  by distance from χ²ᵥ = 1 rather than by χ²ᵥ ascending, so the sweep's most *over-fit*
+  spectrum is not published as its "best" fit (reasoning in the Task-7 log). The cost
+  is that **"worst" is now ambiguous in principle** — it is whichever tail is further
+  from 1, so on a sweep with a χ²ᵥ = 0.001 fit and a χ²ᵥ = 100 fit the "worst" panel
+  would be the *over-fit* one, which is not what a reader expects from the word. On
+  GLORIA it does not arise (the over-fit tail is shallow: one exemplar below 1, at
+  0.89). Options: keep it; or rank by distance from 1 but define "worst" as the
+  largest χ²ᵥ specifically, so the label always means under-fit. My lean is to keep it
+  and let the printed χ²ᵥ disambiguate, but it is your call which the word should mean.
+>A. Distance from χ²ᵥ = 1 is correct and define "worst" as the largest χ²ᵥ 
+
+- **Should the exemplars respect `status`, or deliberately ignore it?** They currently
+  ignore it, which is why 28 of the 40 (obs x algorithm) rows behind the GLORIA page
+  are `out_of_scope` — spectra the model family does not claim. I think that is right,
+  since the page exists to show failures and the summary now says so outright. The
+  alternative is to select only `ok` fits, which on GLORIA would show 4 rows' worth of
+  the clearest water and hide the finding entirely. Confirm, or say if you want a
+  second grid restricted to scored fits.
+>A. I confirm
+
+- **How many exemplars, and should the count follow the dataset?** Fixed at 10 per your
+  prompt (`diagnostics.EXEMPLAR_N`). With 12 rankable observations the "8 median" span
+  ranks 2-9 of 12, so they are not tightly clustered around the median — on a
+  3 000-spectrum L23 sweep they will be. Fine as-is, or would you rather the median
+  eight were drawn from a fixed *quantile window* (e.g. the 40th-60th percentile) so
+  the word "median" means the same thing on a thin sweep as on a thick one?
+>A. Fine as is.
+
 **New after Task 6:**
 
 - **Do the profile pages belong in the top-level toctree, not just under Reports?**
@@ -485,6 +516,175 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-06 (Stage 7, Task 7: exemplar-fits page + wiring the unused builders)
+
+**No Q&A answers were outstanding for this task** — the two items posed after Task 6
+(profiles in the top-level toctree; dataset characterisation figures) are still open
+and neither blocks this work.
+
+**The `ratio_hist` wrapper this task asked for was already delivered in Task 2**, so
+the work here was the exemplar page plus `closure_set` and `corner_set`.
+
+**What the page is.** `reports/<sweep_id>/exemplar_fits.rst` — one 5x2 grid of the
+sweep's best, worst and eight median fits: observed Rrs as black dots with every
+algorithm's modelled Rrs laid over it, each legend entry carrying that fit's own χ²ᵥ
+and relative misfit, plus a keyed table, the Rrs closure residuals for the two
+extremes, and the posterior corner plots wherever a chain exists. Every other figure
+in a report describes a *population*; nothing showed a reader a single fit.
+
+**On the real GLORIA sweep this figure is the investigation's headline finding, drawn
+rather than asserted.** Ordered clear→turbid, the grid reads:
+
+| obs | role | χ²ᵥ | rel. misfit | Rrs peak |
+|---|---|---|---|---|
+| `GID_5460` | best | 0.89 | 8% | 400 nm |
+| `GID_3654` … `GID_4597` | median (8) | 27 – 31 | 32 – 90% | 540 – 576 nm |
+| `GID_7390` | worst | 223 | 94% | 580 nm |
+
+The one blue-peaked spectrum is tracked well; **every turbid panel shows all four
+models collapsing onto the same blue-peaked curve** while the observation peaks in the
+green — they cannot put the Rrs maximum redward of ~500 nm at all. Four models from
+k=5 to k=7 give the same wrong answer.
+
+**Two decisions worth recording, because I departed from the prompt's reference.**
+
+1. **Exemplars are ranked by `|log10(χ²ᵥ)|`, not by χ²ᵥ ascending.** Ascending χ²ᵥ
+   crowns the sweep's *most over-fit* spectrum its "best" fit, and this package
+   already names χ²ᵥ < 1 over-fitting (`frac_overfit`). On GLORIA χ²ᵥ moved by 5x
+   when the assumed error floor changed while the fits did not move at all, so a χ²ᵥ
+   of 0.01 is evidence about the noise model, not the retrieval. Both tails are worse
+   than the middle; every panel prints its own χ²ᵥ so the reader sees which tail.
+   Where several algorithms fit one observation it is ranked by their median χ²ᵥ,
+   since the panel shows all of them.
+2. **The referenced `wide_example_fits.png` does not do what its own title claims.**
+   `reports/scripts/gloria_fits_report.py:575-593` selects by χ²ᵥ rank and then calls
+   `sorted({order[0], order[n//3], ...})`, which sorts **positional indices into the
+   record list**, not the χ²ᵥ ranks — so its panels are in obs-id order and the
+   suptitle's "clear (top-left) to turbid (bottom-right)" is only incidentally true.
+   I implemented the *intent*: an explicit sort by observed-Rrs-peak wavelength
+   ascending. (Its sibling `_fig_inflated_noise_examples` gets this right, over a
+   list already sorted by peak.) The package had the threshold
+   (`records.RED_PEAK_NM = 560`) but no clear→turbid sort key; there is one now.
+
+**A latent bug this task made live — pages sharing a report dir deleted each other's
+figures.** `standard._prune_stale` knew only the assets of the build that called it,
+so building a second page into `reports/<sweep_id>/` pruned the first's. Demonstrated
+before fixing: after `cross_algorithm` then `per_algorithm`, all six of the
+cross-algorithm scatters, Taylor/Target and ΔBIC panels were gone while
+`cross_algorithm.rst` still referenced them — a dangling image, i.e. a `sphinx -W`
+failure. Only one kind was ever built per sweep, which is why it had not bitten.
+Fixed: an asset survives if **any** surviving sibling page still names it
+(`_referenced_elsewhere`), with a test that genuine orphans are still pruned.
+
+**Other fixes made in passing:**
+
+- **`corner_set` would have taken a whole page build down.** `chain_file` is only a
+  *path*, so it goes stale the moment a sweep dir is copied between machines or the
+  chains are pruned; `io.load_chain` raises. Now skipped per-chain, and `limit=` caps
+  how many figures a chain-heavy sweep writes into the docs tree.
+- **Per-algorithm linestyles** (`style.SERIES_LINESTYLES`, `algo_linestyle`). Markers
+  separate scattered points but not curves, and curves are exactly where series
+  coincide: with one linestyle, three of GLORIA's four variants were invisible under
+  the fourth and a reader could not tell *identical* from *missing*. Six linestyles,
+  one per curated slot — with five, `expb_pow` (slot 0) and `expb_powflex` (slot 5)
+  wrapped onto the same solid line, and those two coincide on precisely the turbid
+  data where it matters. `algo_style()` now returns `linestyle` too; every call site
+  picks keys explicitly, so nothing splatting the dict broke.
+- **`rrs_fit_data` filters the χ²ᵥ/status lookup on `dataset` and `fit_method`**, not
+  on algorithm alone as `residual_spectra` does — an unfiltered multi-dataset
+  `scalar` could otherwise annotate a panel with another dataset's row.
+- **`exemplar_grid` resets `EMPTY_FLAG` explicitly.** `_annotate_empty` stamps it on
+  the *shared* figure, so without this one missing observation would have suppressed
+  the entire 10-panel grid.
+
+**The page states what the numbers mean rather than leaving it implied.** It printed
+"above χ²ᵥ = 5 a fit is not a solution" and then a table of ten fits at χ²ᵥ ≈ 30 and
+never connected the two, so a data-derived summary now says it outright: *9 of the 10
+have a median χ²ᵥ above 5 … 7 peak redward of 560 nm and are therefore outside the
+regime these parameterizations claim at all; their misfit is a statement about scope,
+not about the fitter*, with the recorded status breakdown (`out_of_scope` 28,
+`poor_fit` 8, `ok` 4).
+
+**Tests + verification.** `ioptics/tests/test_exemplars.py` — 32 tests, plus one in
+`test_style.py`. The shared `_make_pair` fixture gained `chi2_nu=` and `rrs_peak=`
+(via `_rrs_peaking_at`), because a fixture where every fit has χ²ᵥ = 1 and every Rrs
+peaks at 440 nm cannot test either the selection or the ordering; the default path is
+unchanged. **392 passed** with data (was 359), **354 passed / 38 skipped**
+CI-equivalent (was 321/38), clean `sphinx -W` **exit 0** on a fresh tree (checked
+without a pipe), site at 14 pages.
+
+**Not done, deliberately:** the profile pages do not link the per-sweep exemplar
+pages. Task 6's spec lists "exemplar fits" among a profile's elements, but a
+cross-sweep page linking a per-sweep one needs the target to exist or `-W` fails;
+that belongs with the Task 8 slices that touch the profiles again.
+
+#### Adversarial review of this task (Fable subagent) — 9 findings, 7 fixed
+
+Task 6 shipped without this pass; Task 7 got it. The review cleared the two design
+decisions above (it independently confirmed the `wide_example_fits` ordering bug, the
+index arithmetic at totals 0/1/2/3/9/10/11/10000, that the median eight really are
+median — ranks 46–53 of 101 on a synthetic, and bracketing the true median on the real
+sweep — and that every factual claim on the published GLORIA page checks out against
+the runs tree). It found two that mattered:
+
+1. **MAJOR, fixed — a multi-dataset sweep silently pooled two unrelated
+   observations.** `obs_id` alone does not identify an observation: the package's own
+   convention reuses ids across datasets (`test_sweep_multi` runs `obs in (0, 1)` on
+   all three). `exemplar_obs` grouped on `obs_id`, so on a two-dataset sweep it ranked
+   **every** observation at χ²ᵥ = 200.5 — the median of an L23 fit at 1.0 and a GLORIA
+   fit at 400.0 — making best/worst meaningless. Worse, `exemplar_fits` called
+   `rrs_fit_data` *without* `dataset=`, so the dataset filtering I had written and
+   documented was never exercised by the only caller: the panel got a model curve with
+   duplicated wavelengths sawtoothing through both datasets, χ²ᵥ from an arbitrary
+   `iloc[0]`, and a peak from whichever row survived dedup. My own test covered the
+   `dataset=`-supplied path only. Fixed by keying on `diagnostics.OBS_KEYS =
+   ('dataset', 'obs_id')` end to end: the selection frame carries `dataset`, the
+   builders pass it, closure filenames are namespaced (`closure_GLORIA_GID_5460.png`),
+   the status breakdown matches on both keys, and the table grows a `dataset` column
+   only when the sweep has more than one.
+2. **MAJOR, fixed — `corner_set`'s hardening did not cover a *corrupt* chain.**
+   `zipfile.BadZipFile` is **not** an `OSError`, so my `(OSError, ValueError,
+   KeyError)` tuple let a half-written NPZ through and it would have taken the page
+   build down — precisely what the docstring promised it would not. Demonstrated with
+   a truncated real NPZ. Fixed by catching around both the load and the render.
+3. **MINOR, fixed — the `limit=` guard was unused by the one wired call site**, and
+   was applied to *candidate rows* rather than successful reads, so five stale paths
+   at the head of the table would have yielded zero corner plots. Now
+   `MAX_CORNERS = 8` by default and the budget counts successes.
+4. **MINOR, fixed — hard-coded prose contradicted the page it was on.** A
+   4-observation sweep published "shows 4 individual fits" and then "the eight nearest
+   the median"; the grid suptitle and figure caption asserted clear→turbid even when
+   the selection had fallen back to fit-quality order for want of a persisted
+   `Rrs_obs`. All three now derive from the selection.
+5. **MINOR, fixed — the prune keep-match was too loose.** `path.name in text` kept an
+   orphaned `fits.png` alive because a sibling page referenced `exemplar_fits.png`.
+   Now matched against the `figure`/`image`/`csv-table` directive target. The failure
+   was conservative (it could never delete a live asset), but it defeated the point.
+6. **MINOR, already fixed — the `_num` guard.** The review is right about the version
+   it read; I had replaced it before the review landed. Verified after the fact:
+   `-inf`, `None`, `pd.NA` and `'abc'` all render as em dashes rather than raising or
+   publishing the literal string `-inf` under a χ²ᵥ heading.
+7. **NIT, fixed — `exemplar_obs(n=1)` returned two rows** (an empty middle range still
+   left a best *and* a worst). Slot selection is now `_exemplar_slots`, with `n=0`
+   returning nothing and `build_exemplars(n=0)` no longer silently meaning "default".
+8. **NIT, fixed — `EXEMPLAR_ROLES` was dead.** It is now the documented role
+   vocabulary, and `OBS_KEYS` beside it carries the identity rule.
+9. **NIT, not fixed — `_safe` can collide** (`st/1` and `st_1` both give
+   `closure_st_1.png`). Two ids differing only in a separator character do not occur
+   in any dataset we load, and the alternative is unreadable hashed filenames.
+
+**One thing the review surfaced indirectly:** adding a test file shifted the suite's
+consumption of numpy's **global** legacy RNG, which flipped
+`test_micro.py::test_fit_mcmc_accepts_string_obs_id` to `fit_failed` in a full run
+while passing in isolation. BING seeds its walker init from that global stream, and the
+test's own docstring already admitted the order dependence. Pinned with an explicit
+`np.random.seed` rather than left as a flake — three consecutive full runs green.
+
+**Re-verified after all fixes:** **392 passed** with data, **354 passed / 38 skipped**
+CI-equivalent, clean `sphinx -W` **exit 0** with zero warnings on a fresh tree, and the
+GLORIA page regenerated (the renamed closure figures pruned their old names correctly).
+`test_exemplars.py` is now 32 tests.
 
 ### 2026-08-05 (Stage 7, Task 6: profile pages + coverage matrix + glossary)
 

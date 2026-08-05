@@ -141,6 +141,9 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None,
         from ioptics import report
         # GLORIA carries no spectral a/bb truth (only a_cdom440 at 440 nm),
         # so the per-dataset page is the informative one here.
+        # exemplars first: the cross-algorithm page links this one, and only
+        # links it when the file already exists (a dangling :doc: fails -W).
+        report.standard.build_exemplars(cfg.sweep_id)
         report.standard.build(cfg.sweep_id, kind='cross_algorithm')
         # rebuild the landing page (headline board + sweep cards + interactive
         # widget) and its full-grid drill-down from the refreshed fold
