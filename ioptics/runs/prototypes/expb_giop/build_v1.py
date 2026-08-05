@@ -47,11 +47,10 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None):
         from ioptics import report
         # standard report page (figures + tables + bokeh, provenance-stamped)
         report.standard.build(cfg.sweep_id, kind='cross_algorithm')
-        # fold this sweep into the cross-sweep leaderboard + refresh the landing
-        board = report.leaderboard.update()
-        idx = report.standard.DEFAULT_DOCS_SRC / 'reports' / 'index.rst'
-        report.rst.write_leaderboard_landing(
-            idx, report.leaderboard.render(board=board))
+        # fold this sweep into the cross-sweep leaderboard, then rebuild the
+        # landing page (headline board + sweep cards + interactive widget) and
+        # its full-grid drill-down.
+        report.standard.build_landing()
 
 
 def _cli(argv=None):

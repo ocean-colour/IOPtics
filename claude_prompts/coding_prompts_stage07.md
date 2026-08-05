@@ -361,6 +361,63 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 5:**
+
+- **Should the L23 smoke page be un-published rather than left stale?** It is the one
+  remaining page carrying the old figure set, the dataset-less CSVs and the false
+  "0 = perfect" sentence, because that sweep's artifacts are not on this laptop — and
+  it now also still references `cdn.bokeh.org` while every other page is vendored. It
+  regenerates in Task 11 when the smoke is re-run. Until then: leave it (a stale page
+  a reader might trust), or drop it from the docs tree and re-add it when regenerated?
+  My lean is to leave it and fix it in Task 11, since removing a published URL is the
+  more disruptive act — but you may prefer the site carry nothing it knows is wrong.
+- **Does `frac_ok` belong in the rank *ordering*, not just the headline columns?** I
+  promoted it to a headline column (Brewin's η is a *scored* test in his round-robin,
+  so it arguably belongs in the sort). Ordering is currently wins → |bias| → MAE per
+  the design's Q23, and changing it is a design-level decision — say if you want η in.
+
+**New after Task 4:**
+
+- **Did "use 10%" mean what I implemented?** I read it as an **absolute** floor on the
+  fractional multiplicative MAE: two algorithms are indistinguishable in practice when
+  ``|mae_A − mae_B| < 0.10``, i.e. ten percentage points of multiplicative error (the
+  option I offered was phrased that way, with 0.01 as the example). The other reading
+  is **relative** — a 10% difference *of* the MAE, so ``|Δmae| < 0.1 × mae``, which on
+  L23's mae ≈ 0.1 would be a floor of 0.01 and would call far more pairs
+  distinguishable. On the GLORIA contest the choice does not matter (every Δmae is
+  under both), but on the full L23 sweep it will. Confirm absolute, or switch to
+  relative?
+  >A. Absolute
+  > **Evidence added after the Task-4 review, which measured the consequence.** With
+  > `'absolute'`: two algorithms at **1% and 5%** error — a *fivefold* difference —
+  > come out `indistinguishable`, and on an L23-class synthetic (ref-band MAE of a few
+  > percent) **no pair can ever clear 0.10**, so every contest is declared equivalent
+  > by construction. The 10% floor is effectively calibrated to GLORIA, where both
+  > algorithms are ~100% wrong (`mae ≈ 1.0`). With `'relative'` the same 1%-vs-5% pair
+  > resolves to a winner. Both modes are implemented (`metrics.PRACTICAL_FLOOR_MODE`,
+  > default `'absolute'` per your answer) and there is a test pinning the contrast —
+  > switching is a one-constant change.
+
+- **Should the head-to-head verdict feed the leaderboard's ranking?** Today the
+  leaderboard still ranks by wins → |bias| → MAE and simply refuses to rank an
+  unmeasured contest. It could instead decline to rank *any* group whose pairwise
+  verdicts are all ties — printing "indistinguishable" in place of 1-4, which on
+  GLORIA is the honest output. That is a leaderboard-shaped decision, so it belongs in
+  Task 5; flagging it now so it is not lost.
+>A. Yes, feed the leaderboard's ranking
+
+**New after Task 3:**
+
+- **Should `metrics` persist the coverage trial count?** The calibration verdict's
+  standard error currently uses `n_pairs`, but `metrics.coverage` counts a different
+  population (it needs truth and both credible bounds; it ignores the retrieved
+  value). They coincide for every sweep run so far, but a fit whose covariance failed
+  has bands for only some pairs, and then the verdict can accuse a thin contest of
+  being over-confident. Adding a `coverage_n` column to `metrics_scalar` fixes it
+  properly and is a one-line schema addition — do it in Task 9 (which already touches
+  the persisted schema), or leave the approximation documented?
+>A. Yes, add a `coverage_n` column to `metrics_scalar`
+
 **New after Task 2:**
 
 - **How many `(component, ref-λ)` panels should a page carry?** `MAX_REF_PANELS` is
@@ -370,10 +427,13 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   distribution. Options: keep 3; raise it; or show all *total* components (`a`, `bb`)
   plus the best-covered decomposed one, which matches the community's
   total-before-decomposed convention. My lean is the last.
+>A. ok, try the last
+
 - **Should the ΔBIC contest stay a single k-extreme pair per page?** I implemented
   the k-extremes because that is the "does complexity pay" question. An all-pairs
   ΔBIC/win matrix would say more, but it belongs with the leaderboard work in Task 5
   — confirm you are happy for it to land there rather than on each sweep page.
+>A. I confirm
 
 **Affects Tasks 3 and 5:**
 
@@ -406,6 +466,401 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-05 (Stage 7, Task 5: leaderboard fold + landing page + vendored BokehJS)
+
+**Your answers implemented:** the practical floor stays **absolute** (no code change —
+the constant already documents the L23 consequence), and the head-to-head verdict now
+**feeds the leaderboard ranking**: the fold carries a `separable` flag derived from the
+pairwise verdicts, and `ranked` refuses to rank a contest that no pair separates,
+marking it `ranking='indistinguishable'` instead of printing 1..N.
+
+**The fold.** `fit_method` is now a **key rather than a filter** — it used to
+hard-select `chisq`, so an MCMC-fit algorithm was invisible on the board no matter how
+well it did, and silently, because the column was not carried either. Added: the
+closure block (`frac_ok`, `n_attempted`, `frac_poor_fit`, `frac_out_of_scope`,
+`frac_fit_failed`, `chi2_nu_median`, `rel_misfit_median*`) so the board can answer
+*why* rows were not scored; the **`bing` and `ocpy` commits** alongside the `ioptics`
+one, since BING is where the models and the fitter live and a row stamped only with an
+ioptics commit does not identify what produced it; and a per-algorithm **`algo_digest`**
+over the persisted algorithm block, so two rows sharing a name can be checked for
+being the same algorithm (it cannot yet catch the `maxfev` difference — provenance
+omits it until Task 9). `frac_ok` is promoted out of the trailing columns into the
+headline set, next to the accuracy numbers: a top rank over a tenth of the spectra is
+not a better algorithm than a lower rank over all of them.
+
+**The landing page went from 2 477 lines to 175.** It now carries the
+`stratum='all'` **headline table** (narrow columns, unmeasured rows dropped), one
+**summary card per folded sweep** — date, datasets, algorithms, spectra scored, and
+whether anything separated — the **interactive leaderboard widget** (implemented in
+Stage 5 and never once put on a page), and a link to a new **`leaderboard_full`**
+drill-down (472 lines) holding every stratum, fit method, closure column and
+provenance stamp. On the real board the card reads *"no pair separated — see the
+head-to-head table"*, which is the honest one-line summary of that sweep.
+
+**BokehJS is vendored — the CDN is gone.** I had a Fable subagent research the recipe
+before writing any code, which paid for itself three times over:
+
+- `CDN.render()` was loading **five** bundles unconditionally; the figure needs
+  **two** (`bokeh` + `bokeh-widgets`; the leaderboard's `DataTable` adds
+  `bokeh-tables`). Dropping `bokeh-gl`/`bokeh-mathjax` is free.
+- No `bokeh.resources` mode emits a clean `_static/` path — `'relative'` points into
+  the conda environment and `'server'` hard-codes a `static/js/` infix — so the tags
+  are hand-built, sourced from `Resources(mode='absolute')` of the **installed** bokeh
+  (the same one that serialized the figure's `docs_json`, so they cannot drift).
+- Filenames are **versioned** (`bokeh-3.9.1.min.js`). Report fragments are committed
+  and never regenerated, so an unversioned `bokeh.min.js` would silently re-point every
+  historical page at a newer BokehJS the day the environment is upgraded.
+- Vendoring costs ~1.6 MB in the repo **once**; inlining would have cost ~1.6 MB in
+  *every* committed page, per sweep, forever.
+
+Verified in the built HTML at both depths: `../../_static/bokeh/…` from a report page,
+`../_static/bokeh/…` from the landing page, with the files actually copied into
+`_build/html/_static/bokeh/`. A comment records that switching Sphinx to the `dirhtml`
+builder would break the baked depth.
+
+**Also in this task:** the interactive figure's title now states the sampling fraction
+(`"1,234 of 5,678 points shown — 22%, stratified sample"`), because a downsampled cloud
+with no note reads as the whole population; and the hover carries **`obs_id`**, so a
+reader who spots an outlier can go and look at that spectrum. The three build scripts
+now call `standard.build_landing()` instead of assembling the landing page themselves.
+
+**Two self-inflicted breakages caught by running, not reading:** I added `obs_id` to
+the scatter's field list without adding it to the points frame (`KeyError` on every
+build), and changed `_scatter_points`' caller before its signature. Both would have
+been invisible to a read-through.
+
+**And one that `-W` nearly hid:** the new `leaderboard_full` page is not one directory
+deep, so the `:glob: */*` toctree could not reach it and Sphinx warned
+"document isn't included in any toctree" — which `-W` turns into a failure. My first
+check reported `rc=0` because I had piped sphinx through `tail`, so the exit code was
+`tail`'s; re-running without the pipe showed exit 1. `ensure_glob_toctree` now takes
+`extra_docs` and lists the page explicitly.
+
+**Verification:** CI-equivalent **304 passed / 38 skipped** (was 292); with data
+**342 passed**; `sphinx -W` exit 0 (checked directly, not through a pipe).
+
+**Files:** modified `ioptics/report/{leaderboard,rst,bokeh,standard}.py`,
+`ioptics/runs/prototypes/*/build_v*.py`, `ioptics/tests/{test_sweep,test_sweep_multi,test_report_bokeh}.py`,
+`docs/source/reports/{index.rst,gloria_turbid_v3/*}`; new
+`ioptics/tests/test_leaderboard_landing.py` (10 tests),
+`docs/source/reports/leaderboard_full.rst`, `docs/source/_static/bokeh/*.min.js`
+(1.6 MB, committed once).
+
+#### Adversarial review of this task (Fable subagent) — 10 findings, 9 fixed
+
+It found the defect I had asked it to hunt for, and it was disqualifying.
+
+1. **`_CONTEST` omitted `fit_method` while the fold had gained it** — so the moment a
+   sweep exercised the new MCMC-on-the-board capability, the ranking layer corrupted
+   the board that used it. Reproduced: the *same* algorithm published at **rank 1 and
+   rank 2** in one contest, comparing `win_frac` values drawn from different pools
+   (metrics computes wins per fit method); the one-horse-race guard bypassed; and
+   non-contiguous ranks where a contest's only visible row was "rank 3". My own new
+   test checked the *fold* and never called `ranked()` on a mixed board, so the gap
+   was untested. **Fixed**: `fit_method` is part of the contest key, and it is now in
+   the headline columns and the widget so a reader can see which population a row
+   belongs to. New test asserts no algorithm holds two ranks in one contest and that
+   every contest is single-method.
+2. **An empty board crashed `build_landing`** (`sort_values` on absent rank columns) —
+   reachable by running stage 3 before stage 2, or on a machine with an empty runs
+   tree. **Fixed**: `ranked` returns an unranked frame when the board is empty or the
+   sort keys are missing; tested.
+3. **Missing pairwise data ranked silently.** An older sweep with no
+   `metrics_pairwise` (or a fit method whose pairs were never computed) got a full
+   1..N ranking with no head-to-head support — "a quiet erosion" of your rule.
+   **Fixed**: those rows are labelled **`ranked (no head-to-head)`**, so a supported
+   rank and an unsupported one are distinguishable in the output.
+4. **A sole competitor was labelled `indistinguishable`** — indistinguishable from
+   nobody. **Fixed**: `sole competitor`.
+5. **`sweep_cards` emitted `:doc:` links with no check that the page exists.**
+   `update()` folds every sweep dir with metrics; pages are built per sweep on demand,
+   so a folded-but-unbuilt sweep left a dangling reference. **Fixed**: the card links
+   only a page that exists and otherwise says so.
+6. **`vendor_bokehjs` never repaired a truncated bundle** (copy-if-missing), so an
+   interrupted copy would break every figure forever. **Fixed**: size-compared and
+   re-copied; tested by truncating one.
+7. `_separable(d)` was evaluated twice per sweep (the pairwise parquet read twice) —
+   waste, not incorrectness. **Fixed.**
+8. `rel_misfit_median` was folded but not rendered in the full grid. **Fixed.**
+9. **The L23 smoke page still loads `cdn.bokeh.org`** — five bundles at bokeh
+   **3.9.0**, so the site now mixes two BokehJS versions, and that page has no card
+   because its sweep is not in this runs tree. **Not fixed**: its artifacts are not on
+   this laptop, so it cannot be regenerated until Task 11. This is the Q&A question
+   above; the review confirms nothing breaks at build time.
+10. **Commit hazard, not code:** `docs/source/_static/bokeh/` is *untracked* while the
+    tracked `.rst` diffs already reference it — committing the RST without the JS
+    directory would give 404'd script tags and silently blank figures on RTD. Flagged
+    in the push set.
+
+Verified sound by the review (it tried and failed to break these): the wins and
+coverage merges on a 2-dataset × 2-fit-method fixture (120 rows, zero duplicate keys,
+each `frac_ok` on the right fit method), fold idempotency with `fit_method` in the
+keys, rank contiguity, `sweep_cards` edge cases (all-NA `n`, missing provenance), the
+vendoring depth against the **real built HTML** at both levels with a zero-warning
+full build, script-tag/`docs_json` version agreement, and no consumer broken by the
+new `render()` signature or the build-script migration.
+
+**After the fixes:** CI-equivalent **311 passed / 38 skipped**; with data **349
+passed**; `sphinx -W` exit 0. On the real board the ranking states are now 144 *not
+scored* + 16 *indistinguishable* and **zero ranks published** — which is the honest
+reading of a sweep where no pair separated.
+
+### 2026-08-04 (Stage 7, Task 4: pairwise statistics that can detect a tie)
+
+**Your answers implemented:** the practical floor is **10%** (`PRACTICAL_MAE_FLOOR =
+0.10`, in the fractional-multiplicative MAE units the tables publish — see Q&A, I
+want to confirm I read "10%" the way you meant it), and **`coverage_n` is now a
+`metrics_scalar` column**, which closes the Task-3 review finding properly rather
+than leaving it documented.
+
+**The pairing is kept.** `metrics.paired_abs_log_errors(table, a, b)` returns each
+algorithm's per-spectrum `|log10(M/O)|` on the spectra *both* retrieved;
+`paired_log_errors` is the difference view. `metrics.head_to_head` runs every
+unordered pair in every contest and emits `n_paired`, `win_frac_a`, both MAEs,
+`delta_mae`, a bootstrap interval, `resolved`, and a `verdict`. Wired into
+`metrics.compute` as `contest='pair'` rows, published by `tables.head_to_head` and a
+new **Head-to-head** page section.
+
+**Two thresholds, deliberately separate:** the bootstrap answers *can we tell?* and
+your 10% floor answers *would anyone care?* A winner is named only when both say yes.
+
+**A design error I caught by running it on the real GLORIA contest.** My first
+version bootstrapped the *median paired difference in log error* while judging the
+floor on the *difference of MAEs*. On real data those differ by two orders of
+magnitude — `d_median` of −0.002 against a `delta_mae` of −0.227 — because MAE is a
+mean of heavy-tailed errors and the paired median is not, so the significance test
+and the effect size were measuring different quantities. Rewritten: the bootstrap
+resamples **spectra, paired**, recomputing both MAEs per replicate
+(`_bootstrap_delta_mae`), so the interval and the floor share the MAE scale. The
+interval now brackets the point estimate by construction, which is asserted.
+
+**A verdict-precedence change I made, and then had refuted — see the review below.**
+Mid-task I switched the precedence so `|delta_mae|` under the floor won over
+"unresolved", labelling such contests **indistinguishable**. That was wrong: the
+floor was tested against the *point estimate alone*, so a contest whose interval
+still admitted a difference four times the floor was published as "would not matter
+even if confirmed". The final logic is an **equivalence test** — see the review
+section.
+
+**What it says about the real sweep (final logic).** On GLORIA `a_dg(440)`, of the six
+pairs of turbid variants **one** is genuinely **indistinguishable** — `expb_pow` vs
+`expb_pow2flat`, whose whole interval `[−0.031, +0.022]` sits inside the 10% floor —
+and the other **five are `underpowered`**: small point differences (0.005-0.058) whose
+intervals are far too wide to rule a material difference out. That distinction is the
+whole value of the task: "we measured them to be the same" and "12 spectra cannot tell"
+are different statements, and the previous `mae_rank` of 1-4 asserted neither.
+
+**And the page no longer contradicts itself.** `tables.accuracy` now blanks the
+`*_rank` columns and marks `ranking = 'indistinguishable'` for a contest whose pairwise
+verdicts separate nobody — the GLORIA accuracy table had been printing `mae_rank`
+1,3,2,4 three sections above a head-to-head table declaring the same four algorithms
+inseparable (and its two rank columns disagreed about who was first, which was itself
+unremarked evidence of a tie).
+
+**Also in this task:** ΔBIC now runs for **every** algorithm pair present, not only
+the configured one (a sweep whose algorithms are not `expb_pow`/`giop` used to get no
+ΔBIC row at all); `leaderboard.ranked` **no longer ranks a contest with no finite
+metric** (the 144-of-160 defect — rank becomes `NA`); and `tables.head_to_head` drops
+pairs that share no scoreable spectrum, stating the count (54 of 60 on GLORIA) the
+same way the accuracy table does.
+
+**Verification:** CI-equivalent **283 passed / 38 skipped** (was 271); with data
+**321 passed**; `sphinx -W` clean; GLORIA page regenerated with the new section.
+
+**Files:** modified `ioptics/metrics.py`, `ioptics/report/{tables,standard,leaderboard}.py`,
+`docs/source/reports/gloria_turbid_v3/*`; new `ioptics/tests/test_head_to_head.py`.
+
+#### Adversarial review of this task (Fable subagent) — refuted, then fixed
+
+Its verdict: *"the paired bootstrap machinery is sound; the verdict built on top of it
+is not, and on the real GLORIA deliverable it prints the wrong label on 5 of 6
+contests."* That was correct. Eleven findings; all addressed.
+
+1. **The headline defect — my precedence collapsed `underpowered` into
+   `indistinguishable`.** The floor was tested against the point estimate with the
+   interval never consulted, so `expb_pow` vs `expb_powflex` — interval
+   `[−0.380, +0.184]`, i.e. compatible with one model being **38% worse, nearly 4x the
+   floor** — was published as "would not matter even if confirmed". **Fixed** by making
+   it an explicit **equivalence test**: `indistinguishable` now requires the *whole
+   interval* to lie inside ±margin (the data rule a material difference out);
+   `underpowered` covers both "spans 0" and "excludes 0 but straddles the margin". The
+   real sweep now reads 1 indistinguishable + 5 underpowered, matching the reviewer's
+   own table.
+2. **The requirement was satisfied only vacuously.** `underpowered` was produced **zero**
+   times on the real sweep, and my page test passed because both words appear in the
+   *static prose*, not because either verdict was produced. Now covered by tests that
+   assert the verdict for each shape of input.
+3. **Two prose claims were false on the live page** (`indistinguishable` described as
+   "a real but immaterial difference", and the table docstring saying "resolved but
+   under the floor"). Both rewritten to the equivalence semantics.
+4. **The floor is not scale-free** — demonstrated: 1% vs 5% error is a *fivefold* gap
+   that an absolute 0.10 floor calls a tie, and on an L23-class synthetic no pair can
+   ever clear 0.10, so every contest would be "equivalent" by construction. I did not
+   silently switch the rule: `floor_mode` now supports `'absolute'` (your literal
+   answer, still the default) and `'relative'` (a tenth of the error being compared),
+   the constant documents the measured consequence, and the Q&A question now carries
+   these numbers so the choice can be made on evidence.
+5. **`MIN_PAIRED` was unreachable** — n=1 and n=2 got verdicts, off a **zero-width
+   "95% interval"** (with one spectrum every resample is identical). The guard now runs
+   before the equivalence test; tested at n=1 and n=2.
+6. **Both headline tests exercised zero-spread data**, so the bootstrap was never
+   actually tested. Added tests with genuine per-spectrum spread for the winner case,
+   the equivalence case (300 tightly-agreeing spectra), and the GLORIA shape.
+7. **One seed for every contest** made all six published intervals share the identical
+   resample matrix — reproducible but perfectly correlated, so comparing intervals
+   across pairs compared the same noise. Now seeded per contest+pair
+   (`_pair_seed`, MD5-derived), still reproducible.
+8. **An infinite MAE read as `underpowered`** — the one case needing no statistics.
+   Now a decisive loss.
+9. **`n_paired` was missing from `_INT_LIKE`**, so the head-to-head CSV published
+   `12.0` where the accuracy CSV published `12`. Fixed.
+10. **Strict ranks were still published beside the tie verdicts** (finding #4 in its
+    list) — fixed by `_blank_tied_ranks`, above.
+11. **Dead code**: the no-op `pass` branch in the ΔBIC loop, the inert
+    `configured_pair` column (False on all 24 real rows), and the never-called
+    `bootstrap_ci`. All removed; `compute`'s docstring corrected. Also fixed a
+    one-measured-competitor contest still earning `rank 1` — a one-horse race is not a
+    standing.
+
+Verified fine by the review: the paired resampling itself (same index matrix applied to
+both error vectors, both MAEs recomputed per replicate), `_mae_from_log_err`'s
+`axis=-1`, no sign inversion (7000 randomized designs, 0 hits), no double-counting or
+χ²/MCMC contest mixing, `coverage_n` from the 68% bounds being safe for both levels,
+and the `Int64` rank rendering cleanly through docutils and Bokeh.
+
+**After the fixes:** CI-equivalent **292 passed / 38 skipped**; with data **330
+passed**; `sphinx -W` clean; GLORIA page and leaderboard regenerated.
+
+### 2026-08-04 (Stage 7, Task 3: metrics & table correctness)
+
+**Read your answers first.** Two land here: *"Follow Erickson 2023"* for the metric
+form (so the fractional multiplicative `mae`/`bias` stay, and the convention is now
+*named* on the page rather than assumed), and *"ok, try the last"* on panel
+selection, which I implemented as part of this task — `_plan_panels` now takes every
+scored **total** component (`a`, `bb`) plus the best-covered **decomposed** one,
+matching the total-before-decomposed convention, instead of a top-N of a mixed list.
+Your "I confirm" also parks the all-pairs ΔBIC matrix in Task 5.
+
+**The dataset-blind join, demonstrated before and after.** On a two-dataset synthetic
+sweep the old merge turned **40 accuracy rows into 80**, and each L23 row carried both
+its own `win_frac` *and* PANGAEA's:
+
+```
+dataset algorithm  win_frac        <- OLD, dataset-blind merge
+    L23  expb_pow       1.0
+    L23  expb_pow       0.0        <- PANGAEA's number on an L23 row
+```
+
+`tables.accuracy` and `tables.qc` now key and merge on `dataset`, so the same sweep
+yields 40 rows with each win fraction on its own dataset's row. The regression test
+makes the winner *flip* between datasets, so a cross-assignment is unmistakable
+rather than plausible.
+
+**The three denominators are named apart** — `n_pairs` (surviving retrieval-truth
+pairs), `n_scored` (spectra that produced a usable fit), `n_attempted` (spectra
+tried). On the GLORIA sweep those are 12 / 21 / 100 for the same contest, previously
+all published as some flavour of "n".
+
+**Coverage now states its target — and I caught myself shipping a misleading flag.**
+My first version emitted a boolean `coverage68_ok`. Checking it against the real
+GLORIA numbers, `coverage68 = 0.4167` against nominal 0.68 came out `True`, which
+reads as "well calibrated" and is nothing of the sort: at `n=12` the 2-standard-error
+window is `[0.41, 0.95]`, so almost nothing is detectable. I worked out the window at
+several `n` (`n=12 → [0.41, 0.95]`; `n=21 → [0.48, 0.88]`; `n=3320 → [0.66, 0.70]`)
+and replaced the boolean with a **directional verdict**:
+`over-confident` / `consistent` / `conservative`, with the page stating that
+*consistent* means "not distinguishable from nominal at this `n_pairs`", not
+"calibrated". The direction is the finding — on GLORIA, `expb_powflex` is flagged
+**over-confident** at both levels while the others are merely indistinguishable.
+
+**The false "0 = perfect" prose is gone.** Each metric now states its own perfect
+value: `mae`/`bias` fractional multiplicative (0 = perfect, and 0.109 means 10.9% —
+with Seegers' un-subtracted 1.109 named so the two conventions cannot be confused),
+`median_ratio` perfect at 1, `win_frac` 0.5 = tie, `coverage68/95` perfect at nominal.
+
+**Two things I extended beyond the literal task, both for the same reason the task
+exists.** The accuracy table published **36 all-empty rows out of 40** on the GLORIA
+page — the table equivalent of a blank panel — so unscored rows are dropped and the
+count is *stated* in the section prose ("36 further (component, band) rows are
+omitted because this sweep scored no retrieval-truth pairs for them"), with
+`drop_unscored=False` still available. And the rendered HTML showed Taylor, Target and
+ΔBIC with `alt="../../_images/taylor_a_dg_440.png"` — the path, not a description —
+because those sections passed no caption; `_fig_section` now accepts one caption *per*
+figure, which also fixes the "nothing says which stacked image is which" defect. Every
+figure on the page now has real alt text; verified in the built HTML, not assumed.
+
+**Formatting:** CSVs rounded to 4 dp with counts/bands/ranks as integers (`440`, not
+`440.0`); `csv_table_block` emits `:widths: auto` (confirmed as the `colwidths-auto`
+class in the built HTML) and `figure_block` emits `:alt:`.
+
+**Verification:** CI-equivalent **267 passed / 38 skipped** (was 255); with data
+**305 passed**; `sphinx-build -W` clean; the regenerated GLORIA accuracy table is 4
+informative rows where it was 40 mostly-empty ones.
+
+**Files:** modified `ioptics/report/tables.py`, `ioptics/report/standard.py`,
+`ioptics/report/rst.py`, `docs/source/reports/gloria_turbid_v3/*`; new
+`ioptics/tests/test_report_table_correctness.py` (12 Tier-1 tests).
+
+#### Adversarial review of this task (Fable subagent) — 5 real defects, 4 fixed
+
+Worth the round trip: it found the same class of bug I had just fixed, still live one
+module over.
+
+1. **The dataset-blind join was still in the leaderboard** (`leaderboard.py:116-122`)
+   — it merges wins without `dataset`, so the reviewer's fold of the two-dataset
+   fixture turned 80 rows into **160**, with `('L23', 'expb_pow')` carrying both its
+   own 1.0 and PANGAEA's 0.0; `ranked()` then ranks the duplicates and both the
+   landing page and the interactive leaderboard publish them. Nominally Task 5's
+   line-item, but it is two lines and it is wrong *today*, so **fixed here** with a
+   test that folds the flip-winner fixture. The landing page itself is regenerated in
+   Task 5, so the committed page keeps the duplicated rows until then.
+2. **My own new caption violated this task's requirement.** The scatter caption read
+   `(n=12 scored per algorithm)`, but that `n` comes from `scored_refs`, which takes
+   the **max of `n_pairs` across datasets and algorithms** — so on a multi-dataset
+   sweep it would claim a count no algorithm achieved, and "scored" is the word the
+   same page's glossary had just reserved for `n_scored`. **Fixed**: "at most 12
+   retrieval-truth pairs per algorithm; each legend entry states its own". Also
+   aligned `style.series_label` to count pairs the way `metrics.n_valid` does (finite
+   **and positive**), so a legend `n` cannot disagree with the table's `n_pairs`.
+3. **`_publishable` could truncate and could crash.** `astype('int64')` on a
+   ``ref_match`` of **442.5** published **442**, and `astype('Int64')` on a
+   non-integral value beside an NA raises `TypeError` — which would abort the whole
+   page build. Latent only because every wired dataset happens to sit on integral
+   bands. **Fixed**: present as integer only when the values are integral; two tests
+   with a half-nm band.
+4. **The coverage standard error uses the wrong denominator by construction.** It uses
+   `n_pairs`, but `metrics.coverage` counts a different population (it needs truth and
+   both bounds, and ignores the retrieved value). They agree whenever every scored
+   pair has credible bounds — true for the sweeps run so far — but where bands exist
+   for only *k* pairs the SE is too tight by `sqrt(n_pairs/k)` and the verdict can
+   accuse a thin contest. **Not fixed**: the honest fix is for `metrics` to persist
+   the coverage trial count, which is a schema change. Documented precisely in the
+   docstring and raised in Q&A for Task 9.
+5. **The per-figure captions I added were paired positionally**, which is unsafe
+   precisely because a degenerate figure is not written: if the Taylor diagram were
+   degenerate and the Target drew, the Target would be published with the Taylor's
+   caption *and alt text*. **Fixed**: captions are now a `{name-keyword: caption}`
+   mapping matched against the file name, with a test that feeds only a Target.
+
+Minor items: `MAX_REF_PANELS` was dead (2 totals + 1 decomposed can never reach 4) —
+now 3, documented as a guard; and one of my formatting assertions had an `or` chain
+whose third clause let it pass when no 440 band appeared at all — tightened.
+
+It also **verified** the parts I claimed: the dataset joins and the win-flip
+regression behave as described, `_coverage_flags` handles n=0/NaN and survives a CSV
+round trip, `_plan_panels` is deterministic and cannot drop a scored total, `:widths:
+auto` / `:alt:` are valid under docutils 0.22.4, every claim in the new conventions
+prose matches `metrics.py`, and no other consumer breaks on the renames.
+
+**Still live on the site** (not this task's to fix): the committed
+`expb_giop_L23_test20` page carries the old figure set, the dataset-less CSVs **and
+the false "0 = perfect" sentence**, because that sweep's artifacts are not on this
+laptop. It is re-run and regenerated in Task 11.
+
+**After the fixes:** CI-equivalent **271 passed / 38 skipped**; with data **309
+passed**; `sphinx -W` clean; every figure on the regenerated page has real alt text.
+Files additionally touched: `ioptics/report/leaderboard.py`, `ioptics/style.py`.
 
 ### 2026-08-03 (Stage 7, Task 2: data-driven artifact selection)
 

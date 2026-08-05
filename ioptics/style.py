@@ -232,7 +232,11 @@ def series_label(name, truth=None, retrieved=None):
     if truth is None or retrieved is None:
         return str(name)
     o = np.asarray(truth, dtype=float)
-    n = int((np.isfinite(o) & np.isfinite(np.asarray(retrieved, dtype=float))).sum())
+    m = np.asarray(retrieved, dtype=float)
+    # Count pairs the same way ``metrics.n_valid`` does — finite **and positive**,
+    # since these are log-space statistics. Counting merely-finite pairs here would
+    # print a legend ``n`` that disagrees with the table's ``n_pairs``.
+    n = int((np.isfinite(o) & np.isfinite(m) & (o > 0) & (m > 0)).sum())
     ratio, mpd = ratio_mpd(truth, retrieved)
     if not np.isfinite(ratio):
         return f'{name}  n={n}'

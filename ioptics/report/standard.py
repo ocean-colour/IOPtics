@@ -21,8 +21,8 @@ from pathlib import Path
 import yaml
 
 import ioptics
-from ioptics import io
-from ioptics.report import bokeh, figures, rst, tables
+from ioptics import io, metrics
+from ioptics.report import bokeh, figures, leaderboard, rst, tables
 
 KINDS = ('per_algorithm', 'cross_algorithm', 'per_dataset')
 KIND_TITLES = {
@@ -35,9 +35,17 @@ KIND_TITLES = {
 DEFAULT_DOCS_SRC = (Path(ioptics.__file__).resolve().parent.parent
                     / 'docs' / 'source')
 
-# How many (component, ref-λ) panels a page shows, best-covered first. The set
-# itself is **derived from the sweep** (figures.scored_refs), never fixed: a fixed
-# set publishes blank panels as soon as a dataset's truth differs.
+# Which (component, ref-λ) panels a page shows. The candidate set is **derived
+# from the sweep** (figures.scored_refs), never fixed: a fixed set publishes blank
+# panels as soon as a dataset's truth differs. From the candidates we take every
+# TOTAL component plus the best-covered DECOMPOSED one — the community reports
+# total a/bb separately from the decomposed a_dg/a_ph/bb_p, which are consistently
+# the weaker retrievals, and an aggregate that blurs the two is distrusted.
+TOTAL_COMPONENTS = ('a', 'bb')
+
+# Ceiling on the plan, since each panel costs two figures (scatter + ratio
+# distribution). With two totals plus one decomposed component the plan is 3 by
+# construction; the cap is a guard for a future TOTAL_COMPONENTS, not live today.
 MAX_REF_PANELS = 3
 
 # Display assets this builder owns in a report dir — anything matching these that
@@ -81,13 +89,50 @@ def _fig_section(sweep, report_dir, heading, png_paths, caption='', desc='',
     """
     if not png_paths:
         return ''
+    # ``caption`` may be one string for every figure, or a {keyword: caption}
+    # mapping matched against the file name. A section holding two different
+    # diagrams needs two captions, or nothing on the page says which image is
+    # which (and the alt text falls back to the file path, which is no use to a
+    # screen reader). Matching by **name** rather than by position matters
+    # because a degenerate figure is not written at all: pairing positionally
+    # would caption a surviving Target diagram as the missing Taylor one.
+    def _caption_for(path):
+        if isinstance(caption, str):
+            return caption
+        for key, text in caption.items():
+            if key in path.name:
+                return text
+        return ''
+
     blocks = [desc] if desc else []
     for p in png_paths:
+        cap = _caption_for(p)
         name = _copy(p, report_dir).name
         if published is not None:
             published.add(name)
-        blocks.append(rst.figure_block(name, caption))
+        blocks.append(rst.figure_block(name, cap))
     return rst.section(heading, '\n\n'.join(b for b in blocks if b))
+
+
+def _plan_panels(scored):
+    """Choose the ``(component, ref, n)`` panels from what the sweep can score.
+
+    Every **total** component (:data:`TOTAL_COMPONENTS`) that was scored, at its
+    best-covered reference band, plus the single best-covered **decomposed**
+    component — the total-vs-decomposed split the IOP literature reports (IOCCG
+    Report 5, GIOP), rather than an arbitrary top-N of a mixed list. A sweep that
+    only scores a decomposed component (GLORIA scores ``a_dg`` alone) still gets its
+    panel.
+    """
+    if not scored:
+        return []
+    best = {}                    # component -> best-covered (comp, ref, n)
+    for comp, ref, n in scored:  # scored is already best-covered first
+        best.setdefault(comp, (comp, ref, n))
+    totals = [best[c] for c in TOTAL_COMPONENTS if c in best]
+    decomposed = [v for c, v in best.items() if c not in TOTAL_COMPONENTS]
+    decomposed.sort(key=lambda t: -t[2])
+    return (totals + decomposed[:1])[:MAX_REF_PANELS]
 
 
 def _not_shown_section(reasons):
@@ -168,10 +213,35 @@ def _intro(sweep, kind):
         f"and **model selection** between the algorithms; the interactive scatter "
         f"lets you drill into any component or trophic stratum. See "
         f":doc:`/models` for what each algorithm parameterizes and "
-        f":doc:`/datasets` for the data + truth. All accuracy metrics are "
-        f"log-space / multiplicative (0 = perfect). The header above stamps the "
+        f":doc:`/datasets` for the data + truth. The header above stamps the "
         f"exact code + config versions, so every number is reproducible from the "
-        f"persisted sweep artifacts.")
+        f"persisted sweep artifacts.\n\n" + _CONVENTIONS)
+
+
+#: What "good" looks like, per metric. The previous page-wide claim that "all
+#: accuracy metrics are log-space / multiplicative (0 = perfect)" was false for
+#: three columns of the very next table, so each metric now states its own perfect
+#: value. The accuracy form is Erickson (2023)'s fractional multiplicative one
+#: (JXP's decision) — note that Seegers (2018) publishes the un-subtracted factor,
+#: so the convention has to be named rather than assumed.
+_CONVENTIONS = (
+    "**Reading the numbers.** ``mae`` and ``bias`` are **fractional "
+    "multiplicative** errors in log space, following Erickson (2023): "
+    ":math:`\\mathrm{mae} = 10^{\\langle|\\log_{10} M/O|\\rangle} - 1`, so "
+    "**0 = perfect** and ``0.109`` means 10.9% (Seegers 2018 publishes the "
+    "un-subtracted factor, ``1.109``, for the same fit — the forms differ by one). "
+    "``bias`` is signed, > 0 = over-estimate. The other columns have **different** "
+    "perfect values, which is why they are read separately: ``median_ratio`` and "
+    "GIOP's ``Ratio`` are perfect at **1**; ``win_frac`` is a head-to-head share, "
+    "so **0.5 = a tie**; and ``coverage68`` / ``coverage95`` are perfect at their "
+    "**nominal 0.68 / 0.95** — an algorithm can be the most accurate and still be "
+    "over-confident about its uncertainty, which the ``*_verdict`` columns name "
+    "(``over-confident`` / ``consistent`` / ``conservative``; *consistent* means "
+    "not distinguishable from nominal at this ``n_pairs``, which on a thin contest "
+    "is a weak statement). Three "
+    "different denominators appear and are named apart: ``n_pairs`` (surviving "
+    "retrieval-truth pairs), ``n_scored`` (spectra that produced a usable fit) and "
+    "``n_attempted`` (spectra the sweep tried).")
 
 
 def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
@@ -202,7 +272,7 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
 
     # What can this sweep actually show? Derived, not assumed.
     scored = figures.scored_refs(sweep)
-    panels = scored[:MAX_REF_PANELS]
+    panels = _plan_panels(scored)
     if not scored:
         not_shown.append(
             'the retrieved-vs-true scatters, Taylor/Target diagrams and ratio '
@@ -216,12 +286,15 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
             blocks.append(_fig_section(
                 sweep, report_dir, f'Retrieved vs. true — {label}',
                 _pngs(figures.scatter_set(sweep, comp, ref=ref)),
-                caption=f'{label}, all algorithms (n={n} scored per algorithm).',
+                caption=(f'{label}, all algorithms — at most {n} '
+                         f'retrieval-truth pairs per algorithm; each legend entry '
+                         f'states its own.'),
                 desc=(f'Retrieved vs. true **{label}**, one point per observation '
                       f'and algorithm on log–log axes. Points on the solid **1:1** '
                       f'line are perfect; the dashed **3:1** and **1:3** guides '
                       f'mark the ±3× envelope. Each legend entry carries that '
-                      f'algorithm\'s scored ``n``, its median ratio (1 = perfect) '
+                      f'algorithm\'s own ``n_pairs``, its median ratio '
+                      f'(1 = perfect) '
                       f'and MPD (median absolute percent difference, 0 = perfect), '
                       f'so the panel can be read without the table below.'),
                 published=published))
@@ -242,6 +315,13 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
             blocks.append(_fig_section(
                 sweep, report_dir, f'Taylor & Target — {comp}({ref:g})',
                 _pngs(figures.taylor_target(sweep, comp, ref=ref)),
+                caption={'taylor': f'Taylor diagram — {comp}({ref:g}): '
+                                   f'correlation (azimuth) vs normalized standard '
+                                   f'deviation (radius), with centred-RMSD arcs '
+                                   f'about the reference star.',
+                         'target': f'Target diagram — {comp}({ref:g}): bias vs '
+                                   f'signed unbiased RMSD, with constant-RMSD '
+                                   f'rings; the origin is a perfect retrieval.'},
                 desc=(f'**Taylor** (first) and **Target** (second) diagrams for '
                       f':math:`{comp}({ref:g})`, computed in log space and drawn '
                       f'for the sweep\'s best-covered component. The Taylor diagram '
@@ -266,6 +346,9 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
             blocks.append(_fig_section(
                 sweep, report_dir, 'Model selection (ΔBIC)',
                 _pngs(figures.dbic_cdf(sweep, model_a=a, model_b=b)),
+                caption=(f'Per-spectrum ΔBIC, ``{a}`` vs ``{b}``: the fraction of '
+                         f'spectra either side of 0 says whether the extra '
+                         f'parameters earn their keep.'),
                 desc=(f'Cumulative distribution of **ΔBIC** per spectrum for this '
                       f'sweep\'s complexity contest — ``{a}`` (k={ks.get(a, "?"):g}) '
                       f'against ``{b}`` (k={ks.get(b, "?"):g}), chosen as its '
@@ -295,35 +378,89 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
                     published=published))
 
     # tables (all kinds)
-    tables.accuracy(sweep)
+    acc_df = tables.accuracy(sweep)
     tables.qc(sweep)
+    n_unscored = int(acc_df.attrs.get('n_unscored_rows', 0))
+    unscored_note = (
+        f' {n_unscored} further (component, band) rows are omitted because '
+        f'this sweep scored no retrieval-truth pairs for them.'
+        if n_unscored else '')
     blocks.append(_table_section(
         sweep, report_dir, 'Accuracy', tables_dir / 'accuracy_chisq_all.csv',
         'Ref-band accuracy + wins (χ², all strata).',
-        desc=('Per-(component, reference wavelength) retrieval accuracy for the '
-              'χ² population: multiplicative **mae**/**bias** and **coverage** '
-              '(0 = perfect; ``mae`` 0.1 ≈ 10%), the cross-algorithm ranks '
-              '(``*_rank``, 1 = best), and the head-to-head **win_frac**. '
-              '``ref_match`` is the native band actually used (±3 nm).'),
+        desc=('Per-(dataset, component, reference wavelength) retrieval accuracy '
+              'for the χ² population: fractional multiplicative **mae**/**bias** '
+              '(0 = perfect, ``mae`` 0.1 ≈ 10%), **median_ratio** (1 = perfect), '
+              '**coverage68/95** against their nominal 0.68/0.95 with a '
+              '``*_verdict`` of over-confident / consistent / conservative '
+              '(a real miss being more than 2 binomial standard errors; at small '
+              '``n_pairs`` only a gross miss is detectable, so *consistent* means '
+              '"not distinguishable from nominal here", not "calibrated"), '
+              'the cross-algorithm ranks (``*_rank``, 1 = best) and the '
+              'head-to-head **win_frac** (0.5 = tie). ``n_pairs`` counts surviving '
+              'retrieval-truth pairs; ``ref_match`` is the native band actually '
+              'used (±3 nm).' + unscored_note),
         published=published))
+    h2h = tables.head_to_head(sweep)
+    if h2h.empty:
+        not_shown.append(
+            'the head-to-head table — a pairwise verdict needs at least two '
+            'algorithms scored on a shared set of spectra.')
+    else:
+        ties = int((h2h['verdict'] == 'indistinguishable').sum())
+        weak = int((h2h['verdict'] == 'underpowered').sum())
+        blocks.append(_table_section(
+            sweep, report_dir, 'Head-to-head',
+            tables_dir / 'head_to_head_chisq_all.csv',
+            'Pairwise verdicts (χ², all strata).',
+            desc=(f'Every algorithm pair, judged on the spectra **both** of them '
+                  f'retrieved. ``delta_mae`` is ``mae(A) − mae(B)`` on those shared '
+                  f'spectra (negative favours A) and ``d_lo``/``d_hi`` are its '
+                  f'paired-bootstrap 95% interval, after the round-robin practice '
+                  f'of resampling the data to put uncertainty on a ranking. The '
+                  f'``verdict`` names a winner only when the interval excludes 0 '
+                  f'**and** the difference clears a practical floor of '
+                  f'{metrics.PRACTICAL_MAE_FLOOR:.0%}. It reads '
+                  f'``indistinguishable`` only when the **whole interval** lies '
+                  f'inside that floor — i.e. the data rule a material difference '
+                  f'out — and ``underpowered`` when the interval is too wide to '
+                  f'say either way at this ``n_paired``. Here '
+                  f'{ties} pair(s) are indistinguishable and {weak} are '
+                  f'underpowered, out of {len(h2h)}.'
+                  + (f' A further {h2h.attrs["n_unscored_rows"]} pair(s) share no '
+                     f'scoreable spectrum and are omitted.'
+                     if h2h.attrs.get('n_unscored_rows') else '')),
+            published=published))
+
     blocks.append(_table_section(
         sweep, report_dir, 'Quality control', tables_dir / 'qc_chisq_all.csv',
         'Fit quality / closure (χ²).',
-        desc=('Fit-quality summary per algorithm: ``frac_not_ok`` (retrievals '
-              'flagged as failures/QC), the median reduced **χ²ᵥ**, and the '
-              'χ²ᵥ-based closure fractions (``frac_good`` ≈ 1, ``frac_overfit`` '
-              '< 1, ``frac_underfit`` > 1, ``frac_qc_fail`` = non-solutions).'),
+        desc=('Fit-quality summary per dataset and algorithm. ``n_attempted`` is '
+              'what the sweep tried and ``n_scored`` what produced a usable fit — '
+              'the gap is explained by the per-status fractions, which are kept '
+              'apart on purpose: ``frac_out_of_scope`` (spectrum outside the model '
+              'family\'s regime) and ``frac_fit_failed`` (the fitter returned '
+              'nothing) are the same ``frac_not_ok`` and entirely different '
+              'findings. Also the median reduced **χ²ᵥ**, the noise-model-free '
+              '**rel_misfit** (GIOP\'s ΔRrs), and the χ²ᵥ closure split '
+              '(``frac_good`` ≈ 1, ``frac_overfit`` < 1, ``frac_underfit`` > 1, '
+              '``frac_qc_fail`` = non-solutions).'),
         published=published))
 
-    # interactive scatter — embedded inline (CDN + components) so it renders on
-    # RTD without copying a separate HTML file into the build output.
+    # interactive scatter — embedded inline (components + **vendored** BokehJS) so
+    # it renders on RTD without copying a separate HTML file into the build output
+    # and without depending on cdn.bokeh.org at view time.
+    bokeh.vendor_bokehjs(docs_root / '_static')
     blocks.append(rst.section(
         'Interactive',
         ('Retrieved vs. true, **interactive**: pick the dataset, algorithm, '
-         'component and trophic stratum, and hover any point for its wavelength '
-         'and values. (Downsampled for the web; the static panels above '
-         'summarize the full population.)\n\n'
-         + rst.bokeh_embed(bokeh.scatter_embed(sweep)))))
+         'component and trophic stratum, and hover any point for its '
+         '``obs_id``, wavelength and values — so an outlier can be traced back to '
+         'a spectrum. The figure title states what fraction of the population is '
+         'plotted (the cloud is downsampled to keep the page small; the static '
+         'panels above summarize all of it).\n\n'
+         + rst.bokeh_embed(bokeh.scatter_embed(
+             sweep, static_prefix='../../')))))
 
     blocks.append(_not_shown_section(not_shown))
 
@@ -332,3 +469,50 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
     _prune_stale(report_dir, published)
     rst.ensure_glob_toctree(docs_root / 'reports' / 'index.rst')
     return out
+
+
+def build_landing(*, docs_root=None, runs_root=None, root=None, board=None,
+                  out=None):
+    """Write the reports landing page: headline board, cards, drill-down, widget.
+
+    Replaces a landing page that was 2 423 lines of ``list-table`` (with every
+    accuracy cell ``nan``) followed by a bare ``:glob:`` toctree of undescribed
+    links. Now: the ``stratum='all'`` headline table, one summary card per folded
+    sweep, the interactive leaderboard, and a link to a **full grid** page carrying
+    every stratum, fit method and provenance column.
+
+    Returns ``(index_path, full_grid_path)``.
+    """
+    docs_root = Path(docs_root) if docs_root is not None else DEFAULT_DOCS_SRC
+    if board is None:
+        board = leaderboard.update(runs_root=runs_root, root=root, out=out)
+    reports_dir = docs_root / 'reports'
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    # the drill-down page (its own doc, so the landing page stays scannable)
+    full_grid = reports_dir / 'leaderboard_full.rst'
+    full_grid.write_text(rst.page(
+        rst.title('Leaderboard — full grid'),
+        rst.section('Every contest, stratum and provenance column',
+                    'The landing page shows the ``stratum="all"`` headline. This is '
+                    'the complete fold: every stratum and fit method, the closure '
+                    'columns that say *why* rows were not scored, and the '
+                    'per-algorithm provenance digest plus the ``bing``/``ocpy`` '
+                    'commits — because two rows sharing an algorithm name are not '
+                    'necessarily the same algorithm.\n\n'
+                    + leaderboard.render(board, headline=False))),
+        encoding='utf-8')
+
+    bokeh.vendor_bokehjs(docs_root / '_static', bundles=bokeh.TABLE_BUNDLES)
+    try:
+        widget = bokeh.leaderboard_embed(board=board, static_prefix='../')
+    except Exception:                       # a widget is not worth failing a build
+        widget = ''
+    rst.write_leaderboard_landing(
+        reports_dir / 'index.rst',
+        leaderboard.render(board, headline=True),
+        cards_rst=leaderboard.sweep_cards(runs_root=runs_root, root=root,
+                                          board=board, docs_root=docs_root),
+        interactive_html=widget,
+        full_grid_doc='/reports/leaderboard_full')
+    return reports_dir / 'index.rst', full_grid

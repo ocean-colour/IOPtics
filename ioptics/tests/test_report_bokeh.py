@@ -56,11 +56,36 @@ def test_scatter_embed(tmp_path):
     sw = _build(tmp_path)
     frag = bokeh.scatter_embed(sw)
     assert isinstance(frag, str) and len(frag) > 500
-    # an embeddable fragment (components + CDN), NOT a standalone document
+    # an embeddable fragment (components + **vendored** BokehJS), NOT a document
     assert '<html' not in frag.lower()
-    assert 'Bokeh' in frag or 'bokeh' in frag
-    assert 'cdn.bokeh.org' in frag                       # BokehJS from CDN
     assert '<div' in frag and '<script' in frag          # components div+script
+    # no CDN: a published figure must not stop working offline, behind a CSP, or
+    # when the CDN moves on (the two committed pages had already drifted versions)
+    assert 'cdn.bokeh.org' not in frag
+    assert '_static/bokeh/bokeh-' in frag and '.min.js' in frag
+    # the obs_id is in the hover, so an outlier can be traced to its spectrum
+    assert 'obs_id' in frag
+
+
+def test_vendored_bokehjs_is_versioned_and_idempotent(tmp_path):
+    import bokeh as _bokeh
+
+    names = bokeh.vendor_bokehjs(tmp_path)
+    assert names and all(_bokeh.__version__ in n for n in names), \
+        'unversioned filenames would re-point every historical page on upgrade'
+    files = sorted(p.name for p in (tmp_path / 'bokeh').iterdir())
+    again = bokeh.vendor_bokehjs(tmp_path)                # copy-if-missing
+    assert sorted(p.name for p in (tmp_path / 'bokeh').iterdir()) == files
+    assert again == names
+    # only the bundles this figure needs — CDN.render() emits five
+    assert not any('bokeh-gl' in n or 'mathjax' in n for n in names)
+
+
+def test_script_tag_depth_matches_the_page_location():
+    deep = bokeh.local_script_tags('../../')             # reports/<sweep>/page
+    landing = bokeh.local_script_tags('../')             # reports/index
+    assert 'src="../../_static/bokeh/' in deep
+    assert 'src="../_static/bokeh/' in landing
 
 
 def test_interactive_leaderboard(tmp_path):

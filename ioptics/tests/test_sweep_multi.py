@@ -59,9 +59,8 @@ def test_build_v2_stage_dispatch(monkeypatch):
     monkeypatch.setattr(m, 'compute', lambda sid, **k: calls.append('metrics'))
     monkeypatch.setattr(standard, 'build', lambda sid, **k: calls.append('report'))
     monkeypatch.setattr(lb, 'update', lambda **k: calls.append('lb') or None)
-    monkeypatch.setattr(lb, 'render', lambda **k: 'TABLE')
-    monkeypatch.setattr(rst, 'write_leaderboard_landing',
-                        lambda idx, tbl: calls.append('landing'))
+    monkeypatch.setattr(standard, 'build_landing',
+                        lambda **k: calls.append('landing') or (None, None))
 
     mod = _load_build_module()
     mod.main(0)
@@ -73,7 +72,9 @@ def test_build_v2_stage_dispatch(monkeypatch):
     assert calls == ['metrics']
     calls.clear()
     mod.main(3)
-    assert calls == ['report', 'lb', 'landing']
+    # the fold now happens inside standard.build_landing, so stage 3 is
+    # two calls: the sweep's own page, then the landing rebuild
+    assert calls == ['report', 'landing']
 
 
 # --------------------------------------------------------------------

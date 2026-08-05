@@ -20,6 +20,7 @@ is returned by :func:`n_valid` and recorded alongside every number at the
 
 from __future__ import annotations
 
+import hashlib
 from collections import namedtuple
 
 import numpy as np
@@ -311,6 +312,24 @@ def dbic_cdf(df, model_a, model_b, *, by=None, fit_method='chisq',
 # §4 Uncertainty assessment — coverage + detection
 # --------------------------------------------------------------------------- #
 
+def coverage_n(O, lo, hi):
+    """How many trials the empirical :func:`coverage` was measured over.
+
+    Its own column because it is **not** the accuracy row's ``n``: that counts
+    ``(retrieved, truth)`` pairs surviving the finite-and-positive rule, while
+    coverage needs ``truth`` and both bounds and ignores the retrieved value. The
+    two coincide only when every scored pair also has credible bounds — a fit
+    whose covariance failed has bounds for fewer — and a calibration verdict
+    tested with the wrong trial count is too tight by ``sqrt(n/coverage_n)``.
+    """
+    O = np.asarray(O, dtype=float).ravel()
+    lo = np.asarray(lo, dtype=float).ravel()
+    hi = np.asarray(hi, dtype=float).ravel()
+    if not (O.shape == lo.shape == hi.shape):
+        raise ValueError("O, lo, hi must have the same shape")
+    return int((np.isfinite(O) & np.isfinite(lo) & np.isfinite(hi)).sum())
+
+
 def coverage(O, lo, hi):
     """Empirical coverage: fraction of truth values inside ``[lo, hi]``.
 
@@ -415,6 +434,269 @@ def wins(table, *, by=('dataset', 'component', 'ref_wave'),
         out.append(row)
     return pd.DataFrame(out, columns=group_cols + [algo_col, 'wins',
                                                    'contests', 'win_frac'])
+
+
+#: Practical-significance floor for a head-to-head verdict, in the units of
+#: :func:`mae` (fractional multiplicative error). JXP's decision: **10%**. Two
+#: algorithms whose ref-band MAE differs by less than this are reported as
+#: indistinguishable *in practice* even when the paired test resolves a
+#: difference — the threshold encodes what counts as scientifically meaningful,
+#: which is a judgement, not a statistic.
+PRACTICAL_MAE_FLOOR = 0.10
+
+#: How :data:`PRACTICAL_MAE_FLOOR` is applied. ``'absolute'`` is the literal
+#: reading of JXP's "use 10%" — a fixed difference in fractional MAE — and is the
+#: default. **Known consequence, measured:** on a dataset where both algorithms are
+#: accurate (ref-band MAE of a few percent, as an L23-class synthetic gives) two
+#: algorithms whose errors differ five-fold (1% vs 5%) are still 0.04 apart and are
+#: therefore declared equivalent; no pair can ever clear an absolute 0.10 there.
+#: ``'relative'`` scales the margin to the better MAE so "10%" means a tenth of the
+#: error being compared. Pending confirmation in the Q&A.
+PRACTICAL_FLOOR_MODE = 'absolute'
+
+#: Bootstrap resamples for the paired-difference interval, after the ocean-colour
+#: round-robin precedent (Brewin et al. 2015, which resamples the in-situ data
+#: 1000 times to put uncertainty on a ranking).
+BOOTSTRAP_RESAMPLES = 1000
+
+#: Fixed seed: a published verdict must not change because the report was
+#: regenerated.
+BOOTSTRAP_SEED = 1234
+
+#: Below this many paired spectra, do not pretend to a verdict at all.
+MIN_PAIRED = 3
+
+
+def paired_abs_log_errors(table, model_a, model_b, *, obs_col='obs_id',
+                          algo_col='algorithm', value_col='value',
+                          truth_col='truth'):
+    """Per-spectrum ``|log10(M/O)|`` for two algorithms, on shared spectra.
+
+    Returns a 2-column DataFrame indexed by observation, columns ``model_a`` and
+    ``model_b``, restricted to spectra where **both** produced a finite, positive
+    retrieval against the same truth. Empty if the pairing yields nothing.
+
+    Keeping both columns (rather than only their difference) is what lets the
+    bootstrap resample the *same* statistic the tables publish: a paired resample
+    of spectra recomputes each algorithm's MAE, so the interval and the practical
+    floor are both on the fractional-multiplicative MAE scale. Bootstrapping the
+    median difference of log errors instead would put the significance test and
+    the effect size on different scales — on the real GLORIA contest those differ
+    by two orders of magnitude, because MAE is a mean of heavy-tailed errors while
+    the paired median is not.
+    """
+    keep_cols = [obs_col, algo_col, value_col, truth_col]
+    sub = table[table[algo_col].isin([model_a, model_b])][keep_cols].copy()
+    if sub.empty:
+        return pd.DataFrame()
+    m = sub[value_col].to_numpy(dtype=float)
+    o = sub[truth_col].to_numpy(dtype=float)
+    ok = np.isfinite(m) & np.isfinite(o) & (m > 0) & (o > 0)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        err = np.abs(np.log10(m) - np.log10(o))
+    err[~ok] = np.nan
+    sub['_err'] = err
+    wide = sub.pivot_table(index=obs_col, columns=algo_col, values='_err',
+                           aggfunc='mean')
+    if model_a not in wide.columns or model_b not in wide.columns:
+        return pd.DataFrame()
+    return wide[[model_a, model_b]].dropna()
+
+
+def _mae_from_log_err(err):
+    """``mae`` from already-computed absolute log errors (``10**mean − 1``).
+
+    A retrieval many orders of magnitude off overflows to ``inf`` here; that is the
+    honest answer (an unbounded error), and :func:`head_to_head` reads it as a
+    decisive loss rather than an unresolved contest, so the overflow is expected
+    rather than a warning worth raising.
+    """
+    err = np.asarray(err, dtype=float)
+    if err.size == 0:
+        return np.nan
+    with np.errstate(over='ignore', invalid='ignore'):
+        return 10.0 ** np.mean(err, axis=-1) - 1.0
+
+
+def paired_log_errors(table, model_a, model_b, **kwargs):
+    """Per-spectrum paired difference in absolute log error, ``A − B``.
+
+    The quantity a head-to-head verdict needs and :func:`wins` cannot provide:
+    ``wins`` tallies into ``(group, algorithm)`` and **discards the opponent's
+    identity**, so its "contests" are not independent trials of any one pairing
+    (with four algorithms, 36 contests are 12 spectra x 3 opponents) and no paired
+    statistic can be recovered from it. Here the pairing is kept.
+
+    Returns ``|log10(M_A/O)| − |log10(M_B/O)|`` per shared spectrum (negative
+    means ``model_a`` was closer) — the win-tally view of
+    :func:`paired_abs_log_errors`.
+    """
+    both = paired_abs_log_errors(table, model_a, model_b, **kwargs)
+    if both.empty:
+        return np.array([])
+    return (both.iloc[:, 0] - both.iloc[:, 1]).to_numpy(dtype=float)
+
+
+def _pair_seed(group_key, model_a, model_b, *, base=BOOTSTRAP_SEED):
+    """A reproducible but contest-specific bootstrap seed.
+
+    One global seed reuses the *same* resample index matrix for every pair, so all
+    published intervals move together — a reader comparing intervals across pairs
+    would be comparing correlated noise. Deriving the seed from the contest key and
+    the pair names keeps every interval reproducible while making them independent
+    draws.
+    """
+    key = repr((group_key, model_a, model_b)).encode('utf-8')
+    return (base + int(hashlib.md5(key).hexdigest()[:8], 16)) % (2 ** 32)
+
+
+def _floor_value(floor, mode, mae_a, mae_b):
+    """The practical-significance margin, absolute or relative to the better MAE.
+
+    ``'absolute'`` (JXP's stated 10%) is a fixed difference in fractional MAE.
+    Note the consequence, which is why ``'relative'`` exists as an option: on an
+    accurate dataset where both algorithms sit at a few percent error, *no* pair can
+    ever differ by 0.10, so every contest is declared equivalent by construction.
+    ``'relative'`` scales the margin to the better of the two MAEs, so "10%" means
+    a tenth of the error being compared.
+    """
+    if mode == 'absolute':
+        return float(floor)
+    if mode != 'relative':
+        raise ValueError(f"floor_mode must be 'absolute' or 'relative'; got {mode!r}")
+    best = np.nanmin([mae_a, mae_b])
+    if not np.isfinite(best):
+        return float(floor)
+    return float(floor) * float(best)
+
+
+def _bootstrap_delta_mae(err_a, err_b, *, level=0.95,
+                         resamples=BOOTSTRAP_RESAMPLES, seed=BOOTSTRAP_SEED):
+    """Percentile interval for ``mae(A) − mae(B)`` under a **paired** resample.
+
+    Resamples spectra (not algorithms), so each replicate re-computes both MAEs on
+    the same draw and the difference keeps its pairing — the Brewin round-robin's
+    approach to putting uncertainty on a ranking, applied to one pair.
+    """
+    err_a = np.asarray(err_a, dtype=float)
+    err_b = np.asarray(err_b, dtype=float)
+    if err_a.size == 0 or err_a.size != err_b.size:
+        return np.nan, np.nan
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, err_a.size, size=(int(resamples), err_a.size))
+    deltas = _mae_from_log_err(err_a[idx]) - _mae_from_log_err(err_b[idx])
+    tail = (1.0 - level) / 2.0
+    return (float(np.quantile(deltas, tail)),
+            float(np.quantile(deltas, 1.0 - tail)))
+
+
+def head_to_head(table, scalar=None, *,
+                 by=('dataset', 'fit_method', 'stratum', 'component',
+                     'ref_wave'),
+                 algo_col='algorithm', floor=PRACTICAL_MAE_FLOOR,
+                 floor_mode=PRACTICAL_FLOOR_MODE):
+    """Per-**pair** contests with a verdict that can say "indistinguishable".
+
+    For every contest in ``by`` and every unordered algorithm pair present, keeps
+    the pairing (unlike :func:`wins`) and reports:
+
+    ``n_paired``
+        spectra where both algorithms produced a scoreable retrieval.
+    ``wins_a`` / ``ties`` / ``win_frac_a``
+        the head-to-head tally **for this pair only**.
+    ``delta_mae`` and ``d_lo`` / ``d_hi``
+        ``mae(A) − mae(B)`` on the paired spectra (negative favours ``A``) and its
+        **paired bootstrap** interval — both in the fractional multiplicative units
+        the tables publish, which is also the scale the practical floor is judged
+        on. ``d_median`` is the median per-spectrum difference in absolute log
+        error, reported for reference.
+    ``resolved``
+        whether the bootstrap interval excludes 0.
+    ``verdict``
+        ``None`` (the pair shares no scoreable spectrum — a different fact from an
+        unresolved difference), ``'indistinguishable'`` (``|delta_mae|`` is below
+        the practical floor, so the difference would not matter even if confirmed),
+        ``'underpowered'`` (a *material* point estimate that the interval does not
+        resolve, or fewer than :data:`MIN_PAIRED` spectra), or the **winner's
+        name** (material and resolved).
+
+    Two thresholds, deliberately separate: the bootstrap answers *can we tell?*
+    and the floor answers *would anyone care?* A rank is only ever printed when
+    both say yes.
+    """
+    group_cols = [c for c in by if c in table.columns]
+    rows = []
+    grouped = table.groupby(group_cols, sort=False) if group_cols \
+        else [((), table)]
+    for kvals, g in grouped:
+        algos = sorted(g[algo_col].dropna().unique())
+        for i in range(len(algos)):
+            for j in range(i + 1, len(algos)):
+                a, b = algos[i], algos[j]
+                both = paired_abs_log_errors(g, a, b, algo_col=algo_col)
+                if both.empty:
+                    err_a = err_b = np.array([])
+                else:
+                    err_a = both[a].to_numpy(dtype=float)
+                    err_b = both[b].to_numpy(dtype=float)
+                d = err_a - err_b
+                # MAE on the *paired* spectra only, so the difference and its
+                # interval describe the same population.
+                mae_a = _mae_from_log_err(err_a)
+                mae_b = _mae_from_log_err(err_b)
+                delta = (mae_a - mae_b) if np.isfinite([mae_a, mae_b]).all() \
+                    else np.nan
+                lo, hi = _bootstrap_delta_mae(err_a, err_b,
+                                              seed=_pair_seed(kvals, a, b))
+                resolved = bool(np.isfinite([lo, hi]).all() and (lo > 0 or hi < 0))
+                margin = _floor_value(floor, floor_mode, mae_a, mae_b)
+                # An interval that lies wholly inside ±margin is the *equivalence*
+                # result: the data rule a material difference out. An interval
+                # wider than the margin cannot support that claim no matter how
+                # small the point estimate is.
+                equivalent = bool(np.isfinite([lo, hi]).all()
+                                  and abs(lo) < margin and abs(hi) < margin)
+                if d.size == 0:
+                    # No shared spectra at all is a different fact from "we
+                    # cannot resolve the difference"; leave it unstated.
+                    verdict = None
+                elif not np.isfinite([mae_a, mae_b]).all():
+                    # One side is infinite/undefined — a catastrophic loss needs
+                    # no statistics, and calling it "underpowered" is backwards.
+                    verdict = (b if np.isfinite(mae_b) else
+                               (a if np.isfinite(mae_a) else 'underpowered'))
+                elif d.size < MIN_PAIRED:
+                    # Too few shared spectra to claim anything, in either
+                    # direction. Checked *before* the equivalence test: with n=1
+                    # every resample is identical, so the interval has zero width
+                    # and would otherwise "prove" equivalence.
+                    verdict = 'underpowered'
+                elif equivalent:
+                    verdict = 'indistinguishable'
+                elif resolved and abs(delta) >= margin:
+                    verdict = a if delta < 0 else b
+                else:
+                    # Either the interval spans 0, or it excludes 0 but straddles
+                    # the margin — a difference may exist and may matter, and this
+                    # sample cannot say.
+                    verdict = 'underpowered'
+                wins_a = float((d < 0).sum() + 0.5 * (d == 0).sum())
+                row = dict(zip(group_cols, kvals if isinstance(kvals, tuple)
+                               else (kvals,)))
+                row.update({
+                    'contest': 'pair', 'model_a': a, 'model_b': b,
+                    'n_paired': int(d.size), 'wins_a': wins_a,
+                    'ties': int((d == 0).sum()),
+                    'win_frac_a': (wins_a / d.size) if d.size else np.nan,
+                    'mae_a': mae_a, 'mae_b': mae_b, 'delta_mae': delta,
+                    'd_median': float(np.median(d)) if d.size else np.nan,
+                    'd_lo': lo, 'd_hi': hi, 'resolved': resolved,
+                    'practical_floor': float(margin),
+                    'floor_mode': floor_mode, 'equivalent': equivalent,
+                    'verdict': verdict,
+                })
+                rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def rankings(metrics_scalar, *, by=('dataset', 'component'),
@@ -573,6 +855,7 @@ def _spectral_metrics(spec):
         row.update(_accuracy(g['value'].to_numpy(dtype=float), O))
         row['coverage68'] = coverage(O, g['lo68'], g['hi68'])
         row['coverage95'] = coverage(O, g['lo95'], g['hi95'])
+        row['coverage_n'] = coverage_n(O, g['lo68'], g['hi68'])
         out.append(row)
     return pd.DataFrame(out)
 
@@ -587,6 +870,9 @@ def _ref_accuracy_rows(ref):
         row.update(_accuracy(g['value'].to_numpy(dtype=float), O))
         row['coverage68'] = coverage(O, g['lo68'], g['hi68'])
         row['coverage95'] = coverage(O, g['lo95'], g['hi95'])
+        # The trial count coverage was actually measured over — not this row's
+        # ``n``, which counts finite-and-positive (retrieved, truth) pairs.
+        row['coverage_n'] = coverage_n(O, g['lo68'], g['hi68'])
         row['caveat'] = _caveat(row['dataset'], row['component'])
         out.append(row)
     return pd.DataFrame(out)
@@ -701,21 +987,34 @@ def _pairwise_metrics(ref, scalar, *, dbic_pair):
                          lower_is_better=(), higher_is_better=('win_frac',))
             w['contest'] = 'wins'
             frames.append(w)
-    # §3 ΔBIC contest (like-for-like χ²), overall + per stratum.
-    a, b = dbic_pair
+    # §5 head-to-head: per-**pair** contests with a tie-capable verdict. Kept
+    # alongside `wins` (which reports one row per algorithm) because only the
+    # paired form can answer "are these two distinguishable at this n".
+    if not ref.empty:
+        h2h = head_to_head(ref)
+        if not h2h.empty:
+            frames.append(h2h)
+
+    # §3 ΔBIC contest (like-for-like χ²), overall + per stratum. Run for **every**
+    # algorithm pair, not just the configured one: a sweep whose algorithms are
+    # not the configured pair used to get no ΔBIC row at all (and a page with a
+    # blank panel plus prose about an algorithm that never ran).
     rows = []
     for kvals, g in scalar.groupby(['dataset', 'fit_method', 'stratum'],
                                    sort=False):
-        res = dbic_cdf(g, a, b, fit_method=None)   # fit_method already a key
-        if res['n'] == 0:
-            continue
-        rows.append({
-            'dataset': kvals[0], 'fit_method': kvals[1], 'stratum': kvals[2],
-            'contest': 'dbic', 'model_a': a, 'model_b': b, 'n': res['n'],
-            'frac_favor_a': res['frac_favor_a'],
-            'frac_favor_b': res['frac_favor_b'],
-            'median_dbic': float(np.median(res['dbic'])),
-        })
+        present = sorted(g['algorithm'].dropna().unique())
+        pairs = [(a, b) for i, a in enumerate(present) for b in present[i + 1:]]
+        for a, b in pairs:
+            res = dbic_cdf(g, a, b, fit_method=None)   # fit_method already a key
+            if res['n'] == 0:
+                continue
+            rows.append({
+                'dataset': kvals[0], 'fit_method': kvals[1], 'stratum': kvals[2],
+                'contest': 'dbic', 'model_a': a, 'model_b': b, 'n': res['n'],
+                'frac_favor_a': res['frac_favor_a'],
+                'frac_favor_b': res['frac_favor_b'],
+                'median_dbic': float(np.median(res['dbic'])),
+            })
     if rows:
         frames.append(pd.DataFrame(rows))
     return (pd.concat(frames, ignore_index=True) if frames

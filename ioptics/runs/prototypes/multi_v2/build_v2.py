@@ -53,10 +53,9 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None):
         # fold this sweep into the cross-sweep leaderboard + refresh the landing
         # (the fold now carries the GLORIA CDOM-vs-a_dg caveat through, so the
         # accumulated leaderboard surfaces it once a GLORIA sweep is folded)
-        board = report.leaderboard.update()
-        idx = report.standard.DEFAULT_DOCS_SRC / 'reports' / 'index.rst'
-        report.rst.write_leaderboard_landing(
-            idx, report.leaderboard.render(board=board))
+        # rebuild the landing page (headline board + sweep cards + interactive
+        # widget) and its full-grid drill-down from the refreshed fold
+        report.standard.build_landing()
 
 
 def _cli(argv=None):
