@@ -325,6 +325,91 @@ def exemplar_grid(panels, *, ncols=2, roles=(), suptitle=''):
     return fig
 
 
+#: Axis labels for the metrics the accuracy-vs-wavelength figure can draw, with the
+#: perfect value named — the same discipline the tables follow, since ``mae`` is
+#: perfect at 0 while ``median_ratio`` is perfect at 1.
+METRIC_LABELS = {
+    'mae': 'MAE (fractional multiplicative, 0 = perfect)',
+    'bias': 'bias (fractional multiplicative, 0 = perfect)',
+    'abs_bias': '|bias| (fractional multiplicative, 0 = perfect)',
+    'median_ratio': 'median retrieved / true (1 = perfect)',
+    'rms_log': r'RMS $\log_{10}$ error (0 = perfect)',
+    'coverage68': 'coverage of the 68% band (0.68 = nominal)',
+    'coverage95': 'coverage of the 95% band (0.95 = nominal)',
+}
+
+
+@style.styled
+def accuracy_spectrum(data, *, ax=None, legend=True, title=None):
+    """One component's accuracy against wavelength, one line per algorithm.
+
+    ``data`` is the dict from
+    :func:`ioptics.diagnostics.accuracy_spectrum_data`. A dashed rule marks the
+    metric's perfect value, so a reader can see at a glance which bands a model is
+    usable in — the conventional first figure of an IOP-algorithm comparison, and one
+    this package had the persisted numbers for but never drew.
+    """
+    fig, ax = _axes(ax, figsize=(6, 4))
+    series = (data or {}).get('series') or {}
+    if not series:
+        _annotate_empty(ax)
+        return fig
+    metric = data.get('metric', 'mae')
+    for algo, s in series.items():
+        st = style.algo_style(algo)
+        wave = np.asarray(s['wave'], dtype=float)
+        val = np.asarray(s['value'], dtype=float)
+        # A single scored band cannot draw a line; show it as a lone marker rather
+        # than as an invisible zero-length segment.
+        ax.plot(wave, val, color=st['color'], marker=st['marker'],
+                ls=st['linestyle'] if wave.size > 1 else 'none',
+                ms=4.0, lw=1.4, label=str(algo))
+    perfect = data.get('perfect')
+    if perfect is not None and np.isfinite(perfect):
+        ax.axhline(float(perfect), color=style.GUIDE_COLOR, ls='--', lw=0.9,
+                   zorder=0)
+    ax.set_xlabel('wavelength [nm]')
+    ax.set_ylabel(METRIC_LABELS.get(metric, metric))
+    comp = data.get('component')
+    ax.set_title(title if title is not None else
+                 (style.component_label(comp, unit=False) if comp else ''),
+                 fontsize=10)
+    if legend:
+        ax.legend(fontsize=7)
+    return fig
+
+
+@style.styled
+def accuracy_spectrum_grid(panels, *, ncols=2, titles=()):
+    """Small multiples of :func:`accuracy_spectrum`, one panel per component.
+
+    The community reports total ``a``/``bb`` beside the decomposed ``a_ph``/``a_dg``
+    precisely so the decomposition's weakness is visible; a shared grid makes that
+    comparison in one glance. As in :func:`exemplar_grid`, the figure is only flagged
+    degenerate when *every* panel is empty.
+    """
+    panels = list(panels or [])
+    if not panels:
+        fig, ax = _axes(figsize=(6, 4))
+        _annotate_empty(ax)
+        return fig
+    ncols = max(1, int(ncols))
+    nrows = -(-len(panels) // ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5.6 * ncols, 3.4 * nrows),
+                             squeeze=False)
+    flat = axes.ravel()
+    drawn = 0
+    for i, ax in enumerate(flat):
+        if i >= len(panels):
+            ax.axis('off')
+            continue
+        t = titles[i] if i < len(titles) else None
+        accuracy_spectrum(panels[i], ax=ax, legend=(i == 0), title=t)
+        drawn += bool((panels[i] or {}).get('series'))
+    setattr(fig, EMPTY_FLAG, drawn == 0)
+    return fig
+
+
 #: Correlation values labelled along a Taylor diagram's azimuth (the convention:
 #: the arc is labelled in correlation, never in degrees).
 TAYLOR_CORR_TICKS = (0.0, 0.2, 0.4, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99)

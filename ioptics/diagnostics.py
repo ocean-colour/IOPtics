@@ -363,7 +363,8 @@ def exemplar_obs(scalar, spectral=None, *, fit_method='chisq', n=EXEMPLAR_N,
     ranked = (per_obs.sort_values(['fit_quality'] + keys)
                      .reset_index(drop=True))
 
-    idx, roles = _exemplar_slots(len(ranked), n)
+    idx, roles = _exemplar_slots(
+        len(ranked), n, worst=_worst_slot(ranked))
     picked = ranked.iloc[idx].copy()
     picked['role'] = roles
 
@@ -397,30 +398,62 @@ def exemplar_obs(scalar, spectral=None, *, fit_method='chisq', n=EXEMPLAR_N,
     return picked[_EXEMPLAR_COLS].reset_index(drop=True)
 
 
-def _exemplar_slots(total, n):
+def _worst_slot(ranked):
+    """Row position of the **largest χ²ᵥ** in a fit-quality-ranked frame.
+
+    JXP's decision: the *selection* ranks by distance from χ²ᵥ = 1 (so the most
+    over-fit spectrum is not published as the sweep's best fit), but the word
+    **"worst" means the largest χ²ᵥ** — the most under-fit spectrum. Those differ
+    whenever the over-fit tail reaches further from 1 than the under-fit one does
+    (χ²ᵥ = 0.001 is 3 decades below 1, χ²ᵥ = 100 only 2 above), and "worst" pointing
+    at an over-fit panel is not what the word conveys to a reader.
+    """
+    if ranked.empty:
+        return None
+    return int(np.argmax(ranked['chi2_nu'].to_numpy(dtype=float)))
+
+
+def _exemplar_slots(total, n, *, worst=None):
     """``(indices, roles)`` into a fit-quality-ranked list of ``total`` entries.
 
     ``n`` is the number of panels wanted; the middle ``n - 2`` are taken from around
     the median so "median" means median rather than "whatever was left". Asking for
     fewer than three panels yields exactly that many (``n=1`` used to return *two*
     rows, since an empty middle range still left a best and a worst).
+
+    ``worst`` is the row position to label ``'worst'`` — :func:`_worst_slot`'s
+    largest-χ²ᵥ row rather than simply the last rank. It is ``None`` for callers that
+    want the last rank.
     """
     n = max(0, int(n))
     if total <= 0 or n == 0:
         return [], []
     if n == 1:
         return [0], ['best']
+    if worst is None or not 0 <= worst < total:
+        worst = total - 1
+    if worst == 0:                      # a degenerate sweep: one χ²ᵥ for everything
+        worst = total - 1
     if total <= n:
+        idx = list(range(total))
         roles = ['median'] * total
         roles[0] = 'best'
         if total >= 2:
-            roles[-1] = 'worst'
-        return list(range(total)), roles
+            roles[worst] = 'worst'
+        return idx, roles
+    # the middle n-2, taken around the median and never reusing best or worst
     n_mid = n - 2
     mid = total // 2
     start = min(max(1, mid - n_mid // 2), total - 1 - n_mid)
-    return ([0] + list(range(start, start + n_mid)) + [total - 1],
-            ['best'] + ['median'] * n_mid + ['worst'])
+    middle = [i for i in range(start, start + n_mid) if i not in (0, worst)]
+    for i in range(1, total - 1):       # backfill if worst fell inside the window
+        if len(middle) >= n_mid:
+            break
+        if i not in middle and i not in (0, worst):
+            middle.append(i)
+    middle = sorted(middle)[:n_mid]
+    return ([0] + middle + [worst],
+            ['best'] + ['median'] * len(middle) + ['worst'])
 
 
 def _rel_misfit_per_obs(spectral, *, keys=None):
@@ -446,6 +479,88 @@ def _rel_misfit_per_obs(spectral, *, keys=None):
             g['value'].to_numpy(dtype=float), g['obs'].to_numpy(dtype=float)))
     return {k: float(np.nanmedian(v)) if np.isfinite(v).any() else np.nan
             for k, v in out.items()}
+
+
+def accuracy_spectrum_data(metrics_spectral, component, *, metric='mae',
+                           dataset=None, fit_method='chisq', stratum='all',
+                           min_n=1):
+    """Accuracy **as a function of wavelength**, per algorithm, for one component.
+
+    ``metrics_spectral`` already carries one row per
+    ``(dataset, algorithm, fit_method, stratum, component, wavelength)`` — the whole
+    table was computed and persisted but never read by the report layer, so the
+    figure an ocean-colour reader looks for first (how a retrieval's error varies
+    across the spectrum) was not being drawn from data we already had.
+
+    Returns ``dict(component, metric, series, perfect)`` where ``series`` maps
+    algorithm to ``dict(wave, value, n)`` sorted by wavelength, and ``perfect`` is
+    the metric's perfect value (0 for the multiplicative errors, 1 for
+    ``median_ratio``) so the panel can draw the right reference line. Rows with
+    ``n < min_n`` or a non-finite metric are dropped: a band nobody scored must not
+    be drawn as a point at zero error.
+    """
+    out = {'component': component, 'metric': metric, 'series': {},
+           'perfect': metrics.perfect_value(metric)}
+    ms = metrics_spectral
+    if ms is None or getattr(ms, 'empty', True):
+        return out
+    need = {'component', 'wavelength', 'algorithm', metric}
+    if not need <= set(ms.columns):
+        return out
+    sub = ms[ms['component'] == component]
+    if dataset is not None and 'dataset' in sub.columns:
+        sub = sub[sub['dataset'] == dataset]
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    if stratum is not None and 'stratum' in sub.columns:
+        sub = sub[sub['stratum'] == stratum]
+    if 'n' in sub.columns:
+        sub = sub[sub['n'].fillna(0) >= min_n]
+    sub = sub[np.isfinite(sub[metric].to_numpy(dtype=float))]
+    if sub.empty:
+        return out
+    for algo, g in sub.groupby('algorithm', sort=True):
+        g = g.sort_values('wavelength')
+        out['series'][str(algo)] = {
+            'wave': g['wavelength'].to_numpy(dtype=float),
+            'value': g[metric].to_numpy(dtype=float),
+            'n': (g['n'].to_numpy(dtype=float) if 'n' in g
+                  else np.full(len(g), np.nan)),
+        }
+    return out
+
+
+def scored_components(metrics_spectral, *, dataset=None, fit_method='chisq',
+                      stratum='all', metric='mae', min_waves=1):
+    """Components whose accuracy varies over enough bands to plot, best-covered first.
+
+    Returns ``[(component, n_waves, n_algos)]``. ``min_waves`` is the point of it: a
+    component scored at a *single* wavelength cannot show a spectral shape, so
+    plotting it as one lone marker per algorithm invites a reader to see a trend
+    that is not there.
+    """
+    ms = metrics_spectral
+    if ms is None or getattr(ms, 'empty', True):
+        return []
+    if not {'component', 'wavelength', 'algorithm', metric} <= set(ms.columns):
+        return []
+    sub = ms
+    if dataset is not None and 'dataset' in sub.columns:
+        sub = sub[sub['dataset'] == dataset]
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    if stratum is not None and 'stratum' in sub.columns:
+        sub = sub[sub['stratum'] == stratum]
+    if 'n' in sub.columns:
+        sub = sub[sub['n'].fillna(0) > 0]
+    sub = sub[np.isfinite(sub[metric].to_numpy(dtype=float))]
+    if sub.empty:
+        return []
+    agg = sub.groupby('component').agg(n_waves=('wavelength', 'nunique'),
+                                       n_algos=('algorithm', 'nunique'))
+    agg = agg[agg['n_waves'] >= int(min_waves)]
+    agg = agg.sort_values(['n_waves', 'n_algos'], ascending=False)
+    return [(str(c), int(r.n_waves), int(r.n_algos)) for c, r in agg.iterrows()]
 
 
 def corner_data(chain_file):

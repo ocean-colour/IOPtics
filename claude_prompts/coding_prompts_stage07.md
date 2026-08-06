@@ -361,6 +361,32 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 8:**
+
+- **Should the accuracy-vs-wavelength figure default to `mae`, or show more than one
+  metric?** It is built for any column of `metrics_spectral` (`mae`, `bias`,
+  `median_ratio`, `rms_log`, `coverage68/95`) but the page draws only `mae`. The
+  candidate second panel-set is **coverage vs wavelength** — whether an algorithm's
+  uncertainty is honest *per band* rather than only at the reference band, which is
+  where over-confidence tends to hide. Cheap to add (one more call); the cost is page
+  length. My lean is to add coverage once a sweep with real spectral truth exists,
+  since on GLORIA neither renders.
+>A. Add coverage once a sweep with real spectral truth exists.
+
+- **Is `min_waves = 2` the right floor for calling something a spectrum?** Two bands
+  draw a line segment, which is technically a spectrum and arguably still misleading;
+  3-4 would be a more honest minimum for the word. On GLORIA it makes no difference
+  (there is 1). Say if you want it raised before the first L23 sweep lands.
+>A. Let's use 5
+
+- **`unknown` is published as a trophic stratum.** 27 of GLORIA's 100 observations have
+  neither truth nor retrieved Chl, so they form a real population that I show rather
+  than drop — dropping it would make the strata look complete when they are not. But
+  `unknown` is a *provenance* category, not a water type, and it sits in the same table
+  as three water types. Keep it inline, move it to a footnote, or drop it with a stated
+  count?
+>A. Drop with a stated count.
+
 **New after Task 7:**
 
 - **Is `|log10(χ²ᵥ)|` the fit-quality ranking you want for the exemplars?** I ranked
@@ -516,6 +542,86 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-06 (Stage 7, Task 8: the three discarded slices)
+
+**The blunt summary first: of the three slices, only one has content on the data we
+have.** I had a Fable subagent audit that before building anything, because three
+figures that all render "no data" would have been the wrong deliverable.
+
+| slice | on `gloria_turbid_v3` | why |
+|---|---|---|
+| accuracy vs wavelength | **empty** | 16 of 28 080 `metrics_spectral` rows are non-empty: GLORIA's only spectral truth is `a_cdom440`, mapped onto `a_dg` at **one** wavelength |
+| per trophic stratum | **real, and it is the finding** | Chl truth on 73 of 100 obs → eutrophic 66 / unknown 27 / mesotrophic 7 |
+| χ² vs MCMC | **empty** | one sweep exists on this laptop and it is χ²-only; `chains/` is empty |
+
+All three are built and wired anyway — the code is right and the *data* is the wall, so
+they fill in the moment a sweep provides the input. What matters is that the two empty
+ones are **suppressed with a specific reason** rather than published blank.
+
+**What per-stratum actually says.** The pooled retrieval success of 21% is a blend of
+**mesotrophic 86% (n=7) and eutrophic 14% (n=66)**; median χ²ᵥ runs 0.18 → 2.28 across
+the bins, `mae` 1.41 → 0.96, and the coverage verdict flips to **over-confident for all
+four algorithms in mesotrophic only**. Pooling hid a regime change, which is exactly the
+argument for the slice.
+
+**New code.** `diagnostics.accuracy_spectrum_data` / `scored_components`;
+`plotting.accuracy_spectrum` / `accuracy_spectrum_grid` (small multiples, one panel per
+component, all algorithms overlaid, a dashed rule at the metric's perfect value);
+`metrics.with_strata` / `perfect_value` / `PERFECT_VALUE` / `NOMINAL_COVERAGE`;
+`figures.scored_components` / `strata` / `fit_methods` planners and an
+`accuracy_spectrum` builder; `figures.dbic_cdf(by=)`; `tables.fit_method_compare`; four
+new sections in `standard.build()`.
+
+**`min_waves=2` is the load-bearing decision.** A component scored at a single
+wavelength is not a spectrum, and four markers at 440 nm under an "accuracy vs
+wavelength" heading would invite a reader to see a trend that does not exist. So the
+planner refuses it and the page says why, naming the component and the single band.
+
+**Four defects, all found by attacking the new work rather than by reading it:**
+
+1. **`dbic_cdf(by='stratum')` raised `KeyError: 'stratum'`.** The parameter had existed
+   since Stage 2 while the column never has: `compute` derives `stratum` in memory and
+   writes it only onto `metrics_*`, so the frame the caller holds
+   (`results_scalar`) cannot be grouped by it. Fixed with a public
+   `metrics.with_strata`, binning by the same truth-Chl-then-retrieved-Chl rule, so a
+   stratified contest bins identically to every published per-stratum number.
+2. **The ΔBIC figure and the ΔBIC table disagreed by 5x on the same page.** `compute`
+   scores the pairwise contest over status-filtered rows (**n = 21**) while
+   `figures.dbic_cdf` passed raw `results_scalar` (**n = 100**). A `fit_failed` row's
+   BIC is not a model-selection statement, so `metrics.dbic_cdf` now filters on
+   `SCORE_STATUSES` itself (`statuses=None` opts out). Figure and table now both say 21.
+3. **`qc`'s `frac_not_ok` was not stratum-scoped** while its closure block was — so the
+   first per-stratum QC table I emitted published `frac_not_ok` 0.79 beside `frac_ok`
+   0.857, summing to **1.65**. Now the complement of the stratum-scoped `frac_ok`, so
+   the two are one population by construction; every stratum sums to 1.0.
+4. **`coverage68`'s "perfect" reference line was drawn at 0** — its *worst* possible
+   value — because I keyed the perfect value off `median_ratio` alone. Now from a single
+   `metrics.PERFECT_VALUE` map, with `tables.NOMINAL_COVERAGE` aliased to it so the
+   tables' verdicts and the figures' reference lines cannot drift. An unrecognised
+   metric now draws **no** line rather than asserting one at zero.
+
+**Also fixed, from the recon:** `build_algorithm_profile`'s accuracy table listed rows
+from up to four strata with **no `stratum` column**, so four rows of the same
+(dataset, component, ref_wave) read as duplicates disagreeing with each other. The
+column is published now, with a note that a pooled row and its bins are not independent
+results.
+
+**Tests + verification.** `ioptics/tests/test_slices.py` — 19 tests, including that a
+band nobody scored is not drawn at the perfect value, that a single-band component is
+not offered as a spectrum, that `frac_ok`/`frac_not_ok` are complements in every
+stratum, that the stratified ΔBIC bins the same way the tables do, and that both empty
+slices are suppressed *with* an explanation. One pre-existing assertion in
+`test_report_selection.py` was rescoped: it checked `'no data' not in txt` and now
+matched the honest "Not shown" boilerplate, so it is scoped to the page body above that
+note. **414 passed** with data (was 395), **376 passed / 38 skipped** CI-equivalent,
+clean `sphinx -W` **exit 0** on a fresh tree.
+
+**Known gap I did not close:** `standard.build()` hard-codes the χ² CSV filenames
+(`accuracy_chisq_<stratum>.csv`), so a page can only ever include the χ² tables even
+once MCMC rows exist. The comparison table covers the cross-method view, but the
+per-method tables would need the filename parameterised — it belongs with Task 9's
+provenance work, which touches the same call sites.
 
 ### 2026-08-06 (Stage 7, Task 7: exemplar-fits page + wiring the unused builders)
 
@@ -685,6 +791,20 @@ test's own docstring already admitted the order dependence. Pinned with an expli
 CI-equivalent, clean `sphinx -W` **exit 0** with zero warnings on a fresh tree, and the
 GLORIA page regenerated (the renamed closure figures pruned their old names correctly).
 `test_exemplars.py` is now 32 tests.
+
+#### Follow-up: your three Task-7 answers applied (2026-08-06)
+
+Two needed no code (exemplars keep ignoring `status`; the fixed count of 10 stays). The
+third did: **"worst" now means the largest χ²ᵥ**, while the *selection* still ranks by
+distance from χ²ᵥ = 1. The two differ whenever the over-fit tail reaches further from 1
+than the under-fit one — χ²ᵥ = 0.001 is three decades below 1, χ²ᵥ = 100 only two above
+— and before this change that sweep's "worst" panel was the *over-fit* one.
+`diagnostics._worst_slot` picks the largest-χ²ᵥ row and `_exemplar_slots` backfills the
+median window when that row falls inside it, so the panel count and role uniqueness are
+unchanged. The page prose now states both halves of the rule explicitly. Three new
+tests, including the case where the largest χ²ᵥ sits mid-ranking. **The GLORIA page is
+unchanged** — its worst was already the largest χ²ᵥ (222.6), which is why the ambiguity
+was invisible there. 395 passed.
 
 ### 2026-08-05 (Stage 7, Task 6: profile pages + coverage matrix + glossary)
 

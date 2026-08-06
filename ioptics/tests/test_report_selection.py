@@ -129,8 +129,11 @@ def test_page_sections_follow_the_data(tmp_path):
     assert f'Retrieved vs. true — {comp}({ref:g})' in txt
     assert f'Ratio distribution — {comp}({ref:g})' in txt      # paired, per JXP
     assert 'Model selection' in txt
-    # nothing blank was published
-    assert 'no data' not in txt
+    # Nothing blank was published. Scoped to the body above the honest "Not shown"
+    # note, whose standing prose legitimately contains the words "no data behind it"
+    # — the phrase this guards against is a *figure* published with nothing in it.
+    body = txt.split('Not shown for this sweep')[0]
+    assert 'no data' not in body
     report_dir = out.parent
     assert not list(report_dir.glob('scatter_a_412.png'))
     # the ΔBIC figure names the pair that actually ran

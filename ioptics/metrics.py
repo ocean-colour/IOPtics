@@ -267,13 +267,22 @@ def delta_bic(bic_a, bic_b):
 
 def dbic_cdf(df, model_a, model_b, *, by=None, fit_method='chisq',
              bic_col='BIC', algo_col='algorithm',
-             keys=('dataset', 'obs_id')):
+             keys=('dataset', 'obs_id'), statuses=SCORE_STATUSES):
     """Per-spectrum ΔBIC contest between two algorithms, as a CDF.
 
     Pairs ``model_a`` vs ``model_b`` rows of ``results_scalar`` on the common
     spectrum keys (``dataset``, ``obs_id``) **like-for-like** within a single
     ``fit_method`` (default ``'chisq'``, since ``expb_pow`` is χ²-only), and
     computes ΔBIC = ``BIC(model_a) - BIC(model_b)`` per matched spectrum.
+
+    Restricted to rows whose ``status`` is in ``statuses`` (default
+    :data:`SCORE_STATUSES`), for the same reason every other reduction is: a
+    ``fit_failed`` or ``poor_fit`` row is not a solution, and its BIC is not a
+    statement about model complexity. This also makes the figure agree with the
+    table — :func:`compute` scores the pairwise ΔBIC over status-filtered rows, so
+    an unfiltered caller published ``n = 100`` for the contest whose
+    ``metrics_pairwise`` row said ``n = 21``, on the same page. Pass
+    ``statuses=None`` to score every row.
 
     Returns ``dict(dbic, cdf, n, frac_favor_a, frac_favor_b)`` where ``dbic`` is
     sorted ascending, ``cdf`` is the matching empirical CDF in ``[0, 1]``,
@@ -283,13 +292,16 @@ def dbic_cdf(df, model_a, model_b, *, by=None, fit_method='chisq',
     """
     if fit_method is not None and 'fit_method' in df.columns:
         df = df[df['fit_method'] == fit_method]
+    if statuses is not None:
+        df = _scored(df, statuses)
 
     if by is not None:
         out = {}
         for stratum, sub in df.groupby(by):
             out[stratum] = dbic_cdf(sub, model_a, model_b, by=None,
                                     fit_method=None, bic_col=bic_col,
-                                    algo_col=algo_col, keys=keys)
+                                    algo_col=algo_col, keys=keys,
+                                    statuses=None)
         return out
 
     a = df[df[algo_col] == model_a][list(keys) + [bic_col]]
@@ -791,6 +803,51 @@ def _scoped(df):
     reduction (design: every scalar metric computed overall **and** per bin).
     """
     return pd.concat([df.assign(stratum='all'), df], ignore_index=True)
+
+
+#: Nominal coverage per credible level — what a *calibrated* uncertainty would hit.
+NOMINAL_COVERAGE = {'coverage68': 0.68, 'coverage95': 0.95}
+
+#: The value each published metric takes for a perfect retrieval. Kept in one place
+#: because the metrics genuinely disagree — the multiplicative errors are perfect at
+#: 0, ``median_ratio`` at 1, and the coverages at their **nominal level** — and a
+#: figure that draws a "perfect" reference line has to draw the right one. An
+#: accuracy-vs-wavelength panel of ``coverage68`` was drawing its reference at 0,
+#: which is the *worst* possible value, not the best.
+PERFECT_VALUE = {
+    'mae': 0.0, 'bias': 0.0, 'abs_bias': 0.0, 'rms_log': 0.0,
+    'median_ratio': 1.0, **NOMINAL_COVERAGE,
+}
+
+
+def perfect_value(metric):
+    """The perfect value for ``metric``, or ``None`` if we do not know one.
+
+    ``None`` rather than a guess of 0.0: an unrecognised metric with a reference line
+    drawn at zero asserts something we have not established.
+    """
+    return PERFECT_VALUE.get(str(metric))
+
+
+def with_strata(scalar_df):
+    """``results_scalar`` plus a ``stratum`` column, for stratified reductions.
+
+    ``stratum`` is **not persisted**: :func:`compute` derives it in memory and writes
+    it only onto the ``metrics_*`` tables. So a caller holding ``results_scalar`` —
+    which is what :func:`dbic_cdf` takes — cannot group by it, and
+    ``dbic_cdf(..., by='stratum')`` raised ``KeyError: 'stratum'`` despite the
+    parameter existing. This attaches it using the same truth-Chl-then-retrieved-Chl
+    rule the metrics tables use, so a stratified ΔBIC contest bins identically to
+    every published per-stratum number.
+
+    Returns the frame unchanged if it already carries ``stratum`` or is empty.
+    """
+    if scalar_df is None or scalar_df.empty or 'stratum' in scalar_df.columns:
+        return scalar_df
+    if not {'dataset', 'obs_id'} <= set(scalar_df.columns):
+        return scalar_df
+    return scalar_df.merge(_strata_map(scalar_df), on=['dataset', 'obs_id'],
+                           how='left')
 
 
 def _caveat(dataset, component):

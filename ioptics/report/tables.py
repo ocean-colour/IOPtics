@@ -32,7 +32,9 @@ _CONTEST_KEY = ['dataset', 'algorithm', 'component', 'ref_wave']
 _ROUND = 4
 
 #: Nominal coverage per level — the value a *calibrated* uncertainty would hit.
-NOMINAL_COVERAGE = {'coverage68': 0.68, 'coverage95': 0.95}
+#: Aliased from :mod:`ioptics.metrics` so the tables' verdicts and the figures'
+#: reference lines cannot drift apart.
+NOMINAL_COVERAGE = metrics.NOMINAL_COVERAGE
 
 #: How many binomial standard errors a coverage may miss its nominal target by
 #: before the table flags it. 2σ ≈ 95% confidence that the miss is real, so a
@@ -288,6 +290,74 @@ def head_to_head(sweep, *, fit_method='chisq', stratum='all', root=None,
     return out
 
 
+#: Columns compared side by side between fit methods. Accuracy first, then the
+#: **calibration** pair — which is the interesting axis: a χ² fit reports the
+#: curvature of the likelihood at one point, MCMC samples the posterior, and the
+#: question a reader has is whether the sampler's wider intervals are also more
+#: honest ones.
+_FIT_COMPARE_COLS = ('n', 'mae', 'bias', 'median_ratio',
+                     'coverage68', 'coverage95', 'coverage_n')
+
+#: Fit-quality columns taken from the closure row rather than the accuracy row.
+_FIT_COMPARE_CLOSURE = ('chi2_nu_median', 'rel_misfit_median', 'frac_ok',
+                        'n_attempted')
+
+
+def fit_method_compare(sweep, *, stratum='all', root=None, write=True,
+                       methods=('chisq', 'mcmc')):
+    """χ² against MCMC for the algorithms fitted **both** ways, side by side.
+
+    ``metrics_*`` has carried ``fit_method`` as a grouping key since Stage 2, so both
+    populations are scored in parallel and nothing ever compared them. The comparison
+    is only meaningful like-for-like, so it is restricted to the ``(dataset,
+    algorithm, component, ref_wave)`` contests present under *both* methods.
+
+    Returns a wide frame with ``<col>_chisq`` / ``<col>_mcmc`` pairs plus ``d_mae``
+    (mcmc − chisq; negative means MCMC is more accurate). Empty when the sweep has
+    only one fit method — which is every sweep run so far, so callers must check.
+    """
+    sweep = figures.resolve(sweep, root)
+    ms = _require(sweep.metrics_scalar, 'metrics_scalar')
+    a, b = methods
+    have = set(ms['fit_method'].unique()) if 'fit_method' in ms.columns else set()
+    if not {a, b} <= have:
+        return pd.DataFrame()
+
+    acc = ms[(ms['stratum'] == stratum) & ms['ref_wave'].notna()]
+    closure = ms[(ms['stratum'] == stratum) & (ms['component'] == 'Rrs')]
+
+    frames = []
+    for method in (a, b):
+        part = acc[acc['fit_method'] == method]
+        cols = [c for c in _FIT_COMPARE_COLS if c in part.columns]
+        part = part[_CONTEST_KEY + cols].rename(
+            columns={c: f'{c}_{method}' for c in cols})
+        cl = closure[closure['fit_method'] == method]
+        ccols = [c for c in _FIT_COMPARE_CLOSURE if c in cl.columns]
+        if ccols:
+            on = [k for k in ('dataset', 'algorithm') if k in cl.columns]
+            part = part.merge(
+                cl[on + ccols].rename(
+                    columns={c: f'{c}_{method}' for c in ccols}),
+                on=on, how='left')
+        frames.append(part)
+
+    out = frames[0].merge(frames[1], on=_CONTEST_KEY, how='inner')
+    if out.empty:
+        return out
+    if f'mae_{a}' in out.columns and f'mae_{b}' in out.columns:
+        out['d_mae'] = (out[f'mae_{b}'].astype(float)
+                        - out[f'mae_{a}'].astype(float))
+    out = out.sort_values(_CONTEST_KEY).reset_index(drop=True)
+    out = out.rename(columns={f'n_{a}': f'n_pairs_{a}', f'n_{b}': f'n_pairs_{b}'})
+    out = _publishable(out)
+    if write:
+        path = (figures.subdir(sweep, 'tables')
+                / f'fit_method_compare_{stratum}.csv')
+        out.to_csv(path, index=False)
+    return out
+
+
 def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     """Per-algorithm QC summary: non-solution rate + §2 closure fractions.
 
@@ -314,6 +384,25 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     ms = _require(sweep.metrics_scalar, 'metrics_scalar')
     closure = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
                  & (ms['component'] == 'Rrs')]
+
+    # ``frac_not_ok`` above counts every row of the algorithm, but the closure block
+    # is scoped to ``stratum`` — so on a per-stratum table the two disagreed: GLORIA's
+    # mesotrophic rows published ``frac_not_ok`` 0.79 (whole sweep) beside ``frac_ok``
+    # 0.857 (that stratum), which sum to 1.65. Take the complement of the
+    # stratum-scoped ``frac_ok`` instead, so the two are the same population by
+    # construction; the all-rows computation stays as the fallback for a sweep whose
+    # metrics predate the per-status coverage block.
+    if 'frac_ok' in closure.columns and not closure.empty:
+        scoped = closure[by + ['frac_ok']].copy()
+        scoped['frac_not_ok'] = 1.0 - scoped['frac_ok'].astype(float)
+        not_ok = (not_ok.drop(columns=['frac_not_ok'])
+                        .merge(scoped.drop(columns=['frac_ok']), on=by, how='left'))
+        # a group with no closure row keeps the unscoped estimate rather than NaN
+        fallback = (sc.assign(_bad=sc['status'].ne('ok'))
+                      .groupby(by)['_bad'].mean().rename('_fb').reset_index())
+        not_ok = not_ok.merge(fallback, on=by, how='left')
+        not_ok['frac_not_ok'] = not_ok['frac_not_ok'].fillna(not_ok['_fb'])
+        not_ok = not_ok.drop(columns=['_fb'])
     cols = [c for c in tuple(by) + ('n_attempted', 'n', 'chi2_nu_median',
                                     'rel_misfit_median', 'rel_misfit_median_all',
                                     'frac_good', 'frac_overfit', 'frac_underfit',

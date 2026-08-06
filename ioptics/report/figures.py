@@ -236,12 +236,124 @@ def taylor_target(sweep, component='a', *, ref=None, fit_method='chisq',
     return paths
 
 
-def dbic_cdf(sweep, *, model_a='expb_pow', model_b='giop', root=None):
-    """ΔBIC CDF for the two-model contest (χ²-only, like-for-like)."""
+def dbic_cdf(sweep, *, model_a='expb_pow', model_b='giop', by=None, root=None):
+    """ΔBIC CDF for the two-model contest (χ²-only, like-for-like).
+
+    ``by`` splits the contest by a column (``'stratum'``), drawing one step curve per
+    group — "does the extra complexity pay *in turbid water*" is a different question
+    from "does it pay overall", and the pooled curve can hide a reversal.
+    """
     sweep = resolve(sweep, root)
-    data = diagnostics.dbic_cdf_data(sweep.scalar, model_a, model_b)
+    scalar = sweep.scalar
+    if by == 'stratum':
+        # ``stratum`` lives only on the metrics tables, so it must be attached to
+        # ``results_scalar`` before grouping — binned by the same rule.
+        scalar = metrics.with_strata(scalar)
+    data = diagnostics.dbic_cdf_data(scalar, model_a, model_b, by=by)
     fig = plotting.dbic_cdf(data)
-    return _save(fig, _figdir(sweep), f'dbic_cdf_{model_a}_vs_{model_b}')
+    tag = f'dbic_cdf_{model_a}_vs_{model_b}' + (f'_by_{by}' if by else '')
+    return _save(fig, _figdir(sweep), tag)
+
+
+# --------------------------------------------------------------------------- #
+# the three slices metrics_spectral / stratum / fit_method make possible
+# --------------------------------------------------------------------------- #
+
+def scored_components(sweep, *, metric='mae', fit_method='chisq', stratum='all',
+                      min_waves=2, root=None):
+    """Planner: components with accuracy at ``min_waves`` or more bands.
+
+    ``min_waves=2`` by default because a component scored at a *single* wavelength
+    (GLORIA's ``a_dg`` at 440 nm is the only thing that sweep scores) has no spectral
+    shape to show, and one marker per algorithm under an "accuracy vs wavelength"
+    heading invites a reader to see a trend that is not there.
+    """
+    sweep = resolve(sweep, root)
+    ds = _sole_dataset(sweep)
+    return diagnostics.scored_components(
+        sweep.metrics_spectral, dataset=ds, fit_method=fit_method,
+        stratum=stratum, metric=metric, min_waves=min_waves)
+
+
+def _sole_dataset(sweep):
+    """The sweep's dataset when it has exactly one, else ``None`` (do not filter)."""
+    sc = sweep.scalar
+    if sc is None or sc.empty or 'dataset' not in sc.columns:
+        return None
+    names = sc['dataset'].dropna().unique()
+    return str(names[0]) if len(names) == 1 else None
+
+
+def accuracy_spectrum(sweep, *, components=None, metric='mae',
+                      fit_method='chisq', stratum='all', ncols=2,
+                      min_waves=2, root=None):
+    """Accuracy vs wavelength, one panel per component, all algorithms overlaid.
+
+    The figure an ocean-colour reader looks for first, and the one
+    ``metrics_spectral`` was computed and persisted for since Stage 2 without ever
+    being read by the report layer. Returns ``[]`` when no component is scored at
+    enough bands to have a spectral shape.
+    """
+    sweep = resolve(sweep, root)
+    ds = _sole_dataset(sweep)
+    if components is None:
+        components = [c for c, _, _ in scored_components(
+            sweep, metric=metric, fit_method=fit_method, stratum=stratum,
+            min_waves=min_waves)]
+    if not components:
+        return []
+    panels = [diagnostics.accuracy_spectrum_data(
+        sweep.metrics_spectral, c, metric=metric, dataset=ds,
+        fit_method=fit_method, stratum=stratum) for c in components]
+    fig = plotting.accuracy_spectrum_grid(panels, ncols=ncols)
+    tag = f'accuracy_vs_wavelength_{metric}'
+    if stratum not in (None, 'all'):
+        tag += f'_{stratum}'
+    return _save(fig, _figdir(sweep), tag)
+
+
+def strata(sweep, *, fit_method='chisq', include_all=False, min_n=1, root=None):
+    """Planner: the strata this sweep actually has scored content for.
+
+    Returns ``[(stratum, n_pairs, n_attempted)]`` ordered by ``n_pairs`` descending.
+    ``'all'`` is excluded by default — it is the pooled row every page already shows,
+    and the point of a per-stratum section is what the pooling hides. ``'unknown'``
+    *is* included when it carries data: on a dataset with patchy Chl truth it is a
+    real population, and silently dropping it would make the strata look complete.
+    """
+    sweep = resolve(sweep, root)
+    ms = sweep.metrics_scalar
+    if ms is None or getattr(ms, 'empty', True) or 'stratum' not in ms.columns:
+        return []
+    sub = ms
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    out = []
+    for stratum, g in sub.groupby('stratum', sort=False):
+        if not include_all and stratum == 'all':
+            continue
+        acc = g[g['ref_wave'].notna()] if 'ref_wave' in g else g
+        n_pairs = float(acc['n'].fillna(0).max()) if 'n' in acc and not acc.empty else 0.0
+        closure = g[g['component'] == 'Rrs'] if 'component' in g else g
+        n_att = (float(closure['n_attempted'].fillna(0).max())
+                 if 'n_attempted' in closure and not closure.empty else 0.0)
+        if max(n_pairs, n_att) >= min_n:
+            out.append((str(stratum), int(n_pairs), int(n_att)))
+    return sorted(out, key=lambda t: (-t[1], -t[2], t[0]))
+
+
+def fit_methods(sweep, *, root=None, min_rows=1):
+    """Planner: the fit methods present, with their scored row counts.
+
+    Returns ``[(fit_method, n_rows)]``. A χ²-vs-MCMC comparison needs two, and every
+    sweep run so far has exactly one — so the report layer must ask rather than assume.
+    """
+    sweep = resolve(sweep, root)
+    sc = sweep.scalar
+    if sc is None or sc.empty or 'fit_method' not in sc.columns:
+        return []
+    counts = sc['fit_method'].value_counts()
+    return [(str(k), int(v)) for k, v in counts.items() if int(v) >= min_rows]
 
 
 # --------------------------------------------------------------------------- #

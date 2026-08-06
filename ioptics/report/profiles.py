@@ -381,19 +381,34 @@ def build_algorithm_profile(name, *, docs_root=None, runs_root=None, root=None,
                     render_coverage_matrix(matrix[matrix['algorithm'] == name])),
     ]
     if not scored.empty:
+        # ``stratum`` is part of the contest key, so the board carries one row per
+        # trophic bin *and* the pooled 'all' row. Without the column the table
+        # interleaved up to four strata's numbers with nothing saying which was
+        # which — four rows of the same (dataset, component, ref_wave) that looked
+        # like duplicates disagreeing with each other.
+        n_strata = (int(scored['stratum'].nunique())
+                    if 'stratum' in scored.columns else 1)
+        note = ''
+        if n_strata > 1:
+            note = (f'One row per contest **and trophic stratum** — ``all`` is the '
+                    f'pooled population, the others its Chl bins '
+                    f'(:data:`ioptics.metrics.CHL_BINS`), so a pooled row and its '
+                    f'bins are not independent results. This algorithm has rows in '
+                    f'{n_strata} strata.\n\n')
         blocks.append(rst.section(
             'Accuracy, by dataset and contest',
-            _list_table(scored, ['dataset', 'component', 'ref_wave', 'fit_method',
-                                 'rank', 'ranking', 'mae', 'bias', 'win_frac',
-                                 'frac_ok', 'caveat'],
-                        f'{name} — scored contests')))
+            note + _list_table(
+                scored, ['dataset', 'component', 'ref_wave', 'stratum',
+                         'fit_method', 'rank', 'ranking', 'mae', 'bias',
+                         'win_frac', 'frac_ok', 'caveat'],
+                f'{name} — scored contests')))
         blocks.append(rst.section(
             'Are its uncertainties honest?',
             'A retrieval can be the most accurate and still be over-confident: '
             'the verdict compares empirical coverage with its nominal 0.68 / 0.95 '
             'target, and *consistent* means "not distinguishable from nominal at '
             'this sample size" rather than "calibrated".\n\n'
-            + _list_table(scored, ['dataset', 'component', 'ref_wave',
+            + _list_table(scored, ['dataset', 'component', 'ref_wave', 'stratum',
                                    'coverage68', 'coverage95', 'coverage_n'],
                           f'{name} — interval calibration')))
     if not pairs.empty:

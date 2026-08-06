@@ -398,6 +398,135 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
                       f'parameters earn their keep. See :doc:`/models`.'),
                 published=published))
 
+    # ---- accuracy as a function of wavelength (cross/per_dataset) --------------
+    # metrics_spectral has been computed and persisted since Stage 2 and read by
+    # nothing; this is the figure an ocean-colour reader looks for first.
+    if kind in ('cross_algorithm', 'per_dataset'):
+        spectral_comps = figures.scored_components(sweep)
+        if spectral_comps:
+            names = ', '.join(f'``{c}``' for c, _, _ in spectral_comps)
+            bands = max(w for _, w, _ in spectral_comps)
+            blocks.append(_fig_section(
+                sweep, report_dir, 'Accuracy vs. wavelength',
+                _pngs(figures.accuracy_spectrum(sweep)),
+                caption=('Fractional multiplicative MAE against wavelength, one '
+                         'panel per component, all algorithms overlaid. The dashed '
+                         'rule is the perfect value (0).'),
+                desc=(f'How each algorithm\'s error varies **across the spectrum**, '
+                      f'for the {len(spectral_comps)} component(s) this sweep scores '
+                      f'at more than one band ({names}; up to {bands} bands). A '
+                      f'retrieval can be accurate in the blue and useless in the red, '
+                      f'which a single reference-band number cannot show — this is '
+                      f'the per-band view of the same ``mae`` the accuracy table '
+                      f'reports at its reference wavelengths. Each algorithm keeps '
+                      f'its colour, marker and linestyle from every other figure.'),
+                published=published))
+        else:
+            single = figures.scored_components(sweep, min_waves=1)
+            why = (f'only {", ".join(f"``{c}``" for c, _, _ in single)} is scored, and '
+                   f'at a single wavelength'
+                   if single else 'no component carries spectral truth')
+            not_shown.append(
+                f'the accuracy-vs-wavelength figure — {why}, so there is no spectral '
+                f'shape to draw. One marker per algorithm under that heading would '
+                f'invite a reader to see a trend that is not there. (GLORIA\'s only '
+                f'spectral truth is ``a_cdom440`` at 440 nm; a dataset like L23, with '
+                f'truth across the band set, fills this in.)')
+
+    # ---- per-stratum slices ---------------------------------------------------
+    # The pooled 'all' row is what every other section shows; the point of this one
+    # is what pooling hides — on GLORIA, mesotrophic water fits 86% of the time and
+    # eutrophic 14%, which the single pooled 21% says nothing about.
+    strata = figures.strata(sweep)
+    if kind in ('cross_algorithm', 'per_dataset'):
+        if not strata:
+            not_shown.append(
+                'the per-stratum breakdown — this sweep resolves only the pooled '
+                '``all`` stratum, which needs Chl truth (or a retrieved Chl) to bin '
+                'observations by trophic state.')
+        else:
+            listed = ', '.join(f'``{s}`` (n_attempted {a})' for s, _, a in strata)
+            blocks.append(rst.section(
+                'Per trophic stratum',
+                f'Observations are binned by chlorophyll into '
+                f'{metrics.CHL_BINS[0][2]} / {metrics.CHL_BINS[1][2]} / '
+                f'{metrics.CHL_BINS[2][2]} '
+                f'(<{metrics.CHL_BINS[0][1]:g}, <{metrics.CHL_BINS[1][1]:g}, '
+                f'≥{metrics.CHL_BINS[1][1]:g} mg m⁻³), preferring truth Chl over '
+                f'retrieved; ``unknown`` is the population with neither. This sweep '
+                f'resolves {listed}. Every table above pools these together, and '
+                f'pooling is what hides a regime change — an algorithm can be '
+                f'usable in one trophic state and not in the next, which is the '
+                f'whole question for a coastal dataset.'))
+            for stratum, n_pairs, n_att in strata:
+                tables.accuracy(sweep, stratum=stratum)
+                tables.qc(sweep, stratum=stratum)
+                blocks.append(_table_section(
+                    sweep, report_dir, f'Accuracy — {stratum}',
+                    tables_dir / f'accuracy_chisq_{stratum}.csv',
+                    f'Ref-band accuracy, {stratum} only.',
+                    desc=(f'The same accuracy columns as the pooled table, over the '
+                          f'``{stratum}`` stratum alone — at most {n_pairs} '
+                          f'retrieval-truth pair(s), from {n_att} attempted spectra. '
+                          f'Columns are defined on the :doc:`/reports/glossary` '
+                          f'page.'),
+                    published=published))
+                blocks.append(_table_section(
+                    sweep, report_dir, f'Quality control — {stratum}',
+                    tables_dir / f'qc_chisq_{stratum}.csv',
+                    f'Fit quality / closure, {stratum} only.',
+                    desc=(f'Retrieval success within ``{stratum}``. ``frac_ok`` and '
+                          f'``frac_not_ok`` are complements over this stratum\'s '
+                          f'{n_att} attempted spectra, so they can be read directly '
+                          f'against the other strata.'),
+                    published=published))
+
+    # ΔBIC split by stratum — "does the extra complexity pay" is a different
+    # question in turbid water than overall, and the pooled curve can hide a reversal.
+    if kind == 'cross_algorithm' and strata:
+        pair2 = figures.dbic_pair(sweep)
+        if pair2 is not None:
+            a2, b2 = pair2
+            blocks.append(_fig_section(
+                sweep, report_dir, 'Model selection by stratum (ΔBIC)',
+                _pngs(figures.dbic_cdf(sweep, model_a=a2, model_b=b2,
+                                       by='stratum')),
+                caption=(f'Per-spectrum ΔBIC, ``{a2}`` vs ``{b2}``, one curve per '
+                         f'trophic stratum.'),
+                desc=(f'The same contest as above, split by trophic stratum. '
+                      f'ΔBIC < 0 favours the more complex ``{a2}``. A pooled curve '
+                      f'can hide a reversal — extra parameters that pay in turbid '
+                      f'water and cost in clear water average out to "no '
+                      f'difference".'),
+                published=published))
+
+    # ---- χ² vs MCMC, where both exist ----------------------------------------
+    methods = figures.fit_methods(sweep)
+    if kind in ('cross_algorithm', 'per_dataset'):
+        fm = tables.fit_method_compare(sweep)
+        if fm.empty:
+            have = ', '.join(f'``{m}`` ({n} rows)' for m, n in methods) or 'none'
+            not_shown.append(
+                f'the χ²-vs-MCMC comparison — it needs the same algorithm fitted '
+                f'both ways on the same spectra, and this sweep carries {have}. '
+                f'``metrics_*`` has scored the two populations in parallel since '
+                f'Stage 2, so the comparison appears here as soon as one sweep runs '
+                f'both.')
+        else:
+            blocks.append(_table_section(
+                sweep, report_dir, 'Least-squares vs MCMC',
+                tables_dir / 'fit_method_compare_all.csv',
+                'The same contests fitted both ways.',
+                desc=('For the contests present under **both** fit methods. '
+                      '``d_mae`` is ``mae(mcmc) − mae(chisq)``, so negative means the '
+                      'sampler is more accurate. The columns worth reading first are '
+                      'the **coverage** pair: χ² reports the curvature of the '
+                      'likelihood at a single point while MCMC samples the posterior, '
+                      'so the question is not only which is more accurate but whether '
+                      'the sampler\'s wider intervals are also the more honest ones — '
+                      'a coverage nearer the nominal 0.68 / 0.95.'),
+                published=published))
+
     # per-algorithm spectra for a curated observation
     if kind == 'per_algorithm':
         obs0 = _curated_obs(sweep)
@@ -751,13 +880,15 @@ _EXEMPLAR_INTRO = (
     'ocean-colour reader asks as soon as a summary statistic looks wrong: *show me a '
     'spectrum where it failed*.\n\n'
     '**How they were chosen.** Fit quality is ranked by distance from '
-    ':math:`\\chi^2_\\nu = 1` in log space, and the page carries the **best**, the '
-    '**worst** and {middle}. Ranking by χ²ᵥ ascending instead '
-    'would name the most *over-fit* spectrum in the sweep the best one: χ²ᵥ below 1 '
-    'means the model is chasing noise, and on GLORIA χ²ᵥ moved by a factor of 5 when '
-    'the assumed error floor changed while the fits themselves did not move at all. '
-    'Both tails are therefore worse than the middle, and every panel prints its own '
-    'χ²ᵥ so you can see which tail it came from (above {chi2_max:g} a fit is not '
+    ':math:`\\chi^2_\\nu = 1` in log space, and the page carries the **best** (the '
+    'fit nearest χ²ᵥ = 1), the **worst** (the *largest* χ²ᵥ, i.e. the most '
+    'under-fit) and {middle}. Ranking the *selection* by χ²ᵥ ascending would name '
+    'the most **over-fit** spectrum in the sweep its best one: χ²ᵥ below 1 means the '
+    'model is chasing noise, and on GLORIA χ²ᵥ moved by a factor of 5 when the '
+    'assumed error floor changed while the fits themselves did not move at all. So '
+    'both tails count as worse than the middle for *choosing* the exemplars — but '
+    '"worst" names the under-fit tail specifically, because that is what the word '
+    'conveys. Every panel prints its own χ²ᵥ (above {chi2_max:g} a fit is not '
     'considered a solution at all). Where several algorithms fit the same '
     'observation it is ranked by their median χ²ᵥ, because the panel shows all of '
     'them at once.\n\n'

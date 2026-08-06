@@ -1,0 +1,5 @@
+dataset,algorithm,frac_not_ok,n_attempted,n_scored,chi2_nu_median,rel_misfit_median,rel_misfit_median_all,frac_good,frac_overfit,frac_underfit,frac_qc_fail,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed
+GLORIA,expb_pow,0.7778,27,6,2.2847,0.0612,0.6063,0.1667,0.1667,0.6667,0.7778,0.2222,0.1111,0.6667,0.0
+GLORIA,expb_pow2,0.7778,27,6,2.2982,0.0605,0.6065,0.1667,0.1667,0.6667,0.7778,0.2222,0.1111,0.6667,0.0
+GLORIA,expb_pow2flat,0.7778,27,6,2.2915,0.0612,0.6063,0.1667,0.1667,0.6667,0.7778,0.2222,0.1111,0.6667,0.0
+GLORIA,expb_powflex,0.7778,27,6,2.2698,0.0616,0.6062,0.1667,0.1667,0.6667,0.7778,0.2222,0.1111,0.6667,0.0

@@ -43,6 +43,8 @@ Where it has been evaluated
 Accuracy, by dataset and contest
 --------------------------------
 
+One row per contest **and trophic stratum** — ``all`` is the pooled population, the others its Chl bins (:data:`ioptics.metrics.CHL_BINS`), so a pooled row and its bins are not independent results. This algorithm has rows in 4 strata.
+
 .. list-table:: expb_pow — scored contests
    :header-rows: 1
    :widths: auto
@@ -50,6 +52,7 @@ Accuracy, by dataset and contest
    * - dataset
      - component
      - ref_wave
+     - stratum
      - fit_method
      - rank
      - ranking
@@ -61,6 +64,7 @@ Accuracy, by dataset and contest
    * - GLORIA
      - a_dg
      - 440
+     - all
      - chisq
      - —
      - sole competitor
@@ -72,6 +76,7 @@ Accuracy, by dataset and contest
    * - GLORIA
      - a_dg
      - 440
+     - eutrophic
      - chisq
      - —
      - sole competitor
@@ -83,6 +88,7 @@ Accuracy, by dataset and contest
    * - GLORIA
      - a_dg
      - 440
+     - mesotrophic
      - chisq
      - —
      - sole competitor
@@ -94,6 +100,7 @@ Accuracy, by dataset and contest
    * - GLORIA
      - a_dg
      - 440
+     - unknown
      - chisq
      - —
      - sole competitor
@@ -115,30 +122,35 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - dataset
      - component
      - ref_wave
+     - stratum
      - coverage68
      - coverage95
      - coverage_n
    * - GLORIA
      - a_dg
      - 440
+     - all
      - 0.417
      - 0.75
      - 12
    * - GLORIA
      - a_dg
      - 440
+     - eutrophic
      - 0.6
      - 0.6
      - 5
    * - GLORIA
      - a_dg
      - 440
+     - mesotrophic
      - 0
      - 0.75
      - 4
    * - GLORIA
      - a_dg
      - 440
+     - unknown
      - 0.667
      - 1
      - 3

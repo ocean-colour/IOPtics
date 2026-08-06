@@ -70,6 +70,51 @@ def test_best_is_nearest_chi2nu_one_not_the_smallest(tmp_path):
     assert over.empty or over.iloc[0]['role'] != 'best'
 
 
+def test_worst_means_largest_chi2nu_not_furthest_from_one(tmp_path):
+    """JXP: rank the selection by distance from 1, but "worst" = the largest χ²ᵥ.
+
+    χ²ᵥ = 0.001 is three decades below 1 while χ²ᵥ = 100 is only two above, so
+    ranking alone would label the *over-fit* panel "worst" — which is not what the
+    word conveys to a reader.
+    """
+    chis = [0.001, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 8.0, 20.0, 100.0]
+    sweep = _sweep(tmp_path, 'ex_worst', chis=chis)
+    picks = figures.exemplars(sweep)
+    worst = picks[picks['role'] == 'worst'].iloc[0]
+    assert worst['chi2_nu'] == 100.0, 'the most under-fit, not the most over-fit'
+    # the deep over-fit outlier has the largest distance from 1 ...
+    assert abs(np.log10(0.001)) > abs(np.log10(100.0))
+    # ... and still must not be the one labelled worst
+    assert not ((picks['role'] == 'worst') & (picks['chi2_nu'] < 1.0)).any()
+    assert picks[picks['role'] == 'best'].iloc[0]['chi2_nu'] == 1.0
+    # roles are unique and the panel count is unchanged
+    assert list(picks['role']).count('worst') == 1
+    assert len(picks) == diagnostics.EXEMPLAR_N
+
+
+def test_worst_is_still_assigned_when_it_falls_mid_ranking(tmp_path):
+    """The largest χ²ᵥ can sit inside the median window; nothing may be lost."""
+    # χ²ᵥ = 30 is the largest, but 0.0001 (4 decades) ranks further from 1
+    chis = [0.0001, 0.001, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0, 3.0, 10.0, 30.0]
+    sweep = _sweep(tmp_path, 'ex_worstmid', chis=chis)
+    picks = figures.exemplars(sweep)
+    assert picks[picks['role'] == 'worst'].iloc[0]['chi2_nu'] == 30.0
+    assert len(picks) == diagnostics.EXEMPLAR_N, 'still ten panels'
+    assert picks['obs_id'].nunique() == len(picks), 'no observation shown twice'
+    assert list(picks['role']).count('best') == 1
+    assert list(picks['role']).count('worst') == 1
+
+
+def test_page_says_worst_means_most_under_fit(tmp_path):
+    _sweep(tmp_path, 'ex_wprose', n=12,
+           chis=[1.0 + 0.3 * i for i in range(12)])
+    docs = _docs(tmp_path)
+    txt = standard.build_exemplars('ex_wprose', root=tmp_path,
+                                   docs_root=docs).read_text()
+    assert 'largest* χ²ᵥ' in txt or '*largest* χ²ᵥ' in txt
+    assert 'under-fit' in txt
+
+
 def test_selection_is_best_worst_and_eight_median(tmp_path):
     sweep = _sweep(tmp_path, 'ex_ten', n=30,
                    chis=[1.0 + 0.5 * i for i in range(30)])
@@ -417,9 +462,10 @@ def test_a_panel_is_not_blended_from_two_datasets(tmp_path):
     out = standard.build_exemplars('ex_md2', root=tmp_path, docs_root=docs)
     txt = out.read_text()
     assert 'dataset' in txt and 'GLORIA' in txt and 'L23' in txt
-    # closure filenames are namespaced, or one dataset overwrites the other's
+    # closure filenames are namespaced, or one dataset overwrites the other's:
+    # both extremes are obs 0, one per dataset, and both files must survive
     names = {p.name for p in (docs / 'reports' / 'ex_md2').glob('closure_*.png')}
-    assert names == {'closure_L23_0.png', 'closure_GLORIA_3.png'}, names
+    assert names == {'closure_L23_0.png', 'closure_GLORIA_0.png'}, names
 
 
 def test_a_corrupt_chain_is_skipped_like_a_missing_one(tmp_path):
