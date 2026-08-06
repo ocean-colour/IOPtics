@@ -51,11 +51,40 @@ def _docs(tmp_path):
     return d
 
 
+#: The shared ``_make_pair`` fixture carries four bands (440/443/555/670), which is
+#: below :data:`ioptics.diagnostics.MIN_SPECTRUM_WAVES` (5, JXP's floor for calling
+#: an accuracy curve a *spectrum*). Rather than weaken the tests to a threshold
+#: nobody ships, these widen the persisted ``metrics_spectral`` to a realistic
+#: hyperspectral grid — which is what a real L23/PACE sweep produces.
+_WIDE_WAVES = (412.0, 440.0, 443.0, 490.0, 510.0, 555.0, 620.0, 670.0)
+
+
+def _widen_spectral(sweep_id, tmp_path, waves=_WIDE_WAVES, slope=0.02):
+    """Re-persist ``metrics_spectral`` across ``waves``, with a real spectral shape.
+
+    ``mae`` gains a wavelength dependence so the figure is testing a curve rather
+    than a flat line — a retrieval that is fine in the blue and poor in the red is
+    the shape this figure exists to reveal. Returns the reloaded sweep.
+    """
+    path = io.sweep_dir(sweep_id, root=tmp_path) / metrics.METRICS_SPECTRAL_FILE
+    ms = pd.read_parquet(path)
+    base = ms[ms['wavelength'] == ms['wavelength'].min()].copy()
+    out = []
+    for i, w in enumerate(waves):
+        part = base.copy()
+        part['wavelength'] = w
+        part['mae'] = part['mae'].astype(float) + slope * i
+        out.append(part)
+    pd.concat(out, ignore_index=True).to_parquet(path, index=False)
+    return figures.load(sweep_id, root=tmp_path)
+
+
 # --------------------------------------------------------------------
 # accuracy vs wavelength
 # --------------------------------------------------------------------
 def test_accuracy_spectrum_reads_the_table_nothing_was_reading(tmp_path):
-    sweep = _sweep(tmp_path, 'sl_acc')
+    _sweep(tmp_path, 'sl_acc')
+    sweep = _widen_spectral('sl_acc', tmp_path)
     data = diagnostics.accuracy_spectrum_data(sweep.metrics_spectral, 'a')
     assert set(data['series']) == {'expb_pow', 'giop'}
     assert data['perfect'] == 0.0
@@ -72,7 +101,8 @@ def test_accuracy_spectrum_reads_the_table_nothing_was_reading(tmp_path):
 
 def test_a_band_nobody_scored_is_not_drawn_as_zero_error(tmp_path):
     """``n = 0`` with a NaN metric must drop out, not plot at the perfect value."""
-    sweep = _sweep(tmp_path, 'sl_zero')
+    _sweep(tmp_path, 'sl_zero')
+    sweep = _widen_spectral('sl_zero', tmp_path)
     ms = sweep.metrics_spectral.copy()
     victim = (ms['component'] == 'a') & (ms['wavelength'] == 555.0)
     ms.loc[victim, ['n', 'mae']] = [0, np.nan]
@@ -94,7 +124,8 @@ def test_single_band_components_are_not_offered_as_a_spectrum(tmp_path):
 
 
 def test_the_grid_survives_one_empty_component(tmp_path):
-    sweep = _sweep(tmp_path, 'sl_grid')
+    _sweep(tmp_path, 'sl_grid')
+    sweep = _widen_spectral('sl_grid', tmp_path)
     good = diagnostics.accuracy_spectrum_data(sweep.metrics_spectral, 'a')
     empty = diagnostics.accuracy_spectrum_data(sweep.metrics_spectral, 'nope')
     assert not empty['series']
@@ -105,6 +136,7 @@ def test_the_grid_survives_one_empty_component(tmp_path):
 
 def test_the_page_draws_it_or_says_why_not(tmp_path):
     _sweep(tmp_path, 'sl_page')
+    _widen_spectral('sl_page', tmp_path)
     docs = _docs(tmp_path)
     txt = standard.build('sl_page', root=tmp_path, docs_root=docs).read_text()
     assert 'Accuracy vs. wavelength' in txt
@@ -270,7 +302,8 @@ def test_the_perfect_line_is_the_metrics_own_perfect_value(tmp_path):
     # the tables' nominal values and the figures' reference lines share one source
     assert tables.NOMINAL_COVERAGE is metrics.NOMINAL_COVERAGE
 
-    sweep = _sweep(tmp_path, 'sl_perfect')
+    _sweep(tmp_path, 'sl_perfect')
+    sweep = _widen_spectral('sl_perfect', tmp_path)
     cov = diagnostics.accuracy_spectrum_data(sweep.metrics_spectral, 'a',
                                              metric='coverage68')
     assert cov['perfect'] == 0.68
@@ -331,6 +364,55 @@ def test_algorithm_profile_names_the_stratum_of_every_row(tmp_path):
     assert 'trophic stratum' in head, 'and the pooled/binned relationship is stated'
     for stratum in ('all', 'eutrophic', 'mesotrophic'):
         assert stratum in head, stratum
+
+
+# --------------------------------------------------------------------
+# JXP's answers to the Task-8 questions
+# --------------------------------------------------------------------
+def test_five_bands_are_needed_before_a_curve_is_called_a_spectrum(tmp_path):
+    """JXP: use 5. Two points joined by a segment is not a spectral shape."""
+    assert diagnostics.MIN_SPECTRUM_WAVES == 5
+    _sweep(tmp_path, 'sl_five')
+    sweep = _widen_spectral('sl_five', tmp_path, waves=(440.0, 490.0, 555.0, 670.0))
+    assert figures.scored_components(sweep) == [], '4 bands is below the floor'
+    sweep = _widen_spectral('sl_five', tmp_path,
+                            waves=(440.0, 490.0, 510.0, 555.0, 670.0))
+    assert [c for c, _, _ in figures.scored_components(sweep)], '5 bands clears it'
+
+
+def test_unknown_is_dropped_from_the_strata_but_its_count_is_stated(tmp_path):
+    """JXP: drop with a stated count.
+
+    ``unknown`` is a provenance category — no Chl truth and no retrieved Chl — not a
+    water type, so it does not belong in a column of trophic bins. Dropping it
+    silently would make the breakdown look complete when it is not.
+    """
+    # obs 4-7 get no Chl at all, so they land in 'unknown'
+    _sweep(tmp_path, 'sl_unk', chl=[0.05, 0.05, 2.0, 2.0,
+                                    np.nan, np.nan, np.nan, np.nan])
+    sweep = figures.load('sl_unk', root=tmp_path)
+    listed = [s for s, _, _ in figures.strata(sweep)]
+    assert figures.UNKNOWN_STRATUM not in listed, 'not a water type'
+    assert figures.UNKNOWN_STRATUM in [
+        s for s, _, _ in figures.strata(sweep, include_unknown=True)]
+    count = figures.unknown_stratum_count(sweep)
+    assert count is not None and count[1] > 0, count
+
+    docs = _docs(tmp_path)
+    txt = standard.build('sl_unk', root=tmp_path, docs_root=docs).read_text()
+    assert 'no chlorophyll at all' in txt
+    assert f'{count[1]} spectra' in txt
+    assert 'Accuracy — unknown' not in txt, 'no table for it'
+    assert not (docs / 'reports' / 'sl_unk' / 'accuracy_chisq_unknown.csv').exists()
+
+
+def test_a_sweep_with_no_unknown_population_says_nothing_about_it(tmp_path):
+    _sweep(tmp_path, 'sl_allchl', chl=[0.05, 0.05, 0.5, 0.5, 2.0, 2.0, 2.0, 2.0])
+    sweep = figures.load('sl_allchl', root=tmp_path)
+    assert figures.unknown_stratum_count(sweep) is None
+    docs = _docs(tmp_path)
+    txt = standard.build('sl_allchl', root=tmp_path, docs_root=docs).read_text()
+    assert 'no chlorophyll at all' not in txt
 
 
 def test_every_slice_is_suppressed_on_an_all_failed_sweep(tmp_path):

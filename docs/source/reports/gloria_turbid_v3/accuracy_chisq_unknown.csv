@@ -1,5 +1,0 @@
-dataset,algorithm,component,ref_wave,ref_match,caveat,n_pairs,bias,abs_bias,mae,rms_log,median_ratio,coverage68,coverage95,coverage_n,mae_rank,abs_bias_rank,rms_log_rank,coverage68_verdict,coverage95_verdict,win_frac,ranking
-GLORIA,expb_pow,a_dg,440,440,CDOM_vs_adg,3,0.6201,0.6201,0.6201,0.2272,1.7289,0.6667,1.0,3,,,,consistent,consistent,0.5556,indistinguishable
-GLORIA,expb_pow2,a_dg,440,440,CDOM_vs_adg,3,0.4787,0.4787,0.6206,0.2353,1.8627,1.0,1.0,3,,,,consistent,consistent,0.6667,indistinguishable
-GLORIA,expb_pow2flat,a_dg,440,440,CDOM_vs_adg,3,0.6567,0.6567,0.6567,0.2377,1.8528,0.6667,1.0,3,,,,consistent,consistent,0.4444,indistinguishable
-GLORIA,expb_powflex,a_dg,440,440,CDOM_vs_adg,3,0.303,0.303,0.7529,0.2477,1.7302,0.3333,1.0,3,,,,consistent,consistent,0.3333,indistinguishable

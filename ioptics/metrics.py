@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 
 from ioptics import io
+from ioptics import provenance
 from ioptics import records
 
 # Erickson (2023) Fig. 4 ratio buckets for M / O (multiplicative agreement).
@@ -829,6 +830,37 @@ def perfect_value(metric):
     return PERFECT_VALUE.get(str(metric))
 
 
+PROVENANCE_COL = 'provenance_id'
+
+
+def _stamp_provenance(df, sweep_id):
+    """Stamp ``provenance_id`` onto a metrics table (``<sweep_id>#<algorithm>``).
+
+    ``results_scalar`` has carried this since Stage 2 and the metrics tables dropped
+    it, so a metrics row could not be traced back to the provenance block that
+    produced it without re-deriving the join by hand. It is a pure function of
+    ``sweep_id`` and ``algorithm``, so stamping it after the reductions cannot change
+    any grouping.
+
+    Pairwise rows naming **two** algorithms (``model_a``/``model_b``) get one id per
+    side rather than a single ambiguous one — a contest is not attributable to one
+    provenance block.
+    """
+    if df is None or df.empty:
+        return df
+    out = df.copy()
+    if 'algorithm' in out.columns:
+        out[PROVENANCE_COL] = [
+            provenance.provenance_id(sweep_id, a) for a in out['algorithm']]
+    for side in ('model_a', 'model_b'):
+        if side in out.columns:
+            suffix = side.split('_')[-1]
+            out[f'{PROVENANCE_COL}_{suffix}'] = [
+                provenance.provenance_id(sweep_id, a) if isinstance(a, str) and a
+                else None for a in out[side]]
+    return out
+
+
 def with_strata(scalar_df):
     """``results_scalar`` plus a ``stratum`` column, for stratified reductions.
 
@@ -1222,6 +1254,10 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
         ignore_index=True)
 
     metrics_pairwise = _pairwise_metrics(ref, scal_scoped, dbic_pair=dbic_pair)
+
+    metrics_spectral = _stamp_provenance(metrics_spectral, sweep_id)
+    metrics_scalar = _stamp_provenance(metrics_scalar, sweep_id)
+    metrics_pairwise = _stamp_provenance(metrics_pairwise, sweep_id)
 
     tables = MetricsTables(metrics_spectral, metrics_scalar, metrics_pairwise)
     if write:

@@ -39,6 +39,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bing
      - ocpy
      - algo_digest
+     - prov_schema
+     - provenance_id
    * - GLORIA
      - a_dg
      - 440
@@ -66,7 +68,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - aae81129
+     - 334d8cd116a0
+     - 0
+     - gloria_turbid_v3#expb_pow2
    * - GLORIA
      - a_dg
      - 440
@@ -94,7 +98,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 48d421f7
+     - 93dc23b31a79
+     - 0
+     - gloria_turbid_v3#expb_powflex
    * - GLORIA
      - a_dg
      - 440
@@ -122,7 +128,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 827e2295
+     - 75f63215deaf
+     - 0
+     - gloria_turbid_v3#expb_pow
    * - GLORIA
      - a_dg
      - 440
@@ -150,7 +158,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 7fc05abc
+     - e2a661294e4a
+     - 0
+     - gloria_turbid_v3#expb_pow2flat
    * - GLORIA
      - a_dg
      - 440
@@ -178,7 +188,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 48d421f7
+     - 93dc23b31a79
+     - 0
+     - gloria_turbid_v3#expb_powflex
    * - GLORIA
      - a_dg
      - 440
@@ -206,7 +218,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - aae81129
+     - 334d8cd116a0
+     - 0
+     - gloria_turbid_v3#expb_pow2
    * - GLORIA
      - a_dg
      - 440
@@ -234,7 +248,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 827e2295
+     - 75f63215deaf
+     - 0
+     - gloria_turbid_v3#expb_pow
    * - GLORIA
      - a_dg
      - 440
@@ -262,7 +278,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 7fc05abc
+     - e2a661294e4a
+     - 0
+     - gloria_turbid_v3#expb_pow2flat
    * - GLORIA
      - a_dg
      - 440
@@ -290,7 +308,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - aae81129
+     - 334d8cd116a0
+     - 0
+     - gloria_turbid_v3#expb_pow2
    * - GLORIA
      - a_dg
      - 440
@@ -318,7 +338,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 48d421f7
+     - 93dc23b31a79
+     - 0
+     - gloria_turbid_v3#expb_powflex
    * - GLORIA
      - a_dg
      - 440
@@ -346,7 +368,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 827e2295
+     - 75f63215deaf
+     - 0
+     - gloria_turbid_v3#expb_pow
    * - GLORIA
      - a_dg
      - 440
@@ -374,7 +398,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 7fc05abc
+     - e2a661294e4a
+     - 0
+     - gloria_turbid_v3#expb_pow2flat
    * - GLORIA
      - a_dg
      - 440
@@ -402,7 +428,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - aae81129
+     - 334d8cd116a0
+     - 0
+     - gloria_turbid_v3#expb_pow2
    * - GLORIA
      - a_dg
      - 440
@@ -430,7 +458,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 827e2295
+     - 75f63215deaf
+     - 0
+     - gloria_turbid_v3#expb_pow
    * - GLORIA
      - a_dg
      - 440
@@ -458,7 +488,9 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 7fc05abc
+     - e2a661294e4a
+     - 0
+     - gloria_turbid_v3#expb_pow2flat
    * - GLORIA
      - a_dg
      - 440
@@ -486,4 +518,6 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0.dev0@c70040c
      - 0.0.dev0@f242b0e
      - da6dff9
-     - 48d421f7
+     - 93dc23b31a79
+     - 0
+     - gloria_turbid_v3#expb_powflex

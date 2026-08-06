@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ioptics import io, metrics
+from ioptics import io, metrics, provenance
 from ioptics.report import figures, leaderboard, rst, tables
 
 #: Where profile pages live under the Sphinx source tree. Chosen so the *results*
@@ -331,7 +331,12 @@ def _what_varied(board, name):
         return ''
     cfg_cols = [c for c in ('algo_digest', 'versions', 'bing', 'ocpy')
                 if c in mine.columns]
-    combos = (mine[['sweep_id'] + cfg_cols].drop_duplicates()
+    # ``prov_schema`` is *shown* but does not enter the "did the configuration vary"
+    # decision: two sweeps recording the same configuration under different schema
+    # versions are still the same configuration, and treating a schema bump as drift
+    # is exactly the false alarm this column exists to prevent.
+    show_cols = cfg_cols + [c for c in ('prov_schema',) if c in mine.columns]
+    combos = (mine[['sweep_id'] + show_cols].drop_duplicates()
                   .dropna(subset=['sweep_id']))
     # Two sweeps that ran the *same* configuration are pooled silently — that is
     # the point of pooling. The warning is only for genuinely different configs,
@@ -342,11 +347,42 @@ def _what_varied(board, name):
             'identically configured — each row below is one distinct persisted\n'
             'algorithm block (``algo_digest``), so numbers from different rows are\n'
             'not strictly like-for-like:\n\n' % name)
+
+    # A digest difference is not always a *configuration* difference. Blocks written
+    # before the provenance schema recorded ``maxfev`` and the MCMC settings
+    # (``prov_schema`` 0 or 1) cannot show a budget that was in fact raised — the
+    # GLORIA sweep ran ``expb_pow`` at ``maxfev=40000`` and its block records
+    # nothing. The digest normalizes missing fields to their defaults so an old sweep
+    # and its re-run still agree, but a mixed-schema comparison is weaker evidence
+    # than a same-schema one and the page has to say which it is.
+    schema_note = ''
+    if 'prov_schema' in mine.columns:
+        schemas = sorted(int(s) for s in mine['prov_schema'].dropna().unique())
+        stale = [s for s in schemas if s < provenance.PROVENANCE_SCHEMA]
+        if stale and len(schemas) > 1:
+            schema_note = (
+                f'\n\n.. note::\n\n   These sweeps were recorded under **different '
+                f'provenance schemas** ({", ".join(str(s) for s in schemas)}; current '
+                f'is {provenance.PROVENANCE_SCHEMA}). A block written under an '
+                f'earlier schema could not record ``maxfev`` or the MCMC settings, so '
+                f'a digest difference here may reflect what was *written down* rather '
+                f'than what was configured — and, in the other direction, two blocks '
+                f'can agree while one of them silently ran a raised iteration '
+                f'budget.\n')
+        elif stale:
+            schema_note = (
+                f'\n\n.. note::\n\n   Recorded under provenance schema '
+                f'{", ".join(str(s) for s in stale)} (current is '
+                f'{provenance.PROVENANCE_SCHEMA}), which did not record ``maxfev`` or '
+                f'the MCMC settings — so these digests cannot distinguish a raised '
+                f'iteration budget from the default.\n')
+
     return rst.section('What varied between sweeps',
                        body + _list_table(combos,
-                                          ['sweep_id', 'algo_digest', 'versions',
-                                           'bing', 'ocpy'],
-                                          'Configurations pooled here'))
+                                          ['sweep_id', 'algo_digest', 'prov_schema',
+                                           'versions', 'bing', 'ocpy'],
+                                          'Configurations pooled here')
+                       + schema_note)
 
 
 _SEE_ALSO = (

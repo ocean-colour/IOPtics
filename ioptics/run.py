@@ -517,7 +517,14 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
         records.extend(recs)
         datasets_info[dataset] = {'n_obs': len(recs)}
 
-    specs = [registry.get(ac.name) for ac in cfg.algorithms]
+    # Per-algorithm overrides are **applied** here, not ignored: a config asking for
+    # `maxfev: 40000` used to run at the registry default while the provenance file
+    # recorded the default too, so nothing revealed that the request had no effect.
+    # An unknown key raises (see AlgorithmSpec.with_overrides), and the provenance
+    # digest is taken from the overridden spec, so an overridden sweep cannot pool
+    # with a default one as "the same algorithm".
+    specs = [registry.get(ac.name).with_overrides(ac.overrides)
+             for ac in cfg.algorithms]
 
     pairs = []
     for ac, spec in zip(cfg.algorithms, specs):

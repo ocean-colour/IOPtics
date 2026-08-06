@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from ioptics import io, metrics
+from ioptics import io, metrics, provenance
 
 LEADERBOARD_FILE = 'leaderboard.parquet'
 
@@ -70,7 +70,7 @@ FULL_COLS = ['dataset', 'component', 'ref_wave', 'stratum', 'fit_method', 'rank'
              'frac_overfit', 'frac_poor_fit', 'frac_out_of_scope',
              'frac_fit_failed', 'chi2_nu_median', 'rel_misfit_median',
              'rel_misfit_median_all', 'caveat', 'versions', 'bing', 'ocpy',
-             'algo_digest']
+             'algo_digest', 'prov_schema', 'provenance_id']
 _RANK_ASC = [False, True, True]
 
 
@@ -115,10 +115,17 @@ def _algorithm_digests(sweep_dir):
     """``{algorithm: digest}`` over each sweep's persisted algorithm block.
 
     Two rows sharing an algorithm *name* are not necessarily the same algorithm —
-    the turbid GLORIA sweep ran ``expb_pow`` with a raised iteration budget, and the
-    recorded block was byte-identical to the default. A digest of the block makes
-    the difference visible as soon as provenance records it (Task 9), and is stable
-    to key ordering.
+    the turbid GLORIA sweep ran ``expb_pow`` with a raised iteration budget while its
+    recorded block was byte-identical to the default, because ``maxfev`` was not
+    recorded at all before Task 9.
+
+    Prefers the digest the **sweep itself** recorded (``block['digest']``, computed at
+    run time from the resolved spec, after any config overrides), falling back to
+    :func:`ioptics.provenance.algorithm_digest` over the block. Both paths now use the
+    same definition — previously this hashed the whole block *including* ``name`` and
+    ``label`` at 8 characters while provenance recorded 12 over the block without
+    them, so the board's ``algo_digest`` could never equal the recorded one and two
+    incompatible "digests" coexisted on disk.
     """
     blocks = _provenance(sweep_dir).get('algorithms') or []
     out = {}
@@ -128,9 +135,23 @@ def _algorithm_digests(sweep_dir):
         name = block.get('name')
         if not name:
             continue
-        payload = json.dumps(block, sort_keys=True, default=str)
-        out[name] = hashlib.md5(payload.encode('utf-8')).hexdigest()[:8]
+        recorded = block.get('digest')
+        out[name] = (str(recorded) if recorded
+                     else provenance.algorithm_digest(block))
     return out
+
+
+def _algorithm_schemas(sweep_dir):
+    """``{algorithm: provenance schema version}`` for each block (0 if unstamped).
+
+    A pre-Task-9 block could not record ``maxfev`` or the MCMC settings, so its digest
+    is a claim about what was *written down*, not about what ran. Carrying the schema
+    lets the profile pages distinguish "these sweeps were configured differently" from
+    "one of these sweeps predates the field that would have shown it".
+    """
+    blocks = _provenance(sweep_dir).get('algorithms') or []
+    return {b['name']: int(b.get('schema', 0))
+            for b in blocks if isinstance(b, dict) and b.get('name')}
 
 
 def _separable(sweep_dir):
@@ -239,8 +260,15 @@ def _fold_sweep(sweep_id, runs_root):
     out['versions'] = stamps['ioptics']
     out['bing'] = stamps['bing']
     out['ocpy'] = stamps['ocpy']
-    out['algo_digest'] = out['algorithm'].map(_algorithm_digests(d)) \
-        if 'algorithm' in out.columns else ''
+    if 'algorithm' in out.columns:
+        out['algo_digest'] = out['algorithm'].map(_algorithm_digests(d))
+        # The schema the digest was computed under, so a cross-sweep comparison can
+        # tell a configuration difference from a provenance-schema difference.
+        out['prov_schema'] = out['algorithm'].map(_algorithm_schemas(d))
+        out['provenance_id'] = [provenance.provenance_id(sweep_id, a)
+                                for a in out['algorithm']]
+    else:
+        out['algo_digest'] = ''
     return out
 
 

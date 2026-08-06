@@ -260,13 +260,14 @@ def dbic_cdf(sweep, *, model_a='expb_pow', model_b='giop', by=None, root=None):
 # --------------------------------------------------------------------------- #
 
 def scored_components(sweep, *, metric='mae', fit_method='chisq', stratum='all',
-                      min_waves=2, root=None):
+                      min_waves=diagnostics.MIN_SPECTRUM_WAVES, root=None):
     """Planner: components with accuracy at ``min_waves`` or more bands.
 
-    ``min_waves=2`` by default because a component scored at a *single* wavelength
-    (GLORIA's ``a_dg`` at 440 nm is the only thing that sweep scores) has no spectral
-    shape to show, and one marker per algorithm under an "accuracy vs wavelength"
-    heading invites a reader to see a trend that is not there.
+    The floor is :data:`ioptics.diagnostics.MIN_SPECTRUM_WAVES` (5, JXP's number)
+    because a component scored at one or two wavelengths has no spectral shape to
+    show — GLORIA's ``a_dg`` at 440 nm is the only thing that sweep scores — and a
+    couple of markers per algorithm under an "accuracy vs wavelength" heading invites
+    a reader to see a trend that is not there.
     """
     sweep = resolve(sweep, root)
     ds = _sole_dataset(sweep)
@@ -312,14 +313,24 @@ def accuracy_spectrum(sweep, *, components=None, metric='mae',
     return _save(fig, _figdir(sweep), tag)
 
 
-def strata(sweep, *, fit_method='chisq', include_all=False, min_n=1, root=None):
+#: The stratum name for observations with neither truth nor retrieved Chl. It is a
+#: **provenance** category, not a water type, so per JXP it is dropped from the
+#: per-stratum tables and its count stated instead — otherwise it sits in the same
+#: column as three real trophic bins and reads as a fourth one.
+UNKNOWN_STRATUM = 'unknown'
+
+
+def strata(sweep, *, fit_method='chisq', include_all=False, min_n=1,
+           include_unknown=False, root=None):
     """Planner: the strata this sweep actually has scored content for.
 
     Returns ``[(stratum, n_pairs, n_attempted)]`` ordered by ``n_pairs`` descending.
     ``'all'`` is excluded by default — it is the pooled row every page already shows,
-    and the point of a per-stratum section is what the pooling hides. ``'unknown'``
-    *is* included when it carries data: on a dataset with patchy Chl truth it is a
-    real population, and silently dropping it would make the strata look complete.
+    and the point of a per-stratum section is what the pooling hides.
+    :data:`UNKNOWN_STRATUM` is excluded too, per JXP: it is a provenance category
+    rather than a water type. Its size is **not** hidden — see
+    :func:`unknown_stratum_count`, which the page states so the strata cannot look
+    complete when they are not.
     """
     sweep = resolve(sweep, root)
     ms = sweep.metrics_scalar
@@ -332,6 +343,8 @@ def strata(sweep, *, fit_method='chisq', include_all=False, min_n=1, root=None):
     for stratum, g in sub.groupby('stratum', sort=False):
         if not include_all and stratum == 'all':
             continue
+        if not include_unknown and stratum == UNKNOWN_STRATUM:
+            continue
         acc = g[g['ref_wave'].notna()] if 'ref_wave' in g else g
         n_pairs = float(acc['n'].fillna(0).max()) if 'n' in acc and not acc.empty else 0.0
         closure = g[g['component'] == 'Rrs'] if 'component' in g else g
@@ -340,6 +353,19 @@ def strata(sweep, *, fit_method='chisq', include_all=False, min_n=1, root=None):
         if max(n_pairs, n_att) >= min_n:
             out.append((str(stratum), int(n_pairs), int(n_att)))
     return sorted(out, key=lambda t: (-t[1], -t[2], t[0]))
+
+
+def unknown_stratum_count(sweep, *, fit_method='chisq', root=None):
+    """``(n_pairs, n_attempted)`` for the dropped :data:`UNKNOWN_STRATUM`, or ``None``.
+
+    Dropping a population silently would make the trophic breakdown look complete. The
+    count is what keeps the omission honest, so the page states it in prose.
+    """
+    got = strata(sweep, fit_method=fit_method, include_unknown=True, root=root)
+    for stratum, n_pairs, n_att in got:
+        if stratum == UNKNOWN_STRATUM:
+            return n_pairs, n_att
+    return None
 
 
 def fit_methods(sweep, *, root=None, min_rows=1):

@@ -446,6 +446,20 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
                 'observations by trophic state.')
         else:
             listed = ', '.join(f'``{s}`` (n_attempted {a})' for s, _, a in strata)
+            # The dropped 'unknown' population is stated rather than hidden: it is a
+            # provenance category, not a water type, so it does not belong in a table
+            # of trophic bins — but omitting it silently would make the breakdown
+            # look complete when it is not.
+            unk = figures.unknown_stratum_count(sweep)
+            unk_note = ''
+            if unk:
+                unk_pairs, unk_att = unk
+                unk_note = (
+                    f' A further **{unk_att} spectra ({unk_pairs} scored pair(s)) '
+                    f'have no chlorophyll at all** — neither truth nor a retrieved '
+                    f'value — so they cannot be binned and are left out of the '
+                    f'tables below rather than shown as a fourth water type. They '
+                    f'are still counted in the pooled numbers above.')
             blocks.append(rst.section(
                 'Per trophic stratum',
                 f'Observations are binned by chlorophyll into '
@@ -453,11 +467,10 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
                 f'{metrics.CHL_BINS[2][2]} '
                 f'(<{metrics.CHL_BINS[0][1]:g}, <{metrics.CHL_BINS[1][1]:g}, '
                 f'≥{metrics.CHL_BINS[1][1]:g} mg m⁻³), preferring truth Chl over '
-                f'retrieved; ``unknown`` is the population with neither. This sweep '
-                f'resolves {listed}. Every table above pools these together, and '
-                f'pooling is what hides a regime change — an algorithm can be '
-                f'usable in one trophic state and not in the next, which is the '
-                f'whole question for a coastal dataset.'))
+                f'retrieved. This sweep resolves {listed}.{unk_note} Every table '
+                f'above pools these together, and pooling is what hides a regime '
+                f'change — an algorithm can be usable in one trophic state and not '
+                f'in the next, which is the whole question for a coastal dataset.'))
             for stratum, n_pairs, n_att in strata:
                 tables.accuracy(sweep, stratum=stratum)
                 tables.qc(sweep, stratum=stratum)

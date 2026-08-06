@@ -31,6 +31,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ioptics import noise
+
 SPECTRAL_FILE = 'results_spectral.parquet'
 SCALAR_FILE = 'results_scalar.parquet'
 
@@ -203,6 +205,16 @@ def _scalar_row(result, record):
         'status': result.status,
         'chain_file': getattr(result, 'chain_file', None),  # null for χ² rows
         'provenance_id': result.provenance_id,
+        # The noise provenance of the *record this fit saw*, not the sweep-level
+        # request. ``attach_noise`` may floor or wholly impute the uncertainty, and
+        # the effective tag records which ('<model>+floor:X' / '+imputed:X'). It has
+        # to be on disk: χ²ᵥ is a statement about the assumed error as much as about
+        # the model, so "70 of these 100 fits were weighted by an invented
+        # uncertainty" is not an aside — and until now it survived only as a
+        # warning on stderr at prep time, recoverable from no artifact.
+        'noise_model': getattr(record, 'noise_model', None),
+        'noise_seed': getattr(record, 'noise_seed', None),
+        'noise_imputed': noise.is_imputed(getattr(record, 'noise_model', None)),
         **extra,
     }
 

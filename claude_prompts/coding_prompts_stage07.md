@@ -361,6 +361,32 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 9:**
+
+- **Should `gloria_turbid_v3` be re-fitted so its provenance is honest, or left as a
+  schema-0 sweep?** Its `results_scalar` will never carry the noise tag and its blocks
+  will never show the `maxfev=40000` it actually ran at, so the published page's
+  provenance is permanently weaker than the code now supports — and `prov_schema = 0`
+  is the only thing saying so. Re-running stage 1 is ~100 spectra x 4 algorithms
+  (minutes, and it is the sweep the whole site is built on). Options: re-run it in Task
+  11 alongside the other sweeps (my lean — the 68%-imputed fact then lands on disk
+  where the glossary can cite it); or leave it and treat schema-0 as a permanent
+  footnote on that one page.
+- **Should a raised `maxfev` be part of the algorithm's identity, or of the sweep's?**
+  I put it in the digest, so `expb_pow` at `maxfev=40000` is a *different algorithm*
+  from `expb_pow` at the default and the two will not pool on one profile page. That is
+  defensible — the iteration budget changes which spectra get an answer at all, and on
+  the turbid models it is the difference between a result and a wall of `fit_failed`.
+  But it is arguably an *execution* setting like `n_cores`, in which case two sweeps
+  differing only in budget should pool with a note. Say which you want; it is a
+  one-line change to `_DIGEST_EXCLUDE`.
+- **Do you want `overrides` used at all, now that they work?** The mechanism exists and
+  is tested, but nothing in the repo uses it — `gloria_turbid_v3` raises `maxfev` by
+  *patching the registry inside its build script*, which is exactly what an override is
+  for and which the provenance cannot see. Converting that build script to a config
+  override would make the raised budget visible in provenance for free. Worth doing in
+  Task 11, or leave the build scripts alone?
+
 **New after Task 8:**
 
 - **Should the accuracy-vs-wavelength figure default to `mae`, or show more than one
@@ -542,6 +568,138 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-06 (Stage 7, Task 9: provenance hardening)
+
+**Your three Task-8 answers applied first.** `min_waves` is now **5**
+(`diagnostics.MIN_SPECTRUM_WAVES`) — the shared test fixture only has four bands, so
+rather than weaken the tests to a threshold nobody ships I gave them a realistic
+hyperspectral grid. `unknown` is **dropped** from the per-stratum tables with its size
+stated in prose ("a further **27 spectra (3 scored pairs) have no chlorophyll at all**
+… left out rather than shown as a fourth water type"), and its stale CSVs were pruned
+from the docs tree automatically. Coverage-vs-λ waits for a sweep with real spectral
+truth, per your answer.
+
+**All five sub-tasks done.** What each one actually was:
+
+1. **`maxfev` and the `mcmc` block are now recorded**, plus a **digest**. This matters
+   more than it sounds: `maxfev` decides *whether* a fit converges at all, and
+   `gloria_turbid_v3` really ran `expb_pow` at `maxfev=40000` (patched into the
+   registry by its build script) while its provenance block recorded **no `maxfev`
+   whatsoever** — so the block was byte-identical to the default and nothing on disk
+   showed the difference.
+2. **The stale `noise_model` is gone from the spec entirely**, not merely unemitted.
+   It was a per-algorithm field for a *sweep-level* property, defaulting to `'pace'`,
+   which produced a **three-way disagreement** on the one real sweep: the algorithm
+   blocks said `pace`, the config said `insitu`, and the uncertainty actually attached
+   was `insitu+imputed:0.1`. `config.load` already refused it per algorithm, so the
+   field was contradicting a rule the package elsewhere enforced.
+3. **The per-record noise tag is persisted** — `noise_model`, `noise_seed` and a
+   derived `noise_imputed` on `results_scalar`. The "~68% of fits weighted by an
+   invented uncertainty" fact existed only as a once-per-batch warning on **stderr**,
+   recoverable from no artifact; `noise.py`'s own docstring already claimed it was on
+   "every persisted results row", which was false. It is one `groupby` now.
+4. **`AlgorithmConfig.overrides` is applied or rejected, never ignored.** It was parsed
+   and read by *nobody*: a config asking for `maxfev: 40000` or a different prior ran
+   at the registry default **while writing the ignored request verbatim into the
+   provenance copy** — provenance advertising settings that never ran. Now
+   `AlgorithmSpec.with_overrides` applies a whitelist (`OVERRIDABLE_FIELDS`), merges
+   partial `rt`/`mcmc` mappings, deep-copies so the registry's shared object is not
+   mutated, and raises on anything else; `config.load` validates the keys so a typo
+   fails **before** a multi-hour sweep rather than after.
+5. **`provenance_id` reaches `metrics_spectral`/`metrics_scalar`/`metrics_pairwise` and
+   the leaderboard.** It is a pure function of `sweep_id` + `algorithm`, both already
+   in `_KEY_COLS`, so it cannot split a row that currently merges. Pairwise rows naming
+   two algorithms get `provenance_id_a`/`_b` rather than one ambiguous id — a contest
+   is not attributable to a single block.
+
+**The highest-risk item, handled deliberately.** Adding fields to the algorithm block
+would have changed **every digest** for byte-identical configurations the moment an old
+sweep was re-run, and the profile pages' "what varied between sweeps" section keys on
+`algo_digest` — so it would have reported *schema versioning as configuration drift*.
+Three things prevent that:
+
+- `algorithm_digest` **normalizes** a pre-Task-9 block against the schema-2 defaults, so
+  an old sweep and its re-run agree when the configuration really is the same. Verified:
+  the real GLORIA block hashes to `75f63215deaf`, identical to a fresh default spec.
+- A `schema` version rides on the record and each block (`PROVENANCE_SCHEMA = 2`), and
+  the board carries it as `prov_schema`. The honest limitation is stated rather than
+  hidden: a schema-0/1 block **cannot** distinguish "ran at the default budget" from
+  "ran at a raised budget nobody wrote down" — which is exactly GLORIA's situation.
+- `profiles._what_varied` shows `prov_schema` and adds a `.. note::` when the pooled
+  sweeps span schemas, saying a digest difference there may reflect what was written
+  down rather than what was configured. The schema is deliberately **not** part of the
+  "did the configuration vary" decision.
+
+**Also reconciled: two incompatible definitions of "digest" were about to coexist on
+disk.** The Task-5 fold hashed the whole block *including* `name`/`label` at 8
+characters; provenance now records 12 over the block *without* them. The board's
+`algo_digest` could therefore never equal the digest the sweep itself wrote down.
+`leaderboard._algorithm_digests` now prefers the recorded digest and falls back to the
+same function, so both paths use one definition.
+
+**Tests + verification.** `ioptics/tests/test_provenance_hardening.py` — 20 tests,
+including that the digest moves with `maxfev`/`mcmc`/priors but not with a rename, that
+it survives the schema change, that overrides do not mutate the registry's shared spec,
+that a typo fails at config load, that the imputed fraction is countable from the table,
+and that mixed schemas are flagged as such rather than as drift. **437 passed** with
+data (was 417), **399 passed / 38 skipped** CI-equivalent, clean `sphinx -W` **exit 0**.
+
+**⚠ The new fields are empty on the only real sweep until stage 1 is re-run.** Stating
+it plainly because it is the thing most likely to mislead: `metrics.compute` and
+`leaderboard.update` re-read existing artifacts, so `provenance_id` landed on
+`gloria_turbid_v3`'s metrics tables and board rows immediately (confirmed). But its
+`provenance.yaml` keeps the stale `noise_model: pace` blocks with no `maxfev`/`mcmc`/
+`digest`, and its `results_scalar` will **never** gain `noise_model`/`noise_seed`/
+`noise_imputed` — so the 68%-imputed fact stays off disk, and `prov_schema` reads **0**
+for all four algorithms — until the sweep is re-fitted. Task 11 re-runs sweeps; that is
+where these fill in.
+
+**One behaviour change worth flagging for existing configs:** a YAML that previously
+carried a decorative override (the `mcmc: {nsteps: ...}` example in `config.py`'s own
+module docstring) used to be silently ignored and will now **actually apply**, and an
+unknown key now refuses to load at all. That is the point of the task, but it means an
+old config can now run differently — or stop loading.
+
+#### Verification of this task (the review agent stalled; I ran its checklist myself)
+
+The Fable recon for this task was excellent and shaped the whole design. The
+*adversarial* pass then died mid-run without producing findings, so rather than wait on
+another I ran the specific high-risk checks by hand, with demonstrations:
+
+- **The whitelist accepts no inert field.** This was the risk of re-introducing exactly
+  the bug being fixed. Every member of `OVERRIDABLE_FIELDS` is plumbed (10 via the
+  spec's BING interop, `maxfev` via the runner), and `maxfev` was traced end to end:
+  with `with_overrides({'maxfev': 4321})`, BING's `chisq_fit.fit` receives
+  `maxfev=4321`.
+- **`registry.get()` returns a shared object with a shared `apriors` list**, so the
+  deepcopy in `with_overrides` is load-bearing, not defensive: verified that overriding
+  or later mutating the returned spec's `apriors` or `rt` does **not** leak back into
+  the registry.
+- **`_SCHEMA2_DEFAULTS` matches the real `MCMCOptions` defaults**, so normalization
+  cannot claim a false equivalence for a default-configured algorithm.
+- **`noise.is_imputed(None)` is `False`**, so an untagged record reads as not imputed
+  rather than raising or reading as imputed.
+- **The fold is idempotent** (60 rows twice), and an **old-format board** (written
+  before these columns) folds beside a new sweep with NaN-filled `provenance_id` /
+  `prov_schema` — `ranked()` and `render()` both cope.
+- **The published page renders them cleanly**: `prov_schema` as `0` (not NaN or blank)
+  and `provenance_id` as `gloria_turbid_v3#<algorithm>`.
+
+**Two things the checks surfaced, stated rather than swept:**
+
+1. **The turbid trio's digests *will* change when GLORIA is re-fitted** —
+   `334d8cd116a0` → `eb711c169fc6` for `expb_pow2` — because `register_turbid` sets
+   `maxfev=40000` and the schema-0 block records none. Normalization cannot recover
+   information that was never written; this is the case `prov_schema` and the
+   mixed-schema note exist for, and it confirms they are load-bearing rather than
+   decorative. It also means the digest normalization protects the *default*-configured
+   algorithms (`expb_pow`, `giop`, `gsm`) and not the turbid ones.
+2. **NIT, not fixed:** `noise_seed` comes back as `int64` when populated but `object`
+   when every value is `None` (GLORIA's case, since in-situ data takes `add_noise=False`),
+   and a cross-sweep `concat` coerces to `object`. Nothing performs arithmetic on it and
+   the leaderboard folds `metrics_scalar` rather than `results_scalar`, so it never
+   enters the fold — but a nullable `Int64` would be tidier if it ever does.
 
 ### 2026-08-06 (Stage 7, Task 8: the three discarded slices)
 

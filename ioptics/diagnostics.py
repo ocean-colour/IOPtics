@@ -530,14 +530,22 @@ def accuracy_spectrum_data(metrics_spectral, component, *, metric='mae',
     return out
 
 
+#: How many scored bands a component needs before its accuracy is called a
+#: *spectrum*. JXP's number. Two bands draw a line segment, which is technically a
+#: spectrum and still misleading — five is the point at which a shape is a shape
+#: rather than an artefact of joining a couple of points.
+MIN_SPECTRUM_WAVES = 5
+
+
 def scored_components(metrics_spectral, *, dataset=None, fit_method='chisq',
-                      stratum='all', metric='mae', min_waves=1):
+                      stratum='all', metric='mae',
+                      min_waves=MIN_SPECTRUM_WAVES):
     """Components whose accuracy varies over enough bands to plot, best-covered first.
 
-    Returns ``[(component, n_waves, n_algos)]``. ``min_waves`` is the point of it: a
-    component scored at a *single* wavelength cannot show a spectral shape, so
-    plotting it as one lone marker per algorithm invites a reader to see a trend
-    that is not there.
+    Returns ``[(component, n_waves, n_algos)]``. ``min_waves``
+    (:data:`MIN_SPECTRUM_WAVES`) is the point of it: a component scored at one or two
+    wavelengths cannot show a spectral shape, so plotting it invites a reader to see a
+    trend that is not there.
     """
     ms = metrics_spectral
     if ms is None or getattr(ms, 'empty', True):
