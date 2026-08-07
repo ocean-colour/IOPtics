@@ -666,6 +666,13 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
 #: ``reports/<sweep_id>/`` dir, built by :func:`build_exemplars`).
 EXEMPLAR_PAGE = 'exemplar_fits'
 
+#: Hand-written pages under ``reports/`` that :func:`build_landing` must keep in the
+#: toctree. The landing page is **regenerated**, so a toctree entry added by hand
+#: would be silently dropped on the next build — and a page in no toctree is a
+#: ``sphinx -W`` failure. Listed here, they survive regeneration; each is included
+#: only if the file actually exists, so this cannot create a dangling reference.
+CURATED_REPORT_PAGES = ('gloria_investigation',)
+
 _SPELLED = ('zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
             'eight', 'nine', 'ten')
 
@@ -987,6 +994,11 @@ def build_landing(*, docs_root=None, runs_root=None, root=None, board=None,
                      + profiles.render_coverage_matrix(
                          matrix, algorithms=known, datasets=known_datasets),
                      char='~'))
+    # Hand-written pages that live under reports/ but are not generated: they must
+    # be named in the toctree or ``sphinx -W`` fails on them, and named only when
+    # present or it fails on the dangling reference instead.
+    curated = tuple(name for name in CURATED_REPORT_PAGES
+                    if (reports_dir / f'{name}.rst').is_file())
     rst.write_leaderboard_landing(
         reports_dir / 'index.rst',
         board_rst,
@@ -994,6 +1006,6 @@ def build_landing(*, docs_root=None, runs_root=None, root=None, board=None,
                                           board=board, docs_root=docs_root),
         interactive_html=widget,
         full_grid_doc='/reports/leaderboard_full',
-        extra_docs=('glossary', f'{profiles.ALGORITHM_DIR}/*',
-                    f'{profiles.DATASET_DIR}/*'))
+        extra_docs=('glossary',) + curated
+                   + (f'{profiles.ALGORITHM_DIR}/*', f'{profiles.DATASET_DIR}/*'))
     return reports_dir / 'index.rst', full_grid

@@ -361,6 +361,29 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 10:**
+
+- **Should the investigation report's wrong recommendation be corrected in the RST, or
+  only flagged?** I flagged it — the text is verbatim and an editorial warning at the
+  top lists the four superseded claims. The alternative is editing the recommendation
+  itself with a marked inline correction, which reads better for a first-time reader but
+  makes the published page diverge from the markdown original. My lean is to keep them
+  identical and let the warning carry it, but you are the author of that report and it
+  is your call.
+- **Should `reports/gloria_fits_report.md` now be regenerated rather than frozen?** Its
+  script (`reports/scripts/gloria_fits_report.py`) still runs, and re-running it would
+  fix items 2 and 3 (the numbers corrected in prose but not in the tables) at the
+  source. That would mean the markdown changes and the RST is reconverted — a bigger
+  move than a footnote, and it would lose the round-by-round texture that makes the
+  record honest. Freeze, or regenerate?
+- **Does `gsm` deserve a sweep of its own before it is advertised?** It is now
+  documented as a first-class registered algorithm, but the coverage matrix shows it has
+  **never been run** — so the site describes a model it has no results for. That is
+  visible (the matrix says "not evaluated") but a reader may still take the
+  documentation as evidence of use. Task 11's bounded `multi_v2` includes `gsm`, so this
+  resolves itself if that runs; flagging in case you would rather the page carried an
+  explicit "not yet evaluated" banner until then.
+
 **New after Task 9:**
 
 - **Should `gloria_turbid_v3` be re-fitted so its provenance is honest, or left as a
@@ -568,6 +591,89 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-07 (Stage 7, Task 10: publish and correct the prose docs)
+
+**No Task-9 answers were outstanding**, and none of the three open ones blocks this.
+
+**The GLORIA investigation is published** at `docs/source/reports/gloria_investigation.rst`
+— 904 RST lines from the 707-line markdown, all 11 figures copied to
+`reports/gloria_figures/` and resolving, the markdown original byte-identical for
+posterity. A Fable subagent did the conversion; I gave it the RST pitfalls that bite
+this repo (underline lengths, `list-table` over grid tables, duplicate link names) and
+it came back with a build clean apart from the expected "not in any toctree".
+
+**The conversion surfaced seven stale or self-contradictory claims in the original, and
+I did not silently fix any of them.** The report is a scientific record and its
+self-corrections are its most valuable part, so the text is verbatim and an
+**editorial `.. warning::`, explicitly dated and marked as not part of the original**,
+now heads the page listing the four that matter:
+
+1. **The closing recommendation is wrong.** It still says "the real fix is a richer
+   backscattering model", with the correction 400 lines above it rather than beside it.
+   Three richer backscattering models were subsequently built and run, and they agree
+   with `expb_pow` and each other **to three decimals**. This was the document's
+   biggest live-but-wrong claim and a reader meeting it cold would have been misled.
+2. The Round-4 notice claims two numbers were "corrected in place below"; **one was
+   not** — the convergence table still reads 5/40 → 15/40 where the corrected figure is
+   40/40.
+3. The inflated-noise table's `measured` row still reports 0.48 while the paragraph
+   beneath identifies 0.48 as the biased value and 0.64 as the honest one.
+4. Two dangling cross-references (an unlabelled "Round-3 table", a χ²ᵥ of 7.2e1
+   attributed to rounds that do not contain it).
+
+**Wiring it in needed a code change, not a hand-edited toctree.** `reports/index.rst` is
+*regenerated* by `build_landing`, so a hand-added entry would be silently dropped on the
+next build — and a page in no toctree is a `sphinx -W` failure. `standard.CURATED_REPORT_PAGES`
+now names hand-written pages under `reports/`, included **only when the file exists** so
+the entry cannot dangle instead. Tested both directions plus idempotency.
+
+**`gsm` is documented** — it was registered and entirely absent from the docs. I read
+its constants out of BING rather than assuming them: `S_dg = 0.0206` nm⁻¹ and
+`η = 1.0337`, both pivoting at **443 nm** (where `giop`/`expb_pow` pivot backscatter in
+the green), which are the canonical Garver–Siegel–Maritorena values. The point worth
+making, and now made: `gsm`'s second parameter **is chlorophyll itself**, not an
+absorption amplitude — so it is directly comparable against a dataset's Chl truth
+without an absorption-to-Chl conversion, and comparing it against `giop` (same *shape*
+of model, different fixed constants) isolates how much error comes from the choice of
+fixed slope rather than from the model's structure.
+
+**The turbid trio got the equation + parameter-table treatment.** Their `b_bp` forms are
+written out (mineral pivoting at 700 nm, organic at 600 nm — each anchored where it does
+its work), `Pow2Flat` is identified as `Pow2` with η_min pinned to zero, and every added
+parameter has its **prior bounds** in the table. That last part earns its place: read
+together with the finding, the bounds show `expb_pow2` was given an explicitly
+negative-capable mineral exponent and `expb_powflex` an explicitly negative-capable
+single exponent, so **neither was prevented by its prior** from producing the
+flat-or-rising backscatter turbid water is supposed to need. The priors were not the
+constraint.
+
+**Stale scoping text fixed — and there was more of it than the prompt listed.** The three
+named ones (`index.rst` "Through Stage 2", `api/index.rst` "Stage-0 modules only",
+`models.rst` "runs two side by side") plus:
+
+- `models.rst` had a **second** "the two" — the heading "Fitting and how the two are
+  judged", now "…how the algorithms are judged".
+- `api/index.rst`'s claim was doubly false: all 20 `automodule` blocks already carry
+  `:members:`, so nothing "shows only its module-level docstring". Replaced with the two
+  conventions a reader actually needs (named constants over literals; the strict layer
+  separation), and **two genuinely missing modules added** — `ioptics.style` and
+  `ioptics.report.profiles`, both Stage-7 additions never wired in.
+- `datasets.rst` labelled all three datasets **"active (Stage 6)"** while the coverage
+  matrix says L23 and PANGAEA have never been evaluated at all. The column is now
+  **"Loader"** and says what it actually means — the adapter works — with the coverage
+  matrix named as the authority on evaluation, "because it is built by walking the runs
+  tree rather than from prose that can go stale". Same fix for "Scope of the first
+  sweep. All 3320 L23 spectra", which claimed a sweep that is not on disk.
+
+**The orphaned hero is on the landing page** (`_static/ioptics_graphic.png`, 379 KB,
+untouched since July), with alt text. The surrounding note was rewritten from a
+Stage-2 status list to what is true now — the pipeline runs end to end, but *what is
+measured is a narrower thing than what runs*, and the coverage matrix says which.
+
+**Verified.** **437 passed** with data plus one new landing test (438 total in that
+file's run), clean `sphinx -W` **exit 0** on a fresh tree at every step, all 11
+investigation figures resolving in `_images/`, and the hero asset copied.
 
 ### 2026-08-06 (Stage 7, Task 9: provenance hardening)
 

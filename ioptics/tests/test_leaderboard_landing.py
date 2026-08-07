@@ -140,6 +140,33 @@ def test_build_landing_writes_a_scannable_page_and_a_drill_down(tmp_path):
     assert '_static/bokeh/bokeh-' in index_txt
 
 
+def test_a_hand_written_report_page_survives_the_landing_rebuild(tmp_path):
+    """The landing page is regenerated, so a hand-added toctree entry is lost.
+
+    ``gloria_investigation.rst`` is prose, not a generated artifact, and a page in no
+    toctree is a ``sphinx -W`` failure — so ``build_landing`` has to name it. It must
+    also name it **only when the file exists**, or the entry dangles instead.
+    """
+    _sweep(tmp_path, sweep_id='lb_curated')
+    docs = tmp_path / 'docs'
+    reports = docs / 'reports'
+    reports.mkdir(parents=True, exist_ok=True)
+    kw = dict(docs_root=docs, runs_root=tmp_path, out=tmp_path / 'lb.parquet')
+
+    # absent: no entry, so nothing dangles
+    idx, _ = standard.build_landing(**kw)
+    page = standard.CURATED_REPORT_PAGES[0]
+    assert f'\n   {page}\n' not in idx.read_text()
+
+    # present: listed, and it stays listed across a rebuild
+    (reports / f'{page}.rst').write_text('Title\n=====\n\nbody\n')
+    idx, _ = standard.build_landing(**kw)
+    assert f'\n   {page}\n' in idx.read_text()
+    idx, _ = standard.build_landing(**kw)
+    text = idx.read_text()
+    assert text.count(f'\n   {page}\n') == 1, 'listed exactly once'
+
+
 def test_build_landing_is_idempotent(tmp_path):
     _sweep(tmp_path, sweep_id='lb_idem')
     docs = tmp_path / 'docs'

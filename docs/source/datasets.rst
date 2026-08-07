@@ -19,6 +19,13 @@ wavelength grid** (no resampling), its available truth IOPs, and a model for the
 algorithm's retrieval against that truth on the intersection of available bands
 and components.
 
+The **Loader** column below says only that the adapter works and the data resolves
+on this machine. Whether a dataset has actually been *evaluated*, and by which
+algorithms, is a different question with a different answer — the **coverage
+matrix** on :doc:`/reports/index` is the authority, because it is built by walking
+the runs tree rather than from prose that can go stale. At the time of writing it
+reports rather less coverage than this page's three "working" rows might suggest.
+
 .. list-table:: Datasets in IOPtics
    :header-rows: 1
    :widths: 14 12 20 38 16
@@ -27,25 +34,25 @@ and components.
      - Type
      - Grid
      - Truth available
-     - Status
+     - Loader
    * - **L23**
      - synthetic
      - Hydrolight, 81 bands (400–700 nm)
      - full spectral IOPs: :math:`a`, :math:`b_b`, :math:`a_{ph}`,
        :math:`a_{dg}`, :math:`b_{bp}`; scalars ``Chl``, ``Sdg``
-     - **active** (first sweep)
+     - **working**
    * - PANGAEA
      - in situ
      - per-family native λ
      - :math:`a_{ph}`, :math:`a_{dg}` (from ``acdom``), :math:`b_{bp}`
        (from ``bbp``); scalars ``Chl`` (from ``chla``), ``tss``
-     - **active** (Stage 6)
+     - **working**
    * - GLORIA
      - in situ
      - hyperspectral (350–900 nm @ 1 nm)
      - scalar only: ``a_cdom440`` (as :math:`a_{dg}(440)`), ``Chl`` (from
        ``Chla``), ``TSS``, ``Secchi``
-     - **active** (Stage 6)
+     - **working**
 
 L23 — Loisel et al. (2023)
 ==========================
@@ -68,8 +75,9 @@ for every IOP — the ideal first-pass benchmark. IOPtics loads it via
    reflectance spectra; clear water peaks in the blue, and the peak shifts toward
    the green as phytoplankton and particles increase.
 
-- **Scope of the first sweep.** All **3320** L23 spectra (the ``X=1`` elastic
-  scenario; ``X=4`` adds Raman + fluorescence, deferred to Stage 6).
+- **Scope.** The loader exposes all **3320** L23 spectra (the ``X=1`` elastic
+  scenario; ``X=4`` adds Raman + fluorescence, not yet exercised). How many of them
+  any published sweep actually fitted is stated on that sweep's own page.
 - **Truth.** The full spectral decomposition — total absorption :math:`a`, total
   backscatter :math:`b_b`, and the components :math:`a_{ph}` (phytoplankton),
   :math:`a_{dg}` (CDOM + detritus), :math:`b_{bp}` (particulate backscatter) —

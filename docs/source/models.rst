@@ -44,9 +44,13 @@ physically distinct constituents:
 - :math:`b_{bp}` — **particulate backscatter**, a smooth power-law decline with
   wavelength.
 
-An *algorithm* is a specific parameterization of these three curves. IOPtics
-runs two side by side — a flexible 5-parameter **BING** model and a leaner
-3-parameter **GIOP**-style model — and scores each retrieval against known truth.
+An *algorithm* is a specific parameterization of these three curves. IOPtics scores
+any number of them against the same truth. **Three are registered by default** — a
+flexible 5-parameter **BING** model (``expb_pow``), a leaner 3-parameter
+**GIOP**-style model (``giop``), and the 3-parameter **GSM** semi-analytical model
+(``gsm``) — and three more for turbid water are available opt-in (see
+:ref:`turbid-models`). Which of them any given result used is recorded per row; the
+coverage matrix on :doc:`/reports/index` says which pairs have actually been run.
 
 .. figure:: _static/model_components.png
    :width: 100%
@@ -138,6 +142,54 @@ With the slopes pinned to literature values, ``giop`` has fewer knobs — more
 parsimonious, and harder to over-fit. It is fit by **least squares** only (see
 below).
 
+``gsm`` — the GSM semi-analytical model
+=======================================
+
+The Garver–Siegel–Maritorena model (**k = 3**), the longest-serving operational
+semi-analytical ocean-colour algorithm. Structurally it resembles ``giop`` — both
+fix the spectral slopes and fit three amplitudes — but two things distinguish it:
+the fixed constants are GSM's own globally-tuned values, and the phytoplankton term
+is parameterized by **chlorophyll directly** rather than by an absorption amplitude:
+
+.. math::
+
+   a_{dg}(\lambda) &= A_{exp}\,\exp\!\big[-S_{dg}\,(\lambda-\lambda_0)\big],
+                      \quad S_{dg} = 0.0206\ \text{nm}^{-1}\ \text{(fixed)}, \\
+   a_{ph}(\lambda) &= \mathrm{Chl}\;a^{*}_{ph}(\lambda), \\
+   b_{bp}(\lambda) &= B_{nw}\,\left(\lambda_0/\lambda\right)^{\eta},
+                      \quad \eta = 1.0337\ \text{(fixed)},
+
+with :math:`\lambda_0 = 443` nm for **both** absorption and backscatter (``giop``
+and ``expb_pow`` pivot backscatter in the green instead).
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 20 68
+
+   * - Parameter
+     - Symbol / controls
+     - Meaning
+   * - ``Aexp``
+     - :math:`A_{exp}` — :math:`a_{dg}` amplitude
+     - combined CDOM + detritus magnitude, at GSM's fixed 0.0206 slope
+   * - ``Chl``
+     - :math:`\mathrm{Chl}` — :math:`a_{ph}` scale
+     - **chlorophyll concentration itself**, not an absorption amplitude: GSM
+       retrieves Chl as a fitted parameter
+   * - ``Bnw``
+     - :math:`B_{nw}` — :math:`b_{bp}` amplitude
+     - particle backscatter magnitude, at GSM's fixed :math:`\eta = 1.0337`
+
+Why it is worth running alongside ``giop``: the two are the same *shape* of model
+with different constants, so comparing them isolates how much of a retrieval's
+error comes from the **choice of fixed slope** rather than from the model's
+structure. And because ``Chl`` is a fitted parameter, ``gsm`` is directly
+comparable against a dataset's chlorophyll truth without going through an
+absorption-to-Chl conversion — which is the comparison the derived-scalar accuracy
+rows exist for.
+
+.. _turbid-models:
+
 Turbid-water algorithms (opt-in)
 ================================
 
@@ -171,6 +223,61 @@ one, and IOPtics exposes three algorithms built on it:
     :math:`\beta` may go negative. The **control**: it changes the prior
     *range* without adding a component, so a spectrum that ``expb_powflex``
     still cannot fit implicates the functional *form*.
+
+All three keep ``expb_pow``'s absorption side unchanged (``ExpBricaud``: ``Adg``,
+``Sdg``, ``Aph``) and differ only in :math:`b_{bp}`:
+
+.. math::
+
+   \text{Pow2Flat:}\quad b_{bp}(\lambda) &= B_{min}
+        + B_{org}\,(600/\lambda)^{\eta_{org}}, \\
+   \text{Pow2:}\quad b_{bp}(\lambda) &= B_{min}\,(700/\lambda)^{\eta_{min}}
+        + B_{org}\,(600/\lambda)^{\eta_{org}}, \\
+   \text{Pow (flex):}\quad b_{bp}(\lambda) &= B_{nw}\,(\lambda_0/\lambda)^{\beta},
+        \qquad \beta \in [-1, 2] .
+
+The mineral term pivots at **700 nm** and the organic term at **600 nm** — each
+anchored where it does its work, so the two amplitudes are as nearly independent as
+the data allows. ``Pow2Flat`` is ``Pow2`` with :math:`\eta_{min}` pinned to zero:
+that is what "flat" means, and dropping that one parameter is what makes it the
+better-conditioned starting point.
+
+.. list-table:: The backscattering parameters these models add
+   :header-rows: 1
+   :widths: 14 12 18 56
+
+   * - Parameter
+     - In
+     - Symbol
+     - Meaning
+   * - ``Bmin``
+     - both
+     - :math:`B_{min}`
+     - mineral backscatter amplitude — the near-flat component that supplies
+       red-end magnitude an open-ocean power law cannot
+   * - ``eta_min``
+     - ``Pow2``
+     - :math:`\eta_{min} \in [-0.5, 0.5]`
+     - mineral exponent, free and allowed **negative** so the term may *rise*
+       toward the red. Pinned to 0 in ``Pow2Flat``
+   * - ``Borg``
+     - both
+     - :math:`B_{org}`
+     - organic backscatter amplitude — the conventional, steeper component
+   * - ``eta_org``
+     - both
+     - :math:`\eta_{org} \in [0.5, 2.0]`
+     - organic exponent, bounded to physically ordinary decreasing slopes
+   * - ``beta``
+     - ``PowFlex``
+     - :math:`\beta \in [-1, 2]`
+     - the *single* power law's exponent, its prior widened from
+       ``expb_pow``'s :math:`[0.5, 2]` to admit a flat or rising spectrum
+
+Read the bounds together with the finding below: ``expb_pow2`` is given an
+explicitly negative-capable mineral exponent and ``expb_powflex`` an explicitly
+negative-capable single exponent, so **neither was prevented by its prior** from
+producing the flat-or-rising backscatter that turbid water is supposed to need.
 
 .. note::
 
@@ -289,10 +396,10 @@ What is *not* scored is reported instead as **coverage**: the
 together — a top rank over 10% of the spectra does not beat a lower rank over
 all of them.
 
-Fitting and how the two are judged
-==================================
+Fitting and how the algorithms are judged
+=========================================
 
-Both models are fit by **least squares** — adjusting the parameters to minimize
+Every algorithm is fit by **least squares** — adjusting the parameters to minimize
 the mismatch between predicted and observed reflectance, weighted by the
 measurement noise :math:`\sigma(\lambda)`:
 
