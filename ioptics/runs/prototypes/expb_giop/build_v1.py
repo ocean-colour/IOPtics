@@ -36,7 +36,14 @@ CONFIG = os.path.join(HERE, 'run_v1.yaml')
 #: Stage 7 Task 11 and so could not be regenerated when it went stale.
 CONFIG_TEST20 = os.path.join(HERE, 'run_test20.yaml')
 
-CONFIGS = {'v1': CONFIG, 'test20': CONFIG_TEST20}
+#: The full-L23 MCMC variant (``run_l23_mcmc_full.yaml``), selected with
+#: ``--config l23_mcmc_full``. **Prepared, not run** — see Stage 7 Task 13 for the
+#: measured cost (~5.4 days serial, ~40 GB of chains as the code stands) and the two
+#: changes that make it an overnight job.
+CONFIG_L23_MCMC = os.path.join(HERE, 'run_l23_mcmc_full.yaml')
+
+CONFIGS = {'v1': CONFIG, 'test20': CONFIG_TEST20,
+           'l23_mcmc_full': CONFIG_L23_MCMC}
 
 
 def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name='v1'):

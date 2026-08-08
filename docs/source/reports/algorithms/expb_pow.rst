@@ -786,7 +786,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 1
      - 
 
-(64 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(74 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Are its uncertainties honest?
 -----------------------------
@@ -1225,7 +1225,7 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 1
      - 12
 
-(64 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(74 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head against the others
 -------------------------------
@@ -1906,7 +1906,7 @@ Head-to-head against the others
      - 0.00147
      - indistinguishable
 
-(97 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(117 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 What varied between sweeps
 --------------------------
@@ -1941,7 +1941,7 @@ not strictly like-for-like:
    * - multi_L23_PANGAEA_v2
      - 75f63215deaf
      - 2
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
 

@@ -545,7 +545,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -605,7 +605,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -665,7 +665,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -725,7 +725,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -755,7 +755,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -785,7 +785,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -815,7 +815,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -875,7 +875,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -935,7 +935,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1025,7 +1025,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -1055,7 +1055,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -1115,7 +1115,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1175,7 +1175,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -1235,7 +1235,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -1295,7 +1295,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1355,7 +1355,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1385,7 +1385,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -1415,7 +1415,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -1445,7 +1445,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -1505,7 +1505,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -1565,7 +1565,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1655,7 +1655,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -1685,7 +1685,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -1745,7 +1745,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1835,7 +1835,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -1865,7 +1865,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -1895,7 +1895,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -1985,7 +1985,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2015,7 +2015,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2045,7 +2045,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -2105,7 +2105,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2135,7 +2135,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2165,7 +2165,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -2255,7 +2255,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2315,7 +2315,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2375,7 +2375,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -2465,7 +2465,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2495,7 +2495,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2525,7 +2525,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -2615,7 +2615,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2645,7 +2645,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2675,7 +2675,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -2735,7 +2735,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2765,7 +2765,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2795,7 +2795,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -2915,7 +2915,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -2945,7 +2945,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -2975,7 +2975,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3065,7 +3065,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3095,7 +3095,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3185,7 +3185,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -3245,7 +3245,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3275,7 +3275,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -3305,7 +3305,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3335,7 +3335,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3365,7 +3365,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3455,7 +3455,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -3545,7 +3545,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3575,7 +3575,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3635,7 +3635,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -3695,7 +3695,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3725,7 +3725,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3815,7 +3815,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -3875,7 +3875,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -3905,7 +3905,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -3935,7 +3935,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3965,7 +3965,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -3995,7 +3995,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -4085,7 +4085,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -4175,7 +4175,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -4205,7 +4205,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -4265,7 +4265,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -4325,7 +4325,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -4355,7 +4355,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -4445,7 +4445,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -4505,7 +4505,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -4535,7 +4535,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -4565,7 +4565,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -4595,7 +4595,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -4655,7 +4655,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -4715,7 +4715,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -4775,7 +4775,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -4835,7 +4835,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -4895,7 +4895,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -4985,7 +4985,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5015,7 +5015,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5045,7 +5045,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -5135,7 +5135,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5165,7 +5165,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -5195,7 +5195,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5255,7 +5255,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5285,7 +5285,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5315,7 +5315,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -5435,7 +5435,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -5465,7 +5465,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5495,7 +5495,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5585,7 +5585,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5615,7 +5615,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5705,7 +5705,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -5765,7 +5765,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5795,7 +5795,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -5825,7 +5825,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5855,7 +5855,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -5915,7 +5915,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -5975,7 +5975,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6035,7 +6035,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6095,7 +6095,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6155,7 +6155,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6245,7 +6245,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0393
      - 0.0394
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6275,7 +6275,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0333
      - 0.0333
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6305,7 +6305,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0483
      - 0.0484
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6395,7 +6395,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0584
      - 0.0603
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6425,7 +6425,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0457
      - 0.0463
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6455,7 +6455,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0391
      - 0.0391
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6515,7 +6515,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0332
      - 0.0332
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6545,7 +6545,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0398
      - 0.0398
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6575,7 +6575,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0497
      - 0.0497
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6695,7 +6695,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0428
      - 0.0428
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6725,7 +6725,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0357
      - 0.0357
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6755,7 +6755,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0328
      - 0.0328
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6823,6 +6823,456 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - expb_giop_L23_test20#expb_pow
    * - PANGAEA
      - a_dg
+     - 440
+     - all
+     - chisq
+     - 1
+     - ranked
+     - gsm
+     - 0.728
+     - -0.175
+     - 0.431
+     - 0.262
+     - 0.405
+     - 42
+     - 0.0339
+     - 1.59e+03
+     - 0
+     - 0.827
+     - 0.106
+     - 0.0333
+     - 3.5
+     - 0.0493
+     - 0.131
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_dg
+     - 440
+     - all
+     - chisq
+     - 2
+     - ranked
+     - expb_pow
+     - 0.483
+     - -0.162
+     - 0.72
+     - 0.934
+     - 0.976
+     - 212
+     - 0.195
+     - 1.59e+03
+     - 0
+     - 0.53
+     - 0.0226
+     - 0.252
+     - 2.27
+     - 0.0236
+     - 0.0669
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_dg
+     - 440
+     - all
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.439
+     - -0.647
+     - 2.23
+     - 0.243
+     - 0.592
+     - 284
+     - 0.266
+     - 1.59e+03
+     - 0
+     - 0.567
+     - 0.0791
+     - 0.0879
+     - 2.34
+     - 0.0337
+     - 0.0899
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.793
+     - -0.153
+     - 0.895
+     - 0.906
+     - 0.965
+     - 85
+     - 0.174
+     - 655
+     - 0
+     - 0.366
+     - 0.0427
+     - 0.417
+     - 2.3
+     - 0.0201
+     - 0.0508
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.5
+     - 0.209
+     - 0.209
+     - 0
+     - 1
+     - 1
+     - 0.00305
+     - 655
+     - 0
+     - 0.74
+     - 0.22
+     - 0.0366
+     - 4.37
+     - 0.0598
+     - 0.137
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.207
+     - -0.853
+     - 6.11
+     - 0.225
+     - 0.658
+     - 120
+     - 0.25
+     - 655
+     - 0
+     - 0.438
+     - 0.163
+     - 0.148
+     - 2.36
+     - 0.0343
+     - 0.0824
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 1
+     - ranked
+     - gsm
+     - 0.726
+     - -0.143
+     - 0.338
+     - 0.312
+     - 0.469
+     - 32
+     - 0.0651
+     - 599
+     - 0
+     - 0.891
+     - 0.00334
+     - 0.0401
+     - 3.57
+     - 0.0507
+     - 0.126
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.582
+     - -0.215
+     - 0.514
+     - 0.285
+     - 0.585
+     - 130
+     - 0.292
+     - 599
+     - 0
+     - 0.654
+     - 0.00334
+     - 0.0501
+     - 2.41
+     - 0.0341
+     - 0.0859
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.303
+     - -0.168
+     - 0.546
+     - 0.96
+     - 0.99
+     - 101
+     - 0.222
+     - 599
+     - 0
+     - 0.651
+     - 0.00334
+     - 0.124
+     - 2.31
+     - 0.0263
+     - 0.0751
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - 1
+     - ranked
+     - gsm
+     - 0.7
+     - -0.448
+     - 1.18
+     - 0
+     - 0
+     - 5
+     - 0.123
+     - 73
+     - 0
+     - 0.822
+     - 0
+     - 0.0548
+     - 4.22
+     - 0.0462
+     - 0.136
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.6
+     - -0.4
+     - 1.02
+     - 0
+     - 0.286
+     - 7
+     - 0.356
+     - 73
+     - 0
+     - 0.589
+     - 0
+     - 0.0548
+     - 1.07
+     - 0.0246
+     - 0.103
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.2
+     - -0.494
+     - 1.46
+     - 1
+     - 1
+     - 5
+     - 0.123
+     - 73
+     - 0
+     - 0.603
+     - 0
+     - 0.274
+     - 3.31
+     - 0.0305
+     - 0.149
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 1
+     - ranked
+     - gsm
+     - 0.857
+     - -0.0883
+     - 0.514
+     - 0.25
+     - 0.25
+     - 4
+     - 0.015
+     - 266
+     - 0
+     - 0.895
+     - 0.0865
+     - 0.00376
+     - 2.62
+     - 0.0449
+     - 0.134
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 2
+     - ranked
+     - expb_pow
+     - 0.458
+     - -0.0681
+     - 0.777
+     - 0.905
+     - 0.952
+     - 21
+     - 0.207
+     - 266
+     - 0
+     - 0.643
+     - 0.0226
+     - 0.128
+     - 1.99
+     - 0.0231
+     - 0.0735
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.435
+     - -0.503
+     - 1.78
+     - 0.185
+     - 0.407
+     - 27
+     - 0.218
+     - 266
+     - 0
+     - 0.684
+     - 0.0639
+     - 0.0338
+     - 2.39
+     - 0.0382
+     - 0.122
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_dg
      - 443
      - all
      - chisq
@@ -6835,17 +7285,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.262
      - 0.405
      - 42
-     - 0.0503
-     - 3.9e+03
+     - 0.0339
+     - 1.59e+03
      - 0
-     - 0.792
-     - 0.122
-     - 0.0354
-     - 3.56
-     - 0.0452
-     - 0.123
+     - 0.827
+     - 0.106
+     - 0.0333
+     - 3.5
+     - 0.0493
+     - 0.131
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6865,17 +7315,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.934
      - 0.976
      - 212
-     - 0.187
-     - 3.9e+03
-     - 0.00137
-     - 0.476
-     - 0.0341
-     - 0.303
+     - 0.195
+     - 1.59e+03
+     - 0
+     - 0.53
+     - 0.0226
+     - 0.252
      - 2.27
-     - 0.0234
-     - 0.0615
+     - 0.0236
+     - 0.0669
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6895,17 +7345,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.243
      - 0.592
      - 284
-     - 0.281
-     - 3.9e+03
+     - 0.266
+     - 1.59e+03
      - 0
-     - 0.541
-     - 0.0857
-     - 0.0927
-     - 2.04
-     - 0.0298
-     - 0.0793
+     - 0.567
+     - 0.0791
+     - 0.0879
+     - 2.34
+     - 0.0337
+     - 0.0899
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -6925,17 +7375,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.906
      - 0.965
      - 85
-     - 0.138
-     - 1.74e+03
-     - 0.00415
-     - 0.296
-     - 0.0706
-     - 0.495
-     - 2.18
-     - 0.021
-     - 0.0514
+     - 0.174
+     - 655
+     - 0
+     - 0.366
+     - 0.0427
+     - 0.417
+     - 2.3
+     - 0.0201
+     - 0.0508
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -6955,17 +7405,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 1
      - 1
-     - 0.0115
-     - 1.74e+03
+     - 0.00305
+     - 655
      - 0
-     - 0.683
-     - 0.255
-     - 0.0511
-     - 3.56
-     - 0.0441
-     - 0.139
+     - 0.74
+     - 0.22
+     - 0.0366
+     - 4.37
+     - 0.0598
+     - 0.137
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -6985,17 +7435,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.225
      - 0.658
      - 120
-     - 0.219
-     - 1.74e+03
+     - 0.25
+     - 655
      - 0
      - 0.438
-     - 0.178
-     - 0.166
-     - 2
-     - 0.0309
-     - 0.0836
+     - 0.163
+     - 0.148
+     - 2.36
+     - 0.0343
+     - 0.0824
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7015,17 +7465,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.312
      - 0.469
      - 32
-     - 0.0908
-     - 1.51e+03
+     - 0.0651
+     - 599
      - 0
-     - 0.875
-     - 0.00596
-     - 0.0285
-     - 3.7
-     - 0.0469
-     - 0.108
+     - 0.891
+     - 0.00334
+     - 0.0401
+     - 3.57
+     - 0.0507
+     - 0.126
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7045,17 +7495,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.285
      - 0.585
      - 130
-     - 0.359
-     - 1.51e+03
+     - 0.292
+     - 599
      - 0
-     - 0.598
-     - 0.00464
-     - 0.0384
-     - 2.02
-     - 0.0294
-     - 0.0683
+     - 0.654
+     - 0.00334
+     - 0.0501
+     - 2.41
+     - 0.0341
+     - 0.0859
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7075,17 +7525,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.96
      - 0.99
      - 101
-     - 0.256
-     - 1.51e+03
+     - 0.222
+     - 599
      - 0
-     - 0.583
-     - 0.00265
-     - 0.158
-     - 2.3
-     - 0.0241
-     - 0.0615
+     - 0.651
+     - 0.00334
+     - 0.124
+     - 2.31
+     - 0.0263
+     - 0.0751
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7105,17 +7555,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 5
-     - 0.0926
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.894
+     - 0.822
      - 0
-     - 0.0132
-     - 2.92
-     - 0.0387
-     - 0.113
+     - 0.0548
+     - 4.22
+     - 0.0462
+     - 0.136
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7135,17 +7585,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0.286
      - 7
-     - 0.304
-     - 378
+     - 0.356
+     - 73
      - 0
-     - 0.683
+     - 0.589
      - 0
-     - 0.0132
-     - 2.14
-     - 0.0251
-     - 0.0795
+     - 0.0548
+     - 1.07
+     - 0.0246
+     - 0.103
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7165,17 +7615,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 1
      - 1
      - 5
-     - 0.122
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.765
+     - 0.603
      - 0
-     - 0.114
-     - 3.33
-     - 0.029
-     - 0.104
+     - 0.274
+     - 3.31
+     - 0.0305
+     - 0.149
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7205,7 +7655,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0449
      - 0.134
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7235,7 +7685,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0231
      - 0.0735
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7265,7 +7715,457 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0382
      - 0.122
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_ph
+     - 440
+     - all
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.578
+     - 0.242
+     - 0.579
+     - 0.346
+     - 0.637
+     - 361
+     - 0.266
+     - 1.59e+03
+     - 0
+     - 0.567
+     - 0.0791
+     - 0.0879
+     - 2.34
+     - 0.0337
+     - 0.0899
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_ph
+     - 440
+     - all
+     - chisq
+     - 2
+     - ranked
+     - expb_pow
+     - 0.507
+     - -0.167
+     - 1.03
+     - 0.882
+     - 0.949
+     - 237
+     - 0.195
+     - 1.59e+03
+     - 0
+     - 0.53
+     - 0.0226
+     - 0.252
+     - 2.27
+     - 0.0236
+     - 0.0669
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_ph
+     - 440
+     - all
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.253
+     - -0.453
+     - 1.06
+     - 0.347
+     - 0.816
+     - 49
+     - 0.0339
+     - 1.59e+03
+     - 0
+     - 0.827
+     - 0.106
+     - 0.0333
+     - 3.5
+     - 0.0493
+     - 0.131
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_ph
+     - 440
+     - eutrophic
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.66
+     - 0.526
+     - 0.669
+     - 0.231
+     - 0.449
+     - 147
+     - 0.25
+     - 655
+     - 0
+     - 0.438
+     - 0.163
+     - 0.148
+     - 2.36
+     - 0.0343
+     - 0.0824
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_ph
+     - 440
+     - eutrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.351
+     - 0.0289
+     - 1.34
+     - 0.787
+     - 0.926
+     - 94
+     - 0.174
+     - 655
+     - 0
+     - 0.366
+     - 0.0427
+     - 0.417
+     - 2.3
+     - 0.0201
+     - 0.0508
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_ph
+     - 440
+     - eutrophic
+     - chisq
+     - —
+     - indistinguishable
+     - gsm
+     - 0.25
+     - -0.166
+     - 0.199
+     - 1
+     - 1
+     - 2
+     - 0.00305
+     - 655
+     - 0
+     - 0.74
+     - 0.22
+     - 0.0366
+     - 4.37
+     - 0.0598
+     - 0.137
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_ph
+     - 440
+     - mesotrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.565
+     - -0.299
+     - 0.826
+     - 0.955
+     - 0.973
+     - 110
+     - 0.222
+     - 599
+     - 0
+     - 0.651
+     - 0.00334
+     - 0.124
+     - 2.31
+     - 0.0263
+     - 0.0751
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_ph
+     - 440
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.558
+     - 0.0593
+     - 0.494
+     - 0.412
+     - 0.804
+     - 153
+     - 0.292
+     - 599
+     - 0
+     - 0.654
+     - 0.00334
+     - 0.0501
+     - 2.41
+     - 0.0341
+     - 0.0859
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_ph
+     - 440
+     - mesotrophic
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.264
+     - -0.272
+     - 0.611
+     - 0.324
+     - 0.811
+     - 37
+     - 0.0651
+     - 599
+     - 0
+     - 0.891
+     - 0.00334
+     - 0.0401
+     - 3.57
+     - 0.0507
+     - 0.126
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_ph
+     - 440
+     - oligotrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.818
+     - -0.207
+     - 0.288
+     - 1
+     - 1
+     - 6
+     - 0.123
+     - 73
+     - 0
+     - 0.603
+     - 0
+     - 0.274
+     - 3.31
+     - 0.0305
+     - 0.149
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_ph
+     - 440
+     - oligotrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.615
+     - 0.218
+     - 0.716
+     - 0.522
+     - 0.609
+     - 23
+     - 0.356
+     - 73
+     - 0
+     - 0.589
+     - 0
+     - 0.0548
+     - 1.07
+     - 0.0246
+     - 0.103
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 62edb76d1b93
+     - 2
+     - multi_L23_PANGAEA_v2#giop
+   * - PANGAEA
+     - a_ph
+     - 440
+     - oligotrophic
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.0833
+     - -0.4
+     - 0.668
+     - 0.429
+     - 0.857
+     - 7
+     - 0.123
+     - 73
+     - 0
+     - 0.822
+     - 0
+     - 0.0548
+     - 4.22
+     - 0.0462
+     - 0.136
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_ph
+     - 440
+     - unknown
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.613
+     - -0.19
+     - 1.09
+     - 0.889
+     - 0.926
+     - 27
+     - 0.207
+     - 266
+     - 0
+     - 0.643
+     - 0.0226
+     - 0.128
+     - 1.99
+     - 0.0231
+     - 0.0735
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 75f63215deaf
+     - 2
+     - multi_L23_PANGAEA_v2#expb_pow
+   * - PANGAEA
+     - a_ph
+     - 440
+     - unknown
+     - chisq
+     - —
+     - indistinguishable
+     - gsm
+     - 0.429
+     - -0.973
+     - 36
+     - 0
+     - 0.667
+     - 3
+     - 0.015
+     - 266
+     - 0
+     - 0.895
+     - 0.0865
+     - 0.00376
+     - 2.62
+     - 0.0449
+     - 0.134
+     - 
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+     - 5d922de2c371
+     - 2
+     - multi_L23_PANGAEA_v2#gsm
+   * - PANGAEA
+     - a_ph
+     - 440
+     - unknown
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.4
+     - 0.0705
+     - 0.516
+     - 0.421
+     - 0.711
+     - 38
+     - 0.218
+     - 266
+     - 0
+     - 0.684
+     - 0.0639
+     - 0.0338
+     - 2.39
+     - 0.0382
+     - 0.122
+     - 
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7285,17 +8185,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.346
      - 0.637
      - 361
-     - 0.281
-     - 3.9e+03
+     - 0.266
+     - 1.59e+03
      - 0
-     - 0.541
-     - 0.0857
-     - 0.0927
-     - 2.04
-     - 0.0298
-     - 0.0793
+     - 0.567
+     - 0.0791
+     - 0.0879
+     - 2.34
+     - 0.0337
+     - 0.0899
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7315,17 +8215,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.882
      - 0.949
      - 237
-     - 0.187
-     - 3.9e+03
-     - 0.00137
-     - 0.476
-     - 0.0341
-     - 0.303
+     - 0.195
+     - 1.59e+03
+     - 0
+     - 0.53
+     - 0.0226
+     - 0.252
      - 2.27
-     - 0.0234
-     - 0.0615
+     - 0.0236
+     - 0.0669
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7345,17 +8245,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.347
      - 0.816
      - 49
-     - 0.0503
-     - 3.9e+03
+     - 0.0339
+     - 1.59e+03
      - 0
-     - 0.792
-     - 0.122
-     - 0.0354
-     - 3.56
-     - 0.0452
-     - 0.123
+     - 0.827
+     - 0.106
+     - 0.0333
+     - 3.5
+     - 0.0493
+     - 0.131
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7375,17 +8275,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.231
      - 0.449
      - 147
-     - 0.219
-     - 1.74e+03
+     - 0.25
+     - 655
      - 0
      - 0.438
-     - 0.178
-     - 0.166
-     - 2
-     - 0.0309
-     - 0.0836
+     - 0.163
+     - 0.148
+     - 2.36
+     - 0.0343
+     - 0.0824
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7405,17 +8305,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.787
      - 0.926
      - 94
-     - 0.138
-     - 1.74e+03
-     - 0.00415
-     - 0.296
-     - 0.0706
-     - 0.495
-     - 2.18
-     - 0.021
-     - 0.0514
+     - 0.174
+     - 655
+     - 0
+     - 0.366
+     - 0.0427
+     - 0.417
+     - 2.3
+     - 0.0201
+     - 0.0508
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7435,17 +8335,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 1
      - 1
      - 2
-     - 0.0115
-     - 1.74e+03
+     - 0.00305
+     - 655
      - 0
-     - 0.683
-     - 0.255
-     - 0.0511
-     - 3.56
-     - 0.0441
-     - 0.139
+     - 0.74
+     - 0.22
+     - 0.0366
+     - 4.37
+     - 0.0598
+     - 0.137
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7465,17 +8365,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.955
      - 0.973
      - 110
-     - 0.256
-     - 1.51e+03
+     - 0.222
+     - 599
      - 0
-     - 0.583
-     - 0.00265
-     - 0.158
-     - 2.3
-     - 0.0241
-     - 0.0615
+     - 0.651
+     - 0.00334
+     - 0.124
+     - 2.31
+     - 0.0263
+     - 0.0751
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7495,17 +8395,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.412
      - 0.804
      - 153
-     - 0.359
-     - 1.51e+03
+     - 0.292
+     - 599
      - 0
-     - 0.598
-     - 0.00464
-     - 0.0384
-     - 2.02
-     - 0.0294
-     - 0.0683
+     - 0.654
+     - 0.00334
+     - 0.0501
+     - 2.41
+     - 0.0341
+     - 0.0859
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7525,17 +8425,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.324
      - 0.811
      - 37
-     - 0.0908
-     - 1.51e+03
+     - 0.0651
+     - 599
      - 0
-     - 0.875
-     - 0.00596
-     - 0.0285
-     - 3.7
-     - 0.0469
-     - 0.108
+     - 0.891
+     - 0.00334
+     - 0.0401
+     - 3.57
+     - 0.0507
+     - 0.126
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7555,17 +8455,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 1
      - 1
      - 6
-     - 0.122
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.765
+     - 0.603
      - 0
-     - 0.114
-     - 3.33
-     - 0.029
-     - 0.104
+     - 0.274
+     - 3.31
+     - 0.0305
+     - 0.149
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7585,17 +8485,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.522
      - 0.609
      - 23
-     - 0.304
-     - 378
+     - 0.356
+     - 73
      - 0
-     - 0.683
+     - 0.589
      - 0
-     - 0.0132
-     - 2.14
-     - 0.0251
-     - 0.0795
+     - 0.0548
+     - 1.07
+     - 0.0246
+     - 0.103
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7615,17 +8515,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.429
      - 0.857
      - 7
-     - 0.0926
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.894
+     - 0.822
      - 0
-     - 0.0132
-     - 2.92
-     - 0.0387
-     - 0.113
+     - 0.0548
+     - 4.22
+     - 0.0462
+     - 0.136
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7655,7 +8555,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0231
      - 0.0735
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7685,7 +8585,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0449
      - 0.134
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7715,7 +8615,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0382
      - 0.122
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7735,17 +8635,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.131
      - 0.328
      - 122
-     - 0.281
-     - 3.9e+03
+     - 0.266
+     - 1.59e+03
      - 0
-     - 0.541
-     - 0.0857
-     - 0.0927
-     - 2.04
-     - 0.0298
-     - 0.0793
+     - 0.567
+     - 0.0791
+     - 0.0879
+     - 2.34
+     - 0.0337
+     - 0.0899
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7765,17 +8665,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.286
      - 0.429
      - 7
-     - 0.0503
-     - 3.9e+03
+     - 0.0339
+     - 1.59e+03
      - 0
-     - 0.792
-     - 0.122
-     - 0.0354
-     - 3.56
-     - 0.0452
-     - 0.123
+     - 0.827
+     - 0.106
+     - 0.0333
+     - 3.5
+     - 0.0493
+     - 0.131
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7795,17 +8695,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.578
      - 0.836
      - 116
-     - 0.187
-     - 3.9e+03
-     - 0.00137
-     - 0.476
-     - 0.0341
-     - 0.303
+     - 0.195
+     - 1.59e+03
+     - 0
+     - 0.53
+     - 0.0226
+     - 0.252
      - 2.27
-     - 0.0234
-     - 0.0615
+     - 0.0236
+     - 0.0669
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7825,17 +8725,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.158
      - 0.386
      - 57
-     - 0.219
-     - 1.74e+03
+     - 0.25
+     - 655
      - 0
      - 0.438
-     - 0.178
-     - 0.166
-     - 2
-     - 0.0309
-     - 0.0836
+     - 0.163
+     - 0.148
+     - 2.36
+     - 0.0343
+     - 0.0824
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7855,17 +8755,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.673
      - 0.865
      - 52
-     - 0.138
-     - 1.74e+03
-     - 0.00415
-     - 0.296
-     - 0.0706
-     - 0.495
-     - 2.18
-     - 0.021
-     - 0.0514
+     - 0.174
+     - 655
+     - 0
+     - 0.366
+     - 0.0427
+     - 0.417
+     - 2.3
+     - 0.0201
+     - 0.0508
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7885,17 +8785,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.111
      - 0.356
      - 45
-     - 0.359
-     - 1.51e+03
+     - 0.292
+     - 599
      - 0
-     - 0.598
-     - 0.00464
-     - 0.0384
-     - 2.02
-     - 0.0294
-     - 0.0683
+     - 0.654
+     - 0.00334
+     - 0.0501
+     - 2.41
+     - 0.0341
+     - 0.0859
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -7915,17 +8815,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.4
      - 0.6
      - 5
-     - 0.0908
-     - 1.51e+03
+     - 0.0651
+     - 599
      - 0
-     - 0.875
-     - 0.00596
-     - 0.0285
-     - 3.7
-     - 0.0469
-     - 0.108
+     - 0.891
+     - 0.00334
+     - 0.0401
+     - 3.57
+     - 0.0507
+     - 0.126
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -7945,17 +8845,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.553
      - 0.842
      - 38
-     - 0.256
-     - 1.51e+03
+     - 0.222
+     - 599
      - 0
-     - 0.583
-     - 0.00265
-     - 0.158
-     - 2.3
-     - 0.0241
-     - 0.0615
+     - 0.651
+     - 0.00334
+     - 0.124
+     - 2.31
+     - 0.0263
+     - 0.0751
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -7975,17 +8875,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 2
-     - 0.0926
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.894
+     - 0.822
      - 0
-     - 0.0132
-     - 2.92
-     - 0.0387
-     - 0.113
+     - 0.0548
+     - 4.22
+     - 0.0462
+     - 0.136
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -8005,17 +8905,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0.333
      - 3
-     - 0.122
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.765
+     - 0.603
      - 0
-     - 0.114
-     - 3.33
-     - 0.029
-     - 0.104
+     - 0.274
+     - 3.31
+     - 0.0305
+     - 0.149
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -8035,17 +8935,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 3
-     - 0.304
-     - 378
+     - 0.356
+     - 73
      - 0
-     - 0.683
+     - 0.589
      - 0
-     - 0.0132
-     - 2.14
-     - 0.0251
-     - 0.0795
+     - 0.0548
+     - 1.07
+     - 0.0246
+     - 0.103
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8075,7 +8975,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0382
      - 0.122
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8105,7 +9005,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0231
      - 0.0735
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -8125,17 +9025,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0435
      - 0.087
      - 23
-     - 0.281
-     - 3.9e+03
+     - 0.266
+     - 1.59e+03
      - 0
-     - 0.541
-     - 0.0857
-     - 0.0927
-     - 2.04
-     - 0.0298
-     - 0.0793
+     - 0.567
+     - 0.0791
+     - 0.0879
+     - 2.34
+     - 0.0337
+     - 0.0899
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8155,17 +9055,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0.0833
      - 36
-     - 0.187
-     - 3.9e+03
-     - 0.00137
-     - 0.476
-     - 0.0341
-     - 0.303
+     - 0.195
+     - 1.59e+03
+     - 0
+     - 0.53
+     - 0.0226
+     - 0.252
      - 2.27
-     - 0.0234
-     - 0.0615
+     - 0.0236
+     - 0.0669
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -8185,17 +9085,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 2
-     - 0.0503
-     - 3.9e+03
+     - 0.0339
+     - 1.59e+03
      - 0
-     - 0.792
-     - 0.122
-     - 0.0354
-     - 3.56
-     - 0.0452
-     - 0.123
+     - 0.827
+     - 0.106
+     - 0.0333
+     - 3.5
+     - 0.0493
+     - 0.131
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -8215,17 +9115,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 1
      - 1
-     - 0.219
-     - 1.74e+03
+     - 0.25
+     - 655
      - 0
      - 0.438
-     - 0.178
-     - 0.166
-     - 2
-     - 0.0309
-     - 0.0836
+     - 0.163
+     - 0.148
+     - 2.36
+     - 0.0343
+     - 0.0824
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8245,17 +9145,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 4
-     - 0.138
-     - 1.74e+03
-     - 0.00415
-     - 0.296
-     - 0.0706
-     - 0.495
-     - 2.18
-     - 0.021
-     - 0.0514
+     - 0.174
+     - 655
+     - 0
+     - 0.366
+     - 0.0427
+     - 0.417
+     - 2.3
+     - 0.0201
+     - 0.0508
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -8275,17 +9175,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.1
      - 0.1
      - 10
-     - 0.359
-     - 1.51e+03
+     - 0.292
+     - 599
      - 0
-     - 0.598
-     - 0.00464
-     - 0.0384
-     - 2.02
-     - 0.0294
-     - 0.0683
+     - 0.654
+     - 0.00334
+     - 0.0501
+     - 2.41
+     - 0.0341
+     - 0.0859
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8305,17 +9205,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 13
-     - 0.256
-     - 1.51e+03
+     - 0.222
+     - 599
      - 0
-     - 0.583
-     - 0.00265
-     - 0.158
-     - 2.3
-     - 0.0241
-     - 0.0615
+     - 0.651
+     - 0.00334
+     - 0.124
+     - 2.31
+     - 0.0263
+     - 0.0751
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -8335,17 +9235,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 3
-     - 0.304
-     - 378
+     - 0.356
+     - 73
      - 0
-     - 0.683
+     - 0.589
      - 0
-     - 0.0132
-     - 2.14
-     - 0.0251
-     - 0.0795
+     - 0.0548
+     - 1.07
+     - 0.0246
+     - 0.103
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8365,17 +9265,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 3
-     - 0.122
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.765
+     - 0.603
      - 0
-     - 0.114
-     - 3.33
-     - 0.029
-     - 0.104
+     - 0.274
+     - 3.31
+     - 0.0305
+     - 0.149
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf
@@ -8395,17 +9295,17 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0
      - 0
      - 2
-     - 0.0926
-     - 378
+     - 0.123
+     - 73
      - 0
-     - 0.894
+     - 0.822
      - 0
-     - 0.0132
-     - 2.92
-     - 0.0387
-     - 0.113
+     - 0.0548
+     - 4.22
+     - 0.0462
+     - 0.136
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 5d922de2c371
@@ -8435,7 +9335,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0382
      - 0.122
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 62edb76d1b93
@@ -8465,7 +9365,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 0.0231
      - 0.0735
      - 
-     - 0.0.dev0@61c83e0
+     - 0.0.dev0@e0e6729
      - 0.0.dev0@f242b0e
      - 0.1.0@3aed28a
      - 75f63215deaf

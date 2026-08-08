@@ -29,9 +29,15 @@ L23,bb_p,555,giop,gsm,3260,0.2798,0.133,0.069,0.0639,0.0607,0.0675,indistinguish
 L23,bb_p,670,expb_pow,giop,3284,0.5177,0.0632,0.0661,-0.0029,-0.0044,-0.0014,indistinguishable
 L23,bb_p,670,expb_pow,gsm,3285,0.4764,0.0637,0.061,0.0027,0.0018,0.0036,indistinguishable
 L23,bb_p,670,giop,gsm,3260,0.4488,0.0655,0.0601,0.0054,0.0042,0.0067,indistinguishable
+PANGAEA,a_dg,440,expb_pow,giop,197,0.5584,0.7268,0.9843,-0.2576,-0.54,-0.091,expb_pow
+PANGAEA,a_dg,440,expb_pow,gsm,41,0.122,0.7089,0.4393,0.2697,0.1915,0.3541,gsm
+PANGAEA,a_dg,440,giop,gsm,40,0.425,0.4388,0.4299,0.0089,-0.0297,0.0442,indistinguishable
 PANGAEA,a_dg,443,expb_pow,giop,197,0.5584,0.7268,0.9843,-0.2576,-0.5307,-0.0821,expb_pow
 PANGAEA,a_dg,443,expb_pow,gsm,41,0.122,0.7089,0.4393,0.2697,0.1807,0.3457,gsm
 PANGAEA,a_dg,443,giop,gsm,40,0.425,0.4388,0.4299,0.0089,-0.0281,0.0436,indistinguishable
+PANGAEA,a_ph,440,expb_pow,giop,227,0.467,0.6988,0.4961,0.2027,0.0302,0.4753,giop
+PANGAEA,a_ph,440,expb_pow,gsm,47,0.7021,0.8101,1.0999,-0.2898,-0.9953,0.0242,underpowered
+PANGAEA,a_ph,440,giop,gsm,48,0.7917,0.4393,0.6165,-0.1772,-0.3115,-0.0299,giop
 PANGAEA,a_ph,443,expb_pow,giop,227,0.467,0.6988,0.4961,0.2027,0.0295,0.4792,giop
 PANGAEA,a_ph,443,expb_pow,gsm,47,0.7021,0.8101,1.0999,-0.2898,-1.0756,0.021,underpowered
 PANGAEA,a_ph,443,giop,gsm,48,0.7917,0.4393,0.6165,-0.1772,-0.2971,-0.0129,giop

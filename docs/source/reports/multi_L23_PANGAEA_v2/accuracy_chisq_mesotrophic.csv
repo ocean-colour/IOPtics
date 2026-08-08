@@ -29,9 +29,15 @@ L23,gsm,bb_p,555,555,,2488,-0.0482,0.0482,0.0681,0.0335,0.944,0.115,0.2166,2488,
 L23,expb_pow,bb_p,670,670,,2495,0.0271,0.0271,0.0465,0.0322,1.0071,0.2673,0.4834,2495,,,,over-confident,over-confident,0.5623,indistinguishable
 L23,giop,bb_p,670,670,,2488,-0.0189,0.0189,0.0568,0.0311,0.9642,0.1901,0.3453,2488,,,,over-confident,over-confident,0.3838,indistinguishable
 L23,gsm,bb_p,670,670,,2488,0.0112,0.0112,0.0477,0.0306,0.9916,0.2448,0.4445,2488,,,,over-confident,over-confident,0.5538,indistinguishable
+PANGAEA,expb_pow,a_dg,440,443,,101,-0.1682,0.1682,0.5456,0.241,0.7847,0.9604,0.9901,101,3,2,2,conservative,consistent,0.3033,ranked
+PANGAEA,giop,a_dg,440,443,,130,-0.2152,0.2152,0.5144,0.2414,0.7909,0.2846,0.5846,130,2,3,3,over-confident,over-confident,0.582,ranked
+PANGAEA,gsm,a_dg,440,443,,32,-0.143,0.143,0.3375,0.1599,0.8751,0.3125,0.4688,32,1,1,1,over-confident,over-confident,0.7258,ranked
 PANGAEA,expb_pow,a_dg,443,443,,101,-0.1682,0.1682,0.5456,0.241,0.7847,0.9604,0.9901,101,3,2,2,conservative,consistent,0.3033,ranked
 PANGAEA,giop,a_dg,443,443,,130,-0.2152,0.2152,0.5144,0.2414,0.7909,0.2846,0.5846,130,2,3,3,over-confident,over-confident,0.582,ranked
 PANGAEA,gsm,a_dg,443,443,,32,-0.143,0.143,0.3375,0.1599,0.8751,0.3125,0.4688,32,1,1,1,over-confident,over-confident,0.7258,ranked
+PANGAEA,expb_pow,a_ph,440,443,,112,-0.2989,0.2989,0.8255,0.6914,0.8351,0.9545,0.9727,110,3,3,3,conservative,consistent,0.5652,ranked
+PANGAEA,giop,a_ph,440,443,,153,0.0593,0.0593,0.4943,0.2384,1.0144,0.4118,0.8039,153,1,1,1,over-confident,over-confident,0.558,ranked
+PANGAEA,gsm,a_ph,440,443,,37,-0.2722,0.2722,0.6115,0.2468,0.7125,0.3243,0.8108,37,2,2,2,over-confident,over-confident,0.2639,ranked
 PANGAEA,expb_pow,a_ph,443,443,,112,-0.2989,0.2989,0.8255,0.6914,0.8351,0.9545,0.9727,110,3,3,3,conservative,consistent,0.5652,ranked
 PANGAEA,giop,a_ph,443,443,,153,0.0593,0.0593,0.4943,0.2384,1.0144,0.4118,0.8039,153,1,1,1,over-confident,over-confident,0.558,ranked
 PANGAEA,gsm,a_ph,443,443,,37,-0.2722,0.2722,0.6115,0.2468,0.7125,0.3243,0.8108,37,2,2,2,over-confident,over-confident,0.2639,ranked

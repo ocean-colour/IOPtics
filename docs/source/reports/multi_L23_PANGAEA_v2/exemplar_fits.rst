@@ -3,8 +3,8 @@ Exemplar fits — multi_L23_PANGAEA_v2
 ====================================
 
 :Sweep: multi_L23_PANGAEA_v2
-:Generated: 2026-08-07T21:54:17Z
-:ioptics: 0.0.dev0@61c83e0
+:Generated: 2026-08-08T10:18:43Z
+:ioptics: 0.0.dev0@e0e6729
 :bing: 0.0.dev0@f242b0e
 :ocpy: 0.1.0@3aed28a
 :design_doc: 0.16
@@ -33,7 +33,7 @@ Observed Rrs with every algorithm's modelled Rrs laid over it, one panel per exe
 The exemplars
 -------------
 
-**What these 10 fits are.** 1 of the 10 has a median χ²ᵥ above 5, so by this package's own threshold it is **not a solution** — the exemplars are not a gallery of successes, and on a dataset the model family struggles with, the median fit is expected to be one of the failures. 1 peaks redward of 560 nm and is therefore outside the regime these open-ocean parameterizations claim at all; their misfit is a statement about **scope**, not about the fitter. Recorded fit status across these observations and algorithms: ``ok`` 24, ``poor_fit`` 4, ``fit_failed`` 1, ``out_of_scope`` 1.
+**What these 10 fits are.** 1 of the 10 has a median χ²ᵥ above 5, so by this package's own threshold it is **not a solution** — the exemplars are not a gallery of successes, and on a dataset the model family struggles with, the median fit is expected to be one of the failures. Recorded fit status across these observations and algorithms: ``ok`` 27, ``poor_fit`` 3.
 
 .. list-table:: The exemplar observations, clear → turbid
    :header-rows: 1
@@ -52,59 +52,59 @@ The exemplars
      - 3%
      - 400
    * - L23
-     - ``2469``
+     - ``647``
      - median
-     - 2.88
+     - 1.66
      - 4%
      - 400
    * - L23
-     - ``1906``
+     - ``1122``
      - median
-     - 2.89
+     - 1.66
+     - 4%
+     - 400
+   * - L23
+     - ``1904``
+     - median
+     - 1.66
+     - 4%
+     - 400
+   * - L23
+     - ``2429``
+     - median
+     - 1.66
      - 4%
      - 405
-   * - PANGAEA
-     - ``1395``
+   * - L23
+     - ``1553``
      - median
-     - 2.88
-     - 2%
-     - 411
-   * - PANGAEA
-     - ``22415``
+     - 1.66
+     - 4%
+     - 405
+   * - L23
+     - ``1246``
      - median
-     - 2.9
-     - 3%
-     - 411
+     - 1.66
+     - 5%
+     - 405
    * - PANGAEA
      - ``16285``
      - worst
      - 436
      - 76%
      - 411
-   * - PANGAEA
-     - ``4369``
-     - median
-     - 2.89
-     - 3%
-     - 412
    * - L23
-     - ``2366``
+     - ``825``
      - median
-     - 2.89
+     - 1.66
+     - 4%
+     - 425
+   * - L23
+     - ``1838``
+     - median
+     - 1.66
      - 5%
-     - 420
-   * - PANGAEA
-     - ``53086``
-     - median
-     - 2.87
-     - 2%
-     - 560
-   * - PANGAEA
-     - ``53706``
-     - median
-     - 2.89
-     - 5%
-     - 565
+     - 430
 
 Rrs closure — best fit (obs 1586 of L23)
 ----------------------------------------

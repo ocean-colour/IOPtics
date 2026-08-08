@@ -5,7 +5,7 @@ Algorithm profile — gsm
 In one paragraph
 ----------------
 
-``gsm`` has scoreable results on **L23, PANGAEA** across 1 sweep(s). Its best contest is bb(555) on L23, at mae 0.0255 (2.6% multiplicative error); its worst is a_ph(443) on PANGAEA at 36. It produced a usable fit for 1%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
+``gsm`` has scoreable results on **L23, PANGAEA** across 1 sweep(s). Its best contest is bb(555) on L23, at mae 0.0255 (2.6% multiplicative error); its worst is a_ph(440) on PANGAEA at 36. It produced a usable fit for 0%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
 
 What it parameterizes
 ---------------------
@@ -545,6 +545,66 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 
    * - PANGAEA
      - a_dg
+     - 440
+     - all
+     - chisq
+     - —
+     - sole competitor
+     - 0.431
+     - -0.175
+     - 0.728
+     - 0.0339
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - —
+     - sole competitor
+     - 0.209
+     - 0.209
+     - 0.5
+     - 0.00305
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - —
+     - sole competitor
+     - 0.338
+     - -0.143
+     - 0.726
+     - 0.0651
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - sole competitor
+     - 1.18
+     - -0.448
+     - 0.7
+     - 0.123
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - chisq
+     - —
+     - sole competitor
+     - 0.514
+     - -0.0883
+     - 0.857
+     - 0.015
+     - 
+   * - PANGAEA
+     - a_dg
      - 443
      - all
      - chisq
@@ -553,7 +613,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.431
      - -0.175
      - 0.728
-     - 0.0503
+     - 0.0339
      - 
    * - PANGAEA
      - a_dg
@@ -565,7 +625,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.209
      - 0.209
      - 0.5
-     - 0.0115
+     - 0.00305
      - 
    * - PANGAEA
      - a_dg
@@ -577,7 +637,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.338
      - -0.143
      - 0.726
-     - 0.0908
+     - 0.0651
      - 
    * - PANGAEA
      - a_dg
@@ -589,7 +649,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 1.18
      - -0.448
      - 0.7
-     - 0.0926
+     - 0.123
      - 
    * - PANGAEA
      - a_dg
@@ -605,6 +665,66 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 
    * - PANGAEA
      - a_ph
+     - 440
+     - all
+     - chisq
+     - —
+     - sole competitor
+     - 1.06
+     - -0.453
+     - 0.253
+     - 0.0339
+     - 
+   * - PANGAEA
+     - a_ph
+     - 440
+     - eutrophic
+     - chisq
+     - —
+     - sole competitor
+     - 0.199
+     - -0.166
+     - 0.25
+     - 0.00305
+     - 
+   * - PANGAEA
+     - a_ph
+     - 440
+     - mesotrophic
+     - chisq
+     - —
+     - sole competitor
+     - 0.611
+     - -0.272
+     - 0.264
+     - 0.0651
+     - 
+   * - PANGAEA
+     - a_ph
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - sole competitor
+     - 0.668
+     - -0.4
+     - 0.0833
+     - 0.123
+     - 
+   * - PANGAEA
+     - a_ph
+     - 440
+     - unknown
+     - chisq
+     - —
+     - sole competitor
+     - 36
+     - -0.973
+     - 0.429
+     - 0.015
+     - 
+   * - PANGAEA
+     - a_ph
      - 443
      - all
      - chisq
@@ -613,7 +733,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 1.06
      - -0.453
      - 0.253
-     - 0.0503
+     - 0.0339
      - 
    * - PANGAEA
      - a_ph
@@ -625,7 +745,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.199
      - -0.166
      - 0.25
-     - 0.0115
+     - 0.00305
      - 
    * - PANGAEA
      - a_ph
@@ -637,7 +757,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.611
      - -0.272
      - 0.264
-     - 0.0908
+     - 0.0651
      - 
    * - PANGAEA
      - a_ph
@@ -649,7 +769,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.668
      - -0.4
      - 0.0833
-     - 0.0926
+     - 0.123
      - 
    * - PANGAEA
      - a_ph
@@ -663,66 +783,8 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.429
      - 0.015
      - 
-   * - PANGAEA
-     - bb_p
-     - 555
-     - all
-     - chisq
-     - —
-     - sole competitor
-     - 0.354
-     - -0.0279
-     - 0.692
-     - 0.0503
-     - 
-   * - PANGAEA
-     - bb_p
-     - 555
-     - mesotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.3
-     - -0.183
-     - 0.556
-     - 0.0908
-     - 
-   * - PANGAEA
-     - bb_p
-     - 555
-     - oligotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.501
-     - 0.501
-     - 1
-     - 0.0926
-     - 
-   * - PANGAEA
-     - bb_p
-     - 670
-     - all
-     - chisq
-     - —
-     - sole competitor
-     - 0.431
-     - 0.431
-     - 0
-     - 0.0503
-     - 
-   * - PANGAEA
-     - bb_p
-     - 670
-     - oligotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.431
-     - 0.431
-     - 0
-     - 0.0926
-     - 
+
+(5 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Are its uncertainties honest?
 -----------------------------
@@ -1022,6 +1084,41 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 648
    * - PANGAEA
      - a_dg
+     - 440
+     - all
+     - 0.262
+     - 0.405
+     - 42
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - 0
+     - 1
+     - 1
+   * - PANGAEA
+     - a_dg
+     - 440
+     - mesotrophic
+     - 0.312
+     - 0.469
+     - 32
+   * - PANGAEA
+     - a_dg
+     - 440
+     - oligotrophic
+     - 0
+     - 0
+     - 5
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - 0.25
+     - 0.25
+     - 4
+   * - PANGAEA
+     - a_dg
      - 443
      - all
      - 0.262
@@ -1057,6 +1154,41 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 4
    * - PANGAEA
      - a_ph
+     - 440
+     - all
+     - 0.347
+     - 0.816
+     - 49
+   * - PANGAEA
+     - a_ph
+     - 440
+     - eutrophic
+     - 1
+     - 1
+     - 2
+   * - PANGAEA
+     - a_ph
+     - 440
+     - mesotrophic
+     - 0.324
+     - 0.811
+     - 37
+   * - PANGAEA
+     - a_ph
+     - 440
+     - oligotrophic
+     - 0.429
+     - 0.857
+     - 7
+   * - PANGAEA
+     - a_ph
+     - 440
+     - unknown
+     - 0
+     - 0.667
+     - 3
+   * - PANGAEA
+     - a_ph
      - 443
      - all
      - 0.347
@@ -1090,41 +1222,8 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 0
      - 0.667
      - 3
-   * - PANGAEA
-     - bb_p
-     - 555
-     - all
-     - 0.286
-     - 0.429
-     - 7
-   * - PANGAEA
-     - bb_p
-     - 555
-     - mesotrophic
-     - 0.4
-     - 0.6
-     - 5
-   * - PANGAEA
-     - bb_p
-     - 555
-     - oligotrophic
-     - 0
-     - 0
-     - 2
-   * - PANGAEA
-     - bb_p
-     - 670
-     - all
-     - 0
-     - 0
-     - 2
-   * - PANGAEA
-     - bb_p
-     - 670
-     - oligotrophic
-     - 0
-     - 0
-     - 2
+
+(5 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head against the others
 -------------------------------
@@ -1805,7 +1904,7 @@ Head-to-head against the others
      - 0.0315
      - indistinguishable
 
-(50 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(70 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Per-spectrum behaviour
 ----------------------

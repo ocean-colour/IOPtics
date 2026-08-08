@@ -1,0 +1,32 @@
+# Full-L23 MCMC sweep — PREPARED, NOT RUN. Intended for JXP's workstation.
+#
+# Purpose: put the site's chi-squared-vs-MCMC comparison and its interval-calibration
+# claim on a real footing. Today both rest on **8** chains from `run_test20.yaml`, so
+# `coverage_n` is 8 and the striking contrast (chi-squared covers 0.42 of truth at
+# a(440) against a nominal 0.68, while MCMC covers 0.875) is suggestive, not solid.
+#
+# READ THE RESOURCE NOTES IN THE STAGE-7 PROMPT DOC (Task 13) BEFORE LAUNCHING.
+# Measured on this laptop, per MCMC fit at the default 40 000 steps / 16 walkers:
+#
+#   time    ~140 s, and `run._mcmc_subset` is deliberately SERIAL
+#           -> 3320 spectra = ~129 hours (~5.4 days) as the code stands
+#   chains  12.2 MB each, stored unthinned and including burn-in
+#           -> 3320 spectra = ~40 GB
+#
+# Neither number is a reason not to do it, but both are reasons not to launch it
+# unchanged. Task 13 lists the two changes that make it a ~overnight, ~2 GB job.
+sweep_id: expb_giop_L23_mcmc_full
+datasets: [L23]
+noise_model: pace              # L23's native model (the smoke uses it too)
+algorithms:
+  - name: expb_pow             # the k=5 model: the only one MCMC is run for
+    fit_method: mcmc
+  - giop                       # chi-squared only, for the cross-algorithm contest
+fit_method: chisq              # sweep default: every algorithm is chi-squared-fit
+mcmc_subset: 3320              # ALL of L23 (the adapter enumerates 3320 at X=1).
+                               #   `run_sweep` takes `records[:mcmc_subset]`, so any
+                               #   value >= 3320 means "all"; it is written exactly
+                               #   here so the intent is legible in provenance.
+seed: 1234
+wv_min: 400
+wv_max: 750

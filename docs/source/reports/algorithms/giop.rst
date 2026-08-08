@@ -5,7 +5,7 @@ Algorithm profile — giop
 In one paragraph
 ----------------
 
-``giop`` has scoreable results on **L23, PANGAEA** across 2 sweep(s). Its best contest is bb(555) on L23, at mae 0.0278 (2.8% multiplicative error); its worst is a_dg(443) on PANGAEA at 6.11. It produced a usable fit for 22%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
+``giop`` has scoreable results on **L23, PANGAEA** across 2 sweep(s). Its best contest is bb(555) on L23, at mae 0.0278 (2.8% multiplicative error); its worst is a_dg(440) on PANGAEA at 6.11. It produced a usable fit for 22%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
 
 What it parameterizes
 ---------------------
@@ -784,7 +784,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 1
      - 
 
-(30 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(40 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Are its uncertainties honest?
 -----------------------------
@@ -1223,7 +1223,7 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 0.846
      - 13
 
-(30 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(40 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head against the others
 -------------------------------
@@ -1904,7 +1904,38 @@ Head-to-head against the others
      - 0.00843
      - indistinguishable
 
-(85 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(105 further rows are on the :doc:`/reports/leaderboard_full` page.)
+
+What varied between sweeps
+--------------------------
+
+This profile pools every sweep that ran ``giop``. The runs were **not**
+identically configured — each row below is one distinct persisted
+algorithm block (``algo_digest``), so numbers from different rows are
+not strictly like-for-like:
+
+.. list-table:: Configurations pooled here
+   :header-rows: 1
+   :widths: auto
+
+   * - sweep_id
+     - algo_digest
+     - prov_schema
+     - versions
+     - bing
+     - ocpy
+   * - expb_giop_L23_test20
+     - 62edb76d1b93
+     - 2
+     - 0.0.dev0@61c83e0
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
+   * - multi_L23_PANGAEA_v2
+     - 62edb76d1b93
+     - 2
+     - 0.0.dev0@e0e6729
+     - 0.0.dev0@f242b0e
+     - 0.1.0@3aed28a
 
 Per-spectrum behaviour
 ----------------------

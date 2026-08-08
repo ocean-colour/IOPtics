@@ -29,9 +29,15 @@ L23,gsm,bb_p,555,555,,648,0.0164,0.0164,0.0762,0.0454,0.9914,0.1698,0.3056,648,1
 L23,expb_pow,bb_p,670,670,,648,0.1182,0.1182,0.1211,0.0704,1.0816,0.1312,0.2315,648,,,,over-confident,over-confident,0.3253,indistinguishable
 L23,giop,bb_p,670,670,,637,0.0704,0.0704,0.0953,0.0598,1.0367,0.2119,0.3611,637,,,,over-confident,over-confident,0.7834,indistinguishable
 L23,gsm,bb_p,670,670,,648,0.1156,0.1156,0.1188,0.0695,1.079,0.1451,0.2485,648,,,,over-confident,over-confident,0.3938,indistinguishable
+PANGAEA,expb_pow,a_dg,440,443,,5,-0.4945,0.4945,1.4623,0.4268,0.4807,1.0,1.0,5,3,3,3,consistent,consistent,0.2,ranked
+PANGAEA,giop,a_dg,440,443,,7,-0.4004,0.4004,1.0153,0.3367,0.5822,0.0,0.2857,7,1,1,1,over-confident,over-confident,0.6,ranked
+PANGAEA,gsm,a_dg,440,443,,5,-0.4485,0.4485,1.1808,0.3809,0.4531,0.0,0.0,5,2,2,2,over-confident,over-confident,0.7,ranked
 PANGAEA,expb_pow,a_dg,443,443,,5,-0.4945,0.4945,1.4623,0.4268,0.4807,1.0,1.0,5,3,3,3,consistent,consistent,0.2,ranked
 PANGAEA,giop,a_dg,443,443,,7,-0.4004,0.4004,1.0153,0.3367,0.5822,0.0,0.2857,7,1,1,1,over-confident,over-confident,0.6,ranked
 PANGAEA,gsm,a_dg,443,443,,5,-0.4485,0.4485,1.1808,0.3809,0.4531,0.0,0.0,5,2,2,2,over-confident,over-confident,0.7,ranked
+PANGAEA,expb_pow,a_ph,440,443,,6,-0.2065,0.2065,0.2879,0.1497,0.8476,1.0,1.0,6,1,1,1,consistent,consistent,0.8182,ranked
+PANGAEA,giop,a_ph,440,443,,23,0.2185,0.2185,0.7163,0.3011,0.9717,0.5217,0.6087,23,3,2,3,consistent,over-confident,0.6154,ranked
+PANGAEA,gsm,a_ph,440,443,,7,-0.4004,0.4004,0.6678,0.2508,0.6491,0.4286,0.8571,7,2,3,2,consistent,consistent,0.0833,ranked
 PANGAEA,expb_pow,a_ph,443,443,,6,-0.2065,0.2065,0.2879,0.1497,0.8476,1.0,1.0,6,1,1,1,consistent,consistent,0.8182,ranked
 PANGAEA,giop,a_ph,443,443,,23,0.2185,0.2185,0.7163,0.3011,0.9717,0.5217,0.6087,23,3,2,3,consistent,over-confident,0.6154,ranked
 PANGAEA,gsm,a_ph,443,443,,7,-0.4004,0.4004,0.6678,0.2508,0.6491,0.4286,0.8571,7,2,3,2,consistent,consistent,0.0833,ranked

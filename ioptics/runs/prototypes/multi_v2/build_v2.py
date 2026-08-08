@@ -37,7 +37,7 @@ CONFIG = os.path.join(HERE, 'run_v2.yaml')
 _PANGAEA_SPECTRAL = ('aph', 'acdom', 'bbp')
 
 
-def pangaea_truth_ids(*, spectral_only=False):
+def pangaea_truth_ids(*, spectral_only=True):
     """PANGAEA observation ids that carry **any truth a metric can score**.
 
     PANGAEA enumerates **64 071** observations with usable ``Rrs``, and the vast
@@ -47,10 +47,15 @@ def pangaea_truth_ids(*, spectral_only=False):
     tables directly (a set intersection) rather than by prepping 64 071 records to
     find out.
 
-    "Scoreable truth" means what :mod:`ioptics.metrics` can actually use: a spectral
-    IOP family (``a_ph`` / ``a_dg`` / ``bb_p``) **or** a chlorophyll value, since
-    ``Chl`` is scored as a derived scalar. ``spectral_only=True`` narrows it to the
-    spectral families — a stricter bound that drops the ids scoreable on Chl alone.
+    **Default: spectral truth only** (JXP's choice) — an id qualifies if it carries a
+    spectral IOP family (``a_ph`` / ``a_dg`` / ``bb_p``), which is **1 593** ids.
+    ``spectral_only=False`` also admits ids whose only truth is chlorophyll (a derived
+    scalar the metrics do score), which widens it to **3 896**. The narrower bound
+    keeps the sweep to observations that can be scored on an *IOP retrieval* rather
+    than on a single downstream scalar, and halves the cost.
+
+    (The Stage-7 prompt cited "3 247 truth-carrying ids"; no definition here
+    reproduces that number. The two the tables actually support are 1 593 and 3 896.)
 
     Returns a sorted list of ids.
     """
@@ -78,7 +83,7 @@ def pangaea_truth_ids(*, spectral_only=False):
     return sorted(ids & with_rrs)
 
 
-def bounded_obs_ids(*, spectral_only=False):
+def bounded_obs_ids(*, spectral_only=True):
     """The per-dataset ``obs_ids`` mapping for the bounded run.
 
     L23 is absent from the mapping and therefore runs **in full** — every one of its

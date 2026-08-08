@@ -178,6 +178,8 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 9. Provenance hardening.
 10. Publish the GLORIA investigation; document `gsm` + the turbid trio; fix stale text.
 11. Generate the missing evidence (bounded `multi_v2`, L23 smoke re-run, re-fold).
+12. Execute Task 12 below
+13. Full-L23 MCMC sweep (**prepared here, to be run on JXP's workstation**).
 
 ### Pull Requests
 
@@ -292,6 +294,43 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
     GLORIA, that is a reportable result, not a blocker. Report counts + wall time.
     Q&A. Log.
 
+12. **Responding to Q&A.** Read my answers to the Q&A section for Task 11 and and react accordingly.  Log your work. Use Fable if you can.
+
+13. **Full-L23 MCMC sweep — prepared, not run.** Put the χ²-vs-MCMC comparison and
+    the interval-calibration claim on a real footing: today both rest on **8** chains,
+    so `coverage_n` is 8 and the contrast (χ² covers 0.42 of truth at `a(440)` against
+    a nominal 0.68, MCMC covers 0.875) is suggestive rather than solid. The config is
+    committed as `ioptics/runs/prototypes/expb_giop/run_l23_mcmc_full.yaml`
+    (`--config l23_mcmc_full`), and it is deliberately **not** launched here.
+
+    **Measured cost as the code stands** (per fit, 40 000 steps × 16 walkers, on this
+    laptop):
+
+    | | per fit | × 3 320 spectra |
+    |---|---|---|
+    | wall time | ~140 s, **serial** | **~129 h (~5.4 days)** |
+    | chain on disk | 12.2 MB, unthinned, burn-in included | **~40 GB** |
+
+    Both are addressable, and neither should be discovered halfway through a
+    multi-day run:
+
+    a. **`run._mcmc_subset` is serial by deliberate choice** ("the subset is small and
+       the raw chains are large"). That premise no longer holds at 3 320. Parallelising
+       it over `n_cores` turns 5.4 days into roughly overnight on a 16-core box. The
+       care needed is that each worker writes its own chain file and that the RNG is
+       seeded per record, not per process, or the chains stop being reproducible.
+    b. **Chains are persisted unthinned and with burn-in.** `(40000, 16, 5) float32`
+       is stored whole, while the posterior percentiles the pipeline actually consumes
+       are computed at fit time. Discarding `nburn` and thinning by ~20 gives
+       ~0.6 MB/chain — **~2 GB instead of ~40 GB** — and still leaves ~1 500 samples
+       per walker, which is ample for the corner plots and the coverage statistics.
+       Thinning must be recorded in the chain file so a reader cannot mistake a thinned
+       chain for a short one.
+
+    Do (a) and (b) first, then run stages 1→3 on the workstation and re-fold. Expect
+    the χ²-vs-MCMC table and the calibration verdicts to change once `coverage_n` is in
+    the thousands rather than 8 — that is the point of running it. Q&A. Log.
+
 ### Q&A
 
 > Open questions for JXP (posed, not self-answered). These are P1-P10 from
@@ -369,6 +408,8 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   is scored as a derived scalar. The stricter spectral-only bound would halve the
   PANGAEA cost and drop the ids that can only be scored on Chl. Confirm 3 896, or say
   if you want spectral-only (one keyword).
+>A. I guess 1,593.
+
 - **PANGAEA's 5-30% success rate: report as a finding, or investigate first?** All
   three algorithms mostly fail on it — `gsm` returns a solution for 5% of spectra.
   Some of that is certainly `maxfev` (`expb_pow` fails outright on 30%), but 7 048
@@ -376,11 +417,14 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   PANGAEA is *in-situ* data that ought to be within the open-ocean models' regime in a
   way GLORIA is not. It is currently published as-is with the numbers stated. Worth its
   own investigation like the GLORIA one, or leave it on the page as a result?
+>A. Yes, this is worth its investigation.  Please generate a separate prompt doc for this investigation.  Model it after the GLORIA investigation prompts.
+
 - **Should the L23 smoke grow its MCMC subset?** 8 chains at ~140 s is the whole basis
   of the site's only χ²-vs-MCMC comparison and its only corner plots, and `coverage_n`
   of 8 is thin for a calibration claim — the χ² 0.42 vs MCMC 0.875 contrast is
   suggestive but not solid. 40 chains would be ~90 minutes and could run unattended.
   Worth it, or is the qualitative point enough for now?
+>A. Yes, we should do the entire L23 dataset.  I will, hwoever, run that on my workstation.  So prep for it, but do not execute it.  Generate a new task in this prompt doc for it.
 
 **New after Task 10:**
 
@@ -617,6 +661,76 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-08 (Stage 7, Task 12: responding to the Task-11 Q&A)
+
+**1. "I guess 1,593" — the PANGAEA bound is now spectral-truth-only, and the sweep
+was re-run.** `pangaea_truth_ids()` defaults to `spectral_only=True`;
+`spectral_only=False` still gives the 3 896 that also admits Chl-only ids. Re-ran
+stages 1→3 (14 739 fits: 3 320 L23 + 1 593 PANGAEA × 3 algorithms), re-scored,
+re-folded, rebuilt the site. **The finding is unchanged**, which is itself worth
+recording — the narrower bound gives 19.5 / 26.6 / 3.4% ok on PANGAEA against
+19/28/5% before, so PANGAEA's failure is not an artifact of having included
+chlorophyll-only observations.
+
+**2. The PANGAEA investigation has its own prompt doc:
+`claude_prompts/pangaea_fits.md`**, modelled on the GLORIA arc (stage06 Tasks 8–15 →
+`reports/gloria_fits_report.md`) with the same deliverables — a round-by-round report
+plus the scripts that made it.
+
+I put a Fable agent on read-only diagnostics **first**, so the doc prescribes what the
+evidence supports rather than what seemed plausible. It changed the shape of the
+investigation substantially:
+
+- **The headline number may be mostly a scoring artifact.** PANGAEA V3 ships **no
+  per-band Rrs uncertainty at all**, so every χ²ᵥ is `(rel_misfit / 0.05)²` against an
+  invented 5% — χ²ᵥ = 5 means only ~11% RMS misfit. **38–56% of `poor_fit` rows miss
+  by under 10%**, and their water is statistically indistinguishable from `ok` water
+  (median Chl 0.42–0.74 vs 0.23–0.68). So the first task is to re-score on a
+  noise-model-free statistic, not to hunt for a physical failure.
+- **`n_bands = k` is a deterministic kill our own adapter admits.** `obs_ids(min_rrs=5)`
+  enumerates 5-band spectra; `expb_pow` has k = 5. **All 315 five-band observations
+  failed**, every one with `LinAlgError: SVD did not converge`. `giop` (k=3) fits the
+  same spectra at **76%** ok.
+- **`maxfev` fixes the crash, not the fit.** Re-fitting 40 failures at `maxfev=40000`:
+  28 of the 30 with ≥6 bands converged — **but only 1 became `ok`**. That kills the
+  tempting conclusion that the budget explains the gap.
+- **Cruise systematics are real but not "three bad cruises".** NOMAD is 81% of the
+  sample and 81% of the failures. But per-subdataset ok rates span **0–83%**, and
+  three NOMAD cruises are **100% converged and 100% `poor_fit`** — a whole-cruise
+  uniform misfit that looks like calibration, not physics.
+- **One hypothesis killed before the investigation starts:** sparse bands as a general
+  cause. Beyond the exact `n = k` case the correlation runs the *other* way.
+- **And the L23 contrast is not a noise-model confound** — 15 L23 spectra fit 60/60 ok
+  under both `pct:0.05` and native `pace`.
+
+The doc also records **two pipeline defects** the recon found, which I deliberately did
+*not* fix here because both change results and need a re-run: `n_bands` is **0 on every
+`fit_failed` row** (filled from an empty stats dict), so a reader counting bands gets
+zero for exactly the rows they most want to diagnose; and nothing refuses an
+underdetermined fit, so `n_bands ≤ k` surfaces as a scipy `LinAlgError` instead of a
+status we chose.
+
+**3. Full-L23 MCMC is prepared but not run**, per your instruction — config committed
+at `run_l23_mcmc_full.yaml` (`--config l23_mcmc_full`, `mcmc_subset: 3320`), and
+**Task 13** added to this doc. The prep that matters is the measured cost, because
+neither number should be discovered halfway through a multi-day run:
+
+| | per fit | × 3 320 |
+|---|---|---|
+| wall time | ~140 s, **serial** | **~129 h (~5.4 days)** |
+| chain on disk | 12.2 MB, unthinned, burn-in included | **~40 GB** |
+
+Both are addressable and Task 13 says how: `run._mcmc_subset` is serial *by deliberate
+choice* ("the subset is small and the raw chains are large") — a premise that stops
+holding at 3 320 — and chains are persisted whole at `(40000, 16, 5) float32` when the
+pipeline only consumes posterior percentiles. Dropping burn-in and thinning by ~20
+gives ~0.6 MB/chain, **~2 GB instead of ~40 GB**, still ~1 500 samples per walker.
+Do both before launching.
+
+**Verified:** **440 passed**, clean `sphinx -W` **exit 0**, coverage matrix unchanged
+in shape (L23/PANGAEA scored for all three defaults; GLORIA × {`giop`, `gsm`} and
+L23/PANGAEA × the turbid trio still honestly "not evaluated").
 
 ### 2026-08-08 (Stage 7, Task 11: generate the missing evidence)
 
