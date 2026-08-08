@@ -1,0 +1,3 @@
+dataset,algorithm,frac_not_ok,n_attempted,n_scored,chi2_nu_median,rel_misfit_median,rel_misfit_median_all,frac_good,frac_overfit,frac_underfit,frac_qc_fail,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed
+L23,expb_pow,0.0,13,13,1.0535,0.1055,0.1055,0.9231,0.0,0.0769,0.0,1.0,0.0,0.0,0.0
+L23,giop,0.0,13,13,1.0913,0.1313,0.1313,0.8462,0.0,0.1538,0.0,1.0,0.0,0.0,0.0
