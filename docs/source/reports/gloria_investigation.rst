@@ -20,29 +20,38 @@ Why BING chi-squared fits of GLORIA hyperspectral Rrs fail
    things in it are now known to be superseded or internally inconsistent, and a
    reader should not take them at face value:
 
-   1. **The closing recommendation — "the real fix is a richer backscattering
-      model" — is wrong**, and the correction is 400 lines above it rather than
-      beside it. Three richer backscattering models were subsequently built and
-      run (``expb_pow2``, ``expb_pow2flat``, ``expb_powflex``; see
-      :ref:`turbid-models`). On 100 GLORIA spectra with every fit converging they
-      agree with ``expb_pow`` and with each other **to three decimals** in both
-      :math:`\chi^2_\nu` and median relative misfit. They do not fail to improve
-      the fit — they return the *same* fit. The remaining suspect is the forward
-      model, not the backscattering parameterization.
-   2. **The convergence-rate numbers were corrected only in the prose.** The
-      Round-4 notice states two figures were "corrected in place below"; one was
-      not. The convergence table and the ``Root cause`` section still lead with
-      5/40 → 15/40 (12.5% → 37.5%); the corrected figure is 40/40.
-   3. **The inflated-noise table's ``measured`` row still reports a relative
-      misfit of 0.48**, while the paragraph directly beneath it identifies 0.48
-      as the biased 15-spectrum value and 0.64 as the honest one.
+   1. **The closing ``Recommendation`` section still leads with "the real fix is
+      a richer BACKSCATTERING model", and that is now known to be wrong.** The
+      Summary's copy of the same recommendation carries a Follow-up directly
+      beneath it; the closing section's does not. Three richer backscattering
+      models were subsequently built and run (``expb_pow2``, ``expb_pow2flat``,
+      ``expb_powflex``; see :ref:`turbid-models`). On 100 GLORIA spectra with
+      every fit converging they agree with ``expb_pow`` and with each other **to
+      three decimals** in both :math:`\chi^2_\nu` and median relative misfit.
+      They do not fail to improve the fit — they return the *same* fit. The
+      remaining suspect is the forward model.
+   2. **The Round-4 notice promises two numbers are "corrected in place below",
+      and they are not** — but the tables are *not* wrong, which is the subtler
+      problem. Re-running the report's own script in August 2026 reproduces the
+      convergence table exactly (5/40 and 15/40). Those rows measure fits made
+      **without** the NaN-aware error floor; the 40/40 figure in the notice is
+      what the *floored* fits achieve, and it appears in the Round-3
+      inflated-noise table. Neither table says which case it is measuring, so
+      they read as contradicting each other and the headline.
+   3. **Likewise the inflated-noise table's ``measured`` row (misfit 0.48).**
+      That row is the measured-noise subset — 15 of 40 spectra — so 0.48 is
+      correct *for it*, and the script still produces it. The paragraph beneath
+      gives 0.64 as the honest cross-population value. Correct numbers, adjacent,
+      with nothing labelling the difference.
    4. **Two cross-references dangle** — a reference to "the Round-3 table",
       which is not labelled anywhere, and a :math:`\chi^2_\nu` of 7.2e1
       attributed to "Rounds 1-3" that appears nowhere else in the document.
 
    The ``Reproducibility`` block also hardcodes Linux paths from the machine the
    investigation ran on. Everything else in the report stands, and the
-   self-corrections it contains are the most valuable part of it.
+   self-corrections it contains are the most valuable part of it. **The figures on
+   this page were regenerated from the report's script in August 2026** and are
+   current; the prose is the July original.
 
 *IOPtics investigation report.* All numbers below are produced by
 ``reports/scripts/gloria_fits_report.py`` (ocean14 interpreter, ``Agg``

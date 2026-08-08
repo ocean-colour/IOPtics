@@ -30,10 +30,18 @@ from ioptics import config, run
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, 'run_v1.yaml')
 
+#: The 20-spectrum smoke variant (``run_test20.yaml``). Selected with
+#: ``--config test20``. It is the sweep behind the published
+#: ``reports/expb_giop_L23_test20/`` page, which had no committed config until
+#: Stage 7 Task 11 and so could not be regenerated when it went stale.
+CONFIG_TEST20 = os.path.join(HERE, 'run_test20.yaml')
 
-def main(flg, *, n_cores=1, strict=True, obs_ids=None):
+CONFIGS = {'v1': CONFIG, 'test20': CONFIG_TEST20}
+
+
+def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name='v1'):
     flg = int(flg)
-    cfg = config.load(CONFIG)
+    cfg = config.load(CONFIGS[config_name])
 
     if flg == 1:
         # prep + retrieve -> tables + provenance
@@ -64,6 +72,8 @@ def _cli(argv=None):
                    help='parallel workers for prep + chi^2 (stage 1)')
     p.add_argument('--strict', default='true',
                    help='true = fail-fast; false = robust fit_failed rows (stage 1)')
+    p.add_argument('--config', default='v1', choices=sorted(CONFIGS),
+                   help="which sweep config: 'v1' (full L23) or 'test20' (smoke)")
     p.add_argument('--obs-ids', default=None,
                    help="restrict prep to a range 'A:B' (stage 1; default all)")
     a = p.parse_args(argv)
@@ -73,7 +83,8 @@ def _cli(argv=None):
     if a.obs_ids:
         lo, hi = (int(x) for x in a.obs_ids.split(':'))
         obs_ids = range(lo, hi)
-    main(a.flg, n_cores=a.n_cores, strict=strict, obs_ids=obs_ids)
+    main(a.flg, n_cores=a.n_cores, strict=strict, obs_ids=obs_ids,
+         config_name=a.config)
 
 
 if __name__ == '__main__':

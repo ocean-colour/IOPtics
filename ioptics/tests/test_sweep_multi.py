@@ -127,3 +127,57 @@ def test_multi_dataset_coverage_and_caveat(tmp_path):
     # the caveat surfaces in the rendered leaderboard table (the exit criterion)
     rst = leaderboard.render(board=board)
     assert 'CDOM_vs_adg' in rst
+
+
+def test_obs_ids_can_bound_each_dataset_separately(monkeypatch):
+    """A mixed sweep needs a per-dataset bound, not one id list for all of them.
+
+    PANGAEA enumerates 64 071 observations of which ~4 000 carry any truth, so an
+    unbounded ``{L23, PANGAEA}`` sweep spends ~95% of its fits producing rows no
+    metric can score. Bounding PANGAEA while leaving L23 whole is not expressible
+    with a single ``obs_ids`` iterable — which is what ``build_v2``'s own docstring
+    said made the bounded run impossible.
+    """
+    from ioptics import config, prep, provenance, run
+    from ioptics.algorithms import registry
+
+    seen = {}
+
+    def _fake_prep(dataset, *, obs_ids=None, **kw):
+        seen[dataset] = None if obs_ids is None else list(obs_ids)
+        return []
+
+    monkeypatch.setattr(prep, 'prep_dataset', _fake_prep)
+    monkeypatch.setattr(registry, 'get', lambda name: _Spec(name))
+    monkeypatch.setattr(run, 'run_batch', lambda *a, **k: [])
+    monkeypatch.setattr(provenance, 'write', lambda *a, **k: 'prov.yaml')
+    monkeypatch.setattr(provenance, 'build', lambda *a, **k: {})
+
+    written = {}
+
+    def _fake_write(sweep_id, pairs, **kw):
+        written['n'] = len(pairs)
+        return {'spectral': 's', 'scalar': 'c'}
+
+    from ioptics import io
+    monkeypatch.setattr(io, 'write_results', _fake_write)
+
+    cfg = config.load(_load_build_module().CONFIG)
+    run.run_sweep(cfg, obs_ids={'PANGAEA': [1, 2, 3]})
+    assert seen['PANGAEA'] == [1, 2, 3], 'PANGAEA bounded'
+    assert seen['L23'] is None, 'a dataset absent from the mapping runs in full'
+
+    # the plain iterable form still applies to every dataset
+    seen.clear()
+    run.run_sweep(cfg, obs_ids=range(4))
+    assert seen['L23'] == [0, 1, 2, 3] and seen['PANGAEA'] == [0, 1, 2, 3]
+
+
+class _Spec:
+    """Minimal stand-in for an AlgorithmSpec (the fit is monkeypatched away)."""
+
+    def __init__(self, name):
+        self.name = name
+
+    def with_overrides(self, overrides):
+        return self

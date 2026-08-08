@@ -24,6 +24,8 @@ Stage 3. Two invariants:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import numpy as np
 
 from ioptics.records import RetrievalResult
@@ -487,9 +489,16 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     cfg : SweepConfig
         The sweep config (``sweep_id``, ``datasets``, ``algorithms``,
         ``noise_model``, ``mcmc_subset``, ``seed``, ``results_root``).
-    obs_ids : iterable or None, optional
-        Restrict the prep to these observation ids (default: all). Handy for
-        tests / partial sweeps.
+    obs_ids : iterable, mapping or None, optional
+        Restrict the prep to these observation ids (default: all). An iterable
+        applies to **every** dataset; a **mapping** ``{dataset: ids}`` bounds each
+        one separately, with a dataset absent from the mapping running in full.
+
+        The mapping form is what makes a mixed-dataset sweep tractable. PANGAEA
+        enumerates 64 071 observations of which only ~4 000 carry any truth to score
+        against, so an unbounded ``{L23, PANGAEA}`` sweep spends ~95% of its fits
+        producing rows no metric can use. Bounding PANGAEA while leaving L23 whole
+        is not expressible with a single id list.
     n_cores : int, optional
         Parallel workers for prep and fitting.
     strict : bool, optional
@@ -508,14 +517,23 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     out_root = root if root is not None else cfg.results_root
 
     # Prep records per dataset (native grid, sweep-level noise model + seed).
+    is_map = isinstance(obs_ids, Mapping)
     records, datasets_info = [], {}
     for dataset in cfg.datasets:
-        recs = prep.prep_dataset(dataset, obs_ids=obs_ids,
+        ids = obs_ids.get(dataset) if is_map else obs_ids
+        recs = prep.prep_dataset(dataset, obs_ids=ids,
                                  noise=cfg.noise_model, seed=cfg.seed,
                                  wv_min=cfg.wv_min, wv_max=cfg.wv_max,
                                  n_cores=n_cores)
         records.extend(recs)
-        datasets_info[dataset] = {'n_obs': len(recs)}
+        # Record the bound in provenance: "PANGAEA n_obs=3896" is a different claim
+        # from "PANGAEA n_obs=3896 out of 64071 because the rest carry no truth",
+        # and only the second is reproducible.
+        info = {'n_obs': len(recs)}
+        if ids is not None:
+            info['n_requested'] = len(list(ids))
+            info['bounded'] = True
+        datasets_info[dataset] = info
 
     # Per-algorithm overrides are **applied** here, not ignored: a config asking for
     # `maxfev: 40000` used to run at the registry default while the provenance file

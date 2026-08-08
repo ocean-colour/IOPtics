@@ -140,8 +140,10 @@ def test_the_page_draws_it_or_says_why_not(tmp_path):
     docs = _docs(tmp_path)
     txt = standard.build('sl_page', root=tmp_path, docs_root=docs).read_text()
     assert 'Accuracy vs. wavelength' in txt
+    # the figure is per dataset — pooling two datasets' band sets onto one axis
+    # drew a sparse dataset's bands as spectral structure
     assert (docs / 'reports' / 'sl_page'
-            / 'accuracy_vs_wavelength_mae.png').is_file()
+            / 'accuracy_vs_wavelength_mae_L23.png').is_file()
 
     # the same page, with only one scored band, must suppress and explain
     sweep = figures.load('sl_page', root=tmp_path)
@@ -413,6 +415,46 @@ def test_a_sweep_with_no_unknown_population_says_nothing_about_it(tmp_path):
     docs = _docs(tmp_path)
     txt = standard.build('sl_allchl', root=tmp_path, docs_root=docs).read_text()
     assert 'no chlorophyll at all' not in txt
+
+
+def test_two_datasets_are_never_drawn_on_one_wavelength_axis(tmp_path):
+    """Found by running the real bounded sweep, not by reading the code.
+
+    ``multi_v2`` pools L23 (71 hyperspectral bands, n up to 3285) with PANGAEA (23
+    in-situ bands, n up to 299). Drawn as one line per algorithm, PANGAEA's sparse
+    bands appeared as tall spikes that read as *spectral structure* rather than as a
+    different population entirely.
+    """
+    pairs = []
+    for obs in range(6):
+        for ds in ('L23', 'PANGAEA'):
+            for i, algo in enumerate(('expb_pow', 'giop')):
+                pairs.append(_make_pair(obs, algo, 1.0 + 0.5 * i, 0.5 + obs,
+                                        10 + 5 * i, dataset=ds,
+                                        truth_factor=0.5 + obs))
+    io.write_results('sl_two', pairs, root=tmp_path)
+    metrics.compute('sl_two', root=tmp_path)
+    _widen_spectral('sl_two', tmp_path)
+    sweep = figures.load('sl_two', root=tmp_path)
+
+    assert figures.sweep_datasets(sweep) == ['L23', 'PANGAEA']
+    assert figures._sole_dataset(sweep) is None, 'no single dataset to fall back on'
+
+    docs = _docs(tmp_path)
+    txt = standard.build('sl_two', root=tmp_path, docs_root=docs).read_text()
+    rd = docs / 'reports' / 'sl_two'
+    # one figure per dataset, each named for it
+    for ds in ('L23', 'PANGAEA'):
+        assert (rd / f'accuracy_vs_wavelength_mae_{ds}.png').is_file(), ds
+        assert f'Accuracy vs. wavelength — {ds}' in txt, ds
+    # and no pooled figure survives
+    assert not (rd / 'accuracy_vs_wavelength_mae.png').exists()
+    # each panel's series really is scoped to its own dataset
+    one = diagnostics.accuracy_spectrum_data(sweep.metrics_spectral, 'a',
+                                             dataset='L23')
+    both = diagnostics.accuracy_spectrum_data(sweep.metrics_spectral, 'a')
+    for algo, s in one['series'].items():
+        assert s['wave'].size <= both['series'][algo]['wave'].size
 
 
 def test_every_slice_is_suppressed_on_an_all_failed_sweep(tmp_path):

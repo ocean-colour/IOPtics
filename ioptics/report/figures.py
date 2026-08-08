@@ -259,8 +259,18 @@ def dbic_cdf(sweep, *, model_a='expb_pow', model_b='giop', by=None, root=None):
 # the three slices metrics_spectral / stratum / fit_method make possible
 # --------------------------------------------------------------------------- #
 
+def sweep_datasets(sweep, *, root=None):
+    """The datasets this sweep carries, in sorted order (``[]`` if none)."""
+    sweep = resolve(sweep, root)
+    sc = sweep.scalar
+    if sc is None or sc.empty or 'dataset' not in sc.columns:
+        return []
+    return sorted(str(d) for d in sc['dataset'].dropna().unique())
+
+
 def scored_components(sweep, *, metric='mae', fit_method='chisq', stratum='all',
-                      min_waves=diagnostics.MIN_SPECTRUM_WAVES, root=None):
+                      min_waves=diagnostics.MIN_SPECTRUM_WAVES, dataset=None,
+                      root=None):
     """Planner: components with accuracy at ``min_waves`` or more bands.
 
     The floor is :data:`ioptics.diagnostics.MIN_SPECTRUM_WAVES` (5, JXP's number)
@@ -268,9 +278,13 @@ def scored_components(sweep, *, metric='mae', fit_method='chisq', stratum='all',
     show — GLORIA's ``a_dg`` at 440 nm is the only thing that sweep scores — and a
     couple of markers per algorithm under an "accuracy vs wavelength" heading invites
     a reader to see a trend that is not there.
+
+    ``dataset`` scopes the count to one dataset; omitted, it falls back to the
+    sweep's sole dataset (and to no filter at all when a sweep has several, which
+    only makes sense for a caller that wants the pooled view).
     """
     sweep = resolve(sweep, root)
-    ds = _sole_dataset(sweep)
+    ds = dataset if dataset is not None else _sole_dataset(sweep)
     return diagnostics.scored_components(
         sweep.metrics_spectral, dataset=ds, fit_method=fit_method,
         stratum=stratum, metric=metric, min_waves=min_waves)
@@ -287,20 +301,28 @@ def _sole_dataset(sweep):
 
 def accuracy_spectrum(sweep, *, components=None, metric='mae',
                       fit_method='chisq', stratum='all', ncols=2,
-                      min_waves=2, root=None):
+                      min_waves=diagnostics.MIN_SPECTRUM_WAVES, dataset=None,
+                      root=None):
     """Accuracy vs wavelength, one panel per component, all algorithms overlaid.
 
     The figure an ocean-colour reader looks for first, and the one
     ``metrics_spectral`` was computed and persisted for since Stage 2 without ever
     being read by the report layer. Returns ``[]`` when no component is scored at
     enough bands to have a spectral shape.
+
+    **One dataset per figure.** ``dataset`` must be given for a multi-dataset sweep,
+    because the datasets do not share a band set or a sample size: pooling L23 (71
+    hyperspectral bands, n up to 3285) with PANGAEA (23 in-situ bands, n up to 299)
+    drew one line through both, and PANGAEA's sparse bands appeared as tall spikes
+    that read as *spectral structure* rather than as a different population. Omitted,
+    it falls back to the sweep's sole dataset.
     """
     sweep = resolve(sweep, root)
-    ds = _sole_dataset(sweep)
+    ds = dataset if dataset is not None else _sole_dataset(sweep)
     if components is None:
         components = [c for c, _, _ in scored_components(
             sweep, metric=metric, fit_method=fit_method, stratum=stratum,
-            min_waves=min_waves)]
+            min_waves=min_waves, dataset=ds)]
     if not components:
         return []
     panels = [diagnostics.accuracy_spectrum_data(
@@ -308,6 +330,8 @@ def accuracy_spectrum(sweep, *, components=None, metric='mae',
         fit_method=fit_method, stratum=stratum) for c in components]
     fig = plotting.accuracy_spectrum_grid(panels, ncols=ncols)
     tag = f'accuracy_vs_wavelength_{metric}'
+    if ds is not None:
+        tag += f'_{_safe(ds)}'
     if stratum not in (None, 'all'):
         tag += f'_{stratum}'
     return _save(fig, _figdir(sweep), tag)

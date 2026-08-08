@@ -361,6 +361,27 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 11:**
+
+- **Is 3 896 the bound you meant, or 1 593?** I could not reproduce the prompt's
+  "3 247 truth-carrying ids" from any definition. The tables give 1 593 with spectral
+  IOP truth, 3 630 with chlorophyll, 3 896 with either — and I used 3 896 because `Chl`
+  is scored as a derived scalar. The stricter spectral-only bound would halve the
+  PANGAEA cost and drop the ids that can only be scored on Chl. Confirm 3 896, or say
+  if you want spectral-only (one keyword).
+- **PANGAEA's 5-30% success rate: report as a finding, or investigate first?** All
+  three algorithms mostly fail on it — `gsm` returns a solution for 5% of spectra.
+  Some of that is certainly `maxfev` (`expb_pow` fails outright on 30%), but 7 048
+  `poor_fit` rows across the three is a different signal from a budget problem, and
+  PANGAEA is *in-situ* data that ought to be within the open-ocean models' regime in a
+  way GLORIA is not. It is currently published as-is with the numbers stated. Worth its
+  own investigation like the GLORIA one, or leave it on the page as a result?
+- **Should the L23 smoke grow its MCMC subset?** 8 chains at ~140 s is the whole basis
+  of the site's only χ²-vs-MCMC comparison and its only corner plots, and `coverage_n`
+  of 8 is thin for a calibration claim — the χ² 0.42 vs MCMC 0.875 contrast is
+  suggestive but not solid. 40 chains would be ~90 minutes and could run unattended.
+  Worth it, or is the qualitative point enough for now?
+
 **New after Task 10:**
 
 - **Should the investigation report's wrong recommendation be corrected in the RST, or
@@ -370,12 +391,16 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   makes the published page diverge from the markdown original. My lean is to keep them
   identical and let the warning carry it, but you are the author of that report and it
   is your call.
+>A. Flagging is fine for now.
+
 - **Should `reports/gloria_fits_report.md` now be regenerated rather than frozen?** Its
   script (`reports/scripts/gloria_fits_report.py`) still runs, and re-running it would
   fix items 2 and 3 (the numbers corrected in prose but not in the tables) at the
   source. That would mean the markdown changes and the RST is reconverted — a bigger
   move than a footnote, and it would lose the round-by-round texture that makes the
   record honest. Freeze, or regenerate?
+>A. Let's regenerate.
+
 - **Does `gsm` deserve a sweep of its own before it is advertised?** It is now
   documented as a first-class registered algorithm, but the coverage matrix shows it has
   **never been run** — so the site describes a model it has no results for. That is
@@ -383,6 +408,7 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   documentation as evidence of use. Task 11's bounded `multi_v2` includes `gsm`, so this
   resolves itself if that runs; flagging in case you would rather the page carried an
   explicit "not yet evaluated" banner until then.
+>A. Yes, we will want to sweep on `gsm`.  But maybe that is worth its own prompt doc.
 
 **New after Task 9:**
 
@@ -591,6 +617,113 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-08 (Stage 7, Task 11: generate the missing evidence)
+
+**The site went from one real sweep to three, and the coverage matrix filled.**
+
+| | before | after |
+|---|---|---|
+| L23 | *not evaluated* | **scored, n=3334** (all 3 default algorithms) |
+| PANGAEA | *not evaluated* | **scored, n=243–361** (all 3) |
+| GLORIA | scored (4 turbid variants) | unchanged |
+
+**Counts and wall time.** `multi_v2` bounded: **21 648 fits in ~7 minutes** on 8 cores
+(3 320 L23 + 3 896 PANGAEA observations × 3 algorithms), then `metrics.compute` in 21 s
+producing 11 970 spectral / 345 scalar / 433 pairwise rows. The L23 smoke: 48 rows —
+20 spectra × 2 algorithms in χ², plus **8 MCMC chains at ~140 s each** (~19 min,
+serial). The leaderboard now folds 3 sweeps into 487 rows.
+
+**The headline result is that the models are excellent on synthetic data and poor on
+in-situ data**, and the fraction that even produces a solution says it before any
+accuracy metric does:
+
+| dataset | expb_pow | giop | gsm |
+|---|---|---|---|
+| L23 (synthetic) | **99.8%** ok | 98.9% | 99.0% |
+| PANGAEA (in-situ) | **18.7%** ok | 28.1% | **5.0%** |
+
+`expb_pow` returned `fit_failed` on **1 179 of 3 896** PANGAEA spectra (30%) — the
+`maxfev` pattern the prompt anticipated, now reproduced on a second dataset. `gsm`'s
+first ever run scores 5% ok with 3 086 `poor_fit`. Reference-band accuracy tells the
+same story: `a(440)` MAE is 0.042 for `expb_pow` on L23 and `a_dg` MAE is 0.72–2.23 on
+PANGAEA.
+
+**Two things had to be built before the run was possible.**
+
+1. **Per-dataset `obs_ids`.** `run_sweep` applied one id list to every dataset, and
+   `build_v2`'s own docstring said a bounded mixed sweep "isn't expressible today
+   (PANGAEA ids are strings)". **PANGAEA ids are integers** — the note was simply
+   wrong — but the single-list limitation was real. `obs_ids` now accepts a mapping
+   `{dataset: ids}`, with an absent dataset running in full, and the bound is recorded
+   in provenance (`n_requested`, `bounded`) because "PANGAEA n_obs=3896" and "3896 of
+   64071, the rest carrying no truth" are different claims and only the second is
+   reproducible.
+2. **The bound itself**, as `build_v2.pangaea_truth_ids()` — a set intersection over
+   the tidy tables rather than prepping 64 071 records to find out. **I could not
+   reproduce the prompt's figure of 3 247.** What the tables actually give:
+   1 593 ids with spectral IOP truth, 3 630 with chlorophyll, **3 896 with either** —
+   which is the bound I used, since `Chl` is scored as a derived scalar. The stricter
+   spectral-only bound (1 593) is available via `spectral_only=True`.
+
+**A defect the real data exposed immediately.** The accuracy-vs-wavelength figure from
+Task 8 finally had something to draw — all five components scored at 69–79 bands — and
+the first render was **wrong**: it pooled L23 (71 hyperspectral bands, n up to 3 285)
+with PANGAEA (23 in-situ bands, n up to 299) into one line per algorithm, so PANGAEA's
+sparse bands appeared as tall spikes a reader would take for spectral structure. Fixed
+to emit **one figure per dataset**; the L23 panel is now a clean scientific figure
+showing `expb_pow` (k=5) beating both 3-parameter models in the blue and `a_dg` error
+growing an order of magnitude toward the red. This is exactly the class of bug that
+only generating evidence can find — no test would have caught it, because until today
+no sweep had two datasets with spectral truth.
+
+**The MCMC subset unlocked two things that had never rendered.** 16 corner plots (Task
+7 wired the builder; no sweep had a chain), and the first **χ²-vs-MCMC comparison**
+(Task 8 built the table; no sweep had both methods). The comparison is worth reading:
+MCMC is *more* accurate for `a`/`bb`/`bb_p` and *less* for `a_dg`/`a_ph`, but the
+striking column is coverage — for `a(440)`, χ² covers **0.42** against a nominal 0.68
+(badly over-confident) where MCMC covers **0.875** (conservative). On `a_dg` the
+positions reverse (χ² 1.00, MCMC 0.375). Precisely the "are the sampler's wider
+intervals also the more honest ones" question that table exists to ask. Caveat: 8
+chains, so `coverage_n` is 8.
+
+**Your Task-10 answer applied — and it corrected me.** I said re-running
+`gloria_fits_report.py` would fix the report's number inconsistencies "at the source".
+**That was wrong.** The script regenerates the 11 figures and prints its tables to
+stdout; the markdown prose was hand-authored around that output and the script does not
+write it. Re-running refreshed every figure (all 11 changed, and the copies under
+`docs/source/reports/gloria_figures/` were refreshed to match) but left the prose
+untouched.
+
+More importantly, re-running let me **check the flagged inconsistencies against the
+authoritative output, and two of the four were my own misreading** — repeated from the
+conversion agent's report into an editorial warning I had already published:
+
+- The convergence table's **5/40 → 15/40 is correct**. The script reproduces it exactly.
+  Those rows measure fits made *without* the NaN-aware error floor; the 40/40 figure is
+  what the *floored* fits achieve, and it appears in a different table. The tables do
+  not contradict each other — neither says which case it measures.
+- The inflated-noise `measured` row's **0.48 is correct for that row** (the 15-spectrum
+  measured-noise subset); 0.64 is the honest cross-population value in the paragraph
+  beneath.
+
+The published editorial warning has been rewritten to say this accurately, and it now
+also records that the figures are August-current while the prose is the July original.
+The genuinely-wrong claim (item 1, the closing recommendation) stands, restated
+precisely: the *Summary's* copy carries the Follow-up directly beneath it; the closing
+`Recommendation` section's copy does not.
+
+**Verification.** **440 passed** (was 438) — including a new test that two datasets are
+never drawn on one wavelength axis, and one for the per-dataset `obs_ids` mapping.
+Clean `sphinx -W` **exit 0** (one retry: intersphinx could not reach `docs.scipy.org`
+on the first attempt — a network failure, not a docs defect). The site now publishes
+**three sweeps**, and `expb_giop_L23_test20` — the page that had gone stale with no
+config to regenerate it — has a committed `run_test20.yaml` so it can be rebuilt.
+
+**Still "not evaluated" after this**, and visible as such on the matrix: GLORIA ×
+{`giop`, `gsm`}, and L23/PANGAEA × the three turbid variants. Those are deliberate —
+the turbid trio is opt-in and reproduces the single-power-law solution on open-ocean
+spectra — but the matrix states it rather than implying coverage.
 
 ### 2026-08-07 (Stage 7, Task 10: publish and correct the prose docs)
 

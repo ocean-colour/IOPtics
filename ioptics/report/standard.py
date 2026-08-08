@@ -402,26 +402,40 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
     # metrics_spectral has been computed and persisted since Stage 2 and read by
     # nothing; this is the figure an ocean-colour reader looks for first.
     if kind in ('cross_algorithm', 'per_dataset'):
-        spectral_comps = figures.scored_components(sweep)
-        if spectral_comps:
-            names = ', '.join(f'``{c}``' for c, _, _ in spectral_comps)
-            bands = max(w for _, w, _ in spectral_comps)
+        # One figure per dataset. Two datasets on one axis is not a comparison —
+        # they have different band sets and wildly different sample sizes, so the
+        # sparser one's bands appear as spikes that read as spectral structure.
+        datasets = figures.sweep_datasets(sweep) or [None]
+        drew_any = False
+        for ds in datasets:
+            comps = figures.scored_components(sweep, dataset=ds)
+            if not comps:
+                continue
+            drew_any = True
+            names = ', '.join(f'``{c}``' for c, _, _ in comps)
+            bands = max(w for _, w, _ in comps)
+            label = f' — {ds}' if ds else ''
             blocks.append(_fig_section(
-                sweep, report_dir, 'Accuracy vs. wavelength',
-                _pngs(figures.accuracy_spectrum(sweep)),
-                caption=('Fractional multiplicative MAE against wavelength, one '
-                         'panel per component, all algorithms overlaid. The dashed '
-                         'rule is the perfect value (0).'),
-                desc=(f'How each algorithm\'s error varies **across the spectrum**, '
-                      f'for the {len(spectral_comps)} component(s) this sweep scores '
-                      f'at more than one band ({names}; up to {bands} bands). A '
-                      f'retrieval can be accurate in the blue and useless in the red, '
-                      f'which a single reference-band number cannot show — this is '
-                      f'the per-band view of the same ``mae`` the accuracy table '
-                      f'reports at its reference wavelengths. Each algorithm keeps '
-                      f'its colour, marker and linestyle from every other figure.'),
+                sweep, report_dir, f'Accuracy vs. wavelength{label}',
+                _pngs(figures.accuracy_spectrum(sweep, dataset=ds)),
+                caption=(f'Fractional multiplicative MAE against wavelength on '
+                         f'{ds or "this sweep"}, one panel per component, all '
+                         f'algorithms overlaid. The dashed rule is the perfect '
+                         f'value (0).'),
+                desc=(f'How each algorithm\'s error varies **across the spectrum** '
+                      f'on **{ds or "this sweep"}**, for the {len(comps)} '
+                      f'component(s) scored at {diagnostics.MIN_SPECTRUM_WAVES} or '
+                      f'more bands ({names}; up to {bands} bands). A retrieval can '
+                      f'be accurate in the blue and useless in the red, which a '
+                      f'single reference-band number cannot show — this is the '
+                      f'per-band view of the same ``mae`` the accuracy table reports '
+                      f'at its reference wavelengths. Each algorithm keeps its '
+                      f'colour, marker and linestyle from every other figure. '
+                      f'Datasets are drawn separately: their band sets and sample '
+                      f'sizes differ, so one line through both would show a sparse '
+                      f'dataset\'s bands as spectral structure.'),
                 published=published))
-        else:
+        if not drew_any:
             single = figures.scored_components(sweep, min_waves=1)
             why = (f'only {", ".join(f"``{c}``" for c, _, _ in single)} is scored, and '
                    f'at a single wavelength'
