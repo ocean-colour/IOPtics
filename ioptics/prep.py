@@ -17,11 +17,17 @@ data-source-agnostic.
 **In-situ noise fallback.** In-situ datasets use ``noise='insitu'`` (weight the
 fit by the dataset's own measured ``Rrs`` error). PANGAEA V3 ships **no**
 per-band ``Rrs`` uncertainty, so such a record has no ``Rrs_err`` and prep
-falls back to a **flat 5% fractional** model (``varRrs = (0.05 * Rrs)**2``; the
-fraction is the module constant ``_INSITU_PCT_FALLBACK``). The record's
-``noise_model`` is then
-set to the honest tag ``'pct:0.05'`` — **not** ``'insitu'`` — so downstream
-provenance and reports show the model that was actually applied.
+falls back to a **flat 10% fractional** model (``varRrs = (0.10 * Rrs)**2``;
+the fraction is the module constant ``_INSITU_PCT_FALLBACK``). The record's
+``noise_model`` is then set to the honest tag ``'pct:0.1'`` — **not**
+``'insitu'`` — so downstream provenance and reports show the model that was
+actually applied. The fraction was 5% until 2026-08-10; at 5% a fit missing
+by only ~11% RMS already scored as "not a solution", and the PANGAEA
+investigation showed that threshold artifact dominated the published
+retrieval-success rates (``reports/pangaea_fits_report.md``). 10% matches
+GLORIA's imputed-error level (``_GLORIA_IMPUTED_ERROR``); the published
+status thresholds (χ²ᵥ ≤ 5) stay fixed so sweeps remain comparable — JXP's
+call, ``claude_prompts/pangaea_fits.md`` Q&A.
 """
 
 from __future__ import annotations
@@ -39,8 +45,11 @@ from ioptics.records import PreparedRecord
 # (``noise='insitu'``). PANGAEA V3 ships no per-band Rrs uncertainty, so when an
 # ``'insitu'`` record carries no ``Rrs_err`` prep falls back to a flat
 # fractional model (design §Noise: "pct fallback otherwise"). The provenance
-# tag then honestly records the model actually used (``'pct:0.05'``).
-_INSITU_PCT_FALLBACK = 0.05
+# tag then honestly records the model actually used (``'pct:0.1'``). 10%, not
+# 5%: an invented error bar sets the χ²ᵥ scale for every published PANGAEA
+# number, and at 5% the threshold artifact dominated the retrieval-success
+# rates (see module docstring; changed 2026-08-10 per JXP).
+_INSITU_PCT_FALLBACK = 0.10
 
 # GLORIA quotes a per-band Rrs standard deviation so tight (~1.5e-4 sr^-1,
 # well under 1% of a turbid Rrs) that it dominates chi-squared: even fits that

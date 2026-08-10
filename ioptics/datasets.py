@@ -204,8 +204,8 @@ class PANGAEAAdapter:
     at least ``min_rrs`` finite bands (default 5) is returned, even if it lacks
     some truth components. PANGAEA V3 carries no per-band ``Rrs`` uncertainty,
     so ``Rrs_err`` is ``None`` and :mod:`ioptics.prep` falls back from the
-    ``'insitu'`` default to a **flat 5% fractional** noise model for the fit
-    weights (see :mod:`ioptics.prep`).
+    ``'insitu'`` default to a **flat 10% fractional** noise model for the fit
+    weights (see :mod:`ioptics.prep`; 5% until 2026-08-10).
     """
 
     def __init__(self, path=None):

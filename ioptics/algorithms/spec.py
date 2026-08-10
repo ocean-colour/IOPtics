@@ -67,7 +67,7 @@ class MCMCOptions:
 #: main reason to override anything, and the digest records that it happened.
 OVERRIDABLE_FIELDS = frozenset({
     'anw_model', 'bbnw_model', 'apriors', 'bpriors', 'othera_priors',
-    'rt', 'set_Sdg', 'sSdg', 'beta', 'mcmc', 'maxfev',
+    'rt', 'set_Sdg', 'sSdg', 'beta', 'mcmc', 'maxfev', 'fits_turbid',
 })
 
 #: Overridable fields that are themselves dataclasses, so a partial mapping merges
@@ -105,13 +105,25 @@ class AlgorithmSpec:
         MCMC settings.
     maxfev : int or None
         Optimizer evaluation budget handed to ``bing.fitting.chisq_fit.fit``
-        for the ``'chisq'`` method. ``None`` (default) leaves scipy's own
+        for the ``'chisq'`` method. ``None`` leaves scipy's own
         default in place. It governs *whether* the fit converges, not how
         well the model can fit, and parameter-rich models need it -- the
         two-component turbid backscattering models fail to converge on a
         substantial fraction of spectra at the default budget. Ignored by
         the MCMC path, which seeds from :func:`ioptics.run.initial_guess`
-        rather than a least-squares pre-fit.
+        rather than a least-squares pre-fit. The registry seeds every
+        algorithm at :data:`ioptics.algorithms.registry.DEFAULT_MAXFEV`.
+    fits_turbid : bool
+        Whether red-peaked (turbid) spectra are **in scope** for this
+        algorithm. ``False`` (default, and the right value for the
+        open-ocean parameterisations): :func:`ioptics.run.run_algorithm`
+        declines a record whose observed Rrs peaks redward of
+        :data:`ioptics.records.RED_PEAK_NM` *before* fitting, returning an
+        ``out_of_scope`` result — "we declined to fit this" rather than "we
+        fitted it and it failed" (the PANGAEA investigation's Q&A decision,
+        2026-08-10). The turbid variants set ``True`` — fitting that water
+        is their purpose — and a diagnostic script can override it to
+        force-fit red-peaked spectra with an open-ocean model.
     """
 
     name:          str
@@ -135,6 +147,7 @@ class AlgorithmSpec:
     # sweep-wide by ``prep``, and is now persisted per record on
     # ``results_scalar`` (``noise_model`` / ``noise_seed`` / ``noise_imputed``).
     maxfev:        int | None = None
+    fits_turbid:   bool = False
 
     # --- BING interop -------------------------------------------------
     def to_bing_p(self, **overrides):

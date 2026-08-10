@@ -193,7 +193,12 @@ def _scalar_row(result, record):
         'algorithm': result.algorithm, 'fit_method': result.fit_method,
         'chi2': st.get('chi2', np.nan), 'chi2_nu': st.get('chi2_nu', np.nan),
         'AIC': st.get('AIC', np.nan), 'BIC': st.get('BIC', np.nan),
-        'n_bands': st.get('n_bands', 0), 'k': st.get('k', 0),
+        # NaN, not 0, when a result carries no stats: a zero band count on a
+        # fit_failed row reads as a real (impossible) measurement and poisoned
+        # every reader that counted bands on exactly the rows worth diagnosing.
+        # (run._failed_result now populates n_bands/k, so this default is a
+        # last resort, and it must be visibly missing rather than silently 0.)
+        'n_bands': st.get('n_bands', np.nan), 'k': st.get('k', np.nan),
         'Chl': chl, 'sig_Chl': sig_chl,
         'a_cdom440': acdom, 'sig_a_cdom440': sig_acdom,
         'Sdg': sdg, 'sig_Sdg': sig_sdg,

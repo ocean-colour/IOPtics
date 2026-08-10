@@ -98,6 +98,13 @@ def _fit_status(record, stats, finite):
     outside what this model family is built for, so the failure is a
     statement about scope rather than about this algorithm.
 
+    As of 2026-08-10 the pipeline assigns ``out_of_scope`` **before** fitting
+    (:func:`ioptics.run.run_algorithm` declines red-peaked records unless the
+    spec sets ``fits_turbid``), so through ``run_algorithm`` a red-peaked
+    record never reaches this classifier. The post-hoc branch is kept for
+    force-fits — an algorithm with ``fits_turbid=True`` whose fit still went
+    poorly on a red-peaked spectrum earns the same scope label.
+
     Parameters
     ----------
     record : PreparedRecord

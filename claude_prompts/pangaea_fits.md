@@ -170,6 +170,17 @@ downstream reads them:
 
 5. **Implement** what I approve. Q&A. Log.
 
+6. **NOMAD cruise provenance** (added per JXP's Task-1 Q&A answer). The tidy
+   tables carry one processing-chain key: `contributor` (PI/instrument group,
+   inherited from SeaBASS via NOMAD), and coverage stratifies hard on it —
+   giop ok-rates run 0% (Stramski, 78 spectra / 4 cruises; Morrison) through
+   52% (Siegel, 374 / 63) to 72% (Bélanger), all at ~100% convergence. Chase
+   the instrument/processing provenance behind the low-ok contributors: the
+   NOMAD documentation (Werdell & Bailey 2005, doi:10.1016/j.rse.2005.07.001),
+   SeaBASS cruise metadata for the never-ok cruises, and the Valente et al.
+   (2022) V3 source notes. Goal: say whether the common residual signature is
+   instrument/processing convention or water type. Q&A. Log.
+
 ### Q&A
 
 > Open questions for JXP. Pose them; do not self-answer.
@@ -179,9 +190,115 @@ downstream reads them:
   11% is already "not a solution". GLORIA's investigation ended up using a 10% floor.
   Should PANGAEA use one too, and if so should the *published* status thresholds move
   with it or stay fixed so sweeps remain comparable?
+>A. Yes, PANGAEA should use a 10% floor. The published status thresholds should stay fixed so sweeps remain comparable.
 - **Should `out_of_scope` be assigned before fitting rather than after?** It is
   currently a post-hoc label on a poor fit whose Rrs peaks red. Assigning it up front
   from the spectrum alone would separate "we declined to fit this" from "we fitted it
   and it failed" — but it would change what every existing sweep's counts mean.
+>A. Yes, out_of_scope should be assigned before fitting rather than after. We will need to sweep again.
+- **May I ask you to fast-forward the `bing` sibling checkout to `main`?** On this
+  workstation `/mnt/tank/Oceanography/python/bing` is on `PAB_edits`, a strict
+  ancestor of `origin/main` 18 commits back — before `chisq_fit.fit(maxfev=...)` and
+  the turbid `Pow2`/`Pow2Flat` models. Every IOPtics χ² fit `TypeError`s against it
+  (the suite showed 1 failure + 6 errors from this alone). `git checkout main &&
+  git pull` loses nothing (working tree clean bar two untracked CSVs). Task 1 ran
+  with a read-only `git archive` copy of bing@`f242b0e` on `PYTHONPATH`; the report
+  script assumes bing ≥ that commit.
+>A. Done.
+- **Should refused underdetermined fits get their own status?** The new guard
+  records them as `fit_failed` with true `n_bands`/`k` (identifiable as
+  `n_bands ≤ k`), which keeps `STATUSES` and every existing count stable. A
+  dedicated `underdetermined` status is cleaner but changes what every sweep's
+  coverage block means — same trade-off family as the pre-fit `out_of_scope`
+  question above.
+>A. Keep as fit_failed
+- **Should the shipped `maxfev` default for the open-ocean algorithms rise to
+  40 000 (the turbid variants' budget)?** At scipy's default, 30% of `expb_pow`'s
+  PANGAEA rows "crash"; at 40 000 the `fit_failed` floor is 5.9% and fully named
+  (63 underdetermined + 28 non-positive-Rrs + 3). But only 7 recovered rows become
+  `ok`, and changing the registry default changes every future sweep — Task 1 used
+  per-sweep overrides and left the default alone.
+>A. Yes, the default should rise to 40000.
+- **Should `PANGAEAAdapter.obs_ids`' `min_rrs=5` default rise?** It admits spectra
+  that are underdetermined by construction for k = 5 models (63 of the 1 593). The
+  guard now refuses them cleanly, but enumeration could exclude them instead —
+  at the cost of making the id set algorithm-dependent.
+>A. Yes, the default should rise to 5.
+- **Is cruise-level processing/calibration metadata reachable for NOMAD?** The
+  never-ok cruises share a common residual signature (model ~20–40% low at
+  520–570 nm, high at ~660 nm; controls flat). Distinguishing water-type
+  spectral-shape mismatch from per-cruise calibration/convention needs
+  instrument/processing provenance we don't have in the tidy tables.
+>A. I don't have the provenance, but you are encouraged to try to find it.  Add that to your task list.
+- **`min_rrs` — did you mean 6?** Your answer to "should `obs_ids`'
+  `min_rrs=5` default rise?" was "Yes, the default should rise to 5" — but 5
+  is the current value, so I could not tell whether you meant **6** (= k+1
+  for the k=5 models, excluding underdetermined-by-construction spectra from
+  enumeration) or **keep 5** (the guard now refuses them cleanly as
+  `fit_failed`). Left at 5 pending your answer; nothing else in Task 2
+  depended on it.
+- **How should the committed site sweep be regenerated under the new
+  defaults?** "We will need to sweep again" — agreed, and the code now runs
+  the approved semantics by default. But `multi_L23_PANGAEA_v2` is a *mixed*
+  sweep with one sweep-level noise model (`pct:0.05` for both datasets). Under
+  the new rules the natural form is **two native-noise sweeps folded into the
+  leaderboard** (L23 under `pace`, PANGAEA under `insitu` → 10% imputed) —
+  the design's intended pattern — rather than one uniform `pct:0.1`. Which do
+  you want published, and should it replace `multi_L23_PANGAEA_v2` on the
+  site or sit beside it as `_v3`? (`pangaea_fits_v2` under
+  `$OS_COLOR/IOPtics/runs/` is the PANGAEA half, already run.)
 
 ### Logs
+
+### 2026-08-10 (Task 1: characterise and attribute the gap)
+
+**The headline gap is mostly the score, not the fit.** Deliverables:
+`reports/pangaea_fits_report.md` + `reports/scripts/pangaea_fits_report.py`
+(7 figures under `reports/figures/pangaea_*.png`), two package fixes, one new
+test. Everything below is from the committed 1 593-id sweep (reproduced
+bit-for-bit on PANGAEA: ok = 19.52/26.55/3.39% for `expb_pow`/`giop`/`gsm`)
+plus two PANGAEA-only control re-runs (`pangaea_fits_base`,
+`pangaea_fits_maxfev` under `$OS_COLOR/IOPtics/runs/`).
+
+1. **1a (re-scoring).** Median relative misfit of converged PANGAEA fits is
+   6.7/9.0/13.1% — ~2× L23's 3.3–4.8%, not 20×. At a 10% floor the ok-rates are
+   43/54/39%; at 15%, 53/71/69% (58/71/69 with the budget fix) — squarely the
+   "50–70%" the prompt anticipated, so the report says "metric calibration" in
+   its first paragraph. **The `gsm` rigidity hypothesis is dead**: 3.4 → 69%
+   at a 15% floor (it converges on 96.7% of spectra; the 5% assumption just
+   punished its fatter misfit distribution hardest).
+2. **1b (defects + budget).** Fixed in `ioptics`: `run._failed_result` now
+   records true `n_bands`/`k` (io defaults NaN, not 0), and a new
+   `UnderdeterminedFitError` refuses `n_bands ≤ k` before scipy, in both
+   strict modes (test: `test_underdetermined_fit_is_refused_as_a_status`).
+   Verified the fixes move **0 of 4 779** statuses. `maxfev=40000` recovers
+   308/109/25 crashed rows, of which only **7** become `ok` — the budget fixes
+   the crash, not the fit; recovered `expb_pow` rows triple its `out_of_scope`
+   (crashes were hiding turbid spectra). Remaining floor, named exactly:
+   63 underdetermined (`expb_pow` only) + 28 non-positive-Rrs (same 28 for all
+   three algorithms) + ≤3 other.
+3. **1c (cruises).** 18 NOMAD cruises ≥95% converged yet ≤5% ok, spanning
+   `nomad_en372` (median misfit **4.8%**, never ok — pure scoring artifact) to
+   `nomad_wfs0504/0511` (49–64%, genuinely turbid). The never-ok cruises share
+   a common residual signature; controls sit flat (figure in the report).
+4. **1d (turbid variants).** On the 188 red-peaked ids, all four bbp variants
+   return the same fits (paired median misfit 16.4–16.6%) — GLORIA's verdict
+   confirmed on a second dataset; the forward model remains the suspect.
+5. **Attribution table** (exit criterion) is in the report: per algorithm,
+   ok / underdetermined / other-crash / out-of-scope / scoring-artifact /
+   genuine-misfit sum to 100% of attempted spectra, on both the committed and
+   the budget-equalized runs.
+
+**Environment notes (this workstation).** The `bing` sibling checkout is on
+`PAB_edits` (pre-`maxfev`, pre-turbid-models) — no χ² fit runs against it; I
+worked around it with a read-only `git archive` of bing@`f242b0e` on
+`PYTHONPATH` and put the fast-forward request in Q&A (git is yours). The docs
+toolchain was absent from every env here, so I installed
+`docs/requirements.txt` (sphinx, furo) into `ocean14`.
+
+**Verified:** full suite with the bing@main shim: without `$OS_COLOR`
+(CI-equivalent) **402 passed, 39 skipped**; with `$OS_COLOR` **441 passed**
+(the Stage-7 laptop count plus the new test). `sphinx-build -W` exit **0**,
+checked without a pipe. Package changes are limited to
+`ioptics/run.py`, `ioptics/io.py`, `ioptics/tests/test_run.py`; nothing in
+the committed sweep tables or site pages was modified.

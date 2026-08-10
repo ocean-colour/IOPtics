@@ -36,11 +36,15 @@ import numpy as np
 #:   acceptable: reduced chi-squared above :data:`CHI2NU_POOR_FIT`. The
 #:   parameters are recorded, so the row can be inspected, but it should
 #:   not be scored as a success.
-#: - ``'out_of_scope'`` -- a poor fit *explained by the regime*: the
-#:   spectrum sits outside what the model family is built for (see
-#:   :data:`RED_PEAK_NM`). Distinguishing this from ``'poor_fit'`` is the
-#:   difference between "this model did badly here" and "no algorithm in
-#:   this family should be expected to work here".
+#: - ``'out_of_scope'`` -- the spectrum sits outside what the model family
+#:   is built for (see :data:`RED_PEAK_NM`). Since 2026-08-10 this is
+#:   assigned **before** fitting: :func:`ioptics.run.run_algorithm` declines
+#:   a red-peaked record up front (unless the spec sets ``fits_turbid``), so
+#:   the row means "we declined to fit this". A force-fit that still went
+#:   poorly on a red-peaked spectrum earns the same label post-hoc.
+#:   Distinguishing this from ``'poor_fit'`` is the difference between
+#:   "this model did badly here" and "no algorithm in this family should be
+#:   expected to work here".
 #: - ``'fit_failed'`` -- no usable parameters (the optimiser raised, or
 #:   produced non-finite values).
 STATUSES = ('ok', 'poor_fit', 'out_of_scope', 'fit_failed')
