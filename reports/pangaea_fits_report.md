@@ -11,6 +11,18 @@ is meant to state its own corrections in place as later rounds land.*
 
 ## Summary
 
+> **Reading order (Round 2, 2026-08-10).** This report now has two rounds.
+> Round 1 (everything through the attribution tables) diagnosed the
+> published 19.5/26.6/3.4% headline and posed its remedies as Q&A. JXP
+> answered; the *Round 2* section near the end implements the answers —
+> 10% assumed error, pre-fit `out_of_scope`, `maxfev` 40 000 — and re-sweeps
+> PANGAEA: the headline under the approved defaults is
+> **43.2 / 52.6 / 37.6%**, matching Round 1's prediction exactly. Round 2
+> also adds example fits, a contributor-level provenance finding, and one
+> correction (a registry-pollution bug in this report's own script, caught
+> before it shipped). Round-1 text is unchanged; where a Round-1 "open
+> question" is now a decision, the section says so in place.
+
 The question was why the open-ocean models return a usable retrieval for
 **19.5 / 26.6 / 3.4%** of PANGAEA spectra (`expb_pow` / `giop` / `gsm`)
 against ~99% of L23's. The answer, in one sentence: **most of the headline
@@ -363,6 +375,125 @@ as written so the record shows what was a question before it was a decision:
 - (From the Q&A, not this list: `out_of_scope` is now assigned **before**
   fitting, per JXP — see Round 2.)
 
+## Round 2 (2026-08-10): the approved defaults, applied and re-swept
+
+JXP answered the Task-1 Q&A (`claude_prompts/pangaea_fits.md`): PANGAEA uses
+a **10% assumed error** (published χ²ᵥ ≤ 5 thresholds stay fixed so sweeps
+remain comparable); **`out_of_scope` is assigned before fitting**; the
+shipped **`maxfev` default rises to 40 000**; refused underdetermined fits
+**stay `fit_failed`**; and the bing checkout was fast-forwarded to `main`.
+This round implements those decisions and re-sweeps PANGAEA under them.
+
+**Package changes.** `prep._INSITU_PCT_FALLBACK` 0.05 → 0.10 (the `'insitu'`
+fallback tag becomes `pct:0.1`); `registry.DEFAULT_MAXFEV = 40000` seeds
+every algorithm (the turbid variants keep the same budget, so contests stay
+budget-equalized); a new `AlgorithmSpec.fits_turbid` flag — `False` for the
+open-ocean seed, `True` for the turbid variants — gates a **pre-fit**
+`out_of_scope` decline in `run.run_algorithm` (`run.is_red_peaked`,
+spectrum-only, same `RED_PEAK_NM` predicate the post-hoc label used); and
+the provenance schema is bumped to 3 so `fits_turbid` is recorded per
+algorithm block without changing any historical digest.
+
+### The new PANGAEA headline
+
+`pangaea_fits_v2` (1 593 ids, `noise='insitu'` → `pct:0.1` imputed,
+registry defaults, pre-fit `out_of_scope`):
+
+| status | expb_pow | giop | gsm |
+|---|---|---|---|
+| **ok** | **43.2%** | **52.6%** | **37.6%** |
+| poor_fit | 39.2% | 33.7% | 48.8% |
+| out_of_scope (declined pre-fit) | 11.8% | 11.8% | 11.8% |
+| fit_failed | 5.8% | 2.0% | 1.8% |
+
+The published headline therefore moves **19.5 / 26.6 / 3.4% → 43.2 / 52.6 /
+37.6%**, and every point of the change is attributable to the three approved
+decisions, none of it to better fits — the fits are the same. Round 1
+predicted this headline before the sweep ran (re-score the maxfev run at a
+10% floor, drop the red-peaked rows): 43.19 / 52.61 / 37.60% — the sweep
+matches the prediction **exactly, to four decimal places, for all three
+algorithms**. (It should: a uniform rescaling of every σ leaves the
+weighted-least-squares optimum unchanged, so the v2 fits are the Round-1
+fits and only the scoring and the scope rule moved.)
+
+Two properties of the new numbers worth stating. First, `out_of_scope` is
+now exactly the red-peaked fraction (188/1593 = 11.8%) for every algorithm —
+it means "declined", not "fitted and failed while red". Second, the decline
+is not free: force-fitting the 188 red-peaked spectra (the Round-1 maxfev
+tables) shows **27 of them would have scored `ok` under `expb_pow`** at the
+10% scale — spectra just past the 560 nm line that the open-ocean form can
+still fit. That is the accepted cost of making scope a property of the
+spectrum rather than of the fit outcome.
+
+> **Correction, caught before it shipped.** The first `pangaea_fits_v2` run
+> produced `out_of_scope` = 159 for `expb_pow` against 188 for `giop`/`gsm`
+> — impossible if the guard declines the same records for everyone. The
+> cause was this report's own script: the 1d turbid comparison *registered*
+> a force-fit (`fits_turbid=True`) `expb_pow` over the registry entry and
+> never restored it, and `main()` runs 1d before Round 2, so the v2 sweep
+> force-fitted `expb_pow` (27 red-peaked rows scored `ok`, 2 crashed) while
+> declining for the other two. The fix keeps the force-fit spec local to the
+> 1d function; the polluted sweep was deleted and re-run. Two checks caught
+> it, and both are worth keeping: the cross-algorithm `out_of_scope` count
+> (must be identical by construction), and the new provenance field — the
+> polluted sweep's `provenance.yaml` recorded `fits_turbid: true` on
+> `expb_pow`, so it could not have masqueraded as the clean configuration.
+
+### Example fits, clear → turbid
+
+Four observations in the exemplar pages' ordering (models from the Round-1
+maxfev force-fit tables, so the red-peaked panel has fits to show; all three
+algorithms overlaid, annotated with the noise-model-free relative misfit):
+
+![Example fits](figures/pangaea_example_fits.png)
+
+- **Clear, scored ok** (id 13381; 16 bands, peak 411 nm): all three models
+  track the observation at 1–5% — indistinguishable from a good L23 fit.
+- **`nomad_en372`, the near-miss face of the never-ok cruises** (id 28678):
+  `giop` misses by a **median 1%** and is still `poor_fit` — with 7 bands,
+  a single anomalous band (the 555 nm point sits high off the model's
+  smooth decay) carries the whole χ²ᵥ over the threshold. This is the
+  scoring artifact in a single panel, and it also shows *how* a whole cruise
+  goes never-ok: a per-cruise band-level offset that a median statistic
+  shrugs off and a χ² statistic cannot.
+- **`nomad_oceania2000`, the moderate-miss face** (id 16268): the models
+  undershoot 450–550 nm by 20–40% — the common residual signature from 1c,
+  visible in one spectrum. (`gsm`, interestingly, fits this shape best.)
+- **`nomad_wfs0511`, genuinely turbid** (id 50274; peak 570 nm): the
+  observation's green peak is missed by ~50% by all three — the GLORIA wall,
+  and the regime the pre-fit `out_of_scope` now declines.
+
+### The contributor stratification (NOMAD provenance, first pass)
+
+JXP asked for the cruise provenance hunt to go on the task list (now Task 6
+in the prompt doc). The tidy tables already carry one processing-chain key:
+`contributor` (PI/instrument group, inherited from SeaBASS via NOMAD).
+Coverage stratifies hard on it (giop, maxfev run, contributors with n ≥ 20;
+full table in the script output):
+
+| contributor | n | cruises | converged | ok | median rel. misfit |
+|---|---|---|---|---|---|
+| Dariusz_Stramski | 78 | 4 | 100% | **0%** | 0.220 |
+| Ru_Morrison | 27 | 3 | 100% | **0%** | **0.054** |
+| Norman_Nelson | 52 | 37 | 100% | 1.9% | 0.259 |
+| Larry_Harding | 193 | 28 | 100% | 3.1% | 0.207 |
+| Ken_Carder | 270 | 25 | 90% | 17.4% | 0.152 |
+| Greg_Mitchell | 157 | 18 | 100% | 35.0% | 0.091 |
+| David_Siegel | 374 | 63 | 99% | **52.1%** | 0.054 |
+| Simon_Belanger | 39 | 1 | 100% | **71.8%** | 0.027 |
+
+A 0-to-72% ok-rate spread by *contributor*, at essentially 100% convergence,
+across contributors whose spectra span many cruises each, is much easier to
+reconcile with instrument/processing convention than with water type —
+though the two are still confounded (contributors work in characteristic
+regions: Harding is Chesapeake Bay, genuinely coastal water). The misfit
+column splits them the same way the cruises split: Morrison's spectra miss
+by a median **5.4%** — the same misfit as Siegel's, whose ok-rate is 52% —
+yet score 0% ok (an en372-style band-level artifact), while Stramski's and
+Nelson's miss by 22–26% (a real, uniform shape mismatch). Task 6 chases the
+instrument and processing provenance behind the low-ok contributors through
+the NOMAD/SeaBASS documentation.
+
 ## Reproducibility
 
 ```bash
@@ -373,12 +504,19 @@ cd /mnt/tank/Oceanography/python/IOPtics
 
 Requires `$OS_COLOR` (PANGAEA V3 + L23 on disk) and **bing at or after
 `main@f242b0e`** (`chisq_fit.fit(maxfev=...)` and the `Pow2`/`Pow2Flat`
-turbid models; the workstation's sibling checkout was on an older branch and
-had to be shadowed with a copy of bing@main during this round — see the Log).
-The script reuses sweep outputs under `$OS_COLOR/IOPtics/runs/`
-(`multi_L23_PANGAEA_v2`, `pangaea_fits_base`, `pangaea_fits_maxfev`), so the
-first run costs ~20 min at 16 cores and re-runs are minutes. Figures:
-`pangaea_rescoring.png`, `pangaea_misfit_cdf.png`,
-`pangaea_fitfailed_decomposition.png`, `pangaea_cruise_rates.png`,
-`pangaea_cruise_residuals.png`, `pangaea_turbid_variants.png`,
-`pangaea_attribution.png`, all under `reports/figures/`.
+turbid models; the workstation's sibling checkout was on an older branch
+during Round 1 — shadowed with a copy of bing@main at the time — and was
+fast-forwarded to `main` before Round 2). The script reuses sweep outputs
+under `$OS_COLOR/IOPtics/runs/` (`multi_L23_PANGAEA_v2`,
+`pangaea_fits_base`, `pangaea_fits_maxfev`, `pangaea_fits_v2`, plus the 1d
+refit cache in `pangaea_fits_turbid/`), so the first run costs ~20 min at
+16 cores and re-runs are minutes. **Caveat for fresh machines:** the
+Round-1 tables reused here were produced under Round-1 code; re-created
+from scratch, `multi_L23_PANGAEA_v2` runs the Round-2 defaults (that sweep
+is due to be regenerated — see Q&A), while `pangaea_fits_base`/`_maxfev`
+carry explicit overrides (`maxfev`, `fits_turbid=True`) that reproduce the
+Round-1 semantics. Figures: `pangaea_rescoring.png`,
+`pangaea_misfit_cdf.png`, `pangaea_fitfailed_decomposition.png`,
+`pangaea_cruise_rates.png`, `pangaea_cruise_residuals.png`,
+`pangaea_turbid_variants.png`, `pangaea_attribution.png`,
+`pangaea_example_fits.png`, all under `reports/figures/`.

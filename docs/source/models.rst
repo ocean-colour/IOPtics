@@ -308,12 +308,18 @@ in:
     registry.register_turbid()          # adds all three
     spec = registry.get('expb_pow2flat')
 
-``register_turbid`` also stamps a raised optimizer budget
+``register_turbid`` also stamps an optimizer budget
 (:data:`~ioptics.algorithms.registry.TURBID_MAXFEV`) onto each spec, carried
 as ``AlgorithmSpec.maxfev`` and handed to ``curve_fit``. That is not
 cosmetic: at scipy's default budget these models fail to converge on a
 substantial fraction of spectra. It governs *whether* a fit returns, not how
-well the model can fit.
+well the model can fit. Since 2026-08-10 the standard seed runs at the same
+budget (:data:`~ioptics.algorithms.registry.DEFAULT_MAXFEV` — on PANGAEA,
+scipy's default budget recorded 30% of ``expb_pow``'s rows as crashes), so a
+turbid-vs-standard contest measures the models, not their budgets. Unlike
+the standard seed, the turbid specs also claim red-peaked water in scope
+(``fits_turbid=True``): :func:`ioptics.run.run_algorithm` declines such
+spectra up front as ``out_of_scope`` for the open-ocean algorithms.
 
 Seeding a turbid fit
 --------------------

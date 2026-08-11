@@ -250,6 +250,68 @@ downstream reads them:
 
 ### Logs
 
+### 2026-08-10 (Task 2: implement the Task-1 answers, example fits, Round 2)
+
+**The approved defaults are in, and the re-swept headline matches Round 1's
+prediction exactly.** Deliverables: Round-2 section in
+`reports/pangaea_fits_report.md`, `pangaea_example_fits.png`, the
+`pangaea_fits_v2` sweep, four package changes, two new tests, docs prose
+updates, Task 6 added below.
+
+1. **Implemented per your answers:** `prep._INSITU_PCT_FALLBACK` 0.05 → 0.10
+   (tag `pct:0.1`); `registry.DEFAULT_MAXFEV = 40000` seeds every algorithm
+   (`TURBID_MAXFEV` now aliases it, so contests stay budget-equalized);
+   **pre-fit `out_of_scope`** via a new `AlgorithmSpec.fits_turbid` flag —
+   False for the open-ocean seed (declined up front by
+   `run.run_algorithm`/`run.is_red_peaked`), True for the turbid variants,
+   overridable per sweep for diagnostics; provenance schema 2 → 3 records
+   `fits_turbid` per block (old digests unchanged via the schema-defaults
+   mechanism). Underdetermined refusals stay `fit_failed`, as you chose.
+2. **New headline** (`pangaea_fits_v2`: 1 593 ids, `insitu` → 10% imputed,
+   new defaults): ok = **43.2 / 52.6 / 37.6%** for `expb_pow`/`giop`/`gsm`;
+   `out_of_scope` = 11.8% for all three (exactly the 188 red-peaked ids);
+   `fit_failed` = 5.8/2.0/1.8% (the named deterministic floor). Round 1's
+   prediction (rescore @10%, drop red) matches **to four decimal places** —
+   the v2 fits are the Round-1 fits; only scoring and scope moved. Cost of
+   pre-fit scope, measured: 27 of 188 red-peaked spectra would have scored
+   `ok` under force-fitted `expb_pow`.
+3. **Correction (caught before it shipped):** the first v2 run had
+   `out_of_scope` 159≠188 for `expb_pow` — my 1d turbid comparison had
+   *registered* a force-fit `expb_pow` over the registry entry and Round 2
+   inherited it. Fixed (force-fit spec is local now), polluted sweep deleted
+   and re-run. The new provenance field flagged it (`fits_turbid: true` in
+   the sweep's provenance.yaml) — recorded in the report per the
+   states-its-own-corrections standard.
+4. **Example fits** (clear→turbid, report + figure): a clear ok fit
+   (rel 1–5%); `nomad_en372` id 28678 — `giop` misses by a **median 1%**
+   and is still `poor_fit` (one anomalous band carries χ²ᵥ over 5 with
+   7 bands) — the scoring artifact in one panel; `nomad_oceania2000`
+   id 16268 showing the 1c common signature (models 20–40% low at
+   450–550 nm); `nomad_wfs0511` id 50274 (peak 570 nm, missed by ~50% —
+   the GLORIA wall). Both middle panels are from 100%-`poor_fit` cruises.
+5. **NOMAD provenance, first pass (your "try to find it"):** the tidy
+   tables carry `contributor` (PI/instrument group, from SeaBASS). Coverage
+   stratifies hard on it: 0% ok (Stramski 78/4 cruises, Morrison 27/3)
+   through 52% (Siegel 374/63) to 72% (Bélanger), all ~100% converged —
+   and Morrison's spectra miss by the *same* median 5.4% as Siegel's.
+   Points at processing convention over water type (still confounded —
+   Harding is Chesapeake). Full hunt is now **Task 6**.
+6. **Q&A:** two new questions — your `min_rrs` answer reads as a typo
+   ("rise to 5" is the current value; did you mean 6?), and how the
+   committed mixed sweep should be regenerated (two native-noise sweeps
+   folded vs uniform `pct:0.1`, replace `multi_L23_PANGAEA_v2` or add
+   `_v3`). Docs prose updated (`datasets.rst` 10% fallback,
+   `models.rst` shared budget + scope flag).
+
+**Verified:** bing checkout confirmed on `main@f242b0e` (thanks — shim
+retired). Full suite: without `$OS_COLOR` **403 passed, 40 skipped**; with
+it **443 passed** (both +2 for the new tests: pre-fit decline, turbid
+scope). `sphinx-build -W` exit **0**, no pipe. Package changes:
+`ioptics/{prep,run,records,evaluate,provenance,datasets}.py`,
+`ioptics/algorithms/{spec,registry}.py`, tests, and the two docs pages;
+committed sweep tables and site pages untouched (regeneration is the Q&A
+question).
+
 ### 2026-08-10 (Task 1: characterise and attribute the gap)
 
 **The headline gap is mostly the score, not the fit.** Deliverables:

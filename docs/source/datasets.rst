@@ -112,12 +112,15 @@ carried for provenance.
 
    **PANGAEA has no per-band** :math:`R_{rs}` **uncertainty.** The V3 tables
    report no measurement error, so the ``'insitu'`` weighting has nothing to
-   build
-   ``varRrs`` from. IOPtics therefore falls back to a **flat 5% fractional
-   error** (``varRrs = (0.05 · Rrs)²``) and records the honest provenance tag
-   ``noise_model='pct:0.05'`` — never ``'insitu'`` — so this assumption is
-   explicit in every prepared record, provenance file, and report rather than
-   silently masquerading as a measured error.
+   build ``varRrs`` from. IOPtics therefore falls back to a **flat 10%
+   fractional error** (``varRrs = (0.10 · Rrs)²``) and records the honest
+   provenance tag ``noise_model='pct:0.1'`` — never ``'insitu'`` — so this
+   assumption is explicit in every prepared record, provenance file, and
+   report rather than silently masquerading as a measured error. (The
+   fraction was 5% until 2026-08-10; at 5% the invented error bar, not the
+   fits, dominated the published retrieval-success rates — see
+   ``reports/pangaea_fits_report.md``. It now matches GLORIA's imputed-error
+   level.)
 
 Enumeration is **permissive**: every observation with at least a handful of
 finite :math:`R_{rs}` bands is kept (``min_rrs=5`` by default), even if it lacks
