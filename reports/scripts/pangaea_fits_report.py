@@ -537,6 +537,49 @@ def fig_turbid(tt):
     plt.close(fig)
 
 
+# --- Round 3: the field's operational criterion (GIOP-DC validity) -------------
+
+def giop_dc_validity(spectral, scalar, *, drrs_max=0.33, wv=(400.0, 600.0)):
+    """Score every fit with NASA's operational GIOP-DC validity test.
+
+    The NASA standard IOP products accept a Levenberg-Marquardt solution as
+    valid when the retrieved components sit within physical bounds and the
+    **mean absolute relative Rrs difference over 400-600 nm is <= 33%**
+    (GIOP ATBD v1.0, McKinna & Werdell 2024, doi:10.5067/ZGBW3QECROJ2,
+    Eqs. 11-15) — a noise-model-free misfit statistic, not a chi-squared
+    against an error bar. BING's amplitudes are fit in log10 space, so the
+    lower physical bounds (>= -0.05 a_w / b_bw) hold by construction and the
+    binding test for our fits is the dRrs criterion on converged rows.
+
+    Returns a DataFrame of per-algorithm validity fractions over all
+    attempted PANGAEA rows.
+    """
+    cols = ['dataset', 'algorithm', 'obs_id', 'wavelength', 'value']
+    sp = spectral[(spectral['dataset'] == 'PANGAEA')
+                  & spectral['wavelength'].between(*wv)]
+    mod = sp.loc[sp['component'] == 'Rrs_model', cols]
+    obs = (sp.loc[sp['component'] == 'Rrs_obs', cols]
+           .rename(columns={'value': 'obs'}))
+    both = mod.merge(obs, on=cols[:4])
+    both = both[(both['obs'] > 0) & np.isfinite(both['value'])]
+    rel = (both['value'] - both['obs']).abs() / both['obs']
+    drrs = (rel.groupby([both['algorithm'], both['obs_id']])
+               .mean().rename('dRrs'))
+
+    sc = scalar[(scalar['dataset'] == 'PANGAEA')
+                & (scalar['fit_method'] == 'chisq')]
+    sc = sc.merge(drrs.reset_index(), on=['algorithm', 'obs_id'], how='left')
+    rows = []
+    for algo, g in sc.groupby('algorithm'):
+        conv = g['status'] != 'fit_failed'
+        rows.append({'algorithm': algo, 'n': len(g),
+                     'frac_converged': conv.mean(),
+                     'dRrs_median': g.loc[conv, 'dRrs'].median(),
+                     f'valid_dRrs<={drrs_max:.0%}':
+                         (conv & (g['dRrs'] <= drrs_max)).mean()})
+    return pd.DataFrame(rows)
+
+
 # --- example fits (Round 2) ----------------------------------------------------
 
 def pick_example_ids(ann, cmap):
@@ -833,6 +876,17 @@ def main(n_cores=8):
               f'{row["n_bands_obs"]:.0f} bands  rel {row["rel_misfit"]:.3f}  '
               f'{row["status"]}')
     fig_example_fits(sp_m, sc_m, picks)
+
+    # ------------------------------------------------------------------
+    # Round 3 (Task 3, literature): score our fits with the field's
+    # operational criterion — NASA GIOP-DC validity (dRrs <= 33% over
+    # 400-600 nm; GIOP ATBD v1.0, doi:10.5067/ZGBW3QECROJ2).
+    # ------------------------------------------------------------------
+    _rule("Round 3: NASA GIOP-DC operational validity applied to our fits")
+    print('force-fitted rerun (pangaea_fits_maxfev — all spectra fitted):')
+    print(giop_dc_validity(sp_m, sc_m).round(4).to_string(index=False))
+    print('\napproved-defaults rerun (pangaea_fits_v2 — red-peaked declined):')
+    print(giop_dc_validity(sp_v2, sc_v2).round(4).to_string(index=False))
 
     print(f'\n[done] {time.time() - t0:.0f} s; figures in {_FIGDIR}')
 

@@ -494,6 +494,414 @@ Nelson's miss by 22–26% (a real, uniform shape mismatch). Task 6 chases the
 instrument and processing provenance behind the low-ok contributors through
 the NOMAD/SeaBASS documentation.
 
+## Round 3 (Task 3): what the published record scores, and how
+
+The question this round answers: *what retrieval-success rates do published
+in-situ IOP comparisons report on compilations like PANGAEA/NOMAD, and
+against what error model?* The short answer: **the field does not score
+inversions against measured Rrs uncertainties — it cannot, because the
+compilations do not carry them — and its operational "usable retrieval"
+criterion is a relative-misfit threshold far more permissive than anything
+this report has used.** Details, with sources:
+
+### The compilations carry no Rrs error bars
+
+- **NOMAD** (Werdell & Bailey 2005) — the source of 83% of our 1 593-id
+  sample — distributes quality-controlled radiometry and IOPs with **binary
+  provenance flags, not uncertainties**: "a *flag* field accompanies every
+  measurement in the final compiled data set", and beyond outlier queries to
+  contributors "the data were considered accurate *as is* after acquisition
+  from SeaBASS." Its QC is categorical (protocol compliance, profile
+  stability, an Es-reconciliation tolerance of ±25%, a 33% clear-sky
+  irradiance test; 245 questionable stations eliminated, 3 475 kept) — none
+  of it produces a per-band error bar. Werdell & Bailey even flag the
+  residual: uncertainty from the omitted self-shading correction "varies
+  geographically and temporally and by instrument". Directly relevant to
+  our contributor stratification: **Wei, Lee & Shang (2016)** later ran
+  their spectral-shape QA score over 2 358 NOMAD Rrs spectra and found
+  low-quality spectra "accidentally included in the NOMAD data set" —
+  refitting OC3 on only QA = 1 spectra improved the chlorophyll RMSE from
+  0.30 to 0.25 (log space). Suspect in-situ spectra surviving compilation
+  QC is a documented phenomenon, not a hypothesis this report invented.
+- **GLORIA** (Lehmann et al. 2023) documents the same gap from the inland
+  side: "While SeaBASS allows the upload of uncertainty data for radiometry
+  and water quality, the entries we located for inland and coastal waters
+  did not contain this information" — and where GLORIA could reconstruct
+  Rrs consistency, the spread was 5–16% at 560 nm and beyond −30%/+170% in
+  the UV/NIR. An *empirical* in-situ Rrs uncertainty is plausibly 5–15% in
+  the green and far worse at the spectral edges — bracketing our 10% flat
+  imputation rather than the old 5%.
+- **The PANGAEA V3 compilation itself** (Valente et al. 2022) states the
+  problem plainly: *"it is still recognized that different and unpredictable
+  uncertainties may affect data from the diverse sources due to the use of a
+  variety of field/laboratory instruments, methods, and data reduction
+  schemes."* Its quality control is geophysical-limits screening
+  (Rrs ∈ [0, 0.15] sr⁻¹), de-duplication, and flagging — **no per-band
+  uncertainties are provided** (the 68 641 Rrs observations in its tables
+  are exactly the 68 641 our adapter enumerates).
+- The **5%** our Round-1 fallback assumed is, in the field, a *satellite
+  radiometric accuracy goal* — "the satellite data product accuracy goals
+  generally accepted by the international community are ±5% for
+  water-leaving radiances" (McClain 2009, as restated in the GIOP ATBD) —
+  not a statement about in-situ Rrs error, and not something published
+  comparisons divide residuals by.
+
+### The field's operational validity criterion is ΔRrs ≤ 33%
+
+NASA's standard IOP products (GIOP-DC; Werdell et al. 2013) accept or
+reject each Levenberg–Marquardt solution with a **noise-model-free** test
+(GIOP ATBD v1.0, McKinna & Werdell, doi:10.5067/ZGBW3QECROJ2, Eqs. 11–15):
+physical bounds on the retrieved components (−0.05·b_bw ≤ b_bp ≤ 0.05 m⁻¹;
+−0.05·a_w ≤ a_dg, a_ph ≤ 5 m⁻¹) **and a mean absolute relative Rrs
+difference over 400–600 nm of at most 33%**. Non-convergence sets a
+`PRODFAIL` flag. There is no χ², and no measured uncertainty anywhere in
+the acceptance test. The ATBD also states the scope caveat our pre-fit
+`out_of_scope` now encodes: "GIOP-DC has been developed for oceanic waters.
+End-users are advised to carefully consider the validity of IOP data
+products for extreme conditions such as highly turbid, optically shallow,
+and inland/freshwater systems."
+
+Applying that operational criterion to **our own fits** (the script's
+Round-3 section; BING's log-space amplitudes satisfy the lower bounds by
+construction, so the binding test is ΔRrs ≤ 33% on converged rows):
+
+| criterion | expb_pow | giop | gsm |
+|---|---|---|---|
+| published (χ²ᵥ ≤ 5 @ 5%, committed sweep) | 19.5% | 26.6% | 3.4% |
+| approved defaults (χ²ᵥ ≤ 5 @ 10%, v2) | 43.2% | 52.6% | 37.6% |
+| **GIOP-DC validity (ΔRrs ≤ 33%, force-fit)** | **89.4%** | **92.8%** | **93.1%** |
+| GIOP-DC validity (v2, red-peaked declined) | 79.2% | 82.7% | 82.9% |
+
+The same fits, three scoring regimes: by the field's operational rule,
+~90% of PANGAEA spectra yield a *valid* retrieval from all three
+open-ocean algorithms. Our published 19.5/26.6/3.4% was never comparable
+to any number the community publishes — and even the new 10%-floor
+headline is a substantially **stricter** criterion than operational
+practice (χ²ᵥ ≤ 5 at 10% ≈ 22% RMS misfit, band-weighted, vs a 33% mean
+over 400–600 nm only).
+
+### What published comparisons actually report
+
+The three canonical exercises all follow the same pattern: **screen out
+invalid retrievals, then score IOP accuracy on the survivors with log- or
+relative-space regression statistics** — never a χ² against a measured
+error bar.
+
+- **Werdell et al. (2013)** — GIOP on NOMAD, the closest published analogue
+  to our sweep: *"GIOP-DC ran successfully on 90% of stations in NOMAD and
+  the IOCCG data set, independent of trophic level... The 10% failure rate
+  resulted from a combination of ΔRrs > 33% and nonconvergence of the
+  inversion."* Per-product valid rates on NOMAD run 87–97%. And the
+  weighting is explicit: the LM objective is χ² with σ(λ) — *"If reliable
+  values of σ(λi) are not available, they are set to 1.0 and the
+  optimization is unweighted. The GIOP-DC configuration... currently
+  utilizes an unweighted optimization."* NASA's own default semi-analytical
+  inversion neither weights by, nor scores against, measured Rrs
+  uncertainty. Our force-fit GIOP-DC-style validity of 89–93% (table
+  above) sits exactly on their 90% NOMAD figure — **fit to the same kind
+  of data and scored by the same rule, our open-ocean fits are normal.**
+- **IOCCG Report 5 (2006)** — the community algorithm test: scoring is
+  Type-II regression + RMSE *"in log space"* on retrieved-vs-true IOPs;
+  validity is algorithm-specific parameter bounds (for GSM:
+  0 < C < 100 mg m⁻³, 0 < a_dg(443) < 2 m⁻¹, 0.0001 < b_bp(443) < 0.1 m⁻¹),
+  with GSM achieving **95.8% valid on the 500-spectrum synthetic set and
+  98.5% on the 656-station in-situ set**. The report is candid about the
+  practice: *"Such non-valid retrievals are then excluded in the
+  performance analysis, and result in a smaller data set, and likely
+  better statistical results."* Its Chapter 3 also states the data gap
+  outright: *"Most of the data sets that are publicly available (e.g.,
+  SeaBASS) do not contain information regarding the estimated uncertainties
+  of the various variables they contain."*
+- **Brewin et al. (2015)** — the OC-CCI round robin of 11 semi-analytical
+  models on NOMAD: a points-based ranking over log₁₀-space statistics plus
+  **η, the "percentage of possible retrievals" (their Eq. 13)** — so the
+  fraction-inverted *is* scored, but published as points in figures rather
+  than as headline percentages. Validity screening is parameter bounds per
+  variable; their GIOP-like Model I *"excluded [retrievals] if the
+  reconstructed Rrs spectrum, between 411–555 nm, differed from the
+  observed Rrs spectrum by more than 33%"*. Their supplementary χ² test on
+  reconstructed Rrs is **unweighted** — Σ(Rrs_mod − Rrs_obs)², no σ²
+  denominator — and was left out of the ranking entirely.
+- **Maritorena, Siegel & Peterson (2002)** — the GSM paper, our `gsm`'s
+  ancestor — reports **no convergence or valid-retrieval rate at all**: the
+  per-spectrum Levenberg–Marquardt objective is an **unweighted**
+  mean-square difference in normalized water-leaving radiance, the paper
+  noting only that the procedure "allows uncertainty estimates... to be
+  accounted for" (they were not). Its validation set is "quasi-real": 1 075
+  cleaned SeaBAM stations whose a_cdm(443) and b_bp(443) truths were
+  *derived from Chl and Kd* by bio-optical relations, not measured — and
+  the headline a_cdm regression (slope 1.01, r² 0.87) holds "after
+  correction for a small offset (0.197 in log space)". Failed inversions
+  are simply not discussed.
+- **Lee, Carder & Arnone (2002)** — QAA is algebraic, so "convergence" does
+  not exist; the official QAA_v5 update (Lee, IOCCG software document)
+  states the entire QC applied on NOMAD: *"there is no screening of the
+  measurements, and all retrievals are included except negative values (5%
+  for aph443, and 1% for adg443)"* — i.e. ~95–99% "valid" in the only
+  sense QAA has, scored by log-space RMS against the retrieved IOPs.
+- **Erickson, McKinna, Werdell & Cetinić (2023)** — the Bayesian GIOP, the
+  closest published relative of our MCMC path — states *"typical
+  uncertainties for Rrs measurements are about 5%"* and uses that figure
+  as a **fit-quality benchmark** (an Rrs MAE well above it indicates model
+  error; well below it, over-fitting) rather than as an acceptance-test
+  denominator. Two of its numbers calibrate ours: the 3-parameter GIOP's
+  Rrs-fit MAE on NOMAD averages **4.8% ± 2.9%** (our converged PANGAEA
+  medians: 6.7–13.1%), and *"nearly half (38/86, or 44%) of the modeled
+  Rrs(λ) had greater than 25% MAE with respect to observations"* — the
+  field's own forward-model family failing closure on the field's own
+  compilation at rates entirely consistent with what this report measured.
+  No valid-retrieval percentage or coverage statistic is reported.
+- **Metrics guidance (Seegers et al. 2018)**: recommends multiplicative
+  bias + MAE computed in log₁₀ space and deprecates RMSE/R²/slope as
+  outlier-dominated; no numerical "success" threshold is endorsed, and
+  in-situ reference uncertainty is explicitly out of scope. This is the
+  scoring vocabulary the site's accuracy tables already use — the field's
+  norms apply to the *survivors*, not to the acceptance test.
+- **Where the 5% comes from (IOCCG Report 18, 2019)**: the SeaWiFS mission
+  objectives (McClain et al. 1992) — *"water-leaving radiance to within 5%
+  absolute"*, for clear waters — propagated into later missions and GCOS
+  requirements; Report 18 then argues *"field data should comply with
+  uncertainties at most equal to that threshold"* and notes published
+  radiometric budgets *"of the order of 5% for blue and green
+  wavelengths"* while intercomparisons *"sometimes exceed"* it. So 5% is a
+  mission *goal* for clear-water satellite radiometry — the best case, not
+  a description of a heterogeneous multi-decade compilation. GLORIA's
+  empirical 5–16% (green) to −30%/+170% (UV/NIR) reconstruction spread is
+  what a compilation actually looks like.
+
+### Bottom line for the investigation
+
+1. The field's convention is exactly what Task 1a suspected: **assumed or
+   absent uncertainty, not measured error bars** — and where a fit is
+   accepted or rejected, the test is a *relative-misfit threshold* (33%
+   operationally), the same family as the noise-model-free statistic this
+   report reads first.
+2. Published comparison exercises score **IOP accuracy on the retrievals
+   that survived validity screening** (log-space regression/MAE/bias);
+   the screening itself — convergence, positivity, residual caps — is a
+   silent filter whose pass-rate is rarely a headline number. IOPtics'
+   choice to publish per-status coverage (`frac_ok`, `frac_fit_failed`, …)
+   is more transparent than community practice, which is precisely why its
+   headline looked so much worse: it was answering a question nobody else
+   publishes an answer to, with a stricter test.
+3. Nothing in the published record supports scoring in-situ compilation
+   fits against a 5% error bar; the Round-2 move to 10% is defensible as
+   *conservative* relative to operational practice, and the report's
+   attribution tables should be read with the ΔRrs ≤ 33% row above as the
+   community-equivalent baseline.
+
+### References (Round 3)
+
+DOIs verified against the resolver (the two IOCCG report-series volumes and
+the NASA ATBD carry the identifiers shown). Quotes above are from the full
+texts.
+
+- **Brewin, R.J.W., Sathyendranath, S., Müller, D., et al. (2015).** The
+  Ocean Colour Climate Change Initiative: III. A round-robin comparison on
+  in-water bio-optical algorithms. *Remote Sensing of Environment*, 162,
+  271–294. doi:10.1016/j.rse.2013.09.016 — points-based ranking on NOMAD;
+  η = percentage of possible retrievals; unweighted supplementary χ².
+- **IOCCG (2006).** Remote Sensing of Inherent Optical Properties:
+  Fundamentals, Tests of Algorithms, and Applications. Lee, Z.-P. (ed.),
+  IOCCG Report No. 5, Dartmouth, Canada (report series; no registered DOI)
+  — log-space RMSE scoring; per-algorithm valid-retrieval bounds; GSM
+  95.8/98.5% valid; "SeaBASS ... do[es] not contain ... estimated
+  uncertainties".
+- **IOCCG (2019).** Uncertainties in Ocean Colour Remote Sensing. Mélin, F.
+  (ed.), IOCCG Report No. 18, Dartmouth, Canada. doi:10.25607/OBP-696 —
+  the 5% water-leaving-radiance objective chain (McClain et al. 1992 →
+  GCOS) and the field-data uncertainty recommendations.
+- **Erickson, Z.K., McKinna, L., Werdell, P.J., & Cetinić, I. (2023).**
+  Bayesian approach to a generalized inherent optical property model.
+  *Optics Express*, 31(14), 22790–22801. doi:10.1364/OE.486581 — "typical
+  uncertainties for Rrs measurements are about 5%" as a fit-quality
+  benchmark; 44% of NOMAD stations exceed 25% Rrs MAE; no valid-retrieval
+  or coverage statistics.
+- **Lee, Z., Carder, K.L., & Arnone, R.A. (2002).** Deriving inherent
+  optical properties from water color: a multiband quasi-analytical
+  algorithm for optically deep waters. *Applied Optics*, 41(27),
+  5755–5772. doi:10.1364/AO.41.005755 — QAA. (In-text validation
+  percentages of the 2002 paper not independently verified — full text is
+  paywalled; the QC convention quoted above is from the official QAA_v5
+  update, Lee, ioccg.org/groups/Software_OCA/QAA_v5.pdf.)
+- **Lehmann, M.K., et al. (2023).** GLORIA — A globally representative
+  hyperspectral in situ dataset for optical sensing of water quality.
+  *Scientific Data*, 10, 100. doi:10.1038/s41597-023-01973-y — SeaBASS
+  inland/coastal entries carry no uncertainty data; Rrs reconstruction
+  spread 5–16% (green), −30%/+170% (UV/NIR).
+- **Loisel, H., Jorge, D.S.F., Reynolds, R.A., & Stramski, D. (2023).** A
+  synthetic optical database generated by radiative transfer simulations…
+  *Earth System Science Data*, 15, 3711–3731. doi:10.5194/essd-15-3711-2023
+  — L23 is noise-free by construction ("free of measurement errors").
+- **Maritorena, S., Siegel, D.A., & Peterson, A.R. (2002).** Optimization
+  of a semianalytical ocean color model for global-scale applications.
+  *Applied Optics*, 41(15), 2705–2714. doi:10.1364/AO.41.002705 — GSM;
+  unweighted least squares; no convergence rate reported; "quasi-real"
+  validation truths derived from Chl.
+- **McKinna, L. & Werdell, P.J. (2024).** Inherent Optical Properties,
+  NASA Ocean Color ATBD v1.0 (Apr 10, 2024). doi:10.5067/ZGBW3QECROJ2 —
+  the operational GIOP-DC validity test (Eqs. 11–15: component bounds +
+  ΔRrs ≤ 33% over 400–600 nm), `PRODFAIL` on non-convergence, the McClain
+  (2009) ±5% accuracy-goal restatement, and the turbid-waters scope caveat.
+- **Seegers, B.N., Stumpf, R.P., Schaeffer, B.A., Loftin, K.A., & Werdell,
+  P.J. (2018).** Performance metrics for the assessment of satellite data
+  products: an ocean color case study. *Optics Express*, 26(6), 7404–7422.
+  doi:10.1364/OE.26.007404 — log₁₀-space multiplicative bias + MAE;
+  RMSE/R²/slope deprecated.
+- **Valente, A., Sathyendranath, S., Brotas, V., et al. (2022).** A
+  compilation of global bio-optical in situ data for ocean colour satellite
+  applications – version three. *Earth System Science Data*, 14, 5737–5770.
+  doi:10.5194/essd-14-5737-2022 — the PANGAEA V3 source; 68 641 Rrs
+  observations; no per-band uncertainties; "different and unpredictable
+  uncertainties may affect data from the diverse sources".
+- **Wei, J., Lee, Z., & Shang, S. (2016).** A system to measure the data
+  quality of spectral remote-sensing reflectance of aquatic environments.
+  *JGR: Oceans*, 121, 8189–8207. doi:10.1002/2016JC012126 — spectral-shape
+  QA score (23 water types, cosine similarity); found low-quality spectra
+  "accidentally included in the NOMAD data set".
+- **Werdell, P.J. & Bailey, S.W. (2005).** An improved in-situ bio-optical
+  data set for ocean color algorithm development and satellite data product
+  validation. *Remote Sensing of Environment*, 98(1), 122–140.
+  doi:10.1016/j.rse.2005.07.001 — NOMAD; binary flags, not uncertainties;
+  categorical QC (±25% Es reconciliation, 33% clear-sky test).
+- **Werdell, P.J., Franz, B.A., Bailey, S.W., et al. (2013).** Generalized
+  ocean color inversion model for retrieving marine inherent optical
+  properties. *Applied Optics*, 52(10), 2019–2037. doi:10.1364/AO.52.002019
+  — "GIOP-DC ran successfully on 90% of stations in NOMAD"; unweighted
+  optimization when no reliable σ(λ) exists (the operational default).
+
+## Round 4 (Task 4): proposed changes — described, not implemented
+
+Everything below is a proposal. Nothing in this round changed code, tables,
+or site pages; each item ends with the decision it needs from JXP (mirrored
+in the prompt doc's Q&A). Ordered by area, and within each area by
+benefit-to-blast-radius.
+
+### A. Scoring — what a published number should mean
+
+**A1. Add a community-equivalent validity row to the coverage block.** The
+field's operational acceptance test (GIOP-DC: component bounds + mean
+relative Rrs misfit ≤ 33% over 400–600 nm) is computable from tables we
+already persist, and scored that way our PANGAEA fits sit on Werdell
+(2013)'s 90% NOMAD figure. Publishing `frac_valid` beside `frac_ok` (qc
+tables, leaderboard, sweep pages) makes the site's coverage comparable to
+the literature while keeping χ²ᵥ ≤ 5 as the stricter house metric.
+*Sketch:* a ΔRrs reduction in `metrics.py` (from the spectral table's
+`Rrs_model`/`Rrs_obs` rows, as the report script's `giop_dc_validity()`
+already does), one new column through `tables.qc` → leaderboard → pages.
+*Blast radius:* metrics schema + regenerated site tables; no fitting
+changes. **Ask: add it in Task 5?** (Posed in Q&A after Task 3.)
+
+**A2. Persist the per-fit median relative misfit on `results_scalar`.**
+The investigation's most-used number — `rel_misfit` per (algorithm, obs) —
+is currently recomputed downstream from ~5M spectral rows on every use
+(`metrics_scalar` persists only per-algorithm medians). One float column,
+written at result-assembly time where `Rrs_model` and `Rrs_obs` are both
+in hand, makes every future diagnostic a one-table read. *Blast radius:*
+`evaluate._assemble` + `io._scalar_row` + a test; old sweeps simply lack
+the column. **Ask: approve?**
+
+**A3. Stamp the error model on every published rate.** Every `frac_ok` the
+site shows is a statement about an *assumed* uncertainty (now the imputed
+10%), and the per-row `noise_model` tag already records it — but the site
+pages don't surface it. Proposal: sweep/leaderboard pages print the noise
+provenance line ("scored against `pct:0.1` — imputed; PANGAEA V3 carries
+no measured Rrs uncertainty") wherever coverage appears. *Blast radius:*
+report templates only. **Ask: approve?**
+
+**A4 (exploratory, low priority). Robust per-band loss.** The
+`nomad_en372` panel shows the failure mode: with 7 bands, one anomalous
+band carries χ²ᵥ over the threshold while the median misfit is 1%. A
+robust loss (soft-L1/Huber via `scipy.least_squares`) would defuse
+single-band outliers — but it changes the estimator itself, breaks
+χ²ᵥ comparability across every sweep, and needs bing-side changes
+(`curve_fit` → `least_squares`). Alternative reading: the anomalous band
+is *information* (a calibration artifact marker), and A1/B1 handle the
+scoring side without touching the estimator. **Ask: park it, or explore
+on a branch after the forward-model work lands?**
+
+### B. Adapter / data — what enters a sweep, and what rides along
+
+**B1. Score spectral-shape quality per record (QWIP, and optionally the
+Wei QA score).** Wei et al. (2016) found low-quality spectra "accidentally
+included" in NOMAD; our contributor stratification (Morrison: 5.4% median
+misfit, never ok) points the same way. Proposal: compute a shape-quality
+index at prep time and persist it as an *annotation, never an exclusion* —
+coverage tables can then be read with/without flagged spectra, and Task 6
+gets a per-cruise instrument-artifact signal for free. QWIP (Dierssen et
+al. 2022) is a closed-form polynomial on the apparent visible wavelength —
+cheap, no external tables; the Wei QA score needs the 23 water-type
+reference table (distributed by the authors) and is the stronger,
+NOMAD-proven instrument. *Blast radius:* `prep`/`records` (+1 field),
+`io` (+1 column), tests; no scoring change. **Ask: QWIP now, Wei QA if the
+reference tables check out — approve?**
+
+**B2. Carry `subdataset` (cruise) and `contributor` onto the results
+tables.** The investigation joined them manually from the `rrs` table for
+1c and the contributor stratification; they are per-observation metadata
+the adapter already touches. Persisting both on `results_scalar` makes
+per-cruise/per-contributor coverage a groupby instead of a side join —
+which Task 6 and any future per-source QC will need. *Blast radius:*
+`PANGAEAAdapter.load_obs` meta + `io._scalar_row` (+2 nullable columns,
+other datasets emit NaN), tests. **Ask: approve?**
+
+**B3. Trim non-positive Rrs bands at prep.** The 28-spectrum deterministic
+floor: every one carries non-positive bands, which are unphysical under a
+fractional noise model (variance `(0.1·Rrs)²` → zero/complex weight) and
+kill the fit regardless of budget. Proposal: `prep_one` drops bands with
+`Rrs ≤ 0` for in-situ datasets (provenance-tagged, e.g.
+`'+trimmed:neg'`), after which the underdetermined guard handles any
+spectrum left with too few bands — turning an opaque crash into either a
+clean fit on the positive bands or a named refusal. The alternative —
+refuse the whole spectrum — wastes the 10–15 good bands these spectra
+typically still carry. *Blast radius:* `prep` + tests; changes future
+sweep counts (the 28 rows move from `fit_failed` to scored/refused).
+**Ask: trim, refuse, or leave as-is?**
+
+**B4. `min_rrs`** — pending the Q&A clarification (did "rise to 5" mean
+6?). No proposal beyond honoring the answer.
+
+### C. Models — where the physics actually binds
+
+**C1. No new backscattering work on the red-peaked fraction.** 1d
+confirmed on PANGAEA what GLORIA already showed: richer `b_bp`
+parameterisations return the same fits. The binding constraint is the
+forward model (Gordon relation), which is being developed separately.
+Proposal: keep declining red-peaked spectra pre-fit and *revisit only when
+the new forward model lands* — at which point the turbid variants +
+`fits_turbid` machinery is already in place to test it. **Ask: agreed —
+nothing to do now?**
+
+**C2. The common-signature cruises are a data question, not a model
+question — route them to Task 6.** The 520–570 nm-low / 660 nm-high
+signature is shared across cruises and absent in controls; B1/B2 give the
+tools to separate instrument convention from water type. No model change
+proposed. **Ask: agreed?**
+
+### D. What the site claims
+
+**D1. Regenerate the committed sweep as two native-noise sweeps folded.**
+Pending Q&A: L23 under `pace`, PANGAEA under `insitu` (→ 10% imputed),
+folded in the leaderboard — the design's intended pattern — vs one uniform
+`pct:0.1`. Recommendation: the two-sweep form, published as
+`multi_L23_PANGAEA_v3` with the v2 page retained (the report's Round-2
+tables explain the change); `pangaea_fits_v2` already is the PANGAEA half.
+**Ask: which form, and replace or add?**
+
+**D2. Caveat the L23 ~99% on the site.** Task 1a/Round 3 established the
+comparison is partly definitional: L23 is noise-free by construction
+(Loisel et al. 2023) and is scored under the same noise it was perturbed
+with, so its ~99% is near-guaranteed — while PANGAEA's rate is a statement
+about an imputed error bar. Proposal: one caveat sentence on the dataset
+page and wherever the L23-vs-PANGAEA contrast is drawn. *Blast radius:*
+docs prose only. **Ask: approve?**
+
+**D3. State the scope rule where coverage is shown.** `out_of_scope` now
+means "declined before fitting (red-peaked)". Site pages that show the
+coverage block should say so in one line, so 11.8% `out_of_scope` reads as
+a scope decision, not a failure mode. *Blast radius:* report templates.
+**Ask: approve?**
+
 ## Reproducibility
 
 ```bash

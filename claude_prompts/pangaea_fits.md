@@ -118,6 +118,7 @@ downstream reads them:
 4. Propose changes based on what you found. **Describe them and ask; do not
    implement yet.**
 5. Implement what I approve.
+6. NOMAD cruise provenance.
 
 ### Pull Requests
 
@@ -237,6 +238,17 @@ downstream reads them:
   enumeration) or **keep 5** (the guard now refuses them cleanly as
   `fit_failed`). Left at 5 pending your answer; nothing else in Task 2
   depended on it.
+- **Should the published coverage block gain a community-equivalent validity
+  row?** Task 3 found the field's operational acceptance test for
+  semi-analytical IOP retrievals is NASA's GIOP-DC validity: component
+  bounds + **mean relative Rrs misfit ≤ 33% over 400–600 nm** (no χ², no
+  measured error; GIOP ATBD doi:10.5067/ZGBW3QECROJ2), and Werdell et al.
+  (2013) report "GIOP-DC ran successfully on 90% of stations in NOMAD".
+  Scored that way, our force-fitted PANGAEA rates are **89.4/92.8/93.1%** —
+  right on their 90%. Publishing a `frac_valid` under that criterion beside
+  `frac_ok` would make the site's numbers comparable to the literature
+  (χ²ᵥ ≤ 5 answers a stricter question nobody else publishes). Add it in
+  Task 5, or keep the coverage block as is?
 - **How should the committed site sweep be regenerated under the new
   defaults?** "We will need to sweep again" — agreed, and the code now runs
   the approved semantics by default. But `multi_L23_PANGAEA_v2` is a *mixed*
@@ -248,7 +260,120 @@ downstream reads them:
   site or sit beside it as `_v3`? (`pangaea_fits_v2` under
   `$OS_COLOR/IOPtics/runs/` is the PANGAEA half, already run.)
 
+**Task-4 proposals** (full descriptions with sketches and blast radii in
+`reports/pangaea_fits_report.md` § Round 4; each needs a yes/no/modify —
+none is implemented):
+
+- **A2 — persist per-fit `rel_misfit` on `results_scalar`?** One float
+  column written at result assembly; the investigation's most-used number,
+  currently recomputed from ~5M spectral rows on every use.
+- **A3 — stamp the error model on every published rate?** Site pages print
+  the noise provenance ("scored against `pct:0.1` — imputed...") wherever
+  coverage appears. Templates only.
+- **A4 — robust per-band loss (soft-L1), park or explore?** Would defuse
+  the en372-style one-band kills, but changes the estimator, breaks χ²ᵥ
+  comparability across sweeps, and needs bing-side changes. My
+  recommendation: park until the forward-model work lands.
+- **B1 — per-record spectral-shape quality score, as annotation not
+  exclusion?** QWIP (closed-form, cheap) now; Wei et al. QA score (23
+  water-type tables, NOMAD-proven) if the reference tables check out.
+  Gives Task 6 an instrument-artifact signal per cruise.
+- **B2 — carry `subdataset` + `contributor` onto `results_scalar`?** Two
+  nullable columns; turns per-cruise/per-contributor coverage into a
+  groupby. Task 6 needs it.
+- **B3 — non-positive Rrs bands: trim at prep (my recommendation), refuse
+  the spectrum, or leave as-is?** The 28-spectrum floor carries unphysical
+  weights under a fractional noise model; trimming (provenance-tagged)
+  salvages the 10–15 good bands each spectrum typically has.
+- **C1/C2 — agreed that no model work happens now?** Red-peaked fraction
+  waits for your forward model (the `fits_turbid` machinery is ready to
+  test it); the common-signature cruises route to Task 6 as a data
+  question.
+- **D2 — caveat the L23 ~99% on the site?** One sentence: noise-free
+  synthetic scored under its own assumed noise, so ~99% is near-guaranteed.
+- **D3 — one-line scope-rule note where coverage is shown?** So 11.8%
+  `out_of_scope` reads as "declined pre-fit", not a failure mode.
+
 ### Logs
+
+### 2026-08-11 (Task 4: propose changes — described and asked, not implemented)
+
+**Eleven proposals across the four areas the task names, each posed as a
+Q&A decision.** Deliverables: `reports/pangaea_fits_report.md` § Round 4
+(descriptions, implementation sketches, blast radii) + the Task-4 block in
+Q&A above. **No code, table, or site change was made.**
+
+- **Scoring:** A1 community-equivalent `frac_valid` row (already pending
+  from Task 3); A2 persist per-fit `rel_misfit` on `results_scalar`; A3
+  stamp the error model on every published rate; A4 robust per-band loss —
+  described but recommended *parked* (estimator change, comparability
+  break).
+- **Adapter/data:** B1 spectral-shape QA per record (QWIP now, Wei QA
+  score if its reference tables check out) as annotation, never exclusion;
+  B2 persist `subdataset` + `contributor`; B3 trim non-positive Rrs bands
+  at prep (recommended) vs refuse vs leave — the named 28-spectrum floor;
+  B4 `min_rrs` awaits your clarification.
+- **Models:** C1 no new backscattering work — the red-peaked fraction
+  waits for your forward model (1d showed variants return the same fits;
+  `fits_turbid` machinery is ready to test the new model when it lands);
+  C2 the common-signature cruises are a data question → Task 6.
+- **Site claims:** D1 regenerate as two native-noise sweeps folded
+  (recommended `_v3`, keep v2 page) — pending your earlier answer; D2
+  caveat L23's near-guaranteed ~99%; D3 one-line scope-rule note beside
+  coverage blocks.
+
+**Verified:** no package changes; suite without `$OS_COLOR` **403 passed,
+40 skipped**; `sphinx-build -W` exit **0**, no pipe.
+
+### 2026-08-11 (Task 3: literature — how the field scores retrieval success)
+
+**Nobody in the published record scores in-situ IOP inversions against a
+measured Rrs error bar — they can't, and their acceptance test is a
+relative-misfit threshold three times looser than anything we've used.**
+Deliverables: Round-3 section in `reports/pangaea_fits_report.md` (verified
+quotes + DOIs), a `giop_dc_validity()` section in the report script, one new
+Q&A question. No package changes.
+
+1. **The compilations carry no uncertainties.** NOMAD ships binary
+   provenance flags, "data ... considered accurate *as is*" (Werdell &
+   Bailey 2005); Valente V3 (our source; its 68 641 Rrs observations are
+   exactly what the adapter enumerates) provides none and says uncertainties
+   are "different and unpredictable" across sources; IOCCG Report 5 states
+   the SeaBASS gap outright; GLORIA confirms it for inland/coastal SeaBASS
+   entries. L23 is noise-free by construction.
+2. **The 5% we assumed in Round 1 is a mission goal, not a measurement.**
+   IOCCG Report 18 traces it to the SeaWiFS objectives (McClain et al.
+   1992: water-leaving radiance within 5% absolute, *clear waters*).
+   GLORIA's empirical reconstruction spread (5–16% green, −30/+170% UV/NIR)
+   brackets our new 10% imputation, not 5%.
+3. **The operational acceptance test is ΔRrs ≤ 33%.** NASA's standard IOP
+   products accept an LM solution iff component bounds hold and the mean
+   relative Rrs misfit over 400–600 nm is ≤ 33% (GIOP ATBD v1.0, Eqs.
+   11–15); non-convergence → `PRODFAIL`. GIOP-DC's optimization is
+   **unweighted** ("if reliable values of σ(λi) are not available, they are
+   set to 1.0"). Werdell et al. 2013: "GIOP-DC ran successfully on **90%**
+   of stations in NOMAD"; IOCCG-5 tabulates GSM at 95.8/98.5% valid (and
+   warns that excluding invalid retrievals "likely" flatters statistics);
+   Brewin et al. 2015 score η = "percentage of possible retrievals" and
+   their supplementary χ² has no σ² denominator at all. The GSM paper
+   itself (Maritorena 2002) reports **no** convergence rate, fits an
+   unweighted objective, and validates against truths *derived from Chl*;
+   QAA's only QC is negative-value exclusion (~95–99% "valid" by
+   construction, QAA_v5 doc); and the Bayesian GIOP (Erickson et al. 2023)
+   benchmarks fit quality against a "typical" 5% Rrs uncertainty and finds
+   **44% of NOMAD stations exceed 25% Rrs MAE** — the field's own closure
+   failure, at rates consistent with ours (their 3-par GIOP Rrs-fit MAE
+   4.8±2.9% vs our converged medians 6.7–13.1%).
+4. **Scored by the field's rule, our fits are normal.** Computed in the
+   script (Round 3): force-fitted PANGAEA validity under ΔRrs ≤ 33% is
+   **89.4/92.8/93.1%** for `expb_pow`/`giop`/`gsm` — sitting on Werdell's
+   90% — vs the published 19.5/26.6/3.4% under χ²ᵥ ≤ 5 @ 5%. Directly
+   confirms 1a: the headline was a scoring choice, and even the new
+   10%-floor headline (43/53/38%) is stricter than community practice.
+   Q&A asks whether to publish a community-equivalent `frac_valid` row.
+
+**Verified:** no package changes; suite without `$OS_COLOR` **403 passed,
+40 skipped**; `sphinx-build -W` exit **0**, no pipe.
 
 ### 2026-08-10 (Task 2: implement the Task-1 answers, example fits, Round 2)
 
