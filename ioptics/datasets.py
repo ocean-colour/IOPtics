@@ -277,12 +277,24 @@ class PANGAEAAdapter:
         return None
 
     def _ancillary(self, rrs, obs_id):
-        """Best-effort lat/lon/depth/date provenance from the rrs table row."""
+        """Best-effort provenance from the rrs table row.
+
+        ``subdataset`` (the cruise, e.g. ``'nomad_en372'``) and
+        ``contributor`` (the PI/instrument group, inherited from SeaBASS via
+        NOMAD) ride along since 2026-08-12 (PANGAEA investigation Task-4 B2,
+        approved by JXP): the investigation found retrieval coverage
+        stratifies hard on both — per-cruise ok-rates span 0–100% and
+        per-contributor 0–72% at ~100% convergence — and had to join them
+        from the source table by hand. Persisting them on ``results_scalar``
+        makes per-source coverage a groupby.
+        """
         out: dict = {}
         if obs_id in rrs.index:
             row = rrs.loc[obs_id]
             for col, mkey in (('lat', 'lat'), ('lon', 'lon'),
-                              ('depth_m', 'depth'), ('date_time', 'date')):
+                              ('depth_m', 'depth'), ('date_time', 'date'),
+                              ('subdataset', 'subdataset'),
+                              ('contributor', 'contributor')):
                 if col in rrs.columns:
                     out[mkey] = row[col]
         return out

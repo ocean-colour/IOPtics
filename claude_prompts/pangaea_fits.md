@@ -267,34 +267,103 @@ none is implemented):
 - **A2 — persist per-fit `rel_misfit` on `results_scalar`?** One float
   column written at result assembly; the investigation's most-used number,
   currently recomputed from ~5M spectral rows on every use.
+>A. yes 
+
 - **A3 — stamp the error model on every published rate?** Site pages print
   the noise provenance ("scored against `pct:0.1` — imputed...") wherever
   coverage appears. Templates only.
+>A. yes
 - **A4 — robust per-band loss (soft-L1), park or explore?** Would defuse
   the en372-style one-band kills, but changes the estimator, breaks χ²ᵥ
   comparability across sweeps, and needs bing-side changes. My
   recommendation: park until the forward-model work lands.
+>A. park
 - **B1 — per-record spectral-shape quality score, as annotation not
   exclusion?** QWIP (closed-form, cheap) now; Wei et al. QA score (23
   water-type tables, NOMAD-proven) if the reference tables check out.
   Gives Task 6 an instrument-artifact signal per cruise.
+>A. yes
 - **B2 — carry `subdataset` + `contributor` onto `results_scalar`?** Two
   nullable columns; turns per-cruise/per-contributor coverage into a
   groupby. Task 6 needs it.
+>A. yes
 - **B3 — non-positive Rrs bands: trim at prep (my recommendation), refuse
   the spectrum, or leave as-is?** The 28-spectrum floor carries unphysical
   weights under a fractional noise model; trimming (provenance-tagged)
   salvages the 10–15 good bands each spectrum typically has.
+>A. Leave as is.  Because of uncertainty, Rrs bands can be negative.
 - **C1/C2 — agreed that no model work happens now?** Red-peaked fraction
   waits for your forward model (the `fits_turbid` machinery is ready to
   test it); the common-signature cruises route to Task 6 as a data
   question.
 - **D2 — caveat the L23 ~99% on the site?** One sentence: noise-free
   synthetic scored under its own assumed noise, so ~99% is near-guaranteed.
+>A. yes
 - **D3 — one-line scope-rule note where coverage is shown?** So 11.8%
   `out_of_scope` reads as "declined pre-fit", not a failure mode.
+>A. yes
+- **B1 follow-up — the Wei QA reference tables are MATLAB-only.** The
+  distribution page (oceanoptics.umb.edu/score_metric/) ships MATLAB code
+  with the 23 water-type bounds embedded — no Python port, no standalone
+  tables. QWIP is implemented and already earning its keep (the `nomad_en372`
+  near-miss spectrum scores **−0.207**, outside the paper's ±0.2 screening
+  threshold, while a clear `ok` spectrum scores −0.025). Options for Wei QA:
+  (a) port the tables out of the MATLAB source into a vendored data file
+  (attribution note; moderate effort), (b) leave QWIP as the sole shape
+  annotation, or (c) revisit during Task 6 if QWIP proves insufficient.
+  Which?
 
 ### Logs
+
+### 2026-08-12 (Task 5: implement the approved Task-4 proposals)
+
+**A2, A3, B1, B2, D2, D3 are in; A4 parked, B3 left as-is, and A1/C/D1
+untouched (unanswered).** Package changes: `evaluate`, `io`, `metrics`,
+`prep`, `records`, `datasets`, `report/standard`, `docs/source/datasets.rst`,
+plus tests.
+
+1. **A2 — `rel_misfit` persisted per fit.** Computed in
+   `evaluate._assemble` next to χ² and emitted as a `results_scalar` column
+   (NaN on unfitted rows and pre-2026-08-12 sweeps). `metrics.compute` now
+   prefers the persisted value and falls back to its spectral-table
+   reduction for older sweeps — a plain merge collided on the column name
+   (caught by the suite; fixed with a fill-from-fallback).
+2. **B1 — QWIP spectral-shape score, annotation only.** `prep.qwip_score`
+   implements Dierssen et al. (2022) Eqs. 2–5 with coefficients verified
+   digit-for-digit from the paper (regression-pinned at figure-readable
+   anchors); computed in `prep_one` on the spectrum the fit sees, persisted
+   as `PreparedRecord.qwip_score` → `results_scalar.qwip_score`. Documented
+   multispectral caveat: spectra are linearly interpolated to 1 nm, no
+   Vandermeulen sensor-specific AVW conversion. **Spot check on real
+   records: the `nomad_en372` near-miss spectrum (giop misses by 1%, never
+   ok) scores −0.207 — outside the paper's ±0.2 threshold — while a clear
+   `ok` spectrum scores −0.025.** The community's shape metric flags the
+   same spectrum our χ² flagged. Wei QA: distribution is MATLAB-only with
+   embedded tables → new Q&A question (port, skip, or revisit in Task 6).
+3. **B2 — `subdataset` + `contributor` persisted.** `PANGAEAAdapter`
+   meta → two nullable `results_scalar` columns (None on other datasets).
+   Verified on real records end-to-end with B1.
+4. **A3 + D3 — the coverage sections now say what they mean.**
+   `report/standard.py` QC sections (pooled + per-stratum) append a dynamic
+   **Error model** line naming each dataset's per-record noise tags
+   (`pct:X` spelled out as an *assumed* flat fraction), and the
+   `frac_out_of_scope` description now reads "declined before fitting …
+   'we declined to fit this', not 'we fitted it and it failed'".
+5. **D2 — L23 caveat** in `docs/source/datasets.rst`: read L23's ~99% as a
+   consistency check, not a score (noise-free by construction, scored
+   against its own perturbation model).
+
+**Not done, by your answers:** B3 (non-positive Rrs bands stay — "because
+of uncertainty, Rrs bands can be negative"), A4 (parked). **Not done,
+awaiting answers:** A1 `frac_valid` row, D1 site regeneration, `min_rrs`
+clarification. Site pages were *not* rebuilt — the template changes land on
+the next `report.standard.build`, which D1's answer governs.
+
+**Verified:** suite without `$OS_COLOR` **406 passed, 40 skipped**; with it
+**446 passed** (+3 tests: QWIP polynomial pin, QWIP edge cases, prep
+attachment; plus extended schema/stats assertions). `sphinx-build -W` exit
+**0**, no pipe (one iteration: RST parsed `|score|` in the new docstrings
+as a substitution — escaped).
 
 ### 2026-08-11 (Task 4: propose changes — described and asked, not implemented)
 

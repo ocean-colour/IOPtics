@@ -133,6 +133,66 @@ def _build_truth(raw, wave):
     return truth, truth_interp
 
 
+# QWIP polynomial coefficients, Dierssen et al. (2022), Eq. 4 — predicts
+# NDI(492,665) from the Apparent Visible Wavelength (AVW, nm). Verified
+# digit-for-digit against the published equation.
+_QWIP_P = (-8.399885e-9, 1.715532e-5, -1.301670e-2, 4.357838e0, -5.449532e2)
+#: Wavelengths (nm) of the QWIP Normalized Difference Index and the AVW range.
+_QWIP_NDI_BANDS = (492.0, 665.0)
+_QWIP_AVW_RANGE = (400.0, 700.0)
+
+
+def qwip_score(wave, Rrs):
+    """QWIP spectral-shape quality score (Dierssen et al. 2022) — annotation.
+
+    ``score = NDI(492,665) − QWIP(AVW)`` where ``AVW = ΣRrs / Σ(Rrs/λ)`` (the
+    weighted harmonic mean wavelength over 400–700 nm, Eq. 2), ``NDI =
+    (Rrs(665) − Rrs(492)) / (Rrs(665) + Rrs(492))`` (Eq. 3), and QWIP is the
+    published 4th-degree polynomial in AVW (Eq. 4;
+    doi:10.3389/frsen.2022.869611). ``|score|`` ≲ 0.2 is the paper's field-data
+    screening threshold; strongly negative scores are associated with
+    optically shallow water and strongly positive ones with residual
+    surface-reflected skylight. Negative Rrs values are included, per the
+    paper.
+
+    **Multispectral caveat.** The QWIP is calibrated for 1 nm hyperspectral
+    spectra; the paper's own multispectral applications convert AVW to a
+    hyperspectral-equivalent via sensor-specific offsets (Vandermeulen et
+    al. 2020). PANGAEA spectra are 5–16-band with heterogeneous band sets,
+    so no such per-sensor conversion exists — this implementation linearly
+    interpolates the spectrum to 1 nm over its available range inside
+    400–700 nm, which is an approximation. The score is persisted as an
+    **annotation only** (never an exclusion) and thresholds should be read
+    loosely for sparse spectra.
+
+    Returns ``np.nan`` when the spectrum cannot support the score: fewer
+    than 4 finite bands inside 400–700 nm, no coverage of both NDI bands,
+    or a non-positive NDI denominator.
+    """
+    wave = np.asarray(wave, dtype=float)
+    Rrs = np.asarray(Rrs, dtype=float)
+    keep = (np.isfinite(wave) & np.isfinite(Rrs)
+            & (wave >= _QWIP_AVW_RANGE[0]) & (wave <= _QWIP_AVW_RANGE[1]))
+    w, r = wave[keep], Rrs[keep]
+    if w.size < 4 or w.min() > min(_QWIP_NDI_BANDS) \
+            or w.max() < max(_QWIP_NDI_BANDS):
+        return float('nan')
+    order = np.argsort(w)
+    w, r = w[order], r[order]
+    grid = np.arange(np.ceil(w.min()), np.floor(w.max()) + 1.0)
+    ri = np.interp(grid, w, r)
+    denom = np.sum(ri / grid)
+    if denom == 0:
+        return float('nan')
+    avw = float(np.sum(ri) / denom)
+    r492, r665 = np.interp(np.asarray(_QWIP_NDI_BANDS), w, r)
+    if (r665 + r492) == 0:
+        return float('nan')
+    ndi = float((r665 - r492) / (r665 + r492))
+    qwip = float(np.polyval(_QWIP_P, avw))
+    return ndi - qwip
+
+
 # Gordon Rrs <-> subsurface rrs relation (mirrors bing.rt.rrs A_Rrs / B_Rrs).
 _A_RRS, _B_RRS = 0.52, 1.7
 
@@ -266,7 +326,9 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
         dataset=dataset, obs_id=obs_id, wave=wave,
         Rrs=Rrs_out, varRrs=varRrs, Rrs_clean=Rrs_clean,
         truth=truth, truth_interp=truth_interp, init=init,
-        noise_model=tag, noise_seed=seed_used, meta=dict(raw.meta))
+        noise_model=tag, noise_seed=seed_used, meta=dict(raw.meta),
+        # spectral-shape quality annotation, on the spectrum the fit sees
+        qwip_score=qwip_score(wave, Rrs_out))
 
 
 def _prep_one_star(item, dataset, noise, add_noise, wv_min, wv_max, load_opts,

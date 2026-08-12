@@ -116,6 +116,16 @@ class PreparedRecord:
     meta : dict, optional
         Free-form metadata (lat/lon/date/source/sensor; L23 ``X``/``Y``; water
         type / trophic bin). Defaults to an empty dict.
+    qwip_score : float, optional
+        Spectral-shape quality **annotation** (never an exclusion): the QWIP
+        score of Dierssen et al. (2022, doi:10.3389/frsen.2022.869611) —
+        measured NDI(492,665) minus the value the QWIP polynomial predicts
+        from the spectrum's Apparent Visible Wavelength. ``|score|`` ≲ 0.2 is the
+        paper's field-data screening threshold; large values flag suspect
+        spectral shapes (e.g. residual sky glint, optically shallow water).
+        NaN when the spectrum cannot support it (no coverage of 492/665 nm).
+        See :func:`ioptics.prep.qwip_score`; added 2026-08-12 (PANGAEA
+        investigation Task-4 B1, approved by JXP).
     """
 
     dataset:      str
@@ -130,6 +140,7 @@ class PreparedRecord:
     noise_model:  str
     noise_seed:   int | None
     meta:         dict = field(default_factory=dict)
+    qwip_score:   float = np.nan
 
 
 @dataclass

@@ -65,6 +65,17 @@ were *prescribed* rather than measured, L23 provides **exact, noise-free truth**
 for every IOP — the ideal first-pass benchmark. IOPtics loads it via
 ``ocpy.hydrolight.loisel23``.
 
+.. note::
+
+   **Read L23's ~99% retrieval success as a consistency check, not a
+   score.** L23 is noise-free by construction (Loisel et al. 2023: the
+   simulations are "free of measurement errors"); IOPtics perturbs each
+   spectrum with the same noise model it is then scored against, so a
+   correct pipeline is *near-guaranteed* to score ~99% ``ok`` here. The
+   number validates the machinery. Contrasts with in-situ datasets (e.g.
+   PANGAEA's rates) conflate data quality with metric calibration — see
+   ``reports/pangaea_fits_report.md``.
+
 .. figure:: _static/l23_overview.png
    :width: 100%
 
