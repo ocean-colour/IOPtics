@@ -312,8 +312,68 @@ none is implemented):
   (attribution note; moderate effort), (b) leave QWIP as the sole shape
   annotation, or (c) revisit during Task 6 if QWIP proves insufficient.
   Which?
+- **Task 6 residue — dig or park?** Three open-ocean, QWIP-clean cruise
+  groups remain unexplained (`ant-xxiii-1` Polarstern/SPMR 31% median miss;
+  `i8si9n` CLIVAR 19%; `amlr2004` — PRR-800 era yet never-ok, the one
+  contradiction to the winched-MER story). Next step would be per-cruise
+  processing forensics: pull the SeaBASS data-file headers (login needed —
+  do you have SeaBASS credentials?) and compare extrapolation/processing
+  conventions against a well-fitting SPMR cruise. Dig now, or park with
+  the classes documented?
+- **Should the regional-optics cruises get scope treatment?** Task 6
+  establishes three water classes the open-ocean family genuinely does not
+  cover: subarctic seas (`oceania*` — Nordic/Arctic, where band-ratio
+  bio-optics are documented to fail ~2×), estuarine (`ties*`, Chesapeake),
+  and optically-shallow shelf (`wfs*`/`eh*`, bottom reflectance). The
+  red-peak rule catches some but not all of their spectra. Options: a
+  region/water-class flag (annotation like QWIP), an adapter-level scope
+  predicate (changes counts again), or leave as poor_fit with the report's
+  explanation. Which?
 
 ### Logs
+
+### 2026-08-12 (Task 6: NOMAD cruise provenance — the never-ok cruises, named)
+
+**The 1c common signature decomposes into named classes, and the largest is
+an instrument era.** Deliverables: report § Round 5,
+`pangaea_qwip_provenance.png`, two Task-6 sections in the report script
+(QWIP×coverage; the fluorescence-trim experiment, cached under
+`runs/pangaea_fits_qwip/`), two new Q&A questions. No package changes.
+
+1. **QWIP exonerates the spectra (mostly).** The never-ok cruises are
+   QWIP-clean (median −0.03 to −0.13, ~0% flagged) — naturally-shaped
+   spectra missed everywhere — except `nomad_en372` at **21% flagged**, the
+   highest anywhere, confirming its band-artifact class. Caveat noted in
+   the report: QWIP is magnitude-invariant, so smooth calibration tilts are
+   invisible to it.
+2. **A hypothesis raised and refuted in one round** (recorded per the house
+   rules): blue/green-peaked spectra carrying a ≥678 nm band (chlorophyll
+   fluorescence, absent from the elastic forward model) fit far worse
+   (12.7% vs 40.8% ok, giop). But refitting those 552 spectra with the
+   band trimmed — same noise, same budget — recovers almost nothing
+   (12.7→16.5% ok; misfit 0.159→0.157). The band doesn't cause the miss;
+   it identifies a *cohort*.
+3. **The cohort has a name.** SeaBASS/NOMAD/SIMBIOS provenance: Mitchell's
+   (SIO) group used a **winched Biospherical MER-2040/2048 from the stern
+   A-frame** (their own SIMBIOS report: ship-shadow-prone) through 2000,
+   switching to the **free-fall PRR-800 from 2001**. The never-ok years
+   (`amlr2000`, `cal9702–0004`, `jes9906`, `indoex99`) are the winched era;
+   the same group's free-fall years (`amlr2002/2006`, `cal0411`) fit at
+   58–75% ok **in the same waters**. Same PI, same region, different
+   deployment → convention, not water.
+4. **The rest classifies as:** regional bio-optics the family shouldn't
+   cover — `oceania*` is *not* Baltic but Nordic/Arctic AREX (standard
+   bio-optics documented to fail ~2×, Stramska et al. 2003), `ties*` is
+   estuarine Chesapeake (NOMAD's only self-shading-corrected profiles),
+   `wfs*`/`eh*` optically-shallow WFS; the `en372` band artifact; and an
+   honest **unresolved residue** (`ant-xxiii-1` open-ocean SPMR at 31%
+   miss, `i8si9n` CLIVAR at 19%, `amlr2004` PRR-era-yet-never-ok — the one
+   contradiction). Q&A asks: dig into SeaBASS file headers (credentials?)
+   or park; and whether the regional classes deserve scope treatment.
+
+**Verified:** no package changes; suite without `$OS_COLOR` **406 passed,
+40 skipped**; with `$OS_COLOR` **446 passed**; `sphinx-build -W` exit
+**0**, no pipe.
 
 ### 2026-08-12 (Task 5: implement the approved Task-4 proposals)
 

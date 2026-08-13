@@ -638,6 +638,146 @@ def fig_example_fits(spectral, scalar, picks):
     plt.close(fig)
 
 
+# --- Task 6: QWIP + provenance ---------------------------------------------------
+
+def qwip_annotations(n_cores):
+    """QWIP score + cruise + contributor for every one of the 1 593 ids.
+
+    Prep-only (no fitting): re-runs :func:`ioptics.prep.prep_dataset` so the
+    Task-5 annotations (``qwip_score`` and the adapter's ``subdataset`` /
+    ``contributor`` meta) exist for observations whose *sweeps* predate the
+    columns. Cached as a parquet under the runs root.
+    """
+    cache = io.sweep_dir('pangaea_fits_qwip', create=True) / 'annotations.parquet'
+    if cache.exists():
+        print(f'[task6] reusing cached QWIP annotations: {cache}')
+        return pd.read_parquet(cache)
+    from ioptics import prep
+    ids = _load_build_v2().pangaea_truth_ids()
+    cfg = config.load(_V2_YAML)
+    recs = prep.prep_dataset('PANGAEA', obs_ids=ids, noise='insitu',
+                             seed=cfg.seed, wv_min=cfg.wv_min,
+                             wv_max=cfg.wv_max, n_cores=n_cores)
+    out = pd.DataFrame([{
+        'obs_id': r.obs_id, 'qwip_score': r.qwip_score,
+        'cruise': r.meta.get('subdataset'),
+        'contributor': str(r.meta.get('contributor'))[:40]} for r in recs])
+    out.to_parquet(cache, index=False)
+    return out
+
+
+def task6_tables(ann, qa, *, algo='giop', qwip_flag=0.2):
+    """Per-cruise coverage x QWIP: is the never-ok signature a data artifact?
+
+    Returns ``(per_cruise, per_record)`` frames for the ``algo`` rows of an
+    annotated scalar table joined with the QWIP/provenance annotations.
+    ``|QWIP| > qwip_flag`` is the Dierssen et al. (2022) field screening
+    threshold — read loosely for sparse multispectral spectra.
+    """
+    g = ann[ann['algorithm'] == algo].merge(qa, on='obs_id', how='left')
+    g['flagged'] = g['qwip_score'].abs() > qwip_flag
+    rows = []
+    for cruise, c in g.groupby('cruise'):
+        if len(c) < MIN_CRUISE_N:
+            continue
+        conv = c['status'] != 'fit_failed'
+        rows.append({
+            'cruise': cruise, 'n': len(c),
+            'frac_ok': (c['status'] == 'ok').mean(),
+            'rel_misfit_median': c.loc[conv, 'rel_misfit'].median(),
+            'qwip_median': c['qwip_score'].median(),
+            'frac_qwip_flagged': c['flagged'].mean(),
+            'contributor': c['contributor'].mode().iloc[0]})
+    return pd.DataFrame(rows).sort_values('frac_ok'), g
+
+
+def fig_qwip_provenance(ct6, g):
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.6))
+    # A: cruise-level — shape-quality flags vs retrieval success
+    ax = axes[0]
+    never_ok = ct6['frac_ok'] <= 0.05
+    ax.scatter(ct6.loc[~never_ok, 'frac_qwip_flagged'],
+               ct6.loc[~never_ok, 'frac_ok'], s=28, color='0.55',
+               label='other cruises')
+    ax.scatter(ct6.loc[never_ok, 'frac_qwip_flagged'],
+               ct6.loc[never_ok, 'frac_ok'], s=40, color='#d7301f',
+               label='never ok (frac_ok <= 5%)')
+    ax.set_xlabel('fraction of cruise spectra with |QWIP| > 0.2')
+    ax.set_ylabel('fraction ok (giop)')
+    ax.legend(frameon=False, fontsize=8)
+    ax.set_title('Cruise coverage vs spectral-shape flags')
+    # B: record-level — misfit vs QWIP, statuses colored
+    ax = axes[1]
+    for status, color in (('ok', '#1b7837'), ('poor_fit', '#fdb863'),
+                          ('out_of_scope', '#d7301f')):
+        s = g[g['status'] == status]
+        ax.scatter(s['qwip_score'], s['rel_misfit'], s=7, alpha=0.45,
+                   color=color, label=status)
+    for x in (-0.2, 0.2):
+        ax.axvline(x, color='0.4', lw=0.8, ls=':')
+    ax.set_yscale('log')
+    ax.set_xlabel('QWIP score (Dierssen et al. 2022)')
+    ax.set_ylabel('median relative Rrs misfit (giop)')
+    ax.legend(frameon=False, fontsize=8)
+    ax.set_title('Per-record misfit vs spectral-shape quality')
+    fig.tight_layout()
+    fig.savefig(os.path.join(_FIGDIR, 'pangaea_qwip_provenance.png'), dpi=130)
+    plt.close(fig)
+
+
+def task6_fluorescence_test(ann, n_cores, *, wv_cut=675.0):
+    """The causal test: does trimming the ~683 nm band rescue those fits?
+
+    Among blue/green-peaked PANGAEA spectra, carrying a band redward of
+    678 nm — squarely on the chlorophyll-a fluorescence emission the elastic
+    Gordon forward model cannot produce — is associated with a collapsed
+    ok-rate. If that band is the *cause*, refitting the same spectra with
+    the grid trimmed to ``wv_cut`` should recover the no-683 population's
+    rates; if the cause were the water or a whole-spectrum calibration
+    tilt, trimming one band should change little. Returns a DataFrame of
+    per-algorithm before/after rates (cached under the runs root).
+    """
+    import dataclasses
+    from ioptics import prep
+
+    cache = io.sweep_dir('pangaea_fits_qwip', create=True) / 'fl_trim.parquet'
+    if cache.exists():
+        print(f'[task6] reusing cached fluorescence-trim refits: {cache}')
+        return pd.read_parquet(cache)
+
+    # blue/green-peaked spectra whose native grid reaches >= 678 nm,
+    # identified with a fitting-free prep pass
+    g = ann[(ann['algorithm'] == 'giop') & (ann['peak_nm'] <= RED_PEAK_NM)]
+    cfg = config.load(_V2_YAML)
+    recs = prep.prep_dataset('PANGAEA', obs_ids=sorted(g['obs_id']),
+                             noise='insitu', seed=cfg.seed,
+                             wv_min=cfg.wv_min, wv_max=cfg.wv_max,
+                             n_cores=n_cores)
+    ids = sorted(r.obs_id for r in recs if float(np.max(r.wave)) >= 678.0)
+    print(f'[task6] refitting {len(ids)} blue/green-peaked spectra with a '
+          f'>=678 nm band, grid trimmed to {wv_cut:.0f} nm')
+    # scored like-for-like with the maxfev sweep these rows are compared to:
+    # the SAME noise model (the committed config's pct:0.05), so the only
+    # thing that changes between "before" and "after" is the trimmed band
+    records = prep.prep_dataset('PANGAEA', obs_ids=ids,
+                                noise=cfg.noise_model,
+                                seed=cfg.seed, wv_min=cfg.wv_min,
+                                wv_max=wv_cut, n_cores=n_cores)
+    rows = []
+    for name in ALGOS:
+        spec = registry.get(name)
+        results = run.run_batch(spec, records, fit_method='chisq',
+                                n_cores=n_cores, strict=False)
+        for rec, res in zip(records, results):
+            rows.append({'algorithm': name, 'obs_id': rec.obs_id,
+                         'status_trimmed': res.status,
+                         'rel_misfit_trimmed':
+                             res.stats.get('rel_misfit', np.nan)})
+    out = pd.DataFrame(rows)
+    out.to_parquet(cache, index=False)
+    return out
+
+
 # --- the attribution ----------------------------------------------------------
 
 BUCKETS = ('ok (chi2_nu <= 5 @ 5%)',
@@ -887,6 +1027,41 @@ def main(n_cores=8):
     print(giop_dc_validity(sp_m, sc_m).round(4).to_string(index=False))
     print('\napproved-defaults rerun (pangaea_fits_v2 — red-peaked declined):')
     print(giop_dc_validity(sp_v2, sc_v2).round(4).to_string(index=False))
+
+    # ------------------------------------------------------------------
+    # Task 6: NOMAD cruise provenance — does the community's spectral-shape
+    # QA (QWIP) separate suspect data from genuine model/water misfit?
+    # ------------------------------------------------------------------
+    _rule('Task 6: QWIP shape-quality vs coverage, per cruise (giop, maxfev run)')
+    qa = qwip_annotations(n_cores)
+    ct6, g6 = task6_tables(ann_m, qa)
+    print(ct6.round(3).to_string(index=False))
+    flagged = g6['qwip_score'].abs() > 0.2
+    conv6 = g6['status'] != 'fit_failed'
+    print('\nrecord-level: median rel_misfit, QWIP-flagged vs clean (converged):')
+    print('  flagged :', round(g6.loc[conv6 & flagged, 'rel_misfit'].median(), 4),
+          f'(n={int((conv6 & flagged).sum())})')
+    print('  clean   :', round(g6.loc[conv6 & ~flagged, 'rel_misfit'].median(), 4),
+          f'(n={int((conv6 & ~flagged).sum())})')
+    print('ok-rate  : flagged',
+          round((g6.loc[flagged, 'status'] == 'ok').mean(), 4),
+          '| clean', round((g6.loc[~flagged, 'status'] == 'ok').mean(), 4))
+    fig_qwip_provenance(ct6, g6)
+
+    _rule('Task 6: the fluorescence-band test (trim >=678 nm and refit)')
+    fl = task6_fluorescence_test(ann_m, n_cores)
+    before = ann_m.merge(fl[['algorithm', 'obs_id']].drop_duplicates(),
+                         on=['algorithm', 'obs_id'])
+    after = fl.merge(before[['algorithm', 'obs_id']],
+                     on=['algorithm', 'obs_id'])
+    for algo in ALGOS:
+        b = before[before['algorithm'] == algo]
+        a = after[after['algorithm'] == algo]
+        print(f"  {algo:<10s} full grid: ok={100*(b['status']=='ok').mean():.1f}%  "
+              f"rel={b.loc[b['status'] != 'fit_failed', 'rel_misfit'].median():.4f}"
+              f"  | trimmed to 675 nm: "
+              f"ok={100*(a['status_trimmed']=='ok').mean():.1f}%  "
+              f"rel={a.loc[a['status_trimmed'] != 'fit_failed', 'rel_misfit_trimmed'].median():.4f}")
 
     print(f'\n[done] {time.time() - t0:.0f} s; figures in {_FIGDIR}')
 

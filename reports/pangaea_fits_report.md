@@ -902,6 +902,73 @@ coverage block should say so in one line, so 11.8% `out_of_scope` reads as
 a scope decision, not a failure mode. *Blast radius:* report templates.
 **Ask: approve?**
 
+## Round 5 (Task 6): NOMAD cruise provenance — what the never-ok cruises are
+
+The question left open by 1c: is the common residual signature of the
+never-ok cruises instrument/processing convention, or water type? Answer:
+**both, in separable classes — and the largest single class now has a name:
+the winched-radiometer era of one contributing group.** Three lines of
+evidence, one of which is a refuted hypothesis this round originated.
+
+### QWIP exonerates the spectra themselves (mostly)
+
+Scoring all 1 593 spectra with the community's shape-QA metric (QWIP,
+Task-5 B1; per-cruise table in the script output, figure below): the
+never-ok cruises are **QWIP-clean** — median scores −0.03 to −0.13, flag
+rates ≈ 0% — with a single exception: **`nomad_en372`, 21% flagged**, the
+highest rate of any cruise. So the moderate-misfit never-ok cruises carry
+*naturally-shaped* spectra that the models miss across the whole spectrum;
+en372's band-level anomaly (the 1%-median-miss, never-ok cruise of the
+example fits) is a distinct, data-artifact class that the shape metric
+independently confirms. One caveat cuts both ways: QWIP's AVW and NDI are
+magnitude-invariant, so a smooth calibration tilt or shading error is
+*invisible* to it — QWIP-clean rules out gross shape corruption, not
+smooth radiometric bias.
+
+![QWIP vs coverage](figures/pangaea_qwip_provenance.png)
+
+### A refuted mechanism, stated per the house rules
+
+The band sets suggested a sharp hypothesis: among blue/green-peaked
+spectra, those carrying a band redward of 678 nm — on the chlorophyll-a
+fluorescence emission the elastic Gordon model cannot produce — have a
+collapsed ok-rate (12.7% vs 40.8% for `giop`) and double the misfit
+(16.0% vs 6.8%). **The intervention refutes the mechanism**: refitting
+those 552 spectra with the grid trimmed to 675 nm — same noise model, same
+budget, only the red band(s) removed — recovers almost nothing (`giop`
+12.7 → 16.5% ok; median misfit 0.159 → 0.157; `expb_pow` and `gsm`
+similar). The ≥678 nm band does not *cause* the failure; it *identifies a
+cohort* — the instrument/processing era that carried such bands — whose
+spectra misfit everywhere. The correlation was real; the causation was
+not.
+
+### The provenance (SeaBASS, NOMAD Table 2, SIMBIOS reports)
+
+Chasing the never-ok cruises through SeaBASS cruise pages, the NOMAD
+paper's experiment table, and the SIMBIOS project reports:
+
+| class | cruises | what they are |
+|---|---|---|
+| **Winched-radiometer era** | `amlr2000`, `cal9702/9802/9809/0004`, `jes9906`, `aerosols_indoex_99` | Mitchell (SIO) group data collected with the **winched Biospherical MER-2040/2048 deployed from the stern A-frame** — the group's own SIMBIOS report calls it ship-shadow-prone — with the **free-fall PRR-800 replacing it from 2001**. The same group's free-fall-era cruises (`amlr2002`, `amlr2006_leg1`, `cal0411`) fit at 58–75% ok **in the same waters** (Antarctic Peninsula; CalCOFI). Same PI, same region, different deployment → the year split is instrument/processing, not water. |
+| **Regional bio-optics** | `oceania1998/1999/2000` (Stramski; *not* Baltic — R/V Oceania AREX cruises, Norwegian/Greenland/Barents Seas to Spitsbergen), `ties98xx/99xx` (Harding; Chesapeake Bay mainstem, estuarine, and NOMAD's only self-shading-corrected profiles), `wfs05xx/0610` (Carder; West Florida Shelf, optically shallow, above-water hyperspectral) | Water the open-ocean parameterisations genuinely do not cover: subarctic seas where standard band-ratio bio-optics are documented to fail ~2× (Stramska et al. 2003, doi:10.1029/2001JC001195), an estuary, and bottom-reflecting shallows. |
+| **Band-level artifact** | `en372` (Morrison/Sosik, R/V Endeavor, Mid-Atlantic Bight–Gulf of Maine shelf, 2002) | QWIP-flagged at 21%; median miss 1%; one anomalous band carries χ²ᵥ. |
+| **Unresolved** | `ant-xxiii-1` (Stramski/Röttgers, Polarstern Atlantic transect — open-ocean Case-1, Satlantic SPMR, protocol-clean, yet 31% median miss), `i8si9n` (Nelson, CLIVAR I8S/I9N, ultra-oligotrophic, 19%), `amlr2004_leg1/2` (PRR-800 era yet never-ok — the one contradiction to the instrument story; its archive differs from 2002/2006 only in lacking the above-water/sunphoto components) | Honest residue: professional open-ocean radiometry, QWIP-clean, uniformly missed by 19–31%. Whatever this is — per-cruise processing conventions (extrapolation-to-surface choices), or a model limitation the other cohorts mask — it is not resolved by anything this investigation measured. |
+
+### Verdict
+
+The 1c "common signature" was never one phenomenon. Its largest resolvable
+component is **instrument/processing convention** — the winched-MER
+ship-shadow era, established by a within-group, within-region, across-years
+contrast that no water-type explanation survives. A second component is
+**genuine regional optics** (subarctic, estuarine, shallow) that the
+open-ocean family should not be expected to fit — arguably candidates for
+scope treatment beyond the red-peak rule. A third is **record-level data
+artifacts** (en372) that the now-persisted QWIP column flags. And a
+residue of open-ocean cruises (~45 spectra) remains genuinely unexplained.
+The tools this arc added — `qwip_score`, `subdataset`, `contributor` on
+every future sweep row — make each class a groupby rather than an
+investigation.
+
 ## Reproducibility
 
 ```bash
@@ -927,4 +994,7 @@ Round-1 semantics. Figures: `pangaea_rescoring.png`,
 `pangaea_misfit_cdf.png`, `pangaea_fitfailed_decomposition.png`,
 `pangaea_cruise_rates.png`, `pangaea_cruise_residuals.png`,
 `pangaea_turbid_variants.png`, `pangaea_attribution.png`,
-`pangaea_example_fits.png`, all under `reports/figures/`.
+`pangaea_example_fits.png`, `pangaea_qwip_provenance.png`, all under
+`reports/figures/`. Task-6 caches (QWIP/provenance annotations and the
+fluorescence-trim refits) live under
+`$OS_COLOR/IOPtics/runs/pangaea_fits_qwip/`.
