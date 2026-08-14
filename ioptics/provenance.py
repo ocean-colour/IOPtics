@@ -124,6 +124,7 @@ def algorithm_block(spec):
         'beta': spec.beta,
         'fit_method': spec.fit_method,
         'maxfev': spec.maxfev,
+        'fits_turbid': spec.fits_turbid,
         'mcmc': {
             'nsteps': spec.mcmc.nsteps,
             'nburn': spec.mcmc.nburn,
@@ -138,25 +139,31 @@ def algorithm_block(spec):
 #: claim, and on ``gloria_turbid_v3`` they differ: it really ran ``expb_pow`` at
 #: ``maxfev=40000`` (patched into the registry by its build script) while its
 #: provenance block, written before Task 9, records no ``maxfev`` whatsoever.
-PROVENANCE_SCHEMA = 2
+#: Schema 3 adds ``fits_turbid`` (the pre-fit ``out_of_scope`` scope claim,
+#: 2026-08-10) — it decides whether a red-peaked record is fitted at all, so
+#: two sweeps differing on it are not running the same algorithm.
+PROVENANCE_SCHEMA = 3
 
-#: Keys added in schema 2, with the value that means "as the default". Digesting
-#: fills these in when absent, so a schema-1 block and a schema-2 block describing the
-#: *same* configuration produce the **same** digest. Without this, re-running an old
-#: sweep would change every digest for byte-identical configurations, and the profile
-#: pages' "what varied between sweeps" section would report schema versioning as
-#: configuration drift.
-_SCHEMA2_DEFAULTS = {
+#: Keys added after schema 1, with the value that means "as the default"
+#: (schema 2: ``maxfev``/``mcmc``; schema 3: ``fits_turbid``). Digesting fills
+#: these in when absent, so blocks from different schema eras describing the
+#: *same* configuration produce the **same** digest. Without this, re-running an
+#: old sweep would change every digest for byte-identical configurations, and the
+#: profile pages' "what varied between sweeps" section would report schema
+#: versioning as configuration drift.
+_SCHEMA_FIELD_DEFAULTS = {
     'maxfev': None,
     'mcmc': {'nsteps': 40000, 'nburn': 1000, 'nMC': None},
+    'fits_turbid': False,
 }
+
 
 #: Keys excluded from the digest. ``name``/``label`` identify rather than define;
 #: ``noise_model`` was emitted per algorithm before Task 9 and was never a property
 #: of one (see :func:`algorithm_block`), so including it would make every old block
 #: hash differently from its own re-run; ``digest`` cannot hash itself; and
 #: ``schema`` must be excluded or bumping it would change every digest — which is
-#: precisely the discontinuity :data:`_SCHEMA2_DEFAULTS` exists to prevent.
+#: precisely the discontinuity :data:`_SCHEMA_FIELD_DEFAULTS` exists to prevent.
 _DIGEST_EXCLUDE = ('name', 'label', 'noise_model', 'digest', 'schema')
 
 
@@ -169,7 +176,7 @@ def algorithm_digest(spec_or_block):
     whatever columns happened to survive into a table.
 
     **Stable across the schema change.** A block written before ``maxfev``/``mcmc``
-    were recorded is normalized against :data:`_SCHEMA2_DEFAULTS` first, so an old
+    were recorded is normalized against :data:`_SCHEMA_FIELD_DEFAULTS` first, so an old
     sweep and its re-run agree whenever the configuration really is the same. The
     cost is honest and worth stating: a pre-schema-2 block cannot distinguish "ran at
     the default budget" from "ran at a raised budget nobody wrote down", so its digest
@@ -182,7 +189,7 @@ def algorithm_digest(spec_or_block):
     block = (spec_or_block if isinstance(spec_or_block, dict)
              else algorithm_block(spec_or_block))
     payload = {k: v for k, v in block.items() if k not in _DIGEST_EXCLUDE}
-    for key, default in _SCHEMA2_DEFAULTS.items():
+    for key, default in _SCHEMA_FIELD_DEFAULTS.items():
         payload.setdefault(key, default)
     canonical = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.md5(canonical.encode('utf-8')).hexdigest()[:12]

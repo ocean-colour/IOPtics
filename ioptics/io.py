@@ -164,6 +164,14 @@ def _scalar_value(record, key):
     return float(val) if isinstance(val, (int, float, np.floating)) else np.nan
 
 
+def _meta_str(record, key):
+    """A string-valued meta field of the record (None when absent/NaN)."""
+    val = getattr(record, 'meta', {}).get(key)
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return None
+    return str(val)
+
+
 def _scalar_row(result, record):
     """One tidy row for the scalar table."""
     def med_sig(key):
@@ -193,7 +201,16 @@ def _scalar_row(result, record):
         'algorithm': result.algorithm, 'fit_method': result.fit_method,
         'chi2': st.get('chi2', np.nan), 'chi2_nu': st.get('chi2_nu', np.nan),
         'AIC': st.get('AIC', np.nan), 'BIC': st.get('BIC', np.nan),
-        'n_bands': st.get('n_bands', 0), 'k': st.get('k', 0),
+        # The noise-model-free fit quality (median |model-obs|/obs over
+        # positive-Rrs bands). NaN on unfitted rows and on sweeps that
+        # predate the column (2026-08-12).
+        'rel_misfit': st.get('rel_misfit', np.nan),
+        # NaN, not 0, when a result carries no stats: a zero band count on a
+        # fit_failed row reads as a real (impossible) measurement and poisoned
+        # every reader that counted bands on exactly the rows worth diagnosing.
+        # (run._failed_result now populates n_bands/k, so this default is a
+        # last resort, and it must be visibly missing rather than silently 0.)
+        'n_bands': st.get('n_bands', np.nan), 'k': st.get('k', np.nan),
         'Chl': chl, 'sig_Chl': sig_chl,
         'a_cdom440': acdom, 'sig_a_cdom440': sig_acdom,
         'Sdg': sdg, 'sig_Sdg': sig_sdg,
@@ -215,6 +232,12 @@ def _scalar_row(result, record):
         'noise_model': getattr(record, 'noise_model', None),
         'noise_seed': getattr(record, 'noise_seed', None),
         'noise_imputed': noise.is_imputed(getattr(record, 'noise_model', None)),
+        # Source provenance (PANGAEA: cruise + PI/instrument group) and the
+        # spectral-shape quality annotation — None/NaN for datasets that
+        # don't carry them. Added 2026-08-12 (Task-4 B1/B2, approved).
+        'subdataset': _meta_str(record, 'subdataset'),
+        'contributor': _meta_str(record, 'contributor'),
+        'qwip_score': getattr(record, 'qwip_score', np.nan),
         **extra,
     }
 

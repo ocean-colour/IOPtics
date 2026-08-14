@@ -28,7 +28,7 @@ from collections.abc import Mapping
 
 import numpy as np
 
-from ioptics.records import RetrievalResult
+from ioptics.records import RED_PEAK_NM, RetrievalResult
 
 #: Anchor wavelength (nm) for the QAA-style band inversion in
 #: :func:`initial_guess` — the red band where the water's own absorption
@@ -294,17 +294,64 @@ def _prepare(spec, record):
     return p, models, rt_dict
 
 
+def is_red_peaked(record):
+    """True when the observed Rrs peaks redward of :data:`RED_PEAK_NM`.
+
+    The spectrum-only predicate behind the **pre-fit** ``out_of_scope``
+    assignment: turbid, red-peaked water is outside what the open-ocean
+    model family is built for, and as of 2026-08-10 (JXP's Task-1 answers,
+    ``claude_prompts/pangaea_fits.md``) the pipeline *declines* such a record
+    up front — separating "we declined to fit this" from "we fitted it and it
+    failed" — unless the algorithm claims turbid water in scope
+    (``AlgorithmSpec.fits_turbid``). The same predicate previously ran only
+    post-hoc, inside :func:`ioptics.evaluate._fit_status`, on fits that had
+    already gone poorly.
+    """
+    Rrs = np.asarray(record.Rrs, dtype=float)
+    if not np.any(np.isfinite(Rrs)):
+        return False
+    peak = float(np.asarray(record.wave, dtype=float)[int(np.nanargmax(Rrs))])
+    return peak > RED_PEAK_NM
+
+
+class UnderdeterminedFitError(ValueError):
+    """A spectrum with ``n_bands <= k`` cannot constrain the model.
+
+    Raised by :func:`fit_chisq` / :func:`fit_mcmc` **before** any optimizer
+    runs, and converted by :func:`run_algorithm` into a ``fit_failed``
+    :class:`~ioptics.records.RetrievalResult` whose stats carry the true
+    ``n_bands`` and ``k`` — so the refusal is a status we chose, identifiable
+    downstream as ``status == 'fit_failed' and n_bands <= k``, rather than a
+    ``LinAlgError: SVD did not converge`` surfacing from deep inside scipy
+    (which is how all 315 five-band PANGAEA spectra died under ``expb_pow``,
+    k = 5; see ``claude_prompts/pangaea_fits.md``).
+    """
+
+
+def _refuse_underdetermined(models, record):
+    """Raise :class:`UnderdeterminedFitError` when ``n_bands <= k``."""
+    k = int(models[0].nparam + models[1].nparam)
+    n_bands = int(np.asarray(record.wave).size)
+    if n_bands <= k:
+        raise UnderdeterminedFitError(
+            f'{record.dataset}/{record.obs_id}: n_bands={n_bands} <= k={k} '
+            '-- the fit is underdetermined by construction')
+
+
 def fit_chisq(spec, record):
     """Least-squares fit of one record; returns ``(models, rt_dict, ans, cov)``.
 
     The Stage-2 fitting core (used by :func:`run_algorithm` and exercised
     directly by tests). Builds models, seeds a truth-free initial guess, and
     calls ``bing.fitting.chisq_fit.fit`` with prior-derived bounds and the
-    spec's ``maxfev`` evaluation budget.
+    spec's ``maxfev`` evaluation budget. Refuses an underdetermined record
+    (``n_bands <= k``) up front with :class:`UnderdeterminedFitError` instead
+    of letting scipy fail with a ``LinAlgError``.
     """
     from bing.fitting import chisq_fit
 
     _, models, rt_dict = _prepare(spec, record)
+    _refuse_underdetermined(models, record)
     p0 = initial_guess(models, record)
     bounds = _prior_bounds(models)
     items = (np.asarray(record.Rrs, dtype=float),
@@ -329,6 +376,7 @@ def fit_mcmc(spec, record):
     from bing.fitting import inference as bing_inf
 
     _, models, rt_dict = _prepare(spec, record)
+    _refuse_underdetermined(models, record)
     p0 = initial_guess(models, record)
 
     pdict = bing_inf.init_mcmc(models, nsteps=spec.mcmc.nsteps,
@@ -355,26 +403,65 @@ def run_algorithm(spec, record, *, fit_method=None,
     Dispatches on ``fit_method`` (or ``spec.fit_method``): ``'chisq'``
     (least-squares, default) or ``'mcmc'`` (emcee). Both paths reconstruct the
     same components with 68/95 bands via :mod:`ioptics.evaluate`.
+
+    Two kinds of record are **declined up front**, in both strict modes,
+    rather than fitted:
+
+    - a red-peaked (turbid) record when the algorithm does not claim turbid
+      water in scope (``spec.fits_turbid`` is False) — returned as
+      ``out_of_scope``, per the pre-fit assignment decision
+      (``claude_prompts/pangaea_fits.md`` Q&A, 2026-08-10);
+    - an underdetermined record (``n_bands <= k``) — returned as
+      ``fit_failed`` rather than crashing the batch (strict) or masquerading
+      as an optimizer failure (robust).
+
+    Both results carry the true ``n_bands``/``k`` in their stats.
     """
     from ioptics import evaluate
 
     method = fit_method or spec.fit_method
-    if method == 'chisq':
-        models, rt_dict, ans, cov = fit_chisq(spec, record)
-        return evaluate.from_chisq(spec, record, models, rt_dict, ans, cov,
-                                   perc=perc)
-    if method == 'mcmc':
-        models, rt_dict, chains = fit_mcmc(spec, record)
-        return evaluate.from_chains(spec, record, models, rt_dict, chains,
-                                    perc=perc)
+    if not getattr(spec, 'fits_turbid', False) and is_red_peaked(record):
+        return _unfit_result(spec, record, method, 'out_of_scope')
+    try:
+        if method == 'chisq':
+            models, rt_dict, ans, cov = fit_chisq(spec, record)
+            return evaluate.from_chisq(spec, record, models, rt_dict, ans, cov,
+                                       perc=perc)
+        if method == 'mcmc':
+            models, rt_dict, chains = fit_mcmc(spec, record)
+            return evaluate.from_chains(spec, record, models, rt_dict, chains,
+                                        perc=perc)
+    except UnderdeterminedFitError:
+        return _failed_result(spec, record, method)
     raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
+
+
+def _unfit_result(spec, record, fit_method, status):
+    """A minimal result for a record that was never fitted.
+
+    Shared by the failure path (``status='fit_failed'``) and the pre-fit
+    scope refusal (``status='out_of_scope'``). The stats dict carries the
+    observation's true ``n_bands`` (and the spec's ``k`` when the models can
+    be built) even though no fit ran. Before this, an empty stats dict made
+    :func:`ioptics.io._scalar_row` fill ``n_bands`` with 0 on exactly the
+    rows a reader most wants to diagnose — the true band count was only
+    recoverable by counting ``Rrs_obs`` rows in the spectral table.
+    """
+    stats = {'n_bands': int(np.asarray(record.wave).size)}
+    try:
+        models = spec.build_models(record.wave)
+        stats['k'] = int(models[0].nparam + models[1].nparam)
+    except Exception:
+        pass                    # model construction itself failed; omit k
+    return RetrievalResult(
+        dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
+        fit_method=fit_method or spec.fit_method, stats=stats,
+        status=status)
 
 
 def _failed_result(spec, record, fit_method):
     """A minimal ``fit_failed`` result so one bad fit doesn't kill a batch."""
-    return RetrievalResult(
-        dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
-        fit_method=fit_method or spec.fit_method, status='fit_failed')
+    return _unfit_result(spec, record, fit_method, 'fit_failed')
 
 
 def _run_one_safe(spec, record, fit_method, perc):

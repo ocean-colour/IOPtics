@@ -30,7 +30,7 @@ import yaml
 
 from ioptics import config, io, metrics, provenance
 from ioptics.algorithms import registry
-from ioptics.algorithms.spec import OVERRIDABLE_FIELDS
+from ioptics.algorithms.spec import OVERRIDABLE_FIELDS, AlgorithmSpec
 from ioptics.report import leaderboard, profiles
 from ioptics.tests.test_metrics import _make_pair
 
@@ -56,8 +56,12 @@ def test_the_block_no_longer_claims_a_per_algorithm_noise_model():
 def test_the_digest_moves_with_anything_that_changes_the_fit():
     spec = registry.get('expb_pow')
     base = provenance.algorithm_digest(spec)
-    for field, value in (('maxfev', 40000), ('set_Sdg', True), ('sSdg', 0.5),
-                         ('beta', 1.5), ('anw_model', 'Chl')):
+    # maxfev uses a non-default value: the registry now seeds at DEFAULT_MAXFEV
+    # (=40000), so 40000 would be a no-op here. fits_turbid decides whether a
+    # red-peaked record is fitted at all — it must move the digest too.
+    for field, value in (('maxfev', 12345), ('set_Sdg', True), ('sSdg', 0.5),
+                         ('beta', 1.5), ('anw_model', 'Chl'),
+                         ('fits_turbid', True)):
         other = copy.deepcopy(spec)
         setattr(other, field, value)
         assert provenance.algorithm_digest(other) != base, field
@@ -82,13 +86,18 @@ def test_the_digest_survives_the_schema_change(tmp_path):
     configurations, and the profile pages' "what varied" section would report
     schema versioning as configuration drift.
     """
-    spec = registry.get('expb_pow')
+    # the factory spec, not the registry's: a schema-1 block could only have
+    # described the then-defaults (maxfev None, fits_turbid False), and the
+    # registry now seeds maxfev=DEFAULT_MAXFEV — a real configuration change
+    # that *should* digest differently from any schema-1 era block.
+    spec = AlgorithmSpec.from_standard('expb_pow')
     new = provenance.algorithm_block(spec)
     new['schema'] = provenance.PROVENANCE_SCHEMA
     new['digest'] = provenance.algorithm_digest(new)
-    # a schema-1 block: no maxfev/mcmc/schema/digest, but with the old noise_model
+    # a schema-1 block: no maxfev/mcmc/fits_turbid/schema/digest, but with the
+    # old noise_model
     old = {k: v for k, v in new.items()
-           if k not in ('maxfev', 'mcmc', 'schema', 'digest')}
+           if k not in ('maxfev', 'mcmc', 'fits_turbid', 'schema', 'digest')}
     old['noise_model'] = 'pace'
     assert provenance.algorithm_digest(old) == provenance.algorithm_digest(new)
     # ... while a genuinely raised budget still separates them
@@ -149,16 +158,17 @@ def test_the_imputed_fraction_is_now_recoverable_from_the_table(tmp_path):
 # --------------------------------------------------------------------
 def test_overrides_are_applied_and_leave_the_registry_spec_alone():
     spec = registry.get('expb_pow')
-    out = spec.with_overrides({'maxfev': 40000, 'mcmc': {'nsteps': 500},
+    out = spec.with_overrides({'maxfev': 20000, 'mcmc': {'nsteps': 500},
                                'set_Sdg': True})
-    assert out.maxfev == 40000
+    assert out.maxfev == 20000
     assert out.mcmc.nsteps == 500
     assert out.mcmc.nburn == spec.mcmc.nburn, 'a partial mapping merges'
     assert out.set_Sdg is True
     # the registry's own object must not be mutated for every later caller
-    assert spec.maxfev is None and spec.mcmc.nsteps == 40000
+    assert spec.maxfev == registry.DEFAULT_MAXFEV
+    assert spec.mcmc.nsteps == 40000
     assert spec.set_Sdg is False
-    assert registry.get('expb_pow').maxfev is None
+    assert registry.get('expb_pow').maxfev == registry.DEFAULT_MAXFEV
 
 
 def test_an_unknown_override_is_rejected_not_ignored():
@@ -182,7 +192,8 @@ def test_no_overrides_is_a_no_op():
 def test_an_overridden_sweep_cannot_pool_as_the_default_one():
     """The digest is taken after overrides, so pooling stays honest."""
     spec = registry.get('expb_pow')
-    raised = spec.with_overrides({'maxfev': 40000})
+    # 40000 would be a no-op now that the registry seeds at DEFAULT_MAXFEV
+    raised = spec.with_overrides({'maxfev': 12345})
     assert provenance.algorithm_digest(raised) != provenance.algorithm_digest(spec)
 
 
@@ -276,15 +287,19 @@ def test_the_board_prefers_the_digest_the_sweep_recorded(tmp_path):
 def test_an_unstamped_block_still_gets_a_digest_and_reads_as_schema_zero(tmp_path):
     """The real GLORIA sweep predates all of this; it must not simply go blank."""
     _sweep(tmp_path, 'pv6')
-    block = provenance.algorithm_block(registry.get('expb_pow'))
-    for key in ('maxfev', 'mcmc'):
+    # An unstamped (pre-schema) block could only describe the then-defaults —
+    # maxfev None, fits_turbid False — i.e. the factory spec, not today's
+    # registry seed (which really runs a raised budget and must digest apart).
+    spec = AlgorithmSpec.from_standard('expb_pow', label='ExpB_Pow')
+    block = provenance.algorithm_block(spec)
+    for key in ('maxfev', 'mcmc', 'fits_turbid'):
         block.pop(key)
     block['noise_model'] = 'pace'
     d = io.sweep_dir('pv6', root=tmp_path)
     (d / 'provenance.yaml').write_text(
         yaml.safe_dump({'sweep_id': 'pv6', 'algorithms': [block]}))
     assert leaderboard._algorithm_digests(d)['expb_pow'] \
-        == provenance.algorithm_digest(registry.get('expb_pow')), \
+        == provenance.algorithm_digest(spec), \
         'an old block hashes as the equivalent new one'
     assert leaderboard._algorithm_schemas(d) == {'expb_pow': 0}
 

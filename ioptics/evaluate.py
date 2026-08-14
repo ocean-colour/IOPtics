@@ -98,6 +98,13 @@ def _fit_status(record, stats, finite):
     outside what this model family is built for, so the failure is a
     statement about scope rather than about this algorithm.
 
+    As of 2026-08-10 the pipeline assigns ``out_of_scope`` **before** fitting
+    (:func:`ioptics.run.run_algorithm` declines red-peaked records unless the
+    spec sets ``fits_turbid``), so through ``run_algorithm`` a red-peaked
+    record never reaches this classifier. The post-hoc branch is kept for
+    force-fits — an algorithm with ``fits_turbid=True`` whose fit still went
+    poorly on a red-peaked spectrum earns the same scope label.
+
     Parameters
     ----------
     record : PreparedRecord
@@ -193,6 +200,8 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
             scalars[key] = params[key]
 
     # Fit statistics at the point estimate (on the native variable-Gordon model).
+    from ioptics import metrics
+
     Rrs_pt = np.atleast_1d(np.squeeze(np.asarray(Rrs_pt, dtype=float)))
     sigma = np.sqrt(np.asarray(record.varRrs, dtype=float))
     chi2 = float(bing_stats.calc_chisq(Rrs_pt,
@@ -201,8 +210,14 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     dof = max(n_bands - k, 1)
     # AIC/BIC per bing.stats.calc_ICs formulas, but on our variable-Gordon
     # model_Rrs (calc_ICs re-derives Rrs without rt_dict, which would mismatch).
+    # ``rel_misfit`` is the noise-model-free companion to chi2_nu — the one
+    # fit-quality number that owes nothing to the assumed error bar, persisted
+    # per fit since 2026-08-12 (PANGAEA investigation Task-4 A2, approved by
+    # JXP) so diagnostics stop recomputing it from millions of spectral rows.
     stats = {'chi2': chi2, 'chi2_nu': chi2 / dof, 'AIC': 2.0 * k + chi2,
-             'BIC': k * np.log(n_bands) + chi2, 'n_bands': n_bands, 'k': k}
+             'BIC': k * np.log(n_bands) + chi2, 'n_bands': n_bands, 'k': k,
+             'rel_misfit': metrics.rel_misfit(
+                 Rrs_pt, np.asarray(record.Rrs, dtype=float))}
 
     finite = bool(np.all(np.isfinite(point_params)) and np.all(np.isfinite(Rrs_pt)))
     return RetrievalResult(

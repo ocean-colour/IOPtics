@@ -204,8 +204,8 @@ class PANGAEAAdapter:
     at least ``min_rrs`` finite bands (default 5) is returned, even if it lacks
     some truth components. PANGAEA V3 carries no per-band ``Rrs`` uncertainty,
     so ``Rrs_err`` is ``None`` and :mod:`ioptics.prep` falls back from the
-    ``'insitu'`` default to a **flat 5% fractional** noise model for the fit
-    weights (see :mod:`ioptics.prep`).
+    ``'insitu'`` default to a **flat 10% fractional** noise model for the fit
+    weights (see :mod:`ioptics.prep`; 5% until 2026-08-10).
     """
 
     def __init__(self, path=None):
@@ -277,12 +277,24 @@ class PANGAEAAdapter:
         return None
 
     def _ancillary(self, rrs, obs_id):
-        """Best-effort lat/lon/depth/date provenance from the rrs table row."""
+        """Best-effort provenance from the rrs table row.
+
+        ``subdataset`` (the cruise, e.g. ``'nomad_en372'``) and
+        ``contributor`` (the PI/instrument group, inherited from SeaBASS via
+        NOMAD) ride along since 2026-08-12 (PANGAEA investigation Task-4 B2,
+        approved by JXP): the investigation found retrieval coverage
+        stratifies hard on both — per-cruise ok-rates span 0–100% and
+        per-contributor 0–72% at ~100% convergence — and had to join them
+        from the source table by hand. Persisting them on ``results_scalar``
+        makes per-source coverage a groupby.
+        """
         out: dict = {}
         if obs_id in rrs.index:
             row = rrs.loc[obs_id]
             for col, mkey in (('lat', 'lat'), ('lon', 'lon'),
-                              ('depth_m', 'depth'), ('date_time', 'date')):
+                              ('depth_m', 'depth'), ('date_time', 'date'),
+                              ('subdataset', 'subdataset'),
+                              ('contributor', 'contributor')):
                 if col in rrs.columns:
                     out[mkey] = row[col]
         return out

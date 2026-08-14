@@ -1213,9 +1213,19 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
 
     # Per-fit relative misfit rides along on the scalar frame, so the closure
     # row can reduce it exactly like chi^2 (per key, scored and attempted).
+    # Since 2026-08-12 ``results_scalar`` persists it at fit time (Task-4 A2),
+    # so the spectral-table reduction is the fallback: prefer the persisted
+    # value, fill anything missing (older sweeps, synthetic fixtures) from the
+    # reduction — a plain merge would collide on the shared column name.
     rm = _rel_misfit_map(spectral_df)
     if not rm.empty:
-        scalar_df = scalar_df.merge(rm, on=_STATUS_KEYS, how='left')
+        if REL_MISFIT_COL in scalar_df.columns:
+            fallback = rm.rename(columns={REL_MISFIT_COL: '_rm_spectral'})
+            scalar_df = scalar_df.merge(fallback, on=_STATUS_KEYS, how='left')
+            scalar_df[REL_MISFIT_COL] = scalar_df[REL_MISFIT_COL].fillna(
+                scalar_df.pop('_rm_spectral'))
+        else:
+            scalar_df = scalar_df.merge(rm, on=_STATUS_KEYS, how='left')
 
     strata = _strata_map(scalar_df)
     spectral_df = spectral_df.merge(strata, on=['dataset', 'obs_id'], how='left')

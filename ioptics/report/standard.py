@@ -223,6 +223,43 @@ def _prune_stale(report_dir, published, *, this_page=None):
     return removed
 
 
+def _noise_provenance_line(sweep):
+    """One sentence naming the error model each dataset's rates carry.
+
+    Every published retrieval-success rate is a statement about the assumed
+    Rrs uncertainty as much as about the model (χ²ᵥ scales with its inverse
+    square), and the per-record ``noise_model`` tag has been persisted since
+    Stage 7 — but the pages never surfaced it. Added 2026-08-12 (PANGAEA
+    investigation Task-4 A3, approved by JXP). Tags are grouped per dataset;
+    ``pct:X`` is spelled out as the *assumed* flat fraction it is.
+    """
+    sc = getattr(sweep, 'scalar', None)
+    if sc is None or 'noise_model' not in getattr(sc, 'columns', ()):
+        return ''
+
+    def _describe(tag):
+        tag = str(tag)
+        if tag.startswith('pct:'):
+            frac = float(tag.split(':', 1)[1])
+            return (f'``{tag}`` — an **assumed** flat {frac:.0%} Rrs error '
+                    f'(the dataset quotes no per-band uncertainty)')
+        if '+imputed:' in tag:
+            return f'``{tag}`` — measured errors, imputed where absent'
+        if '+floor:' in tag:
+            return f'``{tag}`` — measured errors under a floor'
+        return f'``{tag}``'
+
+    parts = []
+    for ds, g in sc.groupby('dataset'):
+        tags = sorted(set(str(t) for t in g['noise_model'].dropna()))
+        if tags:
+            parts.append(f'{ds}: ' + '; '.join(_describe(t) for t in tags))
+    if not parts:
+        return ''
+    return (' **Error model** — every rate here is scored against the '
+            'uncertainty each record carries (' + ' — '.join(parts) + ').')
+
+
 def _table_section(sweep, report_dir, heading, csv_path, title_text, desc='',
                    published=None):
     """Copy a CSV into the report dir and format a csv-table RST section."""
@@ -505,7 +542,8 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
                     desc=(f'Retrieval success within ``{stratum}``. ``frac_ok`` and '
                           f'``frac_not_ok`` are complements over this stratum\'s '
                           f'{n_att} attempted spectra, so they can be read directly '
-                          f'against the other strata.'),
+                          f'against the other strata.'
+                          + _noise_provenance_line(sweep)),
                     published=published))
 
     # ΔBIC split by stratum — "does the extra complexity pay" is a different
@@ -634,13 +672,16 @@ def build(sweep_id, *, kind='cross_algorithm', root=None, docs_root=None):
         desc=('Fit-quality summary per dataset and algorithm. ``n_attempted`` is '
               'what the sweep tried and ``n_scored`` what produced a usable fit — '
               'the gap is explained by the per-status fractions, which are kept '
-              'apart on purpose: ``frac_out_of_scope`` (spectrum outside the model '
-              'family\'s regime) and ``frac_fit_failed`` (the fitter returned '
-              'nothing) are the same ``frac_not_ok`` and entirely different '
-              'findings. Also the median reduced **χ²ᵥ**, the noise-model-free '
-              '**rel_misfit** (GIOP\'s ΔRrs), and the χ²ᵥ closure split '
-              '(``frac_good`` ≈ 1, ``frac_overfit`` < 1, ``frac_underfit`` > 1, '
-              '``frac_qc_fail`` = non-solutions).'),
+              'apart on purpose: ``frac_out_of_scope`` (the spectrum was **declined '
+              'before fitting** — a red-peaked, turbid spectrum is outside the '
+              'open-ocean family\'s regime, so the row means "we declined to fit '
+              'this", not "we fitted it and it failed") and ``frac_fit_failed`` '
+              '(the fitter returned nothing) are the same ``frac_not_ok`` and '
+              'entirely different findings. Also the median reduced **χ²ᵥ**, the '
+              'noise-model-free **rel_misfit** (GIOP\'s ΔRrs), and the χ²ᵥ '
+              'closure split (``frac_good`` ≈ 1, ``frac_overfit`` < 1, '
+              '``frac_underfit`` > 1, ``frac_qc_fail`` = non-solutions).'
+              + _noise_provenance_line(sweep)),
         published=published))
 
     # interactive scatter — embedded inline (components + **vendored** BokehJS) so
