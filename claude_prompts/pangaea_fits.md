@@ -332,6 +332,32 @@ none is implemented):
 
 ### Logs
 
+### 2026-08-14 (PR task 2: address the PR #11 review comments)
+
+**One review finding (Cursor Bugbot, medium) — confirmed real, fixed, and
+pinned.** The comment: `_mcmc_subset` called `fit_mcmc` directly, bypassing
+the pre-fit guards that Task 2/5 added on `run_algorithm` — so an MCMC
+subset could fit (and even score `ok` on) red-peaked spectra its own χ²
+pass had declined, and a `strict=True` sweep **aborted** on an
+underdetermined record instead of recording the refusal.
+
+Fix, in `ioptics/run.py`: the scope decision is factored into a shared
+`_prefit_decline()` used by both `run_algorithm` and `_mcmc_subset` (so the
+two entry points cannot drift apart again); the subset declines red-peaked
+records `out_of_scope` before any sampling (no chain written), and catches
+`UnderdeterminedFitError` ahead of the strict re-raise so the refusal is
+`fit_failed` with true `n_bands`/`k` in both strict modes. New Tier-2 test:
+`test_mcmc_subset_applies_the_prefit_guards`. Replied on the PR thread with
+the fix description (the commit is yours to push).
+
+No new Q&A questions arose — the finding was actionable as-is and its fix
+follows decisions you already made (pre-fit `out_of_scope`; underdetermined
+stays `fit_failed`).
+
+**Verified:** suite without `$OS_COLOR` **406 passed, 41 skipped** (the new
+test is Tier-2); with `$OS_COLOR` **447 passed**. `sphinx-build -W` exit
+**0**, no pipe. Changes: `ioptics/run.py`, `ioptics/tests/test_run.py`.
+
 ### 2026-08-12 (Task 6: NOMAD cruise provenance — the never-ok cruises, named)
 
 **The 1c common signature decomposes into named classes, and the largest is

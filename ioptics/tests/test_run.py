@@ -244,6 +244,54 @@ def test_red_peaked_record_is_declined_before_fitting():
 
 
 @needs_l23
+def test_mcmc_subset_applies_the_prefit_guards(tmp_path):
+    """The MCMC subset makes the same pre-fit decisions as the χ² pass.
+
+    PR #11 review finding (Cursor Bugbot): ``_mcmc_subset`` called
+    ``fit_mcmc`` directly, so a red-peaked record was MCMC-fitted by an
+    open-ocean spec that the sweep's own χ² pass had declined, and a
+    ``strict=True`` sweep aborted on an underdetermined record instead of
+    recording the refusal. Both must now match ``run_algorithm``: declined
+    ``out_of_scope`` before any sampling, and ``fit_failed`` (with true
+    ``n_bands``/``k``) in **both** strict modes.
+    """
+    from ioptics import run
+    from ioptics.algorithms.spec import AlgorithmSpec
+    from ioptics.records import PreparedRecord
+
+    # red-peaked record + open-ocean spec -> declined, no chains written
+    wave = np.arange(400.0, 701.0, 20.0)
+    Rrs = 2e-3 + 0.01 * np.exp(-((wave - 580.0) / 60.0) ** 2)
+    red = PreparedRecord(
+        dataset='X', obs_id=1, wave=wave, Rrs=Rrs,
+        varRrs=(0.10 * Rrs) ** 2, Rrs_clean=Rrs, truth={},
+        truth_interp={}, init={'Chl': 1.0, 'Y': 0.5},
+        noise_model='pct:0.1', noise_seed=None)
+    spec = AlgorithmSpec.from_standard('giop')
+    pairs = run._mcmc_subset(spec, [red], 'mcmc_guard_sweep', root=tmp_path,
+                             strict=True)
+    (res, _), = pairs
+    assert res.status == 'out_of_scope'
+    assert res.chain_file is None, 'declined records must not sample chains'
+    assert res.provenance_id == 'mcmc_guard_sweep#giop'
+
+    # underdetermined record + k=5 spec -> fit_failed even under strict=True
+    wave5 = np.array([412.0, 443.0, 490.0, 555.0, 670.0])
+    Rrs5 = np.array([0.008, 0.007, 0.005, 0.003, 0.001])
+    under = PreparedRecord(
+        dataset='X', obs_id=2, wave=wave5, Rrs=Rrs5,
+        varRrs=(0.10 * Rrs5) ** 2, Rrs_clean=Rrs5, truth={},
+        truth_interp={}, init={'Chl': 0.1, 'Y': 1.0},
+        noise_model='pct:0.1', noise_seed=None)
+    spec5 = AlgorithmSpec.from_standard('expb_pow')
+    pairs = run._mcmc_subset(spec5, [under], 'mcmc_guard_sweep',
+                             root=tmp_path, strict=True)
+    (res, _), = pairs
+    assert res.status == 'fit_failed'
+    assert res.stats['n_bands'] == 5 and res.stats['k'] == 5
+
+
+@needs_l23
 def test_fit_chisq_converges_and_closes_on_rrs():
     from bing.fitting import chisq_fit
 

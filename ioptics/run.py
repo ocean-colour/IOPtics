@@ -420,8 +420,9 @@ def run_algorithm(spec, record, *, fit_method=None,
     from ioptics import evaluate
 
     method = fit_method or spec.fit_method
-    if not getattr(spec, 'fits_turbid', False) and is_red_peaked(record):
-        return _unfit_result(spec, record, method, 'out_of_scope')
+    declined = _prefit_decline(spec, record, method)
+    if declined is not None:
+        return declined
     try:
         if method == 'chisq':
             models, rt_dict, ans, cov = fit_chisq(spec, record)
@@ -434,6 +435,22 @@ def run_algorithm(spec, record, *, fit_method=None,
     except UnderdeterminedFitError:
         return _failed_result(spec, record, method)
     raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
+
+
+def _prefit_decline(spec, record, fit_method):
+    """The pre-fit scope decision, shared by every fitting entry point.
+
+    Returns an ``out_of_scope`` :class:`~ioptics.records.RetrievalResult`
+    when the record is red-peaked and the spec does not claim turbid water
+    in scope, else ``None`` (proceed to fit). Lives in one function so the
+    χ² pass (:func:`run_algorithm`) and the MCMC subset
+    (:func:`_mcmc_subset`) cannot drift apart — they must agree on which
+    records a sweep declines (PR #11 review: the subset originally bypassed
+    the guard and could MCMC-fit spectra its own χ² pass had declined).
+    """
+    if not getattr(spec, 'fits_turbid', False) and is_red_peaked(record):
+        return _unfit_result(spec, record, fit_method, 'out_of_scope')
+    return None
 
 
 def _unfit_result(spec, record, fit_method, status):
@@ -540,12 +557,23 @@ def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
 
     Serial (not pooled): the subset is small and the raw chains are large, so
     persisting them here avoids shipping chains back across a process pool.
+
+    Applies the same pre-fit decisions as :func:`run_algorithm`, in both
+    strict modes: a red-peaked record is declined ``out_of_scope`` (unless
+    ``spec.fits_turbid``) and an underdetermined one becomes ``fit_failed``
+    — the MCMC subset must agree with its own sweep's χ² pass on which
+    records are fit at all (PR #11 review finding).
     """
     from ioptics import evaluate, io, provenance
 
     pid = provenance.provenance_id(sweep_id, spec.name)
     pairs = []
     for record in records:
+        declined = _prefit_decline(spec, record, 'mcmc')
+        if declined is not None:
+            declined.provenance_id = pid
+            pairs.append((declined, record))
+            continue
         try:
             models, rt_dict, chains = fit_mcmc(spec, record)
             res = evaluate.from_chains(spec, record, models, rt_dict, chains,
@@ -553,6 +581,9 @@ def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
             res.chain_file = str(io.save_chain(sweep_id, spec.name, record,
                                                chains, root=root,
                                                pnames=list(res.params)))
+        except UnderdeterminedFitError:
+            # a chosen status in BOTH strict modes, like run_algorithm
+            res = _failed_result(spec, record, 'mcmc')
         except Exception:
             if strict:
                 raise
