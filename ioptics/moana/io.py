@@ -270,6 +270,81 @@ def surface_fcm(fcm, max_depth=10.0):
     return shallow.loc[idx].sort_values('datetime').reset_index(drop=True)
 
 
+def load_brewin2023(csv_path=None, cruises=(23, 25, 28), brdf=False):
+    """Load the Brewin et al. (2023) AMT station optical dataset.
+
+    In-situ hyperspectral Rrs (BRDF-corrected after Lee et al. 2011, 2 nm
+    from 400 nm) plus temperature and ancillaries at 127 stations on AMT
+    23/25/26/28 — the held-out-cruise Rrs for validation target (ii).
+    BODC DOI 10.5285/f3198e10-faf3-1525-e053-6c86abc0d2f6.
+
+    Parameters
+    ----------
+    csv_path : path-like, optional
+        Defaults to ``$OS_COLOR/AMT24/BODC_data_AMT_modern_and_historical_
+        optical_observations.csv`` (where the deposit was unzipped).
+    cruises : tuple of int, optional
+        AMT cruise numbers to keep. Default (23, 25, 28) — the three that are
+        Lange+2020 held-out validation cruises. AMT26 is available but has no
+        Lange comparison line.
+    brdf : bool, optional
+        The file carries **three** interleaved 151-column Rrs families on the
+        same 400–700 @ 2 nm grid: plain ``Rrs(λ) [1/sr]``, BRDF-corrected
+        ``Rrs(λ) (BDRF-corrected Lee et al. 2011) [1/sr]``, and
+        ``Rrs(λ) Uncertainty [%]``. Default False selects the *plain* family
+        — the above-water geometry MOANA's training Rrs had; True selects the
+        BRDF-corrected one (closer to satellite normalised Rrs). The percent
+        uncertainties return alongside either way.
+
+    Returns
+    -------
+    dict with
+        ``stations`` : pandas.DataFrame — cruise, datetime (UTC), lat, lon,
+            ``sst`` [°C] (temperature above Secchi depth — the in-situ
+            near-surface temperature), chl, solar zenith angle.
+        ``wave`` : (151,) float64 — Rrs wavelengths [nm], 400–700 @ 2 nm.
+        ``rrs`` : (n, 151) float64 — Rrs [sr⁻¹]; BODC −999 fills as NaN.
+        ``rrs_unc_pct`` : (n, 151) float64 — per-band uncertainty [%].
+    """
+    if csv_path is None:
+        csv_path = (_os_color() / 'AMT24' /
+                    'BODC_data_AMT_modern_and_historical_optical_observations.csv')
+    df = pd.read_csv(csv_path)
+    df = df[df['AMT Cruise'].isin(cruises)].reset_index(drop=True)
+
+    def family(predicate):
+        # One (wavelength-sorted) column family; -999 is the BODC fill.
+        cols = [c for c in df.columns if c.startswith('Rrs(') and predicate(c)]
+        w = np.array([float(c.split('(')[1].split(')')[0]) for c in cols])
+        order = np.argsort(w)
+        m = df[cols].to_numpy(dtype=np.float64)[:, order]
+        m[m <= -998] = np.nan
+        return w[order], m
+
+    want = ('BDRF' if brdf else None)
+    wave, rrs = family(lambda c: ('Uncertainty' not in c) and
+                       (('BDRF' in c) == (want == 'BDRF')))
+    wave_u, rrs_unc = family(lambda c: 'Uncertainty' in c)
+    assert np.array_equal(wave, wave_u), 'Rrs and uncertainty grids differ'
+    stations = pd.DataFrame({
+        'cruise': df['AMT Cruise'],
+        'datetime': pd.to_datetime(
+            df['Year-Month-Day'] + ' ' + df['Time [GMT]']),
+        'lat': df['Latitude [deg+veN]'],
+        'lon': df['Longitude [deg+veE]'],
+        'sst': pd.to_numeric(
+            df['Temperature above Secchi depth [degC]'], errors='coerce'
+        ).replace(-999.0, np.nan),
+        'chl': pd.to_numeric(
+            df['Total chlorophyll-a [mg/m^3]'], errors='coerce'
+        ).replace(-999.0, np.nan),
+        'solar_zenith': pd.to_numeric(
+            df['Solar Zenith Angle [deg]'], errors='coerce'),
+    })
+    return {'stations': stations, 'wave': wave, 'rrs': rrs,
+            'rrs_unc_pct': rrs_unc}
+
+
 def load_uway_sst(nc_path=None):
     """Load the QC'd 1-minute underway SST (primary SST source, Q&A #34).
 

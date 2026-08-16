@@ -418,6 +418,34 @@ def test_compare_loadings_identity(lut):
 
 
 # ---------------------------------------------------------------------------
+# Validation metrics (prompt 14)
+# ---------------------------------------------------------------------------
+
+def test_seegers_metrics_known_values():
+    from ioptics.moana.validation import seegers_metrics
+    obs = np.array([100.0, 1000.0, 10000.0])         # varied, so R2 defined
+    m = seegers_metrics(2 * obs, obs)                # uniformly 2x high
+    assert np.isclose(m['bias'], 2.0) and np.isclose(m['mae'], 2.0)
+    assert m['frac_unphysical'] == 0.0
+    # A perfect prediction: bias = MAE = 1, R2 = 1.
+    m = seegers_metrics(obs, obs)
+    assert np.isclose(m['bias'], 1.0) and np.isclose(m['mae'], 1.0)
+    assert np.isclose(m['r2'], 1.0)
+
+
+def test_seegers_metrics_censors_clipped():
+    from ioptics.moana.validation import seegers_metrics
+    obs = np.array([100.0, 300.0, 900.0, 100.0, 100.0, 100.0])
+    pred = np.array([100.0, 300.0, 900.0, 100.0, 0.0, -5.0])  # 2 unphysical
+    m = seegers_metrics(pred, obs)
+    # Censored values leave the log-space scores untouched (Q&A #13) ...
+    assert m['n'] == 4 and np.isclose(m['mae'], 1.0)
+    # ... and surface as the headline unphysical fraction.
+    assert np.isclose(m['frac_unphysical'], 2 / 6)
+    assert m['n_censored'] == 2
+
+
+# ---------------------------------------------------------------------------
 # Tier 2 — the real AMT24 delivery
 # ---------------------------------------------------------------------------
 
@@ -469,6 +497,38 @@ def test_process_day_real():
     # Glint parameters within bounds.
     assert (out['records']['rho_sky'] >= 0).all()
     assert (out['records']['rho_sky'] <= mpipe.DEFAULT_PIPELINE['rho_max']).all()
+
+
+@needs_amt24
+def test_brewin2023_loader_untangles_column_families():
+    # The CSV interleaves three Rrs families (plain, BRDF-corrected,
+    # uncertainty-%) — regression for the prompt-14 bug where all three were
+    # swept into one 453-column "spectrum".
+    b = mio.load_brewin2023()
+    assert b['wave'].shape == (151,)
+    assert b['wave'][0] == 400.0 and b['wave'][-1] == 700.0
+    assert b['rrs'].shape == (len(b['stations']), 151)
+    assert set(b['stations']['cruise'].unique()) == {23, 25, 28}
+    # Physical Rrs magnitudes, and uncertainties are percentages not Rrs.
+    assert np.nanmedian(b['rrs']) < 0.05
+    assert np.nanmedian(b['rrs_unc_pct']) > 0.1
+    # Plain vs BRDF-corrected must actually differ.
+    b2 = mio.load_brewin2023(brdf=True)
+    assert not np.allclose(np.nan_to_num(b['rrs']), np.nan_to_num(b2['rrs']))
+
+
+@needs_amt24
+def test_heldout_retrievals_physical():
+    from ioptics.moana.validation import validate_heldout_cruises
+    out = validate_heldout_cruises(verbose=False)
+    r = out['retrievals']
+    assert out['missing_counts'] == [23, 25, 28]     # counts not on disk yet
+    assert len(r) == 90
+    # Oligotrophic-Atlantic magnitudes; a scrambled spectrum matrix (the
+    # prompt-14 bug) drove Pro to ~-5e6 and Syn to 0.
+    assert 5e4 < r['pro'].median() < 1e6
+    assert 1e3 < r['syn'].median() < 1e5
+    assert (r['pro'] < 0).mean() < 0.2
 
 
 @needs_amt24

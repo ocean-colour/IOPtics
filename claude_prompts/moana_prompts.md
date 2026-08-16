@@ -237,7 +237,7 @@ paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation
 
 14. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `ioptics/moana/validation.py`.  This code will validate the algorithm described in the Design doc, against the three locked targets: (i) reproduce Lange+2020 Tables 1–2 on AMT24 (now data-complete); (ii) apply the model to genuinely held-out cruises — the Brewin et al. 2023 in-situ hyperspectral Rrs for AMT23/25/28 (already downloaded) matched to their flow-cytometry DOIs; (iii) the operational PACE product versus SeaBASS, including the bit-exactness check of one PACE granule (which also settles the Q&A #9 PC-mapping question empirically).  Metrics: log-space bias/MAE/R² with clipped retrievals treated as censored plus a headline unphysical fraction (Q&A #13).  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
-15. **Report**.  Let us now update the MOANA report to reflect all of the changes since the last time we touched it.  It is the file `reports/MOANA_Claude_Report.md`.  Use Fable if you can. Log your work.
+15. **Report**.  Let us now update the MOANA report to reflect all of the changes since the last time we touched it.  It is the file `reports/MOANA_Claude_Report.md`.  Have it include a section on "Open items", i.e. the work we still wish to do.  Use Fable if you can. Log your work.
 
 ## Q&A
 
@@ -350,6 +350,23 @@ doc's matchup section.)*
     haven't found — I will also re-search BODC for an AMT24 underway FCM series
     before prompt 11 if you prefer.)
 >A. Yes, I will add the underway FCM to the PML/Tarran follow-up list.  I've somewhat lost track of that PML list.  can you generate it for me as the file `requests/PML_follow_up.md`?
+
+*(From prompt 14, 2026-08-16 — Claude. Validation ran; two data items are all
+that separates us from finishing targets (ii) and (iii)b.)*
+
+36. **Two browser downloads to score the remaining targets.** Target (ii)'s
+    *retrievals* are done (90 stations on AMT23/25/28 from the Brewin Rrs), but
+    *scoring* them needs those cruises' flow-cytometry counts, which are not on
+    disk — the same BODC browser-only situation as Q&A #24. Could you grab, into
+    `$OS_COLOR/AMT24/` (or a sibling folder — the loader takes a path):
+    - AMT23: https://www.bodc.ac.uk/data/published_data_library/catalogue/10.5285/a2104adc-e990-6789-e053-6c86abc0d557/
+    - AMT25: https://www.bodc.ac.uk/data/published_data_library/catalogue/10.5285/a2104adc-e98e-6789-e053-6c86abc0d557/
+    - AMT28: https://www.bodc.ac.uk/data/published_data_library/catalogue/10.5285/a147c314-688b-55e9-e053-6c86abc0dc81/
+
+    Separately, target (iii)b (PACE vs in-situ counts) has its matchup machinery
+    ready but needs the SeaBASS picophytoplankton cell counts, which require a
+    SeaBASS account (Q&A #24 left this open). Do you have one, or should that
+    stay parked?
 
 ### From prompt 1 (2026-08-01) — Claude
 
@@ -1321,6 +1338,69 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-08-16 (Prompt 14 — validation implemented AND run: Q&A #9 settled — NASA ships the operational mapping; Lange Table 1 reproduced in the CTD-only configuration)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Deliverable:** `ioptics/moana/validation.py` (the stub replaced) — Seegers
+log-space metrics with censored handling and the headline unphysical fraction
+(Q&A #13); `validate_amt24` (target (i): published model + retrained full-fit +
+80/20 bootstrap CV, with Lange's Table 1 reference values shipped in the module
+for diffing); `validate_heldout_cruises` (target (ii), on a new
+`load_brewin2023` reader in `io.py`); `bitexact_pace` and `match_pace_to_insitu`
+(target (iii), via `earthaccess` — installed into ocean14, already in
+`requirements.txt`). Plus 4 new tests (metrics + two `needs_amt24` regressions);
+suite now **299 passed**.
+
+**Headline 1 — Q&A #9 is settled empirically: the shipping PACE product uses
+the operational (`picophyt.json`) mapping.** On 100k ocean pixels of the
+2025-07-01 daily 0.1° granule pair, our Synechococcus (no SST needed) tracks
+NASA's at **median Δlog₁₀ = −0.005 (MAD 0.007)** under the operational mapping,
+versus a **+0.084 median offset (MAD 0.090)** under the ATBD mapping — and the
+two mappings genuinely differ on 98 % of pixels. Combined with the prompt-4
+inference that the ATBD's 14-distinct-PC assignment is what the paper trained,
+this now *demonstrates* the operational product does not implement the
+published algorithm. One structural discovery en route: **true bit-exactness
+from L3M inputs is impossible** — NASA retrieves at L2 and then composites
+(retrieve-then-average ≠ average-then-retrieve; also the likely reason no L3M
+MOANA exists), so the test's verdict runs in log space; only ~12 % of pixels
+(presumably single-overpass) match exactly. Both findings belong in the report
+(prompt 15) and the §11 NASA list.
+
+**Headline 2 — target (i): Lange Table 1 reproduced, within the CTD-only
+handicap.** n = 30 matchups (Lange: 73–78 incl. underway FCM). Our retrained
+full-fit vs Lange Table 1 (bias/MAE/R²): pro 1.01/1.22/0.77 vs 1.08/1.31/0.82;
+**syn 1.00/1.36/0.91 vs 1.00/1.27/0.92 — our MAE 1.36 lands on Lange's own
+CTD-only sensitivity figure of 1.37**, exactly the predicted degradation;
+peuk 1.00/1.19/0.97 vs 1.00/1.21/0.95. The bootstrap CV degrades sharply
+(pro MAE 1.78, syn unusable) — honest small-n stepwise behaviour at n = 30.
+The *published* NASA model applied to our matchups: peuk transfers beautifully
+(1.03/1.23/0.94), pro (+96 %) and syn (−39 %) do not — consistent with those
+two taxa riding the processing-chain details (glint treatment, SST source)
+that differ between our chain and Lange's.
+
+**Target (ii): retrievals done, scoring blocked on data.** 90 stations on
+AMT23/25/28 retrieved from the Brewin 2023 in-situ Rrs (plain, non-BRDF family)
+with physically sensible values (Pro medians 1.9–2.6×10⁵ cells mL⁻¹, 3–7 %
+negative-Pro). The flow-cytometry counts for those cruises are **not on disk**
+— posted as Q&A #36 with the three BODC links, alongside the SeaBASS-account
+question for target (iii)b.
+
+**One bug found and fixed during the runs:** `load_brewin2023` initially swept
+all 453 `Rrs(`-prefixed columns into one "spectrum" — the file interleaves
+*three* 151-column families (plain Rrs, BRDF-corrected Rrs, uncertainty-%),
+which drove Pro to −5×10⁶ and Syn to 0. The loader now selects one family
+explicitly (default: plain, matching the training geometry; `brdf=True`
+available) and returns the uncertainties; a regression test pins it. Also two
+of my new metric tests initially used degenerate inputs (constant obs → R²
+undefined); fixed the tests, not the code. PACE granules cache under
+`$OS_COLOR/PACE/moana_validation/` (173 MB AOP + 2 MB MOANA per day).
+
+**`pytest -q`: 299 passed.** Nothing committed. **Files changed:**
+`ioptics/moana/validation.py` (implemented), `ioptics/moana/io.py`
+(`load_brewin2023`), `ioptics/tests/test_moana.py` (4 tests),
+`claude_prompts/moana_prompts.md` (Q&A #36, this entry).
 
 ### 2026-08-16 (Prompt 13 — `ioptics/tests/test_moana.py`: 31 tests, full suite 295 green)
 
