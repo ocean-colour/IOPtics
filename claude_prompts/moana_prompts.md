@@ -237,7 +237,7 @@ paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation
 
 14. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `ioptics/moana/validation.py`.  This code will validate the algorithm described in the Design doc, against the three locked targets: (i) reproduce Lange+2020 Tables 1–2 on AMT24 (now data-complete); (ii) apply the model to genuinely held-out cruises — the Brewin et al. 2023 in-situ hyperspectral Rrs for AMT23/25/28 (already downloaded) matched to their flow-cytometry DOIs; (iii) the operational PACE product versus SeaBASS, including the bit-exactness check of one PACE granule (which also settles the Q&A #9 PC-mapping question empirically).  Metrics: log-space bias/MAE/R² with clipped retrievals treated as censored plus a headline unphysical fraction (Q&A #13).  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
-15. **Report**.  Let us now update the MOANA report to reflect all of the 
+15. **Report**.  Let us now update the MOANA report to reflect all of the changes since the last time we touched it.  It is the file `reports/MOANA_Claude_Report.md`.  Use Fable if you can. Log your work.
 
 ## Q&A
 
@@ -1321,6 +1321,52 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-08-16 (Prompt 13 — `ioptics/tests/test_moana.py`: 31 tests, full suite 295 green)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Deliverable:** `ioptics/tests/test_moana.py` — 31 tests implementing the
+design doc's §8 plan — plus two new conftest markers following the house
+two-tier pattern: `needs_amt24` (the AMT24 tree under `$OS_COLOR`) and
+`needs_netrc` (Earthdata credentials; defined now per Q&A #16, first used by
+validation target (iii) in prompt 14).
+
+**Tier 1 (27 tests, run everywhere):** the vendored LUTs against their pinned
+sha256 (a silent NASA LUT change now fails loudly) and the 414:2:660 grid;
+the §3.1 invariants (mean 0 and norm √123 exactly, |Uᵢ| bounded, orthonormal
+basis); standardisation checked against an independent hand computation of
+Lange Eq. 3; interpolation flags; SST flagging; **the PC-mapping flag** (moves
+exactly the two disputed slots, and the two mappings agree identically on
+spectra built orthogonal to the disputed PCs); **nasa_compat** (clamp,
+truncate-not-round); the reconstruction residual separating in-basis from
+out-of-basis spectra; every pipeline stage on fabricated streams with planted
+answers — geometry screens cutting exactly at Lange's 5°/10°/80°/50°/170°,
+1-min selection taking the NIR-darkest, **the glint fit recovering planted
+(ρ_sky, L_NIR) to 2×10⁻³**, each QC screen firing on its own planted defect,
+the ±15 min median rejecting a planted glint spike where Lange-strict mode
+(correctly) takes it; the training recipe recovering a planted linear model,
+the saturation guard, the starved-taxon error, the per-taxon SST switch, and
+basis self-comparison; and a **regression test for the pandas ≥2 time-
+resolution trap** found in prompt 12.
+
+**Tier 2 (4 tests, `needs_amt24`):** the real `.sav` layout + the ES≢LT guard
++ the fixed-ρ=0.0280 provider-Rrs identity; the BODC FCM mapping — including a
+science check that would catch a P700/P701 swap instantly (tropical surface
+Pro ≫ Syn) — and the shallowest-bottle rule; one real day through the full
+chain (attrition monotone, no surviving negatives, ρ in bounds); the Jordan
+SST series physical and monotone.
+
+**One fix to my own tests:** the first version of the per-taxon-SST assertion
+was a tautology (`'logSST' in {…, 'logSST'}`); rewritten to assert SST enters
+the candidate pool when switched on and never appears under the operational
+default.
+
+**`pytest -q`: 295 passed** (264 existing + 31 new, ~2 min). With `$OS_COLOR`
+unset: 27 passed, 4 skipped in 1.4 s — the tier-2 guards work. No new Q&A
+questions. Nothing committed. **Files changed:**
+`ioptics/tests/test_moana.py` (new), `ioptics/tests/conftest.py` (two
+markers), `claude_prompts/moana_prompts.md` (this entry).
 
 ### 2026-08-16 (Prompt 12 — `ioptics/moana/` implemented; NASA's PC1/PC2 recovered from our own retraining at |cos| ≥ 0.998)
 

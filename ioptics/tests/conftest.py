@@ -216,3 +216,20 @@ needs_inelastic = pytest.mark.skipif(
 
 needs_sphinx = pytest.mark.skipif(
     not _sphinx_available(), reason='requires Sphinx (docs build; not in light CI)')
+
+
+def _amt24_available():
+    """True if the AMT24 HyperSAS Level-2 tree is mounted under ``$OS_COLOR``."""
+    root = os.getenv('OS_COLOR')
+    return (root is not None and
+            os.path.isdir(os.path.join(root, 'AMT24', 'Radiometry', 'level2')))
+
+
+needs_amt24 = pytest.mark.skipif(
+    not _amt24_available(),
+    reason='requires the AMT24 tree under $OS_COLOR (MOANA track)')
+
+#: Earthdata-credentialled tests (MOANA validation target (iii)) — Q&A #16.
+needs_netrc = pytest.mark.skipif(
+    not os.path.isfile(os.path.expanduser('~/.netrc')),
+    reason='requires Earthdata credentials in ~/.netrc')
