@@ -237,6 +237,8 @@ paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation
 
 14. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `ioptics/moana/validation.py`.  This code will validate the algorithm described in the Design doc, against the three locked targets: (i) reproduce Lange+2020 Tables 1–2 on AMT24 (now data-complete); (ii) apply the model to genuinely held-out cruises — the Brewin et al. 2023 in-situ hyperspectral Rrs for AMT23/25/28 (already downloaded) matched to their flow-cytometry DOIs; (iii) the operational PACE product versus SeaBASS, including the bit-exactness check of one PACE granule (which also settles the Q&A #9 PC-mapping question empirically).  Metrics: log-space bias/MAE/R² with clipped retrievals treated as censored plus a headline unphysical fraction (Q&A #13).  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
+15. **Report**.  Let us now update the MOANA report to reflect all of the 
+
 ## Q&A
 
 ### Radiometry
@@ -1319,6 +1321,64 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-08-16 (Prompt 12 — `ioptics/moana/` implemented; NASA's PC1/PC2 recovered from our own retraining at |cos| ≥ 0.998)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Deliverable:** the `ioptics/moana/` package, per the design doc — five modules,
+methods not classes, every Lange threshold carried in one serialisable config
+dict (`DEFAULT_PIPELINE`) with citations:
+
+- `io.py` — LUT loader; `.sav`-only day reader (raises if the ES≡LT bug ever
+  reaches the `.sav`s); BODC FCM reader; Jordan `uway_sst` reader. The BODC
+  parameter-code mapping was transcribed from the deposit's own metadata
+  document and it vindicates the design rule against guessing: **P700A90Z is
+  *Synechococcus* and P701A90Z is *Prochlorococcus*** — the opposite of what
+  the code strings suggest.
+- `algorithm.py` — the retrieval: interpolate → standardise (N−1) → project →
+  three regressions; raw floats + QC bitmask (Q&A #11), `pc_mapping=
+  'operational'|'atbd'` (Q&A #9), `nasa_compat` clamp/truncate mode for the
+  bit-exactness test, and the reconstruction-residual out-of-domain score
+  (free, report §9.3).
+- `pipeline.py` — stages 1–5: geometry screens, 1-min minimum-NIR selection,
+  per-spectrum L1 glint fit (bounded 1-D search: for fixed ρ the optimal L1
+  offset is a median), Lange QC, resampling, and the FCM matchup with the
+  confirmed ≤10 m/shallowest + ±15 min median rules (plus Lange-strict
+  `window=0`).
+- `train.py` — `prcomp`-equivalent PCA (centring configurable, design §4.4),
+  Lange's sd cut and backward-stepwise-AIC selection, per-taxon `use_sst`
+  (design §4.3), and the sign/order-invariant basis comparison.
+- `validation.py` — documented stub for prompt 14; `__init__.py` re-exports.
+
+**Smoke-tested end-to-end on the real data**, not just synthetics:
+
+- Invariants exact: standardised norm √123 to 1e-6, LUT orthonormal to 2e-8.
+- Day 2014-280 (19°N): 24,364 raw → 20,495 geometry → 546 one-per-minute →
+  312 QC'd spectra; retrieved Pro ≈ 3.1×10⁵ cells mL⁻¹ (right magnitude for
+  the tropical Atlantic), ρ_sky median 0.047.
+- Full cruise in 16 s: 993,417 → 513,519 → 15,363 → 6,423 QC'd 1-min spectra;
+  **30 matched stations** of 68 (CTD casts are often pre-dawn — no daylight
+  radiometry — on top of the known CTD-only handicap, Q&A #35).
+- SST cross-check: Jordan `uway_sst` vs HSAS ancillary, median |Δ| = 0.01 °C.
+- **The headline:** retraining the PCA on those 30 matchups (no centring)
+  recovers NASA's basis in order — **PC1 |cos| = 0.999, PC2 0.998**, PC3–5
+  0.96–0.98 — from a different processing chain and a third of the sample
+  count. The methodology reproduces; and early evidence already points to
+  `center=False` as Lange's `prcomp` convention (design §4.4).
+
+**Two bugs found by the smoke and fixed:** (1) a saturated regression when the
+candidate PC pool approached the sample count (all-NaN p-values) — now a
+documented dof cap plus a stepwise guard; (2) a pandas ≥2 resolution trap where
+FCM timestamps parse as *microsecond* datetimes while the netCDF's are
+nanoseconds, so a bare `astype('int64')` mixed units and silently voided every
+SST matchup — now a `_time_ns()` helper normalises all time axes.
+
+**`pytest -q`: 264 passed** (full suite, ~2 min; no MOANA-specific tests yet —
+that is prompt 13). No new Q&A questions: nothing arose that the design doc's
+§9 does not already track. Nothing committed. **Files changed:**
+`ioptics/moana/{__init__,io,algorithm,pipeline,train,validation}.py` (new),
+`claude_prompts/moana_prompts.md` (this entry).
 
 ### 2026-08-16 (Prompt 11 — design doc rev. 2; PML follow-up list created)
 
