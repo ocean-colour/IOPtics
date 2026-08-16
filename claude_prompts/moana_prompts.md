@@ -218,15 +218,136 @@ Here are guidelines for coding:
 
 7. **AMT data**.  You reported back that you could not find the radiometry data for the AMT24 cruise.  How carefully did you search this webpage: `https://amt-uk.org/data/`?  Please try again there and Report back.  Use Fable if you can.  Log your work
 
-8. **Design**.  Let us generate a design doc for the MOANA algorithm.  We will write it in the file `docs/design/moana_design.md`.  This doc will both describe the algorithm and our approach to coding it.  We will use the files in the Context section above to help us.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+8. **AMT24 Radiometry**.  I have finally obtained the radiometry data for the AMT24 cruise.  It is located in `$OS_COLOR/AMT24/Wadiometry`.  Please inspect it and then ask me any questions you have in the Q&A/Radiometry section below.  Log your work.  Use Fable if you can.
 
-9. **Code**.  Let us generate the code for the MOANA algorithm.  We will write it in the file `code/moana.py`.  This code will implement the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+9. **More AMT24 Radiometry**.  Please review my answers to the Q&A/Radiometry section below and then ask me any additional questions you have, if any.  Also, revise the prompts that follow (10-13) to reflect the new information as needed. Log your work.  Use Fable if you can.
 
-10. **Test**.  Let us generate the tests for the MOANA algorithm.  We will write it in the file `tests/moana_tests.py`.  This code will test the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+*(Prompts 10–13 revised 2026-08-15 by prompt 9, to fold in the Q&A #27–32 decisions
+and to align file paths with the locked prompt-3 layout — code in `ioptics/moana/`,
+tests in `ioptics/tests/` where pytest already discovers them. Original wording:
+paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation.py`.)*
 
-11. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `validation/moana_validation.py`.  This code will validate the algorithm described in the Design doc.  Our goal is to apply MOANA on held out data, ideally from a cruise distinct from AMT24. Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+10. **Design**.  Let us generate a design doc for the MOANA algorithm.  We will write it in the file `docs/design/moana_design.md`.  This doc will describe (a) the algorithm itself — retrieval and training, including the operational-vs-ATBD PC-mapping discrepancy and the flag that selects between them; (b) the AMT24 Level-2 → training-matrix pipeline per Q&A #27–34: read the `.sav` files (the ES CSVs are broken), re-derive Rrs from LT/LI/ES with the Lange chain (750–800 nm glint minimisation, tilt/azimuth screening, second-derivative noise filter), resample to 414–660 nm @ 2 nm, median-bin ±15 min onto the flow-cytometry samples; and (c) our approach to coding it in `ioptics/moana/` (methods not classes; raw floats + QC flags rather than NASA's silent clipping).  We will use the files in the Context section above and `reports/MOANA_Claude_Report.md` to help us.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+
+11. **More design**.  The design doc looks great.  I have answered your questions 33-35.  Please review them and update the design doc accordingly.  Use Fable if you can. Log your work.  Also create the PML follow-up list as the file `requests/PML_follow_up.md`, as requested in question 35.
+
+12. **Code**.  Let us generate the code for the MOANA algorithm.  We will write it in the `ioptics/moana/` package, split by concern (e.g. `io.py` for the `.sav`/LUT readers, `pipeline.py` for the Level-2 → Rrs chain, `algorithm.py` for standardise → PC scores → regressions, `train.py` for the PCA retraining), reading the LUTs from `ioptics/data/moana/`.  This code will implement the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+
+13. **Test**.  Let us generate the tests for the MOANA algorithm.  We will write them in `ioptics/tests/test_moana.py`, following the existing suite's conventions; tests needing the AMT24 tree skip when `$OS_COLOR` is absent, and any Earthdata-dependent test skips when `~/.netrc` is absent (Q&A #16 pattern).  This code will test the algorithm described in the Design doc.  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
+
+14. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `ioptics/moana/validation.py`.  This code will validate the algorithm described in the Design doc, against the three locked targets: (i) reproduce Lange+2020 Tables 1–2 on AMT24 (now data-complete); (ii) apply the model to genuinely held-out cruises — the Brewin et al. 2023 in-situ hyperspectral Rrs for AMT23/25/28 (already downloaded) matched to their flow-cytometry DOIs; (iii) the operational PACE product versus SeaBASS, including the bit-exactness check of one PACE granule (which also settles the Q&A #9 PC-mapping question empirically).  Metrics: log-space bias/MAE/R² with clipped retrievals treated as censored plus a headline unphysical fraction (Q&A #13).  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
 ## Q&A
+
+### Radiometry
+
+*(From prompt 8, 2026-08-15 — Claude. Full inspection findings are in the prompt-8
+report below; these questions assume you've skimmed it. Headline: the data are
+usable and validation target (i) is unblocked in substance, but what we received is
+the upstream calibrated Level-2 stream, not Lange's processed training matrix, and
+the CSV export has one real bug.)*
+
+27. **Provenance and documentation.** Who supplied the `Radiometry/level2/` tree —
+    PML (Dall'Olmo/Smyth), Lange directly, or BODC — and did it come with any
+    README, processing document, or email describing the processing chain? The
+    directory holds only the data files. This matters because everything below
+    (glint treatment, screening, resampling) is something I had to reverse-engineer
+    empirically, and a one-page processing note from the provider would confirm or
+    correct it. Also: was `level2` the *only* level they sent, or do higher-level
+    (QC-screened / binned / Lange-processed) products exist that we should ask for?
+>A. PML (Brewin+).  I will ask them later what the processing chain is.  Do your best for now.
+
+28. **The ES export bug.** `*_ES.dat` is a byte-identical copy of `*_LT.dat` on all
+    37 days — the true downwelling irradiance exists only inside the IDL `.sav`
+    files (dataset `matrix_es`, which is correct: ~90–175 µW cm⁻² nm⁻¹ with a
+    proper solar spectrum shape). `scipy.io.readsav` reads the `.sav` files
+    cleanly, so I propose we simply treat the `.sav` as the source of truth and
+    ignore the CSVs entirely. OK? And should the bug report — plus the two missing
+    days inside the Lange window (see #30) — go on your contact list back to the
+    provider?
+>A. Yes, I agree.  I will report the bug to PML.
+
+29. **Re-derive Rrs, or use theirs?** The shipped `RRS` is exactly
+    `(LT − 0.0280·LI)/ES` — the fixed Mobley ρ, applied at ~0.86 s cadence with
+    **no** NIR-residual subtraction (median Rrs(750–796) = 0.0020 sr⁻¹, clearly
+    glint-contaminated), **no** azimuth/tilt screening (relative azimuth spans
+    −165° to +64°), and **no** binning; ~1.5 % of mid-cruise spectra go negative
+    somewhere in 414–660 nm. Lange+2020 instead used their own glint minimisation
+    over 750–800 nm, tilt and azimuth screening, and a second-derivative noise
+    filter. Since we have LT, LI and ES separately, I propose we **implement the
+    Lange chain ourselves from the component streams** and keep the shipped RRS
+    only as a cross-check. Confirm? (The alternative — using their fixed-ρ RRS
+    as-is — would bake known glint into the PCA training matrix.)
+>A. Yes, I agree.  Please implement the Lange chain from the component streams.
+
+30. **Two days are missing inside the training window.** The tree covers DOY
+    266–305 but DOY **267, 273 and 298** are absent. Lange's window is
+    30 Sep – 1 Nov = DOY 273–305, so **273 (30 Sep) and 298 (25 Oct)** are real
+    holes — any flow-cytometry samples on those days lose their Rrs matchup. Do
+    you know whether the provider has those days (worth adding to the follow-up),
+    or were they lost at sea (instrument down)?
+>A. I will ask; good catch.
+
+31. **The spectra are already resampled.** The grid is exactly uniform
+    306–796 nm at 3.5 nm (141 bands) — HyperOCR native pixels are ~3.3 nm and
+    non-uniform, so the provider has already interpolated once. Getting to MOANA's
+    414–660 @ 2 nm therefore means interpolating twice (native → 3.5 → 2), a small
+    extra smoothing relative to Lange's native → 2 nm. I'd accept this and move on
+    (the effect will be far below the glint/screening choices in #29), but if you
+    want fidelity, native-grid files are another item for the provider ask. Which?
+>A. Good point.  We will accept this hit for now but will work with PML later to improve.
+
+32. **Binning for the flow-cytometry matchup.** At ~0.86 s cadence there are ~1 M
+    spectra; the AMT24 flow-cytometry samples are discrete (CTD stations +
+    ~30-minute underway). I propose median-averaging screened spectra within a
+    fixed time window around each cell-count sample (±15 min feels right, and the
+    median suppresses residual glint spikes), with the spread kept as a per-band
+    uncertainty. Happy with that, or do you want a different window/estimator —
+    or whatever Lange's text can be pinned down to?
+>A. Yes, let's try that.
+
+*(From prompt 9, 2026-08-15 — Claude. All six answers above are reviewed and now
+locked; see the prompt-9 log entry for the decision table. Two follow-up questions
+arose while turning those decisions into a concrete pipeline — both are choices
+that define the training matrix itself, so I'd rather have your call than bury an
+assumption in code.)*
+
+33. **Depth cut for the flow-cytometry matchup.** The AMT24 FCM dataset (Tarran &
+    Zubkov) spans 200 m → surface, but MOANA is surface-only by construction and
+    the ATBD frames the products as "top 10 m". Lange+2020 trained on surface
+    samples (the ship's underway supply draws from ~5–7 m, plus surface CTD
+    bottles). I propose: keep FCM samples with **depth ≤ 10 m**, and where a
+    station has several samples in that range, take the shallowest (not the mean,
+    to avoid mixing across the near-surface gradient Lange 2018 documents for
+    *Prochlorococcus*). Confirm, or would you rather average 0–10 m?
+>A. I confirm.  Take the shallowest sample.
+
+34. **Which SST feeds the Prochlorococcus regression for the AMT24 work?** Three
+    candidates on disk: (a) the HSAS ancillary `SST` column (co-sampled with every
+    spectrum, but garbage early in the cruise — 0 to 12112 °C on DOY 266); (b)
+    `uway_sst` from the Jordan et al. 2025 netCDF (1-minute, QC'd, published,
+    8.2–29.3 °C); (c) CTD station temperatures. I propose **(b) as primary** —
+    interpolated to each Rrs bin's timestamp — with (a) kept as a cross-check
+    (mid-cruise they should agree to ~0.1 °C), because (b) is the QC'd, citable
+    record of the same intake stream. Confirm?
+>A. Yes, use (b) as the primary SST source with (a) as a cross-check.
+
+*(From prompt 10, 2026-08-16 — Claude. One more, found while writing the design
+doc's matchup section.)*
+
+35. **The underway flow-cytometry samples are not in the BODC deposit.** The
+    `AMT24_JR20140922_AFC_Dataset.csv` we hold is **CTD-bottle-only**: 814
+    samples, 68 stations, all `Gear=CTD`. But Lange+2020 trained on n = 73–78
+    including the ~30-minute **underway** FCM sampling across the South Atlantic
+    front — and their own sensitivity test shows that dropping the underway
+    samples (CTD-only retraining) degrades *Synechococcus* from MAE 1.27 to 1.37.
+    So until we obtain the underway FCM, our Tables 1–2 reproduction runs in the
+    known-degraded CTD-only configuration (the design doc §5.6 quantifies this
+    and pins the fair comparison line). Could you add the underway FCM to the
+    PML/Tarran follow-up list? (It may simply be a second BODC deposit we
+    haven't found — I will also re-search BODC for an AMT24 underway FCM series
+    before prompt 11 if you prefer.)
+>A. Yes, I will add the underway FCM to the PML/Tarran follow-up list.  I've somewhat lost track of that PML list.  can you generate it for me as the file `requests/PML_follow_up.md`?
 
 ### From prompt 1 (2026-08-01) — Claude
 
@@ -533,6 +654,95 @@ figures are in, the third is deferred because it needs the implementation.)*
 >A. Yes, let us make it a IOPtics dataset in its own right.
 
 ## Reports
+
+### Prompt 8 (2026-08-15) — AMT24 HyperSAS radiometry inspected: the training data exist and are usable, but they are *upstream* Level-2 with one export bug
+
+*(The prompt says `$OS_COLOR/AMT24/Wadiometry`; the folder on disk is
+`$OS_COLOR/AMT24/Radiometry` — assumed typo.)*
+
+**Headline: validation target (i) is unblocked in substance.** We now hold the
+HyperSAS radiometry from the very cruise that trained MOANA — nearly a million
+spectra covering the full transect. But what we received is the *calibrated,
+un-screened* Level-2 stream, not the processed 414–660 nm matrix Lange et al. fed
+to `prcomp`, so reproducing the training set means re-implementing their QC chain
+(details in §4). And one file per day is broken (§3).
+
+#### 1. What is on disk
+
+`$OS_COLOR/AMT24/Radiometry/level2/` — 8.7 GB, 37 day-of-year directories
+(`2014266` … `2014305`, i.e. 23 Sep – 1 Nov 2014; DOY 267, 273 and 298 absent).
+Each day holds five files, e.g.:
+
+| File | Content |
+|---|---|
+| `AMT24_HSAS_2014-280_ES.dat` | CSV — **broken: byte-identical copy of the LT file** (all 37 days) |
+| `AMT24_HSAS_2014-280_LI.dat` | CSV — sky radiance |
+| `AMT24_HSAS_2014-280_LT.dat` | CSV — total upwelling radiance |
+| `AMT24_HSAS_2014-280_RRS.dat` | CSV — remote-sensing reflectance |
+| `AMT24_HSAS_2014-280.sav` | IDL save — `matrix_es/lt/li/rrs`, the **source of truth** (its `matrix_es` is correct) |
+
+Totals: **993,417 spectra** at ~0.86 s cadence (daylight hours only), tracking the
+ship from 52.2°N (Humber approaches) to 50.5°S. Row counts per day range 14k–36k.
+
+#### 2. File layout
+
+Every matrix is 158 columns: **14 ancillary** (ship start time, time [decimal
+hour], lat, lon, atmospheric pressure, PAR, wind direction/speed, ship
+orientation, salinity, SST, delta-azimuth, azimuth, zenith angle) + **141
+wavelengths, 306.0–796.0 nm at exactly 3.5 nm** + 3 trailing ancillary (THS
+compass, pitch, roll). The CSV header lists the trailing three *after* the
+wavelengths — easy to mis-parse if you assume all ancillary columns lead.
+`scipy.io.readsav` reads the `.sav` files cleanly and their RRS/LT/LI match the
+CSVs value-for-value; only ES differs (because the CSV ES is wrong, §3).
+MOANA's 414–660 nm window is fully covered. Units are consistent with
+µW cm⁻² nm⁻¹ (ES; midday max ~175 at 550 nm, correct solar shape) and
+µW cm⁻² nm⁻¹ sr⁻¹ (LT, LI), giving Rrs in sr⁻¹.
+
+#### 3. The one real defect: the ES CSVs
+
+`md5sum` proves `*_ES.dat` ≡ `*_LT.dat` on **all 37 days** — the export script
+evidently wrote the LT matrix twice. The true ES survives inside every `.sav`
+(`matrix_es` ≠ `matrix_lt`, physically sensible). Consequence: **all code must
+read the `.sav` files**; the CSVs are at best a convenience view and at worst a
+trap. Worth reporting back to the provider (Q&A #28).
+
+#### 4. Processing level, determined empirically
+
+Solving `ρ = (LT − RRS·ES)/LI` per spectrum per band gives **ρ = 0.0280 exactly,
+zero spread within and across spectra, zero wind-speed correlation** — i.e. the
+shipped RRS is the plain fixed-ρ Mobley correction, nothing more:
+
+- **No NIR-residual/glint-offset subtraction:** median Rrs(750–796) = 0.0020 sr⁻¹.
+- **No geometry screening:** relative azimuth spans −165° to +64°; solar zenith
+  up to 85° (dawn/dusk included).
+- **No binning:** native ~0.86 s samples.
+- **Negative Rrs** somewhere in 414–660 nm in ~1.5 % of mid-cruise spectra.
+
+None of Lange+2020's steps (their 750–800 nm glint minimisation, tilt/azimuth
+screening, second-derivative noise filter, 2 nm interpolation) has been applied.
+So we can — and must — run that chain ourselves from LT/LI/ES (Q&A #29), which is
+actually the *better* position: we control the QC and can propagate it.
+
+#### 5. Smaller findings
+
+- **Grid already resampled once:** exactly-uniform 3.5 nm is not HyperOCR-native
+  (~3.3 nm, non-uniform), so reaching 414–660 @ 2 nm means a second interpolation
+  (Q&A #31).
+- **Two holes inside the Lange window** (30 Sep – 1 Nov = DOY 273–305): DOY 273
+  and 298 are missing (Q&A #30). DOY 267 is also absent but predates the window.
+- **Ancillary quality:** mid-cruise SST/salinity are sensible (e.g. 26.9 °C /
+  36.6 at 19°N, tracking the Jordan et al. `uway_sst` climatology) but DOY 266
+  (Humber transit) carries garbage (SST 0–12112 °C, salinity 0.01) — that day is
+  pre-window and should simply be dropped. Wind speed, pitch/roll and full solar
+  geometry are present, i.e. everything Lange-style screening needs.
+
+#### 6. Consequence for the plan
+
+With the flow-cytometry counts (in hand since prompt 6's Q&A #24) and now the
+radiometry, **target (i) — reproducing Lange's PCA and Tables 1–2 — is data-complete**,
+pending the processing-chain decisions in Q&A #27–32. The natural next step after
+those answers: build the screened, binned, 2 nm 414–660 training matrix and
+compare our `prcomp` loadings against the operational `pca_picophyto.h5`.
 
 ### Prompt 7 (2026-08-01) — Re-searched amt-uk.org properly. Found published AMT hyperspectral Rrs — for the *other* cruises
 
@@ -1109,6 +1319,163 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-08-16 (Prompt 11 — design doc rev. 2; PML follow-up list created)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Answers #33–35 reviewed.** All three confirm the proposals: FCM matchup uses
+depth ≤ 10 m with the **shallowest** bottle per station (#33); the Jordan et al.
+`uway_sst` is the primary SST with the HSAS ancillary column as cross-check
+(#34); the underway FCM goes on the PML follow-up list (#35).
+
+**Design doc updated** (`docs/design/moana_design.md`, rev. 2): §5.6's two
+"pending" markers replaced with the confirmed rules (the values stay
+parameterised, but these are now the defaults used for every reported result,
+and the SST cross-check difference is stored as a QC diagnostic); the §9 open-
+items table closes item 1 and points items 2 and 5 at the new follow-up file.
+With #33–35 settled, **no open decisions remain on the matchup definition** —
+prompt 12 (Code) is unblocked.
+
+**Created `requests/PML_follow_up.md`**, consolidating every PML-bound item
+scattered through Q&A #25, #27–31 and #35 into one email-ready list, priority-
+ordered: (1) the underway FCM samples (→ Tarran; blocks full-fidelity
+retraining — the CTD-only handicap is quantified from Lange's own Table 2);
+(2) the ES≡LT CSV export bug; (3) the missing DOY 273/298 inside the training
+window; (4) a processing-chain note for the Level-2 delivery, with our
+empirical findings listed for confirmation; (5) native-grid spectra;
+(6) Lange's processed `prcomp` input matrix if PML holds it; (7) the suggestion
+to deposit the AMT24 radiometry with BODC, citing the AMT23/25/26/28 precedent.
+The file explicitly separates PML items from the NASA-bound questions (those
+stay in the report's §11).
+
+**No `pytest` run:** documentation only, no package code. Nothing committed.
+**Files changed:** `docs/design/moana_design.md` (rev. 2),
+`requests/PML_follow_up.md` (new), `claude_prompts/moana_prompts.md` (this
+entry).
+
+### 2026-08-16 (Prompt 10 — design doc written; two new discrepancies found; papers/ restored)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Deliverable:** `docs/design/moana_design.md` — the retrieval spec (§3, with the
+three free invariants any implementation must satisfy), the discrepancy register
+(§4), the AMT24 Level-2 → training-matrix pipeline with every Lange threshold
+pinned to the paper text (§5), the retraining and basis-comparison plan (§6), the
+`ioptics/moana/` layout (§7), the test strategy (§8), and open items (§9).
+Q&A #33–34 remain unanswered; their proposals are carried as configurable
+defaults, not blockers.
+
+**Side-task first: the Context PDFs were gone.** `papers/lange2020.pdf` and
+`papers/moana_atbd.pdf` — both cited by the Context section and needed for the
+pipeline thresholds — did not exist on disk (`papers/*.pdf` is gitignored, so the
+machine migration silently dropped them). Restored: the ATBD from
+oceancolor.gsfc.nasa.gov, and Lange+2020 as the **NTRS accepted manuscript**
+(citation 20205006419; the Optica publisher PDF is bot-gated). Same content and
+equation numbers, different pagination — noted in the design doc.
+
+**With the paper back, the Lange chain is now pinned verbatim** (design §5.2–5.4):
+tilt < 5°; 10° < θ₀ < 80°; 50° < Δϕ < 170°; 1-minute minimum-`Lt(750–800)`
+selection; per-spectrum L1 fit of (ρ_sky, L_NIR) over 750–800 nm; local time
+09:00–17:00; no negatives in 400–700 nm; |d²Rrs/dλ²| ≤ 2×10⁻⁴ in 610–660 nm.
+Also confirmed: matchups were by exact date-hour-minute (so the design carries a
+`window=0` Lange-strict mode alongside our ±15 min median), the PCA was `prcomp`
+with cuts at 0.1 % of PC1's sd (→20 PCs) then p > 0.05 (→14), and selection was
+backward stepwise by AIC.
+
+**Two new findings, both now in the design doc:**
+
+1. **The paper gives picoeukaryotes an SST term; the ATBD and the operational
+   LUT do not** (Lange Eq. 7 *and* its prose: "SST was used as an additional
+   predictor for Prochlorococcus and picoeukaryotes"). Unresolvable from
+   documents since the paper tabulates no coefficients. `train.py` gets a
+   per-taxon `use_sst` switch; the item belongs on the report's §11 NASA list at
+   its next revision (not edited into the report now — not asked).
+2. **The BODC flow-cytometry deposit is CTD-bottle-only** (814 rows, 68 stations,
+   130 samples ≤ 10 m) — Lange's underway FCM samples are absent, which is
+   exactly the configuration Lange showed degrades *Synechococcus*. Posted as
+   Q&A #35 with the PML/Tarran follow-up ask.
+
+Also recorded (§4.4): the `prcomp` **centring ambiguity** — R's default column-
+centring is inconsistent with how the operational code applies the loadings, so
+`train.py` supports both conventions and the basis comparison decides empirically.
+
+**No `pytest` run:** design only, no package code. Nothing committed. **Files
+changed:** `docs/design/moana_design.md` (new), `papers/lange2020.pdf` +
+`papers/moana_atbd.pdf` (restored, gitignored), `claude_prompts/moana_prompts.md`
+(Q&A #35, this entry).
+
+### 2026-08-15 (Prompt 9 — radiometry answers locked; prompts 10–13 revised; two new questions)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Answers #27–32 reviewed; decisions now locked:**
+
+| # | Decision | Consequence |
+|---|---|---|
+| 27 | Provider is PML (Brewin+); no processing note yet — "do your best for now" | The empirically-determined processing level (fixed ρ = 0.0280, nothing else) stands as our working truth until PML says otherwise |
+| 28 | `.sav` files are the source of truth; CSVs ignored | JXP reports the ES≡LT export bug to PML |
+| 29 | **We implement the Lange chain ourselves** from LT/LI/ES | The shipped fixed-ρ RRS is kept only as a cross-check; pipeline scope grows accordingly |
+| 30 | Missing DOY 273 & 298 go on the PML follow-up | Matchups on those days are lost for now |
+| 31 | Accept the double interpolation (native → 3.5 nm → 2 nm) | Revisit with PML later; no native-grid ask yet |
+| 32 | ±15 min median binning onto FCM samples, spread kept as per-band uncertainty | Defines the training-matrix construction |
+
+**Two new questions posted** (Q&A #33–34): the FCM depth cut for the matchup
+(propose ≤10 m, shallowest sample) and which SST feeds the *Prochlorococcus*
+regression (propose Jordan et al. `uway_sst` as primary, HSAS ancillary as
+cross-check). Both shape the training matrix itself, so they warrant your call
+rather than a buried assumption.
+
+**Prompts 10–13 revised**, as instructed. Two kinds of change: (a) folded the
+#27–32 decisions into the design/code/test/validation scopes — the pipeline
+(.sav reader, Lange chain, 2 nm resampling, ±15 min binning) is now explicit in
+prompt 10, and prompt 13 names the three locked validation targets including the
+Brewin 2023 AMT23/25/28 data; (b) fixed the file paths, which still pointed at
+bare `code/`, `tests/`, `validation/` directories that don't exist — they now
+match the locked prompt-3 layout (`ioptics/moana/`, `ioptics/tests/test_moana.py`,
+LUTs from `ioptics/data/moana/`). The original paths are preserved in a note
+above prompt 10.
+
+**One self-correction during this pass:** I initially wrote placeholder ">A."
+answer lines under my own new questions #33–34 — those lines are yours to write,
+not mine — and removed them in the same pass. Flagging it here since the diff
+touched the Q&A answer format.
+
+**No `pytest` run:** no package code touched. Nothing committed. **Files
+changed:** `claude_prompts/moana_prompts.md` only — Q&A #33–34 added, prompts
+10–13 revised, this entry.
+
+### 2026-08-15 (Prompt 8 — AMT24 radiometry inspected; upstream L2 with a broken ES export)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**What I did.** The prompt's `Wadiometry` folder is `Radiometry` on disk (typo
+assumed). Enumerated the tree (37 DOY dirs, 8.7 GB), parsed the CSVs with pandas
+and the `.sav` files with `scipy.io.readsav` (ocean14 env), checksummed every
+day's files, ran a cruise-wide sweep of row counts / positions / ancillaries
+(993,417 spectra, 52.2°N → 50.5°S), and determined the processing level
+empirically by inverting the glint equation: the shipped RRS is exactly
+`(LT − 0.0280·LI)/ES` — fixed Mobley ρ, no NIR-residual subtraction, no
+geometry screening, no binning. Full findings in the prompt-8 report; six
+questions posted as Q&A #27–32 (provenance, the ES bug, re-deriving Rrs, the
+two missing days in the Lange window, double-interpolation, matchup binning).
+
+**Two of my own wrong turns, both caught in-pass.** (1) My first "glint" estimate
+(ρ ≈ 0.06, spectrally variable) was an artifact of the ES bug itself — I was
+unknowingly computing with LT in place of ES; only after `md5sum` exposed
+ES ≡ LT and I switched to the `.sav`'s true `matrix_es` did the clean fixed
+ρ = 0.0280 appear. (2) I briefly "found" garbage in the last three spectral
+columns of the `.sav` matrices — that was my own column bookkeeping (I assumed
+all 17 ancillary columns lead; actually 3 of them trail the wavelengths). The
+CSV header order is faithful; no such defect exists. Recorded here because the
+same trap awaits the eventual reader code.
+
+**The one genuine defect** — `*_ES.dat` byte-identical to `*_LT.dat`, verified by
+checksum on all 37 days — means the reader must use the `.sav` files.
+
+**No `pytest` run:** no package code touched; this pass was data inspection only.
+Nothing committed. **Files changed:** `claude_prompts/moana_prompts.md` — Q&A
+Radiometry section filled (#27–32), new prompt-8 report, this entry.
 
 ### 2026-08-01 (Prompt 7 — re-searched amt-uk.org; found published AMT hyperspectral Rrs for AMT23/25/26/28)
 
