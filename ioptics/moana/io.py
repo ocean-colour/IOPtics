@@ -93,6 +93,24 @@ def _os_color():
     return Path(root)
 
 
+def _amt24_dir():
+    """The AMT24 data directory, wherever the tree currently keeps it.
+
+    The layout changed once already (2026-08-16: ``$OS_COLOR/AMT24/`` →
+    ``$OS_COLOR/AMT/AMT24/``), so every loader resolves through here.
+
+    Returns
+    -------
+    Path
+    """
+    root = _os_color()
+    for cand in (root / 'AMT' / 'AMT24', root / 'AMT24'):
+        if cand.is_dir():
+            return cand
+    raise FileNotFoundError(
+        f'AMT24 data not found under {root}/AMT/AMT24 or {root}/AMT24')
+
+
 def load_luts(lut_dir=None):
     """Load the vendored NASA MOANA constants.
 
@@ -147,8 +165,11 @@ def hsas_day_paths(os_color=None):
     list of Path — one ``.sav`` per available day (37 for the 2026-08 delivery;
     DOY 267, 273, 298 are absent upstream, Q&A #30).
     """
-    root = Path(os_color) if os_color is not None else _os_color()
-    pat = str(root / 'AMT24' / 'Radiometry' / 'level2' / '*' / '*.sav')
+    if os_color is not None:
+        base = Path(os_color) / 'AMT24'
+    else:
+        base = _amt24_dir()
+    pat = str(base / 'Radiometry' / 'level2' / '*' / '*.sav')
     return sorted(Path(p) for p in glob.glob(pat))
 
 
@@ -204,14 +225,22 @@ def read_hsas_day(sav_path):
     return out
 
 
-def load_fcm(csv_path=None):
-    """Load the AMT24 BODC flow-cytometry bottle samples (training truth).
+def load_fcm(csv_path=None, cruise=24):
+    """Load a BODC AMT flow-cytometry bottle dataset (cell-count truth).
+
+    All four deposits on disk (AMT23/24/25/28, Tarran & Zubkov 2020 / Tarran
+    2020) share one layout and one BODC parameter vocabulary — the
+    code-to-taxon mapping was verified against each cruise's own metadata
+    document (P700A90Z = *Synechococcus*, P701A90Z = *Prochlorococcus*).
 
     Parameters
     ----------
     csv_path : path-like, optional
-        Defaults to ``$OS_COLOR/AMT24/AMT24_JR20140922_AFC_Dataset.csv``
-        (Tarran & Zubkov 2020, DOI 10.5285/a2104adc-e98f-6789-e053-6c86abc0d557).
+        Explicit dataset path; overrides ``cruise``.
+    cruise : int, optional
+        AMT cruise number (23, 24, 25 or 28); resolves
+        ``$OS_COLOR/AMT/AMT<cruise>/AMT<cruise>_*_AFC_Dataset.csv``, falling
+        back to the legacy ``$OS_COLOR/AMT24/`` location for cruise 24.
 
     Returns
     -------
@@ -223,11 +252,19 @@ def load_fcm(csv_path=None):
 
     Notes
     -----
-    This deposit is CTD-bottle-only (68 stations); the underway FCM samples
-    Lange+2020 also trained on are not in it (Q&A #35 — PML follow-up list).
+    These deposits are CTD-bottle-only; the underway FCM samples Lange+2020
+    also trained on are in none of them (Q&A #35 — PML follow-up list).
     """
     if csv_path is None:
-        csv_path = _os_color() / 'AMT24' / 'AMT24_JR20140922_AFC_Dataset.csv'
+        hits = sorted(glob.glob(str(
+            _os_color() / 'AMT' / f'AMT{cruise}' / f'AMT{cruise}_*_AFC_Dataset.csv')))
+        if not hits and cruise == 24:
+            hits = sorted(glob.glob(str(
+                _amt24_dir() / 'AMT24_*_AFC_Dataset.csv')))
+        if not hits:
+            raise FileNotFoundError(
+                f'no AFC dataset for AMT{cruise} under $OS_COLOR/AMT/')
+        csv_path = hits[0]
     df = pd.read_csv(csv_path)
     missing = [c for c in FCM_CODES if f'{c}[#/ml]' not in df.columns]
     if missing:
@@ -307,7 +344,7 @@ def load_brewin2023(csv_path=None, cruises=(23, 25, 28), brdf=False):
         ``rrs_unc_pct`` : (n, 151) float64 — per-band uncertainty [%].
     """
     if csv_path is None:
-        csv_path = (_os_color() / 'AMT24' /
+        csv_path = (_amt24_dir() /
                     'BODC_data_AMT_modern_and_historical_optical_observations.csv')
     df = pd.read_csv(csv_path)
     df = df[df['AMT Cruise'].isin(cruises)].reset_index(drop=True)
@@ -361,7 +398,7 @@ def load_uway_sst(nc_path=None):
     """
     import xarray as xr  # local import: only this loader needs it
     if nc_path is None:
-        nc_path = _os_color() / 'AMT24' / 'amt24_final_with_debiased_chl.nc'
+        nc_path = _amt24_dir() / 'amt24_final_with_debiased_chl.nc'
     ds = xr.open_dataset(nc_path)
     df = pd.DataFrame({
         'datetime': pd.to_datetime(ds['time'].values),

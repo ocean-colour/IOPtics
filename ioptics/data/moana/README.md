@@ -85,7 +85,13 @@ spans **14** distinct PCs across the three taxa — matching Lange et al.'s
 statement that 14 PCs survived the significance cut — whereas this file spans
 **15**. That is evidence the operational table may have two coefficients in the
 wrong slots, i.e. the shipping PACE products may not implement the published
-algorithm. Unconfirmed by the authors as of 2026-08-01.
+algorithm.
+
+**Settled empirically 2026-08-16** (`ioptics.moana.validation.bitexact_pace`,
+one PACE granule pair): the shipping products use **this file's** assignment —
+our Synechococcus matches NASA's at median |Δlog₁₀| ≈ 0.006 under this mapping
+versus a +0.08 offset under the ATBD's. Which assignment was *scientifically
+intended* remains a question for the authors (report §11.1.1).
 
 Our implementation therefore supports **both** mappings behind a flag, with the
 operational (this file's) mapping as the default so we can reproduce NASA's

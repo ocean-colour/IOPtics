@@ -45,10 +45,25 @@ _REPO = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir))
 DATA_DIR = os.path.join(_REPO, "ioptics", "data", "moana")
 FIG_DIR = os.path.join(_REPO, "reports", "figures")
 
-# One PACE MOANA granule; see the prompt-3 report for how it was obtained.
-GRANULE = os.path.join(
-    os.environ.get("OS_COLOR", ""), "PACE",
-    "PACE_OCI.20250701.L4m.DAY.MOANA.V3_2.0p1deg.nc",
+# One PACE MOANA granule (prompt-3 original location, then the prompt-14
+# earthaccess cache) plus its matching L3M AOP Rrs input for the mapping-
+# verdict figure. First existing path wins.
+def _first_existing(*paths):
+    for p in paths:
+        if os.path.isfile(p):
+            return p
+    return paths[-1]
+
+
+_PACE = os.path.join(os.environ.get("OS_COLOR", ""), "PACE")
+GRANULE = _first_existing(
+    os.path.join(_PACE, "PACE_OCI.20250701.L4m.DAY.MOANA.V3_2.0p1deg.nc"),
+    os.path.join(_PACE, "moana_validation",
+                 "PACE_OCI.20250701.L4m.DAY.MOANA.V3_2.0p1deg.nc"),
+)
+AOP_GRANULE = _first_existing(
+    os.path.join(_PACE, "moana_validation",
+                 "PACE_OCI.20250701.L3m.DAY.AOP.V3_2.0p1deg.nc"),
 )
 
 # --- palette (house data-viz reference instance, light surface) ---------------
@@ -444,6 +459,75 @@ def plot_clipping(stats, outfile=None):
     return fig
 
 
+def plot_mapping_verdict(n_pixels=60_000, seed=0, outfile=None):
+    """Our Synechococcus retrieval vs NASA's, under both PC mappings (§7.1).
+
+    The figure that settles the mapping question: two log-log density panels
+    against the shipped product — the operational mapping sits on the 1:1
+    line to within the L2-vs-L3M compositing scatter; the ATBD mapping is
+    displaced by its relocated coefficient. Synechococcus needs no SST, so
+    the comparison is ancillary-free.
+
+    Needs both cached granules (AOP Rrs + MOANA) under ``$OS_COLOR/PACE``.
+    """
+    import xarray as xr
+    from ioptics.moana import run_moana
+
+    aop = xr.open_dataset(AOP_GRANULE)
+    moana = xr.open_dataset(GRANULE)
+    rrs = aop["Rrs"].sel(lat=moana["lat"].values, lon=moana["lon"].values,
+                         method="nearest", tolerance=1e-3)
+    wave = aop["wavelength"].values.astype(float)
+    nasa = moana["syncoccus_moana"].values
+    valid = np.isfinite(nasa) & (nasa != LAND) & (nasa != FILL) & (nasa > 0)
+    iy, ix = np.nonzero(valid)
+    pick = np.random.default_rng(seed).choice(iy.size, min(n_pixels, iy.size),
+                                              replace=False)
+    iy, ix = iy[pick], ix[pick]
+    spectra = rrs.values[iy, ix, :]
+    theirs = np.log10(nasa[iy, ix].astype(float))
+    aop.close(), moana.close()
+
+    fig, axes = plt.subplots(1, 2, figsize=(9.6, 4.6), facecolor=SURFACE,
+                             sharex=True, sharey=True)
+    lims = (0, 5)
+    for ax, mapping, label in zip(
+            axes, ("operational", "atbd"),
+            ("operational mapping (picophyt.json: PC16)",
+             "ATBD mapping (U13)")):
+        out = run_moana(wave, spectra, sst=None, pc_mapping=mapping)
+        ok = np.isfinite(out["syn"]) & (out["syn"] > 0)
+        mine = np.log10(out["syn"][ok])
+        dlog = mine - theirs[ok]
+        # Density of points: single-hue sequential ramp on a log count scale.
+        ax.hexbin(theirs[ok], mine, gridsize=70, cmap=SEQ_CMAP,
+                  bins="log", extent=(*lims, *lims), linewidths=0)
+        ax.plot(lims, lims, color=BASELINE, lw=1.2, ls=(0, (4, 3)), zorder=3)
+        ax.text(1.62, 1.28, "1:1", color=INK_MUTED, ha="left", fontsize=9,
+                rotation=45, rotation_mode="anchor")
+        ax.text(0.04, 0.96,
+                f"median $\\Delta$log$_{{10}}$ = {np.median(dlog):+.3f}\n"
+                f"MAD = {np.median(np.abs(dlog)):.3f}",
+                transform=ax.transAxes, va="top", fontsize=10,
+                color=INK_PRIMARY)
+        ax.set_title(label, fontsize=11, color=INK_PRIMARY)
+        ax.set_xlabel("NASA product  log$_{10}$ Syn [cells mL$^{-1}$]",
+                      color=INK_PRIMARY)
+        ax.set_xlim(lims), ax.set_ylim(lims)
+        ax.set_aspect("equal")
+        _style_axes(ax)
+    axes[0].set_ylabel("our retrieval  log$_{10}$ Syn [cells mL$^{-1}$]",
+                       color=INK_PRIMARY)
+    fig.suptitle("Which PC mapping does the shipping product use? "
+                 "(2025-07-01 daily granule pair)", fontsize=12,
+                 color=INK_PRIMARY)
+    fig.tight_layout()
+    if outfile:
+        fig.savefig(outfile, dpi=150, facecolor=SURFACE)
+        print(f"wrote {outfile}")
+    plt.close(fig)
+
+
 def main():
     """Build every report figure and print a short summary of the tables."""
     wave, loadings, coefs = load_moana_tables()
@@ -478,6 +562,13 @@ def main():
     plot_product_masks(fields, lat, lon,
                        outfile=os.path.join(FIG_DIR, "moana_product_masks.png"))
     plot_clipping(stats, outfile=os.path.join(FIG_DIR, "moana_clipping.png"))
+
+    # --- the mapping-verdict figure additionally needs the AOP Rrs granule -----
+    if not os.path.isfile(AOP_GRANULE):
+        print(f"\nskipping mapping-verdict figure: no AOP granule at {AOP_GRANULE}")
+        return
+    plot_mapping_verdict(
+        outfile=os.path.join(FIG_DIR, "moana_mapping_verdict.png"))
 
 
 if __name__ == "__main__":

@@ -237,7 +237,9 @@ paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation
 
 14. **Validation**.  Let us generate the validation for the MOANA algorithm.  We will write it in the file `ioptics/moana/validation.py`.  This code will validate the algorithm described in the Design doc, against the three locked targets: (i) reproduce Lange+2020 Tables 1–2 on AMT24 (now data-complete); (ii) apply the model to genuinely held-out cruises — the Brewin et al. 2023 in-situ hyperspectral Rrs for AMT23/25/28 (already downloaded) matched to their flow-cytometry DOIs; (iii) the operational PACE product versus SeaBASS, including the bit-exactness check of one PACE granule (which also settles the Q&A #9 PC-mapping question empirically).  Metrics: log-space bias/MAE/R² with clipped retrievals treated as censored plus a headline unphysical fraction (Q&A #13).  Before proceeding, if you have any questions, please write them in the Q&A section below.  Log your work.  Use Fable if you can.
 
-15. **Report**.  Let us now update the MOANA report to reflect all of the changes since the last time we touched it.  It is the file `reports/MOANA_Claude_Report.md`.  Have it include a section on "Open items", i.e. the work we still wish to do.  Use Fable if you can. Log your work.
+15. **Validation 2**.  I have answered question 36 and have downloaded the AMT23, AMT25 and AMT28 flow-cytometry data.  Please review the data and then continue with the validation.  Use Fable if you can. Log your work.  Hold off on the Report for now.
+
+16. **Report**.  Let us now update the MOANA report to reflect all of the changes since the last time we touched it.  It is the file `reports/MOANA_Claude_Report.md`.  Have it include a section on "Open items", i.e. the work we still wish to do.  Use Fable if you can. Log your work.
 
 ## Q&A
 
@@ -367,6 +369,8 @@ that separates us from finishing targets (ii) and (iii)b.)*
     ready but needs the SeaBASS picophytoplankton cell counts, which require a
     SeaBASS account (Q&A #24 left this open). Do you have one, or should that
     stay parked?
+
+>A. I have downloaded those datasets and put each in its own folder under a new folder `$OS_COLOR/AMT/`.  And, yes, I do have a SeaBASS account.  The username is `profx`.  Let me know if you need the password and I'll add it to my .bashrc file for you to read (but not broadcast)
 
 ### From prompt 1 (2026-08-01) — Claude
 
@@ -1338,6 +1342,105 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-08-16 (Prompt 16 — report rev. 3: results absorbed, §7.1 marked SETTLED, the promised verdict figure added, new §12 results + §13 Open items)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**`reports/MOANA_Claude_Report.md` updated to rev. 3.** The changes, in the
+order a reader meets them:
+
+- **Header/status** — the algorithm is now independently reimplemented and
+  validated; pointers to §12 (results) and §13 (open items).
+- **§7.1 gains a SETTLED box** with the granule-experiment numbers, the new
+  figure, and the two structural corollaries (bit-exactness from L3M is
+  impossible because NASA retrieves at L2 then composites; that ordering
+  likely explains the missing L3M MOANA collection).
+- **New §7.6** — the paper-vs-ATBD/LUT disagreement on the picoeukaryote SST
+  term (found in prompt 10, previously only in the design doc).
+- **§10 rewritten as a status board** — items 1–3 done (with their caveats),
+  item 4 pending data; pointer added to `requests/PML_follow_up.md`.
+- **§11 updated** — item 1 reframed (we now *know* what ships; the question
+  is what was intended), item 4 updated for the PML delivery, new items 8
+  (SST-for-peuk) and 9 (confirm the L2-composite ordering).
+- **New §12 "Our reproduction and validation"** — the training-data
+  characterisation (§12.1), the Table-1 reproduction with the basis-recovery
+  result and the published-model transfer experiment (§12.2), the first-ever
+  held-out hyperspectral skill table (§12.3), and the granule experiment
+  summary (§12.4).
+- **New §13 "Open items"** (the prompt's explicit ask): underway FCM,
+  target iii-b (SeaBASS credentials pending), the mapping-intent question,
+  the §9.3 out-of-domain experiment, Lange-strict + Eq.-7 sensitivity passes,
+  AMT26 as a bonus cruise, and publication hygiene (dark-mode figures, the
+  Q&A #22 product-reading recipe — both still open).
+- **References** — the §12 data sources (PML delivery, four BODC FCM DOIs,
+  Brewin 2023, Jordan 2025, the PACE granule pair).
+
+**The promised third figure now exists** — `moana_mapping_verdict.png`, added
+to `reports/scripts/moana_report_figs.py` (house palette, single-hue
+sequential density, 1:1 baseline): two log-log density panels of our
+Synechococcus against NASA's under each mapping. The operational panel sits on
+the 1:1 line (median Δlog₁₀ −0.005); the ATBD panel is visibly displaced
+(+0.082). The script's granule paths now also resolve the prompt-14
+`earthaccess` cache, and all four figures regenerated cleanly.
+
+**Also updated:** `ioptics/data/moana/README.md` — its "unconfirmed as of
+2026-08-01" mapping caveat now records the empirical settlement.
+
+**`pytest -q`: 300 passed.** Nothing committed. **Files changed:**
+`reports/MOANA_Claude_Report.md` (rev. 3),
+`reports/scripts/moana_report_figs.py` (+`plot_mapping_verdict`, path fixes),
+`reports/figures/moana_mapping_verdict.png` (new; others regenerated),
+`ioptics/data/moana/README.md`, `claude_prompts/moana_prompts.md` (this entry).
+
+### 2026-08-16 (Prompt 15 — target (ii) scored: first-ever held-out numbers for hyperspectral MOANA; peuk transfers, pro/syn do not)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Data reviewed (Q&A #36 answer).** The three deposits are on disk under the
+new `$OS_COLOR/AMT/AMT<c>/` layout — AMT23: 730 bottles / 54 stations, AMT25:
+915 / 73, AMT28: 755 / 70 — all CTD-bottle-only, all sharing the AMT24 file
+layout. The taxon↔code mapping was re-verified against **each cruise's own
+metadata document** (not assumed from AMT24): P700A90Z = *Synechococcus*,
+P701A90Z = *Prochlorococcus* everywhere. AMT28 carries two extra taxa codes
+(ignored). One surprise handled: the reorganisation **moved** the old
+`$OS_COLOR/AMT24/` tree into `$OS_COLOR/AMT/AMT24/`, which broke every loader
+path — all AMT24 paths now resolve through a tolerant `_amt24_dir()` helper
+(both layouts accepted), the conftest probe likewise, and `load_fcm` gained a
+`cruise=` parameter.
+
+**Target (ii) scored** — the combination with no published number:
+in-situ hyperspectral Rrs (Brewin 2023) through the published NASA
+coefficients, against flow-cytometry truth (±3 h, ≤10 m), 66–71 matchups
+pooled over AMT23/25/28 (bias/MAE/R²):
+
+| taxon | AMT23 | AMT25 | AMT28 | pooled | Lange held-out (MODIS) |
+|---|---|---|---|---|---|
+| pro | 1.20/1.59/−1.8 | 2.47/2.90/0.15 | 3.17/4.07/−0.4 | **2.19/2.75/−0.14** | 1.75/2.26/0.54 |
+| syn | 1.26/1.77/0.71 | 1.08/2.05/0.54 | 0.48/3.90/−10.6 | **0.85/2.46/−3.0** | 0.93/2.20/0.40 |
+| peuk | 0.79/1.40/0.76 | 1.16/1.58/0.77 | 1.24/1.43/0.80 | **1.07/1.47/0.78** | 1.05/1.53/0.60 |
+
+The reading: **picoeukaryotes transfer** — pooled MAE 1.47 / R² 0.78, *better*
+than Lange's own MODIS-based held-out line. **Prochlorococcus and
+Synechococcus do not**, even with best-case hyperspectral in-situ radiometry —
+pro is +119 % biased with negative R², and syn collapses specifically on AMT28
+(bias 0.48, R² −10.6). Since the radiometry here is in-situ and hyperspectral,
+the transferability failure is in the *model* (single-cruise training, SST
+climatology, PC fragility), not in satellite reflectance error — the same
+per-taxon pattern as target (i)'s published-model column. Unphysical fractions
+are small on these oligotrophic-dominated transects (0–4 %).
+
+**Mechanics:** pooled metrics folded into `validate_heldout_cruises` itself
+(per-cruise + `'pooled'`); one new tier-2 test runs the scored path end-to-end.
+**SeaBASS (target (iii)b):** noted your username `profx` — yes, I will need
+the password for the archive's authenticated download; please add it to
+`~/.bashrc` as offered and (iii)b proceeds next pass. Nothing else blocks.
+
+**`pytest -q`: 300 passed.** Nothing committed. **Files changed:**
+`ioptics/moana/io.py` (`_amt24_dir`, `load_fcm(cruise=)`),
+`ioptics/moana/validation.py` (pooled metrics + verbose table),
+`ioptics/tests/{conftest,test_moana}.py`, `claude_prompts/moana_prompts.md`
+(this entry).
 
 ### 2026-08-16 (Prompt 14 — validation implemented AND run: Q&A #9 settled — NASA ships the operational mapping; Lange Table 1 reproduced in the CTD-only configuration)
 

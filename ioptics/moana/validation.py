@@ -234,9 +234,9 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
     Returns
     -------
     dict — ``retrievals`` : DataFrame (cruise, datetime, lat, lon, sst,
-    pro/syn/apeuk, flags, recon_residual); ``metrics`` : per-cruise per-taxon
-    metric dicts for cruises with counts; ``missing_counts`` : cruise numbers
-    lacking a truth table.
+    pro/syn/apeuk, flags, recon_residual); ``metrics`` : per-taxon metric
+    dicts per cruise plus a ``'pooled'`` entry across all scored cruises;
+    ``missing_counts`` : cruise numbers lacking a truth table.
     """
     brewin = load_brewin2023()
     st = brewin['stations']
@@ -248,6 +248,7 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
     retrievals['recon_residual'] = ret['recon_residual']
 
     metrics, missing = {}, []
+    pooled = {t: ([], []) for t in _TAXA}      # (pred, obs) across cruises
     for cruise in sorted(st['cruise'].unique()):
         table = (fcm_tables or {}).get(cruise)
         if table is None:
@@ -268,11 +269,23 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
             rows[t] = seegers_metrics(
                 np.array(pred), np.array(obs),
                 'linear' if t == 'pro' else 'log10')
+            pooled[t][0].extend(pred)
+            pooled[t][1].extend(obs)
         metrics[int(cruise)] = rows
+    if metrics:
+        metrics['pooled'] = {
+            t: seegers_metrics(np.array(pooled[t][0]), np.array(pooled[t][1]),
+                               'linear' if t == 'pro' else 'log10')
+            for t in _TAXA}
     if verbose:
         print(f"target (ii) — {len(retrievals)} stations retrieved on "
               f"cruises {sorted(st['cruise'].unique())}; "
               f"counts missing for {missing}")
+        for c, rows in metrics.items():
+            for t, m in rows.items():
+                print(f"  {str(c):6s} {t:5s} n={m['n']:3d} "
+                      f"bias {m['bias']:5.2f}  MAE {m['mae']:5.2f}  "
+                      f"R2 {m['r2']:6.2f}  unphys {m['frac_unphysical']:.2f}")
     return {'retrievals': retrievals, 'metrics': metrics,
             'missing_counts': missing}
 

@@ -532,6 +532,25 @@ def test_heldout_retrievals_physical():
 
 
 @needs_amt24
+def test_heldout_scoring_with_fcm_tables():
+    # Target (ii) end-to-end with the AMT23/25/28 truth tables (prompt 15).
+    from ioptics.moana.validation import validate_heldout_cruises
+    tables = {c: mio.load_fcm(cruise=c) for c in (23, 25, 28)}
+    for c, t in tables.items():
+        assert {'pro', 'syn', 'peuk'} <= set(t.columns), c
+        assert len(t) > 500, c
+    out = validate_heldout_cruises(fcm_tables=tables, verbose=False)
+    assert out['missing_counts'] == []
+    assert set(out['metrics']) == {23, 25, 28, 'pooled'}
+    pooled = out['metrics']['pooled']
+    # Enough matchups to mean something, and the robust taxon behaves:
+    # picoeukaryotes transferred with MAE < 2 in the prompt-15 run.
+    assert all(pooled[t]['n'] >= 50 for t in ('pro', 'syn', 'peuk'))
+    assert pooled['peuk']['mae'] < 2.0
+    assert pooled['peuk']['r2'] > 0.5
+
+
+@needs_amt24
 def test_uway_sst_loads_and_covers_cruise():
     sst = mio.load_uway_sst()
     assert sst['sst'].between(5, 32).all()    # physical Atlantic range

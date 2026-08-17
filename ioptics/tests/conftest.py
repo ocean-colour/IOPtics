@@ -221,8 +221,10 @@ needs_sphinx = pytest.mark.skipif(
 def _amt24_available():
     """True if the AMT24 HyperSAS Level-2 tree is mounted under ``$OS_COLOR``."""
     root = os.getenv('OS_COLOR')
-    return (root is not None and
-            os.path.isdir(os.path.join(root, 'AMT24', 'Radiometry', 'level2')))
+    if root is None:
+        return False
+    return any(os.path.isdir(os.path.join(root, *parts, 'Radiometry', 'level2'))
+               for parts in (('AMT', 'AMT24'), ('AMT24',)))
 
 
 needs_amt24 = pytest.mark.skipif(
