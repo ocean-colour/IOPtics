@@ -241,6 +241,14 @@ paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation
 
 16. **Report**.  Let us now update the MOANA report to reflect all of the changes since the last time we touched it.  It is the file `reports/MOANA_Claude_Report.md`.  Have it include a section on "Open items", i.e. the work we still wish to do.  Use Fable if you can. Log your work.
 
+17. **Report additions**.  The report is excellent.  Please also:
+    - Our report emphasies the small-scale behaviour (i.e. patchiness) of Synechococcus.  Add to section 9 a discusison of how to reconcile it with the 1km sized pixels of the PACE product.
+    - Did we try to validate the product with the other AMT cruises?  If so, what were the results?  If not, can we?
+    - The report does not seem to emphasize that the training data are all from 2014 but is being applied now in 2024 and on.  Should we be concerned about this?   For example, how much has the Atlatnic Ocean warmed in these 10 years?  What other changes might we worry about?  Be sure this is discussed in Section 9.
+    - Are there other parts of the world where we could train a MOANA like product?  How about the ship-of-opportunity data from Koji Suzuki's program?  Discuss this too
+
+Use Fable if you can. Log your work.
+
 ## Q&A
 
 ### Radiometry
@@ -1342,6 +1350,64 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-08-17 (Prompt 17 — report rev. 4: scale, decadal drift, new-basin training, and the AMT accounting)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+All four requested additions are in `reports/MOANA_Claude_Report.md` (rev. 4):
+
+1. **Patchiness vs pixels → new §9.9.** The scale contradiction stated
+   plainly: the Syn evidence rests on ~300 m observation footprints (1.6 mL
+   bottles matched to 1-minute Rrs), the application is ~1.2 km OCI pixels
+   composited to 4–11 km — and because two models are nonlinear in Rrs,
+   retrieval-of-mean ≠ mean-of-retrievals (Jensen), with our §7.1 compositing
+   result as one-level-up proof that the ordering matters. Three
+   reconciliations proposed; the first (measure subpixel retrieval variance
+   directly from the AMT24 1-minute stream, data already in hand) became Open
+   item 7.
+
+2. **Other AMT cruises → §12.3 gains the complete accounting table.** Did we
+   try? Yes — AMT23/25/28 are done (that *is* §12.3). AMT26 is possible
+   pending its FCM (Open item 6); AMT20/22 are impossible without a PML data
+   rescue (their radiometry was never archived — verified in the prompt-6/7
+   sweeps); and **no AMT cruise can validate the PACE-era product** because
+   the archived FCM series ends in 2018 while PACE launched 2024-02 — product
+   validation is the SeaBASS route.
+
+3. **2014 training vs 2024+ application → new §9.10.** The concern is real
+   and now has magnitudes: the Pro model's SST term gives
+   dPro/dSST = 770448/(T·ln10) ≈ 16,700 cells mL⁻¹/°C at 20 °C (~7–8 % of a
+   typical retrieval per degree). Mean Atlantic warming 2014→PACE-era
+   (~0.2–0.3 °C) is a tolerable ~2 % inflation, but the 2023–24 North
+   Atlantic heatwave (~+1 °C basin-wide) manufactures ~8 % (locally tens of
+   %) of Pro signal from temperature alone — in exactly the years PACE
+   observes. Ecological drift (poleward range shifts, ecotype changes, CDOM
+   covariate drift) is discussed alongside; fixes: periodic retraining, a
+   training-epoch attribute, and the §9.3 out-of-domain flag. A within-decade
+   hint from our own §12.3 (AMT25 beats AMT28) is noted with the appropriate
+   small-n caution. Quantifying the drift per-pixel became Open item 8.
+
+4. **Other basins / Suzuki's ship-of-opportunity program → new §9.11.** The
+   ingredient list (co-located hyperspectral Rrs + Pro/Syn/peuk FCM + SST at
+   underway resolution), why the North Pacific SOOP route fits (repeat
+   transects across the subarctic/Kuroshio/gyre boundaries; Suzuki's group
+   already runs the HPLC+FCM toolkit — grounded in Suzuki et al. 2005), and
+   the three questions that decide feasibility (radiometer aboard? taxa
+   resolved? which lines repeat?). Complementary resources named: SeaFlow
+   (27 NE-Pacific underway-FCM cruises, Ribalet et al. 2019), HOT/BATS, and
+   simply *newer AMT cruises with radiometry archived*. Became Open item 9.
+   Both new citations verified via Crossref before inclusion.
+
+Header bumped to rev. 4; §13 renumbered (old item 7 → 10). I could not verify
+the specifics of the Suzuki program's instrumentation from the open web (two
+searches; his 2005 subarctic-Pacific FCM/HPLC work is solid ground, the SOOP
+details are not), so §9.11 frames those as the questions to ask rather than
+asserting them — flagging that here so it isn't mistaken for reticence.
+
+**No `pytest` run:** report-only changes, no code touched. Nothing committed.
+**Files changed:** `reports/MOANA_Claude_Report.md` (rev. 4),
+`claude_prompts/moana_prompts.md` (this entry).
 
 ### 2026-08-16 (Prompt 16 — report rev. 3: results absorbed, §7.1 marked SETTLED, the promised verdict figure added, new §12 results + §13 Open items)
 

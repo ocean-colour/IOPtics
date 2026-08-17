@@ -1,7 +1,9 @@
 # MOANA — algorithm, provenance, inconsistencies, and how I would improve it
 
 **Author:** Claude (Fable 5), for J. Xavier Prochaska
-**Date:** 2026-08-16 (rev. 3; rev. 2 was 2026-08-01)
+**Date:** 2026-08-17 (rev. 4 — adds §9.9–9.11 on scale, decadal drift, and
+new-basin training, plus §12.3's AMT accounting; rev. 3 was 2026-08-16, rev. 2
+2026-08-01)
 **Status:** the algorithm is now **independently reimplemented and validated**.
 Since rev. 2: the AMT24 training radiometry was obtained and its processing
 level characterised; the full pipeline + retrieval + retraining live in
@@ -162,7 +164,7 @@ The fixed basis, drawn straight from the vendored LUT by
 `reports/scripts/moana_report_figs.py`. Each panel notes which taxa use that
 component and with what coefficient. PC1 is the smooth blue-to-red ramp that Lange
 et al. attribute to backscatter slope plus pure-water absorption, and it carries
->96 % of the training covariance — so the retrieval is dominated by spectral tilt.
+over 96% of the training covariance — so the retrieval is dominated by spectral tilt.
 PC2 peaks broadly near 505 nm; PC3 has a strong blue feature with a zero crossing
 near 490 nm. From PC4 onward the components become progressively finer-structured,
 and that is where any hyperspectral advantage must come from. One observation I offer
@@ -623,6 +625,123 @@ Remove the dead code. Details in Appendix A.
 
 Nobody has. See §10.
 
+*(§9.9–9.11 were added 2026-08-17 at JXP's request; they sit outside the
+original value-per-effort ordering.)*
+
+### 9.9 Reconcile *Synechococcus* patchiness with kilometre-scale pixels
+
+There is a scale contradiction running through MOANA that neither the paper
+nor the ATBD addresses. The evidence that *Synechococcus* is retrievable at
+all rests on **fine-scale sampling**: Lange et al.'s 30-minute underway
+samples (~10 km apart at cruise speed) across the South Atlantic frontal zone,
+each one a ~1.6 mL bottle matched to a single 1-minute Rrs spectrum — an
+observation footprint of order **300 m** of ship track. Their own sensitivity
+test shows that coarsening the sampling to CTD stations destroys much of the
+Syn skill (§6). Yet the model is *applied* to OCI pixels of ~1.2 km at L2,
+composited to 4 km and 0.1° (~11 km) in the shipped product — footprints one
+to two orders of magnitude larger than anything it was trained on.
+
+This matters mechanically, not just conceptually, because two of the three
+models are **nonlinear in Rrs** (standardisation, then `10^x`): the retrieval
+of a pixel-mean spectrum is not the pixel-mean of point retrievals. Across a
+front — exactly where Syn structure lives — a 4-km pixel averages water masses
+the training set treated as distinct samples, and Jensen's inequality
+guarantees a bias whose sign and size depend on the subpixel variance. Our
+§7.1/§12.4 compositing result is the same phenomenon one level up (L2 → L4M
+averaging visibly moves the answer), so the point-to-pixel step can be
+presumed at least as consequential.
+
+Three things would reconcile the scales, in increasing order of effort:
+
+1. **Measure the subpixel variability we already hold.** The AMT24 1-minute
+   screened stream (§12.1) resolves ~300 m. Retrieve Syn along-track and
+   compute the retrieval variance within 1-km, 4-km and 11-km track windows —
+   a direct, data-in-hand estimate of how much a PACE pixel hides, and of the
+   Jensen bias (compare mean-of-retrievals against retrieval-of-mean-Rrs per
+   window). This is an afternoon's work and now Open item 5.
+2. **Train at the application scale**: spatially bin the training Rrs to
+   pixel-equivalent footprints before the PCA/regression, so the model learns
+   the pixel-mean → abundance map rather than the point map. (Our ±15-minute
+   median matchup, ~±5 km of track, is incidentally already close to the 4-km
+   product scale — one reason §12.2's reproduction may transfer to satellite
+   application better than Lange's exact-minute matchups.)
+3. **Validate distributionally, not just pointwise**: at fronts, compare the
+   *distribution* of product values in a granule neighbourhood against the
+   distribution of in-situ values along the transect segment, so patchiness
+   is scored rather than aliased into apparent error.
+
+### 9.10 The training set is a decade old, and the ocean has moved
+
+Everything MOANA knows it learned from **September–November 2014**; it ships
+on data from **2024 onward**. Two distinct non-stationarity problems follow.
+
+**The SST term makes decadal drift a direct, computable bias.** The
+*Prochlorococcus* model is `Pro = … + 770448·log₁₀(SST)`, so
+`dPro/dSST = 770448/(T·ln10)` ≈ **16,700 cells mL⁻¹ per °C at 20 °C**
+(13,400 at 25 °C) — roughly **7–8 % of a typical 2×10⁵ retrieval per degree**.
+The Atlantic surface has warmed of order 0.2–0.3 °C between the training
+cruise and the PACE era on the mean trend — a ~2 % systematic Pro inflation,
+tolerable — but the **2023–24 North Atlantic marine heatwave ran ~+1 °C
+basin-wide and locally far more**, i.e. ~8 % (locally tens of %) of
+*Prochlorococcus* signal manufactured purely by the temperature crutch, in
+exactly the years PACE observes. Any user computing decadal Pro trends from
+this product is, in part, reading the SST record back (the §9.6 circularity,
+now with a magnitude attached).
+
+**The optics-to-ecology map itself drifts.** Warming shifts picocyanobacterial
+biogeography poleward (the niche boundaries the §7.3 clipping already traces),
+changes ecotype composition (warm- vs cold-adapted *Prochlorococcus* clades
+with different pigmentation), and moves the CDOM and bacterial-backscatter
+covariates that §3.3 says the regression secretly leans on. None of that is
+representable by a fixed 2014 linear map, and none of it triggers any flag —
+the out-of-domain detector (§9.3) would catch the optical part, which is one
+more argument for it. The honest fixes are periodic retraining against
+sustained FCM programs (AMT continues; §9.11 adds a second basin) and shipping
+a training-epoch metadata attribute so users know what vintage of ocean the
+coefficients encode.
+
+Our §12.3 result is consistent with drift mattering even *within* the training
+decade: skill on AMT25 (one year after training) beats AMT28 (four years
+after) for Pro and Syn, though with n ≈ 20–26 per cruise, regime differences
+between transects cannot be excluded.
+
+### 9.11 Train it elsewhere: a second basin, and the ship-of-opportunity route
+
+MOANA is an Atlantic-transect algorithm distributed on a near-global grid.
+The right response is not to stretch the Atlantic model but to **train sibling
+models in other basins** — the method (§4) is basin-agnostic; only the
+training pairs are not. The ingredient list is exactly three items:
+co-located **(a)** hyperspectral above-water Rrs (414–660 nm), **(b)**
+flow-cytometric Pro/Syn/picoeukaryote counts from the surface layer, and
+**(c)** SST — at underway spatial resolution (§9.9's lesson: station sampling
+is not enough).
+
+The **North Pacific ship-of-opportunity route (Koji Suzuki's program)** that
+JXP raises is a strong candidate for exactly the reason AMT worked: repeat
+transects crossing sharp regime boundaries (subarctic HNLC water, the
+Kuroshio–Oyashio confluence, the subtropical gyre) with the fine along-track
+sampling that patchy taxa demand. Suzuki's group has the taxonomic side in
+hand — his subarctic-Pacific work established exactly the HPLC + flow-cytometry
+toolkit needed. The questions that decide feasibility, worth asking directly:
+does the program's underway sampling include (or could it carry) a calibrated
+above-water hyperspectral radiometer (a HyperSAS-class system on a cargo ship
+is routine engineering); does its flow cytometry separate *Prochlorococcus* /
+*Synechococcus* / picoeukaryotes; and which lines and seasons repeat? A
+North-Pacific MOANA would also be the cleanest possible test of §3's premise —
+if the method only works where CDOM co-varies with oligotrophy the Atlantic
+way, a second basin exposes that immediately.
+
+Complementary resources worth folding in: the **SeaFlow** archive (continuous
+underway flow cytometry, 27 NE-Pacific cruises, 2010–2018) is the
+underway-count ingredient at scale wherever its cruises carried radiometry;
+the **HOT and BATS** time series offer decades of monthly FCM for the
+station-matched (weaker) configuration; and AMT itself keeps running — the
+cheapest new training data of all is simply *newer AMT cruises with the
+radiometry archived* (§13's PML ask). The general point for §11/§13: the
+scarce commodity everywhere is not counts and not reflectance but the
+**pairing** — programs measure one or the other, and the community habit of
+not archiving underway radiometry (§12.1) is what actually blocks new basins.
+
 ---
 
 ## 10. The plan, and where it stands (updated 2026-08-16)
@@ -828,6 +947,22 @@ SST-climatology crutch, and the fragility of the high-order PCs — which is
 precisely what §8 predicted and §9.5–9.6 propose to fix. Unphysical fractions
 were small on these oligotrophic transects (0–4 %).
 
+**Why these three cruises and not the others** — the complete accounting of
+what AMT can and cannot contribute:
+
+| cruise | flow cytometry | hyperspectral Rrs | usable for |
+|---|---|---|---|
+| AMT23 / 25 / 28 | BODC, on disk | Brewin 2023, on disk | **done — the table above** |
+| AMT26 | exists (BODC ask pending) | Brewin 2023, on disk | model validation on a cruise Lange never used (§13 item 6) |
+| AMT20 / 22 | BODC DOIs in hand | **never archived** (verified: no SeaBASS, no DataCite, no BODC series) | nothing, without a PML data rescue |
+| any AMT | ends 2018 (AMT28 is the last archived FCM) | — | **not the PACE product**: PACE launched 2024-02, so no AMT cruise on disk overlaps it |
+
+The last row answers the natural question "can AMT validate the operational
+product?" — no: AMT validates the *model* (which we have now done, above);
+validating the *product* requires PACE-era (2024→) in-situ counts, which is
+the SeaBASS route (target iii-b, §13 item 2) — or a future AMT cruise with
+both instruments running and, ideally, archived.
+
 ### 12.4 What the granule experiment established (target iii-a)
 
 See the §7.1 resolution box: the shipping product implements the operational
@@ -867,9 +1002,25 @@ Work we still wish to do, in priority order. (PML-bound data asks live in
 6. **AMT26 as a bonus held-out cruise** — Brewin 2023 carries 37 more
    stations with Rrs; its flow cytometry would extend §12.3 to a cruise
    Lange never touched (data ask, BODC).
-7. **Report hygiene when this goes public**: dark-mode figure variants
-   (Q&A #23), and a "how to read the PACE MOANA product" §12-style recipe
-   (Q&A #22 — still open).
+7. **The subpixel-variability experiment (§9.9, added 2026-08-17)** — no new
+   data needed: retrieve Syn along the AMT24 1-minute stream (~300 m
+   resolution), compute retrieval variance within 1/4/11-km track windows,
+   and measure the Jensen (mean-of-retrievals vs retrieval-of-mean) bias
+   directly. Quantifies what a PACE pixel hides of the patchiness the model
+   was trained on.
+8. **Quantify decadal drift in the SST term (§9.10, added 2026-08-17)** —
+   pull an Atlantic SST time series (e.g. OISST/CMC over the MOANA grid),
+   convert the 2014→now warming into the Pro bias via
+   `dPro/dSST = 770448/(T·ln10)`, and map it for a heatwave month. Turns the
+   non-stationarity concern into a per-pixel number the product could ship.
+9. **Explore a North Pacific training set (§9.11, added 2026-08-17)** — JXP
+   to sound out Koji Suzuki's ship-of-opportunity program (the deciding
+   questions are in §9.11: radiometer on board? FCM resolves the three taxa?
+   which lines repeat?); in parallel, check which SeaFlow cruises carried
+   above-water radiometry.
+10. **Report hygiene when this goes public**: dark-mode figure variants
+    (Q&A #23), and a "how to read the PACE MOANA product" §12-style recipe
+    (Q&A #22 — still open).
 
 ---
 
@@ -1004,3 +1155,13 @@ Data used by §12 (all rev. 3):
   10.5281/zenodo.12527954).
 - PACE granules: `PACE_OCI.20250701.L3m.DAY.AOP.V3_2.0p1deg.nc` and
   `…L4m.DAY.MOANA.V3_2.0p1deg.nc` via `earthaccess`.
+
+Cited by §9.9–9.11 (rev. 4):
+
+- Suzuki, K., et al. (2005). "Responses of phytoplankton and heterotrophic
+  bacteria in the northwest subarctic Pacific to in situ iron fertilization as
+  estimated by HPLC pigment analysis and flow cytometry." *Progress in
+  Oceanography* **64**, 167–187. https://doi.org/10.1016/j.pocean.2005.02.007
+- Ribalet, F., et al. (2019). "SeaFlow data v1, high-resolution abundance,
+  size and biomass of small phytoplankton in the North Pacific." *Scientific
+  Data* **6**, 277. https://doi.org/10.1038/s41597-019-0292-2
