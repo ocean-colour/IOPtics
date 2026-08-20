@@ -23,18 +23,18 @@ A dataset can only score what it carries truth for; a component with no truth he
      - scored pairs
    * - ``expb_pow``
      - scored
-     - 1593
-     - 311
+     - 6372
+     - 1628
      - 243
    * - ``giop``
      - scored
-     - 1593
-     - 423
+     - 6372
+     - 2107
      - 361
    * - ``gsm``
      - scored
-     - 1593
-     - 54
+     - 6372
+     - 761
      - 50
 
 Ranked contests

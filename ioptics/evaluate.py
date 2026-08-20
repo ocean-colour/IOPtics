@@ -245,6 +245,25 @@ def from_chisq(spec, record, models, rt_dict, ans, cov, *,
                      samples[:, na:], ans, 'chisq', perc)
 
 
+def chain_burn(spec, chains):
+    """Burn-in steps to discard from the head of a production chain.
+
+    ``bing.fitting.inference.run_emcee`` already ran (and reset away)
+    ``spec.mcmc.nburn`` burn-in steps before the production chain, so this is
+    a second, conservative discard of the chain's head, capped at half the
+    chain so a tiny-``nsteps`` run never discards everything. It lives in one
+    function so the percentiles (:func:`from_chains`) and the persisted chain
+    (:func:`ioptics.io.save_chain`, via the MCMC subset in :mod:`ioptics.run`)
+    cannot disagree about the burn boundary. (They still differ in *density*:
+    the percentiles use every post-burn sample, while the persisted chain is
+    additionally thinned by :data:`ioptics.io.CHAIN_THIN` — so intervals
+    re-derived from a saved chain reproduce the persisted ones only to within
+    the thinning's Monte Carlo error.)
+    """
+    chains = np.asarray(chains)
+    return min(int(spec.mcmc.nburn), max(chains.shape[0] // 2, 0))
+
+
 def from_chains(spec, record, models, rt_dict, chains, *,
                 perc=((16, 84), (2.5, 97.5))):
     """Assemble a :class:`RetrievalResult` from an MCMC posterior chain.
@@ -258,9 +277,7 @@ def from_chains(spec, record, models, rt_dict, chains, *,
 
     chains = np.asarray(chains, dtype=float)
     na = models[0].nparam
-    # Burn from the spec (capped so a tiny-nsteps run never discards everything).
-    burn = min(int(spec.mcmc.nburn), max(chains.shape[0] // 2, 0))
-    flat = thin_burn_chains(chains, burn=burn)
+    flat = thin_burn_chains(chains, burn=chain_burn(spec, chains))
     point = np.median(flat, axis=0)
     return _assemble(spec, record, models, rt_dict, flat[:, :na], flat[:, na:],
                      point, 'mcmc', perc)

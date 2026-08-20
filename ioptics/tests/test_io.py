@@ -89,7 +89,10 @@ def test_chain_save_load_round_trip(tmp_path):
     chains = rng.normal(size=(50, 8, 3))          # (nsteps, nwalkers, nparam)
     record = _synthetic_record()
     path = io.save_chain('sweep_v1', 'giop', record, chains, root=tmp_path)
-    assert path == tmp_path / 'sweep_v1' / 'chains' / 'giop_7.npz'
+    # the filename carries the dataset (Stage 7 Task 13): obs_id alone does
+    # not identify an observation, and a pooled mixed-dataset MCMC subset
+    # must not race two same-id records onto one file
+    assert path == tmp_path / 'sweep_v1' / 'chains' / 'giop_L23_7.npz'
     assert path.is_file()
 
     loaded = io.load_chain(path)

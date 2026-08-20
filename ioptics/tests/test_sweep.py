@@ -50,6 +50,8 @@ def test_build_v1_stage_dispatch(monkeypatch):
     monkeypatch.setattr(run, 'run_sweep', _run)
     monkeypatch.setattr(metrics, 'compute', lambda sid, **k: calls.append('metrics'))
     monkeypatch.setattr(standard, 'build', lambda sid, **k: calls.append('report'))
+    monkeypatch.setattr(standard, 'build_exemplars',
+                        lambda sid, **k: calls.append('exemplars'))
     monkeypatch.setattr(leaderboard, 'update', lambda **k: calls.append('lb') or None)
     # stage 3 delegates the whole landing page (headline board + sweep cards +
     # interactive widget + full-grid drill-down) to standard.build_landing
@@ -67,8 +69,9 @@ def test_build_v1_stage_dispatch(monkeypatch):
     calls.clear()
     mod.main(3)
     # the fold now happens inside standard.build_landing, so stage 3 is
-    # two calls: the sweep's own page, then the landing rebuild
-    assert calls == ['report', 'landing']
+    # three calls: the exemplar page first (the cross-algorithm page only
+    # links it when the file exists), the sweep's own page, then the landing
+    assert calls == ['exemplars', 'report', 'landing']
 
     # stage-1 run knobs thread through to run_sweep
     calls.clear()

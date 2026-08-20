@@ -66,12 +66,34 @@ def sweep_dir(sweep_id, *, root=None, create=False):
     return d
 
 
-def chain_path(sweep_id, algorithm, obs_id, *, root=None):
-    """Path to one MCMC chain NPZ: ``<sweep>/chains/<algorithm>_<obs_id>.npz``."""
-    return sweep_dir(sweep_id, root=root) / 'chains' / f'{algorithm}_{obs_id}.npz'
+def chain_path(sweep_id, algorithm, obs_id, *, dataset=None, root=None):
+    """Path to one MCMC chain NPZ.
+
+    ``<sweep>/chains/<algorithm>_<dataset>_<obs_id>.npz`` when ``dataset`` is
+    given — it must be, for any mixed-dataset subset: ``obs_id`` alone does
+    not identify an observation (the package's own convention reuses ids
+    across datasets), and with a pooled MCMC pass two same-id records would
+    otherwise race on one file. The dataset-less form is kept for reading
+    chains written before Stage 7 Task 13.
+    """
+    stem = (f'{algorithm}_{obs_id}' if dataset is None
+            else f'{algorithm}_{dataset}_{obs_id}')
+    return sweep_dir(sweep_id, root=root) / 'chains' / f'{stem}.npz'
 
 
-def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
+#: Persistence thinning stride for saved MCMC chains (see :func:`save_chain`).
+#: The pipeline consumes posterior *percentiles*, computed at fit time from the
+#: full in-memory chain; the persisted NPZ exists for corner plots and
+#: re-analysis, for which every 20th step of 16 walkers is ample (~1 950
+#: steps per walker at the default 40 000-step spec after its burn discard).
+#: At full-L23 scale the stride is what turns ~40 GB of chains into ~2 GB.
+#: The stride is recorded in the NPZ (``thin``, beside ``nsteps_total`` and
+#: ``nburn_discarded``), so a thinned chain cannot be mistaken for a short one.
+CHAIN_THIN = 20
+
+
+def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None,
+               burn=0, thin=1, nburn_sampler=None):
     """Save one MCMC posterior chain to its NPZ and return the path.
 
     Mirrors ``bing.fitting.l23.save_chains``: stores ``chains`` (shape
@@ -80,12 +102,38 @@ def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
     ``pnames`` (the fit parameter names, in chain-column order) is given they
     are stored too, so ``diagnostics.corner_data`` can label the corner axes.
     Written under the sweep's ``chains/`` dir (created if needed).
+
+    ``burn``/``thin`` control what is *persisted*, not what was sampled: the
+    first ``burn`` steps are discarded (capped at half the chain, matching
+    :func:`ioptics.evaluate.chain_burn`) and every ``thin``-th remaining step
+    is kept. The trim is recorded so a thinned chain cannot be mistaken for a
+    short run — and with names that describe the sampler's actual timeline
+    (the sampler *also* ran and discarded its own burn-in before the
+    production chain this function receives):
+
+    - ``nsteps_production`` — length of the untrimmed production chain;
+    - ``nburn_sampler`` — burn-in steps the sampler ran and reset away
+      *before* production (pass ``spec.mcmc.nburn``; omitted if ``None``);
+    - ``nburn_discarded`` — the second discard applied here, off the head of
+      the production chain;
+    - ``thin`` — the persistence stride,
+
+    so persisted ``chains[i]`` is sampler step
+    ``nburn_sampler + nburn_discarded + i*thin``. The defaults persist the
+    chain whole.
     """
     sweep_dir(sweep_id, root=root, create=True)
-    path = chain_path(sweep_id, algorithm, record.obs_id, root=root)
+    path = chain_path(sweep_id, algorithm, record.obs_id,
+                      dataset=record.dataset, root=root)
+    chains = np.asarray(chains)
+    nsteps_production = int(chains.shape[0])
+    burn = min(int(burn), max(nsteps_production // 2, 0))
+    thin = max(int(thin), 1)
+    meta = {} if nburn_sampler is None else {
+        'nburn_sampler': int(nburn_sampler)}
     np.savez(
         path,
-        chains=np.asarray(chains),
+        chains=chains[burn::thin],
         idx=record.obs_id,
         wave=np.asarray(record.wave, dtype=float),
         obs_Rrs=np.asarray(record.Rrs, dtype=float),
@@ -93,6 +141,10 @@ def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
         Chl=float(record.init.get('Chl', np.nan)),
         Y=float(record.init.get('Y', np.nan)),
         pnames=np.asarray([] if pnames is None else pnames, dtype=str),
+        nsteps_production=nsteps_production,
+        nburn_discarded=burn,
+        thin=thin,
+        **meta,
     )
     return path
 

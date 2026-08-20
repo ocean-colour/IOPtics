@@ -24,6 +24,8 @@ Read from the registry entry that sweeps actually run, so it cannot drift from t
      - chisq
    * - sSdg
      - 0.002
+   * - maxfev
+     - 40000
    * - RT toggles
      - ``double_gaussian``, ``phi_C``, ``variable_Gordon``
 
@@ -84,7 +86,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.528
      - 0.528
-     - 0.239
+     - 0.241
      - 0.847
      - 
    * - L23
@@ -120,7 +122,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.11
      - 0.107
-     - 0.534
+     - 0.535
      - 0.99
      - 
    * - L23
@@ -132,7 +134,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.576
      - 0.576
-     - 0.187
+     - 0.19
      - 0.847
      - 
    * - L23
@@ -168,7 +170,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.156
      - 0.0759
-     - 0.585
+     - 0.586
      - 0.99
      - 
    * - L23
@@ -180,7 +182,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.46
      - 0.458
-     - 0.422
+     - 0.424
      - 0.847
      - 
    * - L23
@@ -228,7 +230,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.409
      - 0.403
-     - 0.478
+     - 0.479
      - 0.847
      - 
    * - L23
@@ -276,7 +278,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.687
      - 0.687
-     - 0.453
+     - 0.455
      - 0.847
      - 
    * - L23
@@ -372,7 +374,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.0562
      - 0.0367
-     - 0.768
+     - 0.769
      - 0.847
      - 
    * - L23
@@ -420,7 +422,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.0355
      - 0.017
-     - 0.896
+     - 0.897
      - 0.847
      - 
    * - L23
@@ -468,7 +470,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - sole competitor
      - 0.066
      - 0.0402
-     - 0.768
+     - 0.769
      - 0.847
      - 
    * - L23
@@ -1249,8 +1251,8 @@ Head-to-head against the others
      - 440
      - expb_pow
      - gsm
-     - 3.28e+03
-     - -0.0426
+     - 3.29e+03
+     - -0.0425
      - -0.0452
      - -0.0402
      - indistinguishable
@@ -1315,10 +1317,10 @@ Head-to-head against the others
      - 440
      - expb_pow
      - gsm
-     - 149
-     - -0.0155
-     - -0.0526
-     - 0.0233
+     - 150
+     - -0.013
+     - -0.0515
+     - 0.0271
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1337,10 +1339,10 @@ Head-to-head against the others
      - 443
      - expb_pow
      - gsm
-     - 3.28e+03
+     - 3.29e+03
      - -0.0586
-     - -0.0614
-     - -0.056
+     - -0.0615
+     - -0.0559
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1403,10 +1405,10 @@ Head-to-head against the others
      - 443
      - expb_pow
      - gsm
-     - 149
-     - -0.0946
-     - -0.131
-     - -0.0565
+     - 150
+     - -0.0922
+     - -0.128
+     - -0.055
      - underpowered
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1425,10 +1427,10 @@ Head-to-head against the others
      - 555
      - expb_pow
      - gsm
-     - 3.28e+03
-     - 8.57e-05
-     - -0.00127
-     - 0.00147
+     - 3.29e+03
+     - 0.000162
+     - -0.0012
+     - 0.00155
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1491,10 +1493,10 @@ Head-to-head against the others
      - 555
      - expb_pow
      - gsm
-     - 149
-     - 0.129
-     - 0.111
-     - 0.146
+     - 150
+     - 0.13
+     - 0.112
+     - 0.15
      - gsm
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1513,10 +1515,10 @@ Head-to-head against the others
      - 670
      - expb_pow
      - gsm
-     - 3.28e+03
-     - 0.00165
-     - 0.000969
-     - 0.00234
+     - 3.29e+03
+     - 0.00167
+     - 0.000909
+     - 0.00239
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1579,10 +1581,10 @@ Head-to-head against the others
      - 670
      - expb_pow
      - gsm
-     - 149
-     - 0.0667
-     - 0.0593
-     - 0.0741
+     - 150
+     - 0.0668
+     - 0.0596
+     - 0.0743
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1601,7 +1603,7 @@ Head-to-head against the others
      - 440
      - expb_pow
      - gsm
-     - 3.28e+03
+     - 3.29e+03
      - 0.141
      - 0.11
      - 0.174
@@ -1667,10 +1669,10 @@ Head-to-head against the others
      - 440
      - expb_pow
      - gsm
-     - 149
-     - -0.159
-     - -0.224
-     - -0.0919
+     - 150
+     - -0.157
+     - -0.22
+     - -0.0873
      - expb_pow
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1689,10 +1691,10 @@ Head-to-head against the others
      - 443
      - expb_pow
      - gsm
-     - 3.28e+03
-     - 0.0592
-     - 0.0294
-     - 0.0949
+     - 3.29e+03
+     - 0.0591
+     - 0.0293
+     - 0.0951
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1755,10 +1757,10 @@ Head-to-head against the others
      - 443
      - expb_pow
      - gsm
-     - 149
-     - -0.356
-     - -0.427
-     - -0.285
+     - 150
+     - -0.355
+     - -0.421
+     - -0.282
      - expb_pow
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1777,10 +1779,10 @@ Head-to-head against the others
      - 440
      - expb_pow
      - gsm
-     - 3.28e+03
-     - 0.0644
-     - 0.0568
-     - 0.0716
+     - 3.29e+03
+     - 0.0645
+     - 0.057
+     - 0.0725
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1843,10 +1845,10 @@ Head-to-head against the others
      - 440
      - expb_pow
      - gsm
-     - 149
-     - 0.135
-     - 0.0561
-     - 0.219
+     - 150
+     - 0.138
+     - 0.0591
+     - 0.224
      - gsm
    * - multi_L23_PANGAEA_v2
      - L23
@@ -1865,10 +1867,10 @@ Head-to-head against the others
      - 443
      - expb_pow
      - gsm
-     - 3.28e+03
-     - 0.0797
-     - 0.0721
-     - 0.0875
+     - 3.29e+03
+     - 0.0798
+     - 0.0722
+     - 0.0868
      - indistinguishable
    * - multi_L23_PANGAEA_v2
      - L23

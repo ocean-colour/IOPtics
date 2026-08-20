@@ -1,20 +1,20 @@
-# Full-L23 MCMC sweep — PREPARED, NOT RUN. Intended for JXP's workstation.
+# Full-L23 MCMC sweep — run on JXP's workstation (Stage 7 Task 13).
 #
 # Purpose: put the site's chi-squared-vs-MCMC comparison and its interval-calibration
-# claim on a real footing. Today both rest on **8** chains from `run_test20.yaml`, so
-# `coverage_n` is 8 and the striking contrast (chi-squared covers 0.42 of truth at
-# a(440) against a nominal 0.68, while MCMC covers 0.875) is suggestive, not solid.
+# claim on a real footing. Before this sweep both rested on **8** chains from
+# `run_test20.yaml`, so `coverage_n` was 8 and the striking contrast (chi-squared
+# covers 0.42 of truth at a(440) against a nominal 0.68, while MCMC covers 0.875)
+# was suggestive, not solid.
 #
-# READ THE RESOURCE NOTES IN THE STAGE-7 PROMPT DOC (Task 13) BEFORE LAUNCHING.
-# Measured on this laptop, per MCMC fit at the default 40 000 steps / 16 walkers:
-#
-#   time    ~140 s, and `run._mcmc_subset` is deliberately SERIAL
-#           -> 3320 spectra = ~129 hours (~5.4 days) as the code stands
-#   chains  12.2 MB each, stored unthinned and including burn-in
-#           -> 3320 spectra = ~40 GB
-#
-# Neither number is a reason not to do it, but both are reasons not to launch it
-# unchanged. Task 13 lists the two changes that make it a ~overnight, ~2 GB job.
+# The two cost problems the stage doc measured (~5.4 days serial, ~40 GB of raw
+# chains) were fixed before launch, per Task 13:
+#   (a) `run._mcmc_subset` pools over `n_cores`, with the RNG seeded per record
+#       (not per process) so the chains stay reproducible;
+#   (b) chains are persisted burned + thinned (`io.CHAIN_THIN = 20`, trim recorded
+#       in the NPZ) — ~0.63 MB each instead of 12.2 MB.
+# Measured on the workstation (24 cores): ~68 s per fit idle, ~141 s effective
+# under a loaded 20-worker pool -> ~6.5 h at n_cores=20, ~2.1 GB of chains.
+# Launch via `runs/full_l23_mcmc.src`.
 sweep_id: expb_giop_L23_mcmc_full
 datasets: [L23]
 noise_model: pace              # L23's native model (the smoke uses it too)

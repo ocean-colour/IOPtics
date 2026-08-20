@@ -13,10 +13,11 @@ parts (the sweep / MCMC) need not be repeated to regenerate a report:
 
 Run the stages in order (``1`` then ``2`` then ``3``); ``0`` is a no-op.
 
-Stage 1 accepts run knobs: ``n_cores`` (pool the chi^2 population; the MCMC
-subset is serial regardless), ``strict`` (``False`` = robust — failed fits
-become ``status='fit_failed'`` rows instead of aborting the sweep), and
-``obs_ids`` (restrict to a subset, e.g. a smoke run).
+Stage 1 accepts run knobs: ``n_cores`` (pools the chi^2 population **and**,
+since Stage 7 Task 13, the MCMC subset — chains stay reproducible because the
+RNG is seeded per record, not per process), ``strict`` (``False`` = robust —
+failed fits become ``status='fit_failed'`` rows instead of aborting the
+sweep), and ``obs_ids`` (restrict to a subset, e.g. a smoke run).
 
 The single ``run_v1.yaml`` beside this file is the source of truth (sweep id,
 datasets, algorithms, noise model, fit method, MCMC subset). Paths derive from
@@ -37,9 +38,9 @@ CONFIG = os.path.join(HERE, 'run_v1.yaml')
 CONFIG_TEST20 = os.path.join(HERE, 'run_test20.yaml')
 
 #: The full-L23 MCMC variant (``run_l23_mcmc_full.yaml``), selected with
-#: ``--config l23_mcmc_full``. **Prepared, not run** — see Stage 7 Task 13 for the
-#: measured cost (~5.4 days serial, ~40 GB of chains as the code stands) and the two
-#: changes that make it an overnight job.
+#: ``--config l23_mcmc_full`` and launched via ``runs/full_l23_mcmc.src``. The
+#: two cost fixes that made it runnable (pooled MCMC subset with per-record
+#: seeding; burned + thinned chain persistence) are Stage 7 Task 13.
 CONFIG_L23_MCMC = os.path.join(HERE, 'run_l23_mcmc_full.yaml')
 
 CONFIGS = {'v1': CONFIG, 'test20': CONFIG_TEST20,
@@ -60,6 +61,10 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name='v1'):
 
     elif flg == 3:
         from ioptics import report
+        # exemplars first: the cross-algorithm page links this one, and only
+        # links it when the file already exists (a dangling :doc: fails -W).
+        # For the MCMC sweeps this is also what renders the corner plots.
+        report.standard.build_exemplars(cfg.sweep_id)
         # standard report page (figures + tables + bokeh, provenance-stamped)
         report.standard.build(cfg.sweep_id, kind='cross_algorithm')
         # fold this sweep into the cross-sweep leaderboard, then rebuild the
@@ -76,7 +81,7 @@ def _cli(argv=None):
     p.add_argument('flg', nargs='?', type=int, default=0,
                    help='stage: 1 run, 2 metrics, 3 report (0 = no-op)')
     p.add_argument('--n-cores', type=int, default=1,
-                   help='parallel workers for prep + chi^2 (stage 1)')
+                   help='parallel workers for prep + chi^2 + MCMC (stage 1)')
     p.add_argument('--strict', default='true',
                    help='true = fail-fast; false = robust fit_failed rows (stage 1)')
     p.add_argument('--config', default='v1', choices=sorted(CONFIGS),

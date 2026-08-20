@@ -549,46 +549,166 @@ def _tag_pairs(results, records, sweep_id, algorithm):
     return pairs
 
 
+#: Checkpoint cadence for the MCMC pass: ``run_sweep`` rewrites the results
+#: tables after every this-many MCMC fits, so an interrupted multi-hour pass
+#: keeps everything completed so far (the chains are already on disk — this
+#: keeps the rows that reference them). ~200 fits ≈ 20-40 min of pooled work
+#: between checkpoints at full-L23 scale, against a few seconds per rewrite.
+MCMC_CHECKPOINT_EVERY = 200
+
+
+def _record_seed(seed, algorithm, record):
+    """Deterministic per-record seed for the legacy global ``np.random``.
+
+    emcee 3 snapshots the global ``np.random`` state into the sampler at
+    construction, and BING's walker init draws from the same global stream —
+    so seeding it *per record* (from the sweep seed, the algorithm, and the
+    record's identity, never from the worker process) makes each chain
+    reproducible regardless of how records are distributed over a process
+    pool, and identical between a serial and a pooled run. The algorithm is
+    part of the key so two MCMC algorithms in one sweep do not share a
+    walker-init stream for the same record. CRC32 rather than ``hash()``
+    because the latter is salted per interpreter.
+    """
+    import zlib
+    key = f'{seed}|{algorithm}|{record.dataset}|{record.obs_id}'.encode()
+    return zlib.crc32(key)          # 0..2**32-1: valid for np.random.seed
+
+
+def _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed):
+    """MCMC-fit one record and persist its chain; the pool worker.
+
+    Top-level (picklable) so :func:`_mcmc_subset` can run it under a
+    ``ProcessPoolExecutor``. Python 3.14's default start method on Linux is
+    ``forkserver``, so callers must be import-safe (guard scripts with
+    ``if __name__ == '__main__'``). Seeds the global RNG per record
+    (:func:`_record_seed`, restored afterwards so serial callers are not
+    left on a fit's stream), fits, evaluates, and saves the chain **from
+    inside the worker** — burned per :func:`ioptics.evaluate.chain_burn` and
+    thinned by :data:`ioptics.io.CHAIN_THIN` — so the raw 40 000-step chain
+    never crosses the pool.
+
+    Console handling: emcee's per-fit output (two tqdm bars + prints per
+    record) is redirected to ``/dev/null`` — interleaved across a pool it is
+    unreadable, and at full-L23 scale it is ~1 GB of log. Warnings are
+    **not** lost to that redirect: they are captured and summarized to one
+    ``[mcmc warn]`` line per fit, because on an unattended multi-hour robust
+    run a numerical warning (overflow in a model power law, NaN percentiles)
+    is the only early sign of a degenerate fit.
+
+    A failure while *persisting* the chain is a storage problem, not a
+    science result: under ``strict=False`` the evaluated fit is kept with
+    ``chain_file=None`` rather than demoted to ``fit_failed``.
+    """
+    import contextlib
+    import os
+    import warnings as _warnings
+    from collections import Counter
+
+    from ioptics import evaluate, io
+
+    declined = _prefit_decline(spec, record, 'mcmc')
+    if declined is not None:
+        declined.provenance_id = pid
+        return declined
+    rng_state = np.random.get_state()
+    np.random.seed(_record_seed(seed, spec.name, record))
+    res, chains = None, None
+    caught = []
+    try:
+        with _warnings.catch_warnings(record=True) as caught:
+            _warnings.simplefilter('always')
+            with open(os.devnull, 'w') as devnull, \
+                    contextlib.redirect_stdout(devnull), \
+                    contextlib.redirect_stderr(devnull):
+                models, rt_dict, chains = fit_mcmc(spec, record)
+            res = evaluate.from_chains(spec, record, models, rt_dict, chains,
+                                       perc=perc)
+    except UnderdeterminedFitError:
+        # a chosen status in BOTH strict modes, like run_algorithm
+        res = _failed_result(spec, record, 'mcmc')
+    except Exception:
+        if strict:
+            raise
+        res = _failed_result(spec, record, 'mcmc')
+    finally:
+        np.random.set_state(rng_state)
+
+    if chains is not None and res is not None and res.components:
+        try:
+            res.chain_file = str(io.save_chain(
+                sweep_id, spec.name, record, chains, root=root,
+                pnames=list(res.params),
+                burn=evaluate.chain_burn(spec, chains), thin=io.CHAIN_THIN,
+                nburn_sampler=spec.mcmc.nburn))
+        except Exception:
+            if strict:
+                raise
+            print(f'[mcmc warn] {record.dataset}:{record.obs_id} chain save '
+                  f'failed; fit kept without a chain file', flush=True)
+    if caught:
+        top = Counter(f'{w.category.__name__}: {w.message}'
+                      for w in caught).most_common(3)
+        gist = '; '.join(f'{msg} (x{n})' for msg, n in top)
+        print(f'[mcmc warn] {record.dataset}:{record.obs_id} '
+              f'{len(caught)} warnings: {gist}', flush=True)
+    res.provenance_id = pid
+    return res
+
+
 def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
-                 perc=((16, 84), (2.5, 97.5))):
-    """MCMC-fit a subset serially, **saving each posterior chain** to the
-    sweep's ``chains/`` dir and stamping the result's ``chain_file`` +
+                 perc=((16, 84), (2.5, 97.5)), n_cores=1, seed=None,
+                 progress_from=0, progress_total=None):
+    """MCMC-fit a subset, **saving each posterior chain** to the sweep's
+    ``chains/`` dir and stamping the result's ``chain_file`` +
     ``provenance_id``. Returns ``[(result, record), ...]``.
 
-    Serial (not pooled): the subset is small and the raw chains are large, so
-    persisting them here avoids shipping chains back across a process pool.
+    Pooled over ``n_cores`` (Stage 7, Task 13). This was deliberately serial
+    when the subset was small ("the subset is small and the raw chains are
+    large"); at the full-L23 scale of 3 320 records × ~140 s that premise
+    fails (~5.4 days serial). Each worker persists its own chain — burned +
+    thinned, see :func:`_mcmc_one` — so nothing large returns across the
+    pool, and the RNG is seeded per **record**, not per process
+    (:func:`_record_seed`), so the chains do not depend on the pool layout.
 
     Applies the same pre-fit decisions as :func:`run_algorithm`, in both
     strict modes: a red-peaked record is declined ``out_of_scope`` (unless
     ``spec.fits_turbid``) and an underdetermined one becomes ``fit_failed``
     — the MCMC subset must agree with its own sweep's χ² pass on which
     records are fit at all (PR #11 review finding).
-    """
-    from ioptics import evaluate, io, provenance
 
+    ``progress_from``/``progress_total`` only relabel the per-fit progress
+    lines, for callers (``run_sweep``) that feed the subset in checkpointed
+    chunks but want one running count.
+    """
+    from ioptics import provenance
+
+    records = list(records)
     pid = provenance.provenance_id(sweep_id, spec.name)
+    n = len(records)
+    total = progress_total if progress_total is not None else n
+
+    def _progress(i, record, res):
+        print(f'[mcmc {progress_from + i + 1}/{total}] '
+              f'{record.dataset}:{record.obs_id} {res.status}', flush=True)
+
+    if n_cores and n_cores > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        from functools import partial
+        fn = partial(_mcmc_one, spec=spec, sweep_id=sweep_id, pid=pid,
+                     root=root, strict=strict, perc=perc, seed=seed)
+        pairs = []
+        with ProcessPoolExecutor(max_workers=n_cores) as ex:
+            for i, (res, record) in enumerate(zip(ex.map(fn, records),
+                                                  records)):
+                _progress(i, record, res)
+                pairs.append((res, record))
+        return pairs
+
     pairs = []
-    for record in records:
-        declined = _prefit_decline(spec, record, 'mcmc')
-        if declined is not None:
-            declined.provenance_id = pid
-            pairs.append((declined, record))
-            continue
-        try:
-            models, rt_dict, chains = fit_mcmc(spec, record)
-            res = evaluate.from_chains(spec, record, models, rt_dict, chains,
-                                       perc=perc)
-            res.chain_file = str(io.save_chain(sweep_id, spec.name, record,
-                                               chains, root=root,
-                                               pnames=list(res.params)))
-        except UnderdeterminedFitError:
-            # a chosen status in BOTH strict modes, like run_algorithm
-            res = _failed_result(spec, record, 'mcmc')
-        except Exception:
-            if strict:
-                raise
-            res = _failed_result(spec, record, 'mcmc')
-        res.provenance_id = pid
+    for i, record in enumerate(records):
+        res = _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed)
+        _progress(i, record, res)
         pairs.append((res, record))
     return pairs
 
@@ -663,21 +783,44 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
              for ac in cfg.algorithms]
 
     pairs = []
+    any_mcmc = False
     for ac, spec in zip(cfg.algorithms, specs):
         # χ² over all records (the sweep's fast first pass; every algorithm).
         chisq = run_batch(spec, records, fit_method='chisq', n_cores=n_cores,
                           strict=strict)
         pairs.extend(_tag_pairs(chisq, records, cfg.sweep_id, spec.name))
+        # Checkpoint: a multi-hour sweep must not hold hours of results only
+        # in memory — a worker crash late in the MCMC pass used to discard
+        # the completed χ² pass and orphan every chain already on disk
+        # (Task-13 review finding). ``write_results`` rewrites the tables
+        # whole, so each checkpoint leaves a consistent pair on disk.
+        io.write_results(cfg.sweep_id, pairs, root=out_root)
         # MCMC over the subset — only for algorithms that opt in (effective
         # fit_method == 'mcmc'); not every method uses MCMC.
         uses_mcmc = (ac.fit_method or cfg.fit_method) == 'mcmc'
         if uses_mcmc and cfg.mcmc_subset:
+            any_mcmc = True
             subset = records[:int(cfg.mcmc_subset)]
-            pairs.extend(_mcmc_subset(spec, subset, cfg.sweep_id,
-                                      root=out_root, strict=strict))
+            for lo in range(0, len(subset), MCMC_CHECKPOINT_EVERY):
+                chunk = subset[lo:lo + MCMC_CHECKPOINT_EVERY]
+                pairs.extend(_mcmc_subset(spec, chunk, cfg.sweep_id,
+                                          root=out_root, strict=strict,
+                                          n_cores=n_cores, seed=cfg.seed,
+                                          progress_from=lo,
+                                          progress_total=len(subset)))
+                io.write_results(cfg.sweep_id, pairs, root=out_root)
 
     paths = io.write_results(cfg.sweep_id, pairs, root=out_root)
     prov = provenance.build(cfg.sweep_id, cfg, specs, datasets=datasets_info)
+    if any_mcmc:
+        # The chain-persistence policy is sweep-level provenance: it changes
+        # what is on disk, not what the fit did, so it is recorded here and
+        # deliberately kept out of the per-algorithm digest.
+        prov['chains'] = {
+            'thin': int(io.CHAIN_THIN),
+            'burn': 'spec.mcmc.nburn, capped at half the chain '
+                    '(evaluate.chain_burn)',
+        }
     ppath = provenance.write(cfg.sweep_id, prov, root=out_root)
 
     return {'sweep_id': cfg.sweep_id, 'n_results': len(pairs),

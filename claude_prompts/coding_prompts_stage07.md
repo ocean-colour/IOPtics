@@ -400,6 +400,32 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
   > **Done in Task 2** — `figures.ratio_hist` added and a "Ratio distribution —
   > <comp>(<ref>)" section now follows each scatter.
 
+**New after Task 13:**
+
+- **Should the posterior percentiles be computed from a thinned chain?** The
+  Task-13 review's biggest finding: `evaluate._assemble` forward-models **all
+  624 000** post-burn samples per MCMC fit — measured at 50–90 s of the ~140 s
+  per-fit cost and a 3.8 GB transient per worker — while a `CHAIN_THIN`-subsampled
+  posterior reproduces the `a(440)` percentiles to the **4th significant figure**
+  (med 0.0177563 vs 0.0177569; 68% bounds shift by 3e-5 to 4e-4 relative, below the
+  estimate's own Monte Carlo error). Thinning before `_assemble` would cut a full-L23
+  sweep from ~6.5 h to ~4 h, drop the memory spike to ~0.45 GB, and make the persisted
+  chain *exactly* the posterior the percentiles used (which the docstrings can then
+  claim without qualification). But it moves every published MCMC number at the 1e-4
+  level, so it is your call, not mine. **Left unchanged for the Task-13 run** — the
+  full sweep ran with full-posterior percentiles.
+
+- **Where does the canonical runs tree live?** This workstation's
+  `$OS_COLOR/IOPtics/runs/` has `multi_L23_PANGAEA_v2` and the PANGAEA-investigation
+  sweeps but **not** `gloria_turbid_v3` or `expb_giop_L23_test20` (laptop sweeps), and
+  no `leaderboard.parquet` at all — so the Task-13 stage-3 re-fold rebuilds the
+  landing page from the sweeps present *here*, dropping GLORIA's and the smoke's cards
+  and board rows from the committed page (their report pages survive via the ``*/*``
+  glob toctree, and `update()` is per-sweep so re-folding them later restores the
+  rows). Options: sync those two sweeps' artifacts from the laptop and re-fold;
+  re-run them here (GLORIA is minutes, the smoke ~20 minutes); or accept a landing
+  that reflects only this machine until the trees are consolidated. Which do you want?
+
 **New after Task 11:**
 
 - **Is 3 896 the bound you meant, or 1 593?** I could not reproduce the prompt's
@@ -661,6 +687,159 @@ to Q1-Q12 and the S1-S13 proposals: `claude_prompts/improve_reporting.md`.
 >A. Run the bounded `multi_v2` here on the laptop
 
 ## Logs
+
+### 2026-08-19 (Stage 7, Task 13: full-L23 MCMC sweep — run on the workstation)
+
+**Both cost fixes are in, reviewed, and the full sweep was launched here** (this
+session runs on the workstation, so "prepared here, to be run on JXP's workstation"
+collapsed into one step). Run results are appended at the bottom of this entry.
+
+**(a) The MCMC subset is pooled.** `run._mcmc_subset(n_cores=)` runs a top-level
+worker (`_mcmc_one`) under a `ProcessPoolExecutor`; `run_sweep` threads its
+`n_cores` through. The care the prompt asked for is exactly where the work went:
+
+- **Chains are reproducible regardless of pool layout.** emcee 3.1.6 snapshots the
+  **global** `np.random` state into the sampler at construction, and BING's
+  `init_walkers` draws from the same global stream — so `_record_seed` seeds it per
+  record: `crc32(f'{seed}|{algorithm}|{dataset}|{obs_id}')` (CRC32 because `hash()`
+  is salted per interpreter; the algorithm is in the key so two MCMC algorithms in
+  one sweep don't share a walker-init stream). A new test proves a 2-worker pool
+  **and** a reversed visit order both write chains `np.array_equal` to the serial
+  run's, and that the evaluated components match too.
+- **Each worker persists its own chain** — the raw `(40000, 16, 5)` array never
+  crosses the pool; only the ~19 kB evaluated result returns.
+- **Python 3.14's Linux default start method is `forkserver`**, not fork — workers
+  are fresh interpreters, so everything crossing the pool must pickle (verified:
+  `AlgorithmSpec` 549 B, `PreparedRecord` 8.1 kB) and callers must be import-safe
+  (`build_v1.py` has the `__main__` guard).
+
+**(b) Chains are persisted burned + thinned, with the trim recorded.** A discovery
+first: **the prompt's "chains are persisted with burn-in" premise was wrong** —
+BING's `run_emcee` runs `nburn` and `sampler.reset()`s it away *before* the 40 000
+production steps, so the 12.2 MB NPZ was production-only and the ~40 GB problem was
+thinning alone. What ships: `io.save_chain(burn=, thin=)` persists
+`chains[burn::thin]` with `burn` from a new shared `evaluate.chain_burn` (the same
+second discard `from_chains` applies before the percentiles — factored so the two
+cannot drift) and `thin=io.CHAIN_THIN=20`. The NPZ records the sampler's actual
+timeline — `nsteps_production`, `nburn_sampler` (the burn-in `run_emcee` already
+discarded), `nburn_discarded`, `thin`; persisted `chains[i]` is sampler step
+`nburn_sampler + nburn_discarded + i*thin` — so a thinned chain cannot be misread
+as a short one *or* the two burn-ins conflated. 0.63 MB per chain, measured.
+
+**Measured cost on this workstation (24 cores).** One full-scale probe fit: 67.7 s
+idle. Under a loaded 20-worker pool the effective rate is ~141 s of single-core
+work per fit (8.5 fits/min — memory-bandwidth bound, and ~50 s of it is
+`evaluate._assemble` pushing all 624 000 post-burn samples through the forward
+model; see Q&A). So stage 1 is ~6.5 h at `n_cores=20`, and the chains total
+~2.1 GB. Launch script: `runs/full_l23_mcmc.src` (modeled on
+`first_full_run.src`, with this machine's paths).
+
+**An Opus subagent ran the adversarial review (per your instruction) — 14
+findings, 11 acted on.** The ones that changed behavior:
+
+1. **Warnings were being silenced with the tqdm spam** (MAJOR). Muting emcee's
+   per-fit console noise (two tqdm bars × 3 320 fits ≈ 1 GB of log) also discarded
+   the numerical warnings — 807 in the χ² pass vs 0 in the MCMC pass of the first
+   launch, including `overflow encountered in power` and NaN-percentile warnings
+   that are the only early sign of a degenerate fit on an unattended robust run.
+   Now `_mcmc_one` captures warnings (`warnings.catch_warnings(record=True)`) and
+   prints one `[mcmc warn]` summary line per affected fit.
+2. **A mid-run abort discarded everything** (the pooled pass made the exposure
+   6.5 h long): `run_sweep` held all results in memory until the end, so a worker
+   crash at fit 3 000 lost the completed χ² pass and orphaned every chain already
+   on disk. Now it checkpoints — `write_results` after each algorithm's χ² pass and
+   after every `MCMC_CHECKPOINT_EVERY = 200` MCMC fits (progress numbering stays
+   global via `progress_from/total`).
+3. **`chain_path` now carries the dataset** (`giop_L23_7.npz`): `obs_id` alone does
+   not identify an observation (ids are reused across datasets), and a pooled
+   mixed-dataset subset would have raced two records onto one file. Old
+   dataset-less NPZs still load; `chain_file` is stored as a path so nothing
+   re-derives names.
+4. **A chain-save I/O failure no longer demotes a converged fit to `fit_failed`**
+   under `strict=False` — the persistence `try` is separate; the fit is kept with
+   `chain_file=None` and a warning line.
+5. **The algorithm joined the seed key** (see (a)); **the NPZ metadata was renamed**
+   from the review's misreadable `nsteps_total` to the timeline above; **the
+   chain-persistence policy is recorded in `provenance.yaml`** (a sweep-level
+   `chains: {thin, burn}` block — storage policy, so deliberately *outside* the
+   per-algorithm digest); **`_mcmc_one` restores the global RNG state** so serial
+   callers aren't left on a fit's stream; and the `chain_burn` docstring no longer
+   overclaims ("cannot disagree" now scoped to the burn boundary — the persisted
+   chain is additionally thinned).
+6. Test hygiene: the RNG-touching test saves/restores global state; the
+   equivalence test gained the reversed-order serial check (the cheap guard against
+   "seed once per process and let the stream advance", which a 2-worker pool can
+   miss); a pool test covers the declined (`out_of_scope`) path with no data needed.
+
+**Not acted on, deliberately:** the review's biggest finding — that the
+*percentile computation itself* should use a thinned posterior (50–90 s and a
+3.8 GB transient per fit for a 4th-significant-figure change) — is a
+science-visible change and is **posed in the Q&A, not self-answered**; the sweep
+ran with full-posterior percentiles. Its NIT of a separate `mcmc_cores` knob
+(χ² workers are ~MB, MCMC workers spike to ~3.8 GB) is noted here and skipped —
+one knob is fine on this box. The review also verified the things that had to be
+true: pickling end to end, no other RNG consumer between seed and sampler, no
+consumer reading `chains.shape[0]` as `nsteps`, `BrokenProcessPool` failing loudly
+in both strict modes, and old NPZs loading.
+
+**The first launch was killed ~200 fits in and restarted** once the review landed:
+the seed scheme (algorithm in the key) and the NPZ metadata changed, and a sweep
+must not mix two conventions. The partial sweep dir was wiped first.
+
+**Verification (post-fixes, pre-run):** **412 passed / 42 skipped** CI-equivalent,
+**454 passed** with `$OS_COLOR`, fresh `sphinx -W` exit 0. New
+`ioptics/tests/test_mcmc_scale.py` (7 tests) plus the `test_io.py` round-trip
+updated for the dataset-carrying chain filename.
+
+**⚠ Known consequence of running stage 3 on this machine, posed in Q&A:** this
+workstation's runs tree has no `gloria_turbid_v3` / `expb_giop_L23_test20`
+artifacts and no `leaderboard.parquet`, so the re-folded landing page drops their
+cards and rows (the pages themselves survive the ``*/*`` glob toctree, and
+`leaderboard.update()` is per-sweep, so folding them later restores the rows).
+
+**Run results (stages 1→3 completed 2026-08-19 19:06).** Stage 1 took **8 h 28 m**
+(3 320 MCMC fits at ~6.5 fits/min effective — the ~141 s/fit estimate was measured
+on an otherwise-idle pool; the test suites and review ran beside it); stage 2 66 s;
+stage 3 14 s. **3 304 `ok` + 16 `out_of_scope` (L23's red-peaked spectra, correctly
+declined) + 0 `fit_failed`** on the MCMC pass; `giop`'s χ² pass had 33 `fit_failed`.
+33 fits (~1%) printed `[mcmc warn]` lines, all transient `invalid value in power`
+from proposals outside the model's domain. **3 304 chains, 2.0 GB on disk** — the
+~40 GB problem is confirmed solved — and `provenance.yaml` carries the `chains:`
+block, `maxfev`, and the `mcmc` settings at schema 3.
+
+**The calibration story changes with `coverage_n` in the thousands — which was the
+point of running it.** At `a(440)` (nominal 0.68):
+
+| | mae | coverage68 | coverage_n |
+|---|---|---|---|
+| `expb_pow` χ² | 0.099 | **0.455** | 3 186 |
+| `expb_pow` MCMC | 0.068 | **0.691** | 3 304 |
+| `giop` χ² | 0.096 | 0.215 | 3 266 |
+
+χ²'s over-confidence is confirmed (0.455 vs the smoke's 0.42), but the smoke's
+"MCMC is conservative" (0.875 on 8 chains) is **not** what the full data says: MCMC
+at `a(440)` is essentially **calibrated** (0.691), and more accurate (MAE 0.068 vs
+0.099). The contrast is component-dependent: for the decomposed components the
+positions reverse — χ² **over-covers** (`a_dg` 0.94, `a_ph` 0.97, `bb` 0.81) while
+MCMC is over-confident there (0.63 / 0.58 / 0.60) — and MCMC is more accurate for
+every component except `a_ph` (1.25 vs 1.07). The published χ²-vs-MCMC table and
+the calibration verdicts now rest on 3 186–3 304 trials instead of 8.
+
+**One gap found and fixed at stage 3:** `build_v1.py` never called
+`build_exemplars`, so the sweep with 3 304 chains would have published no exemplar
+page and **no corner plots** (`build_v3.py` had the call; v1 predates the page).
+Stage 3 now builds exemplars first (the cross-algorithm page links the file only
+when it exists), and the rebuilt page carries the 10 exemplars plus 8 corner plots
+(the `MAX_CORNERS` budget). The stage-dispatch test pins the new call order.
+
+**The landing re-fold behaved exactly as flagged above:** the board now folds
+`expb_giop_L23_mcmc_full` (80 χ² + 40 MCMC rows) beside `multi_L23_PANGAEA_v2`
+(268), and the GLORIA/test20 cards dropped because their artifacts are not on this
+machine — see the Q&A question on consolidating the runs trees before this diff is
+committed.
+
+**Final verification:** **412 passed / 42 skipped** CI-equivalent, **454 passed**
+with `$OS_COLOR`, fresh `sphinx -W` exit 0 on the tree carrying the new page.
 
 ### 2026-08-08 (Stage 7, Task 12: responding to the Task-11 Q&A)
 
