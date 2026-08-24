@@ -116,19 +116,36 @@ def test_register_turbid_is_idempotent(turbid_registered):
 # --------------------------------------------------------------------
 # Tier 1 — the maxfev field
 # --------------------------------------------------------------------
-def test_maxfev_defaults_to_none():
-    # Open-ocean algorithms must leave scipy's default budget alone
+def test_standard_seed_carries_the_default_budget():
+    # The registry seeds every open-ocean algorithm at DEFAULT_MAXFEV: at
+    # scipy's own default, 30% of expb_pow's PANGAEA rows exhausted the budget
+    # and were recorded as crashes (raised from None per JXP, 2026-08-10 —
+    # reports/pangaea_fits_report.md). The *spec factory* stays neutral:
+    # budgets are registry policy, not part of the algorithm definition.
     for name in ('expb_pow', 'giop', 'gsm'):
-        assert registry.get(name).maxfev is None
+        assert registry.get(name).maxfev == registry.DEFAULT_MAXFEV
     assert AlgorithmSpec.from_standard('expb_pow').maxfev is None
 
 
-def test_turbid_specs_raise_the_budget(turbid_registered):
-    # These models need it: at scipy's default they fail to converge on a
-    # substantial fraction of spectra.
+def test_turbid_specs_share_the_raised_budget(turbid_registered):
+    # These models need it even on clear water: at scipy's default they fail
+    # to converge on a substantial fraction of spectra. The budget now equals
+    # the standard seed's, so head-to-head contests measure the model, not
+    # the budget.
     for name in TURBID_NAMES:
         assert registry.get(name).maxfev == registry.TURBID_MAXFEV
+        assert registry.get(name).maxfev == registry.DEFAULT_MAXFEV
         assert registry.get(name).maxfev > 1000
+
+
+def test_turbid_specs_claim_turbid_scope(turbid_registered):
+    # Red-peaked water is these algorithms' purpose: run_algorithm's pre-fit
+    # out_of_scope guard must not decline it for them, while the open-ocean
+    # seed keeps fits_turbid=False and is declined.
+    for name in TURBID_NAMES:
+        assert registry.get(name).fits_turbid is True
+    for name in ('expb_pow', 'giop', 'gsm'):
+        assert registry.get(name).fits_turbid is False
 
 
 def test_maxfev_is_overridable():
@@ -166,7 +183,12 @@ def test_fit_chisq_forwards_maxfev(turbid_registered):
         assert seen['maxfev'] == registry.TURBID_MAXFEV
         seen.clear()
         run.fit_chisq(registry.get('expb_pow'), record)
-        assert seen['maxfev'] is None      # untouched for open ocean
+        assert seen['maxfev'] == registry.DEFAULT_MAXFEV   # the seeded budget
+        seen.clear()
+        import dataclasses
+        neutral = dataclasses.replace(registry.get('expb_pow'), maxfev=None)
+        run.fit_chisq(neutral, record)
+        assert seen['maxfev'] is None      # None still means scipy's default
     finally:
         chisq_fit.fit = original
 

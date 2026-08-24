@@ -31,6 +31,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ioptics import noise
+
 SPECTRAL_FILE = 'results_spectral.parquet'
 SCALAR_FILE = 'results_scalar.parquet'
 
@@ -64,12 +66,34 @@ def sweep_dir(sweep_id, *, root=None, create=False):
     return d
 
 
-def chain_path(sweep_id, algorithm, obs_id, *, root=None):
-    """Path to one MCMC chain NPZ: ``<sweep>/chains/<algorithm>_<obs_id>.npz``."""
-    return sweep_dir(sweep_id, root=root) / 'chains' / f'{algorithm}_{obs_id}.npz'
+def chain_path(sweep_id, algorithm, obs_id, *, dataset=None, root=None):
+    """Path to one MCMC chain NPZ.
+
+    ``<sweep>/chains/<algorithm>_<dataset>_<obs_id>.npz`` when ``dataset`` is
+    given — it must be, for any mixed-dataset subset: ``obs_id`` alone does
+    not identify an observation (the package's own convention reuses ids
+    across datasets), and with a pooled MCMC pass two same-id records would
+    otherwise race on one file. The dataset-less form is kept for reading
+    chains written before Stage 7 Task 13.
+    """
+    stem = (f'{algorithm}_{obs_id}' if dataset is None
+            else f'{algorithm}_{dataset}_{obs_id}')
+    return sweep_dir(sweep_id, root=root) / 'chains' / f'{stem}.npz'
 
 
-def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
+#: Persistence thinning stride for saved MCMC chains (see :func:`save_chain`).
+#: The pipeline consumes posterior *percentiles*, computed at fit time from the
+#: full in-memory chain; the persisted NPZ exists for corner plots and
+#: re-analysis, for which every 20th step of 16 walkers is ample (~1 950
+#: steps per walker at the default 40 000-step spec after its burn discard).
+#: At full-L23 scale the stride is what turns ~40 GB of chains into ~2 GB.
+#: The stride is recorded in the NPZ (``thin``, beside ``nsteps_total`` and
+#: ``nburn_discarded``), so a thinned chain cannot be mistaken for a short one.
+CHAIN_THIN = 20
+
+
+def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None,
+               burn=0, thin=1, nburn_sampler=None):
     """Save one MCMC posterior chain to its NPZ and return the path.
 
     Mirrors ``bing.fitting.l23.save_chains``: stores ``chains`` (shape
@@ -78,12 +102,38 @@ def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
     ``pnames`` (the fit parameter names, in chain-column order) is given they
     are stored too, so ``diagnostics.corner_data`` can label the corner axes.
     Written under the sweep's ``chains/`` dir (created if needed).
+
+    ``burn``/``thin`` control what is *persisted*, not what was sampled: the
+    first ``burn`` steps are discarded (capped at half the chain, matching
+    :func:`ioptics.evaluate.chain_burn`) and every ``thin``-th remaining step
+    is kept. The trim is recorded so a thinned chain cannot be mistaken for a
+    short run — and with names that describe the sampler's actual timeline
+    (the sampler *also* ran and discarded its own burn-in before the
+    production chain this function receives):
+
+    - ``nsteps_production`` — length of the untrimmed production chain;
+    - ``nburn_sampler`` — burn-in steps the sampler ran and reset away
+      *before* production (pass ``spec.mcmc.nburn``; omitted if ``None``);
+    - ``nburn_discarded`` — the second discard applied here, off the head of
+      the production chain;
+    - ``thin`` — the persistence stride,
+
+    so persisted ``chains[i]`` is sampler step
+    ``nburn_sampler + nburn_discarded + i*thin``. The defaults persist the
+    chain whole.
     """
     sweep_dir(sweep_id, root=root, create=True)
-    path = chain_path(sweep_id, algorithm, record.obs_id, root=root)
+    path = chain_path(sweep_id, algorithm, record.obs_id,
+                      dataset=record.dataset, root=root)
+    chains = np.asarray(chains)
+    nsteps_production = int(chains.shape[0])
+    burn = min(int(burn), max(nsteps_production // 2, 0))
+    thin = max(int(thin), 1)
+    meta = {} if nburn_sampler is None else {
+        'nburn_sampler': int(nburn_sampler)}
     np.savez(
         path,
-        chains=np.asarray(chains),
+        chains=chains[burn::thin],
         idx=record.obs_id,
         wave=np.asarray(record.wave, dtype=float),
         obs_Rrs=np.asarray(record.Rrs, dtype=float),
@@ -91,6 +141,10 @@ def save_chain(sweep_id, algorithm, record, chains, *, root=None, pnames=None):
         Chl=float(record.init.get('Chl', np.nan)),
         Y=float(record.init.get('Y', np.nan)),
         pnames=np.asarray([] if pnames is None else pnames, dtype=str),
+        nsteps_production=nsteps_production,
+        nburn_discarded=burn,
+        thin=thin,
+        **meta,
     )
     return path
 
@@ -162,6 +216,14 @@ def _scalar_value(record, key):
     return float(val) if isinstance(val, (int, float, np.floating)) else np.nan
 
 
+def _meta_str(record, key):
+    """A string-valued meta field of the record (None when absent/NaN)."""
+    val = getattr(record, 'meta', {}).get(key)
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return None
+    return str(val)
+
+
 def _scalar_row(result, record):
     """One tidy row for the scalar table."""
     def med_sig(key):
@@ -191,7 +253,16 @@ def _scalar_row(result, record):
         'algorithm': result.algorithm, 'fit_method': result.fit_method,
         'chi2': st.get('chi2', np.nan), 'chi2_nu': st.get('chi2_nu', np.nan),
         'AIC': st.get('AIC', np.nan), 'BIC': st.get('BIC', np.nan),
-        'n_bands': st.get('n_bands', 0), 'k': st.get('k', 0),
+        # The noise-model-free fit quality (median |model-obs|/obs over
+        # positive-Rrs bands). NaN on unfitted rows and on sweeps that
+        # predate the column (2026-08-12).
+        'rel_misfit': st.get('rel_misfit', np.nan),
+        # NaN, not 0, when a result carries no stats: a zero band count on a
+        # fit_failed row reads as a real (impossible) measurement and poisoned
+        # every reader that counted bands on exactly the rows worth diagnosing.
+        # (run._failed_result now populates n_bands/k, so this default is a
+        # last resort, and it must be visibly missing rather than silently 0.)
+        'n_bands': st.get('n_bands', np.nan), 'k': st.get('k', np.nan),
         'Chl': chl, 'sig_Chl': sig_chl,
         'a_cdom440': acdom, 'sig_a_cdom440': sig_acdom,
         'Sdg': sdg, 'sig_Sdg': sig_sdg,
@@ -203,6 +274,22 @@ def _scalar_row(result, record):
         'status': result.status,
         'chain_file': getattr(result, 'chain_file', None),  # null for χ² rows
         'provenance_id': result.provenance_id,
+        # The noise provenance of the *record this fit saw*, not the sweep-level
+        # request. ``attach_noise`` may floor or wholly impute the uncertainty, and
+        # the effective tag records which ('<model>+floor:X' / '+imputed:X'). It has
+        # to be on disk: χ²ᵥ is a statement about the assumed error as much as about
+        # the model, so "70 of these 100 fits were weighted by an invented
+        # uncertainty" is not an aside — and until now it survived only as a
+        # warning on stderr at prep time, recoverable from no artifact.
+        'noise_model': getattr(record, 'noise_model', None),
+        'noise_seed': getattr(record, 'noise_seed', None),
+        'noise_imputed': noise.is_imputed(getattr(record, 'noise_model', None)),
+        # Source provenance (PANGAEA: cruise + PI/instrument group) and the
+        # spectral-shape quality annotation — None/NaN for datasets that
+        # don't carry them. Added 2026-08-12 (Task-4 B1/B2, approved).
+        'subdataset': _meta_str(record, 'subdataset'),
+        'contributor': _meta_str(record, 'contributor'),
+        'qwip_score': getattr(record, 'qwip_score', np.nan),
         **extra,
     }
 

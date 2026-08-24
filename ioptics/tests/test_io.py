@@ -89,7 +89,10 @@ def test_chain_save_load_round_trip(tmp_path):
     chains = rng.normal(size=(50, 8, 3))          # (nsteps, nwalkers, nparam)
     record = _synthetic_record()
     path = io.save_chain('sweep_v1', 'giop', record, chains, root=tmp_path)
-    assert path == tmp_path / 'sweep_v1' / 'chains' / 'giop_7.npz'
+    # the filename carries the dataset (Stage 7 Task 13): obs_id alone does
+    # not identify an observation, and a pooled mixed-dataset MCMC subset
+    # must not race two same-id records onto one file
+    assert path == tmp_path / 'sweep_v1' / 'chains' / 'giop_L23_7.npz'
     assert path.is_file()
 
     loaded = io.load_chain(path)
@@ -117,11 +120,18 @@ def test_scalar_table_schema_and_truth(tmp_path):
     assert len(scalar) == 1
     row = scalar.iloc[0]
     for col in ('chi2', 'chi2_nu', 'AIC', 'BIC', 'n_bands', 'k',
+                'rel_misfit',                              # Task-4 A2
                 'Chl', 'sig_Chl', 'a_cdom440', 'sig_a_cdom440',
                 'Sdg', 'sig_Sdg', 'beta', 'sig_beta',
                 'Chl_truth', 'a_cdom440_truth', 'Sdg_truth', 'beta_truth',
-                'status', 'chain_file', 'provenance_id'):
+                'status', 'chain_file', 'provenance_id',
+                'subdataset', 'contributor', 'qwip_score'  # Task-4 B1/B2
+                ):
         assert col in scalar.columns
+    # a synthetic result predating the rel_misfit stat and a record with no
+    # source provenance: visibly missing, never fabricated
+    assert np.isnan(row['rel_misfit'])
+    assert row['subdataset'] is None and row['contributor'] is None
     assert row['k'] == 5
     assert row['a_cdom440'] == 0.06
     assert row['Sdg_truth'] == 0.017          # from record.truth['Sdg']

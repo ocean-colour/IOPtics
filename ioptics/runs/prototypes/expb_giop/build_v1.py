@@ -13,10 +13,11 @@ parts (the sweep / MCMC) need not be repeated to regenerate a report:
 
 Run the stages in order (``1`` then ``2`` then ``3``); ``0`` is a no-op.
 
-Stage 1 accepts run knobs: ``n_cores`` (pool the chi^2 population; the MCMC
-subset is serial regardless), ``strict`` (``False`` = robust — failed fits
-become ``status='fit_failed'`` rows instead of aborting the sweep), and
-``obs_ids`` (restrict to a subset, e.g. a smoke run).
+Stage 1 accepts run knobs: ``n_cores`` (pools the chi^2 population **and**,
+since Stage 7 Task 13, the MCMC subset — chains stay reproducible because the
+RNG is seeded per record, not per process), ``strict`` (``False`` = robust —
+failed fits become ``status='fit_failed'`` rows instead of aborting the
+sweep), and ``obs_ids`` (restrict to a subset, e.g. a smoke run).
 
 The single ``run_v1.yaml`` beside this file is the source of truth (sweep id,
 datasets, algorithms, noise model, fit method, MCMC subset). Paths derive from
@@ -30,10 +31,25 @@ from ioptics import config, run
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, 'run_v1.yaml')
 
+#: The 20-spectrum smoke variant (``run_test20.yaml``). Selected with
+#: ``--config test20``. It is the sweep behind the published
+#: ``reports/expb_giop_L23_test20/`` page, which had no committed config until
+#: Stage 7 Task 11 and so could not be regenerated when it went stale.
+CONFIG_TEST20 = os.path.join(HERE, 'run_test20.yaml')
 
-def main(flg, *, n_cores=1, strict=True, obs_ids=None):
+#: The full-L23 MCMC variant (``run_l23_mcmc_full.yaml``), selected with
+#: ``--config l23_mcmc_full`` and launched via ``runs/full_l23_mcmc.src``. The
+#: two cost fixes that made it runnable (pooled MCMC subset with per-record
+#: seeding; burned + thinned chain persistence) are Stage 7 Task 13.
+CONFIG_L23_MCMC = os.path.join(HERE, 'run_l23_mcmc_full.yaml')
+
+CONFIGS = {'v1': CONFIG, 'test20': CONFIG_TEST20,
+           'l23_mcmc_full': CONFIG_L23_MCMC}
+
+
+def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name='v1'):
     flg = int(flg)
-    cfg = config.load(CONFIG)
+    cfg = config.load(CONFIGS[config_name])
 
     if flg == 1:
         # prep + retrieve -> tables + provenance
@@ -45,13 +61,16 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None):
 
     elif flg == 3:
         from ioptics import report
+        # exemplars first: the cross-algorithm page links this one, and only
+        # links it when the file already exists (a dangling :doc: fails -W).
+        # For the MCMC sweeps this is also what renders the corner plots.
+        report.standard.build_exemplars(cfg.sweep_id)
         # standard report page (figures + tables + bokeh, provenance-stamped)
         report.standard.build(cfg.sweep_id, kind='cross_algorithm')
-        # fold this sweep into the cross-sweep leaderboard + refresh the landing
-        board = report.leaderboard.update()
-        idx = report.standard.DEFAULT_DOCS_SRC / 'reports' / 'index.rst'
-        report.rst.write_leaderboard_landing(
-            idx, report.leaderboard.render(board=board))
+        # fold this sweep into the cross-sweep leaderboard, then rebuild the
+        # landing page (headline board + sweep cards + interactive widget) and
+        # its full-grid drill-down.
+        report.standard.build_landing()
 
 
 def _cli(argv=None):
@@ -62,9 +81,11 @@ def _cli(argv=None):
     p.add_argument('flg', nargs='?', type=int, default=0,
                    help='stage: 1 run, 2 metrics, 3 report (0 = no-op)')
     p.add_argument('--n-cores', type=int, default=1,
-                   help='parallel workers for prep + chi^2 (stage 1)')
+                   help='parallel workers for prep + chi^2 + MCMC (stage 1)')
     p.add_argument('--strict', default='true',
                    help='true = fail-fast; false = robust fit_failed rows (stage 1)')
+    p.add_argument('--config', default='v1', choices=sorted(CONFIGS),
+                   help="which sweep config: 'v1' (full L23) or 'test20' (smoke)")
     p.add_argument('--obs-ids', default=None,
                    help="restrict prep to a range 'A:B' (stage 1; default all)")
     a = p.parse_args(argv)
@@ -74,7 +95,8 @@ def _cli(argv=None):
     if a.obs_ids:
         lo, hi = (int(x) for x in a.obs_ids.split(':'))
         obs_ids = range(lo, hi)
-    main(a.flg, n_cores=a.n_cores, strict=strict, obs_ids=obs_ids)
+    main(a.flg, n_cores=a.n_cores, strict=strict, obs_ids=obs_ids,
+         config_name=a.config)
 
 
 if __name__ == '__main__':

@@ -36,11 +36,15 @@ import numpy as np
 #:   acceptable: reduced chi-squared above :data:`CHI2NU_POOR_FIT`. The
 #:   parameters are recorded, so the row can be inspected, but it should
 #:   not be scored as a success.
-#: - ``'out_of_scope'`` -- a poor fit *explained by the regime*: the
-#:   spectrum sits outside what the model family is built for (see
-#:   :data:`RED_PEAK_NM`). Distinguishing this from ``'poor_fit'`` is the
-#:   difference between "this model did badly here" and "no algorithm in
-#:   this family should be expected to work here".
+#: - ``'out_of_scope'`` -- the spectrum sits outside what the model family
+#:   is built for (see :data:`RED_PEAK_NM`). Since 2026-08-10 this is
+#:   assigned **before** fitting: :func:`ioptics.run.run_algorithm` declines
+#:   a red-peaked record up front (unless the spec sets ``fits_turbid``), so
+#:   the row means "we declined to fit this". A force-fit that still went
+#:   poorly on a red-peaked spectrum earns the same label post-hoc.
+#:   Distinguishing this from ``'poor_fit'`` is the difference between
+#:   "this model did badly here" and "no algorithm in this family should be
+#:   expected to work here".
 #: - ``'fit_failed'`` -- no usable parameters (the optimiser raised, or
 #:   produced non-finite values).
 STATUSES = ('ok', 'poor_fit', 'out_of_scope', 'fit_failed')
@@ -112,6 +116,16 @@ class PreparedRecord:
     meta : dict, optional
         Free-form metadata (lat/lon/date/source/sensor; L23 ``X``/``Y``; water
         type / trophic bin). Defaults to an empty dict.
+    qwip_score : float, optional
+        Spectral-shape quality **annotation** (never an exclusion): the QWIP
+        score of Dierssen et al. (2022, doi:10.3389/frsen.2022.869611) —
+        measured NDI(492,665) minus the value the QWIP polynomial predicts
+        from the spectrum's Apparent Visible Wavelength. ``|score|`` ≲ 0.2 is the
+        paper's field-data screening threshold; large values flag suspect
+        spectral shapes (e.g. residual sky glint, optically shallow water).
+        NaN when the spectrum cannot support it (no coverage of 492/665 nm).
+        See :func:`ioptics.prep.qwip_score`; added 2026-08-12 (PANGAEA
+        investigation Task-4 B1, approved by JXP).
     """
 
     dataset:      str
@@ -126,6 +140,7 @@ class PreparedRecord:
     noise_model:  str
     noise_seed:   int | None
     meta:         dict = field(default_factory=dict)
+    qwip_score:   float = np.nan
 
 
 @dataclass

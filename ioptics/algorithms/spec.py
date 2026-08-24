@@ -51,6 +51,30 @@ class MCMCOptions:
     nMC:    int | None = None
 
 
+#: Spec fields a sweep config may override per algorithm.
+#:
+#: Deliberately a **whitelist**, so a typo is an error rather than a silently
+#: ignored request. Excluded and why:
+#:
+#: * ``name`` / ``label`` — they *identify* the algorithm; renaming it in a sweep
+#:   config would make two sweeps' rows uncomparable for no benefit.
+#: * ``noise_model`` — sweep-level, and :func:`ioptics.config.load` already rejects
+#:   it per algorithm ("compare two noise models with two separate sweeps").
+#: * ``fit_method`` — carried on :class:`~ioptics.config.AlgorithmConfig` itself,
+#:   since the runner needs it before the spec is resolved.
+#:
+#: ``anw_model``/``bbnw_model`` *are* overridable: swapping the model family is the
+#: main reason to override anything, and the digest records that it happened.
+OVERRIDABLE_FIELDS = frozenset({
+    'anw_model', 'bbnw_model', 'apriors', 'bpriors', 'othera_priors',
+    'rt', 'set_Sdg', 'sSdg', 'beta', 'mcmc', 'maxfev', 'fits_turbid',
+})
+
+#: Overridable fields that are themselves dataclasses, so a partial mapping merges
+#: into the existing options rather than replacing them wholesale.
+_NESTED_FIELDS = frozenset({'rt', 'mcmc'})
+
+
 @dataclass
 class AlgorithmSpec:
     """Declarative description of one retrieval algorithm.
@@ -79,18 +103,27 @@ class AlgorithmSpec:
         ``'chisq'`` (default) | ``'mcmc'``.
     mcmc : MCMCOptions
         MCMC settings.
-    noise_model : str
-        Provenance tag for the (sweep-level) noise model. The fit always uses
-        ``record.varRrs``; this field is descriptive only.
     maxfev : int or None
         Optimizer evaluation budget handed to ``bing.fitting.chisq_fit.fit``
-        for the ``'chisq'`` method. ``None`` (default) leaves scipy's own
+        for the ``'chisq'`` method. ``None`` leaves scipy's own
         default in place. It governs *whether* the fit converges, not how
         well the model can fit, and parameter-rich models need it -- the
         two-component turbid backscattering models fail to converge on a
         substantial fraction of spectra at the default budget. Ignored by
         the MCMC path, which seeds from :func:`ioptics.run.initial_guess`
-        rather than a least-squares pre-fit.
+        rather than a least-squares pre-fit. The registry seeds every
+        algorithm at :data:`ioptics.algorithms.registry.DEFAULT_MAXFEV`.
+    fits_turbid : bool
+        Whether red-peaked (turbid) spectra are **in scope** for this
+        algorithm. ``False`` (default, and the right value for the
+        open-ocean parameterisations): :func:`ioptics.run.run_algorithm`
+        declines a record whose observed Rrs peaks redward of
+        :data:`ioptics.records.RED_PEAK_NM` *before* fitting, returning an
+        ``out_of_scope`` result — "we declined to fit this" rather than "we
+        fitted it and it failed" (the PANGAEA investigation's Q&A decision,
+        2026-08-10). The turbid variants set ``True`` — fitting that water
+        is their purpose — and a diagnostic script can override it to
+        force-fit red-peaked spectra with an open-ocean model.
     """
 
     name:          str
@@ -106,8 +139,15 @@ class AlgorithmSpec:
     beta:          float | None = None
     fit_method:    str = 'chisq'
     mcmc:          MCMCOptions = field(default_factory=MCMCOptions)
-    noise_model:   str = 'pace'
+    # No ``noise_model`` here. It used to sit on the spec as a "descriptive only"
+    # tag defaulting to 'pace', which produced a three-way disagreement on the one
+    # real sweep: the algorithm blocks said ``pace``, the sweep config said
+    # ``insitu``, and the uncertainty actually attached was
+    # ``insitu+imputed:0.1``. Noise is a property of the *record*, applied
+    # sweep-wide by ``prep``, and is now persisted per record on
+    # ``results_scalar`` (``noise_model`` / ``noise_seed`` / ``noise_imputed``).
     maxfev:        int | None = None
+    fits_turbid:   bool = False
 
     # --- BING interop -------------------------------------------------
     def to_bing_p(self, **overrides):
@@ -179,6 +219,54 @@ class AlgorithmSpec:
             beta=p.beta,
             mcmc=mcmc,
         )
+
+    def with_overrides(self, overrides):
+        """A **copy** of this spec with ``overrides`` applied, or a clear error.
+
+        ``AlgorithmConfig.overrides`` was parsed and then read by nobody: a sweep
+        config could ask for ``maxfev: 40000`` or a different prior and the run would
+        silently use the registry default, so the provenance file and the fit
+        disagreed. This is the "apply" half of Stage 7 Task 9's *apply or reject* —
+        anything outside :data:`OVERRIDABLE_FIELDS` raises rather than being ignored.
+
+        ``rt`` and ``mcmc`` accept a **partial mapping**, merged into the existing
+        options (``{'mcmc': {'nsteps': 100}}`` leaves ``nburn`` alone). Overriding
+        anything here yields a genuinely different algorithm, which is why the
+        provenance digest is taken *after* this is applied — two sweeps that
+        overrode differently must not pool as the same algorithm.
+        """
+        import copy
+
+        if not overrides:
+            return self
+        unknown = [k for k in overrides if k not in OVERRIDABLE_FIELDS]
+        if unknown:
+            raise ValueError(
+                f"{self.name}: cannot override {sorted(unknown)} — overridable "
+                f"fields are {sorted(OVERRIDABLE_FIELDS)}. 'name'/'label' identify "
+                f"the algorithm, 'noise_model' is sweep-level, and anything else is "
+                f"not a field of AlgorithmSpec (check for a typo: an ignored "
+                f"override is how a sweep silently runs a different configuration "
+                f"from the one its config asked for)")
+        out = copy.deepcopy(self)
+        for key, value in overrides.items():
+            current = getattr(out, key)
+            if key in _NESTED_FIELDS:
+                if not isinstance(value, dict):
+                    raise ValueError(
+                        f"{self.name}: '{key}' override must be a mapping of "
+                        f"{key} options, got {type(value).__name__}")
+                allowed = set(current.__dataclass_fields__)
+                bad = [k for k in value if k not in allowed]
+                if bad:
+                    raise ValueError(
+                        f"{self.name}: unknown {key} option(s) {sorted(bad)}; "
+                        f"allowed: {sorted(allowed)}")
+                for k, v in value.items():
+                    setattr(current, k, v)
+            else:
+                setattr(out, key, value)
+        return out
 
     def build_models(self, wave):
         """Build the ``[a_nw, bb_nw]`` BING model list on ``wave``.
