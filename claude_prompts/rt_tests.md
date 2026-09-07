@@ -572,6 +572,38 @@ RoB `cdom-rt`; two sweeps; PACE at 400–700.
     this as a stated limitation in the report text as well?
 >A. I confirm and also note it in the report text.
 
+---
+
+### Round 5 (2026-09-06) — after Execution task 6 (BING CDOM-fl path)
+
+Task 6 is implemented and green (see Log). Four maintainer decisions surfaced
+during implementation:
+
+38. **L23 truth vs proxy asymmetry.** `prep_one_l23` now generates the
+    CDOM-fl synthetic observation from L23's *true* `a_g` (following the
+    existing `a_ph=odict['aph']` pattern), while the retrieval uses the
+    `0.8 × a_dg` proxy. Honest setup — but the sweeps will fold "0.8 is
+    wrong for this pixel" into the retrieval error. Keep as-is, or switch
+    the truth line to `cdom_fraction × a_dg` to isolate the inversion from
+    the proxy error (one-line change)? Decide before RT-A runs.
+
+39. **Pre-existing pin failure.** `test_fit_Bp_false_matches_provisional_pin`
+    fails by 1 ULP (1.8e-16 relative, 1 of 61 elements) on the *unmodified*
+    tree too — the exact BLAS/env drift its own docstring anticipates, and
+    its byte-identity companion test is green. Regenerate
+    `bing/tests/files/m3_fixed_bp_pin.npz` on this machine?
+
+40. **CDOM-fl amplitude is fully fixed.** `cdom_fraction` (0.8) and
+    `CDOMFl.scale` (1.0) are both constants, so the CDOM term has no
+    adjustable amplitude during a fit. Fine for this experiment, or do you
+    want a fitted amplitude (sampled like B_p) held in reserve if the sweeps
+    show systematic over/under-shoot?
+
+41. **Unvalidated physics, eyes open.** robust's CDOM-fl term is
+    analytic-only, its δ_C correction head is untrained, and there is no
+    HydroLight CDOM-fl truth until RoB's M6. Confirm you want the sweeps to
+    run on it as-is (the report will caveat this alongside the 0.8 proxy).
+
 One implementation note inside the accepted Q28 scope (no question): keeping
 the RT variants out of the shared leaderboard (Q27) needs an explicit
 exclusion mechanism, since `leaderboard.update()` folds *every* sweep under
@@ -580,6 +612,58 @@ provenance flag (e.g. `leaderboard: false` in the sweep config) that
 `leaderboard.update` honors, so the exclusion survives future rebuilds.
 
 ## Logs
+
+### 2026-09-06 — Execution task 6: BING CDOM-fluorescence path (Opus 5, orchestrated by Fable)
+
+Implemented on `bing @ rob_cdom` (RoB `cdom-rt` provides the physics).
+Delegated to an Opus 5 agent per JXP's instruction; work verified via the
+full BING test suite.
+
+**What landed:**
+- `bing/rt/defs.py`: `rt_dict` grew to **12 keys** — `include_CDOM_fl`
+  (default False) and `cdom_fraction` (default 0.8,
+  `CDOM_FRACTION_DEFAULT`). `validate_rt_dict` rejects CDOM-fl on `gordon`
+  and `robust_baseline`, and (when models are given) on a-models without a
+  separable a_dg.
+- `bing/models/anw.py`: new explicit API `has_a_dg` flag + `eval_a_dg(params)`
+  (True for ExpBricaud family, GIOP, GSM, ExpNMF) — chosen over duck-typing
+  `eval_anw(retsub_comps=True)` because Chase-family models raise TypeError
+  and Exp/ExpFix silently return non-tuples; batched shapes match `eval_a`.
+- `bing/evaluate.py`: `a_cdom = cdom_fraction × a_dg` fed into
+  `IOPs.from_total_bb` in both the model layer and
+  `calc_Rrs_from_iops_robust` (new `a_cdom=` arg);
+  `Inelastic(cdom_fl=CDOMFl(scale=1.0))` built inside the jit factory with
+  the cache key extended to a 4-tuple `(raman, fl, emission_shape, cdom)`;
+  threaded through reconstructors and `robust_domain_check`. The 0.8 proxy
+  (BING a_dg = CDOM+detrital vs Hawes pure-CDOM) is documented at the
+  construction site, in docstrings, docs, and both skills.
+- `bing/fitting/l23.py`: robust synthetic truth passes L23's *true*
+  `a_g` as `a_cdom` (mirrors the a_ph pattern) → asymmetry question Q38.
+- Docs: `radiative_transfer.rst` subsection + changelog entry;
+  `run-bing-fit` and `inelastic-rrs` skills updated.
+
+**Physics facts learned (robust `cdom-rt`):** CDOM-fl excitation is a fixed
+350–490 nm 29-node grid; emission Gaussian in wavenumber, peaking
+≈465–570 nm (measured ΔRrs peak 515 nm, ~4% of Rrs at fraction 0.8, ≥0
+everywhere); term is additive in Rrs space after Raman/Chl-fl; `None` (not
+scale=0) is the off-state; a cdom-only config must still construct an
+`Inelastic` (pinned by test — falling through to the elastic closure would
+silently drop the term); constant extrapolation feeds a_cdom(400) to the
+350–400 nm excitation band when fitting a 400 nm-limited grid; no domain
+check exists for CDOM inputs; δ_C head untrained → analytic-only (Q41).
+
+**Tests:** new `bing/tests/test_evaluate_robust_cdom.py` — 30 tests
+covering defaults/pass-through, off-by-default identity, on-adds-signal,
+fraction monotonicity, all three validation rejections, jit-cache
+separation, iops-layer errors, and an MCMC round-trip with
+Raman+Chl-fl+CDOM-fl+fit_Bp — all pass (21.9 s). `test_chl_fl.py` pinned
+key set updated 10→12. **Full suite: 310 passed, 1 failed, 2 skipped
+(419 s).** The single failure is `test_fit_Bp_false_matches_provisional_pin`
+— verified pre-existing on the unmodified tree (1-ULP env drift its
+docstring anticipates; companion byte-identity test green) → Q39.
+
+Open questions Q38–Q41 posed in Q&A. Nothing committed — JXP runs git
+(working tree on `rob_cdom` holds the changes).
 
 ### 2026-09-06 — Prompt 5: final answers recorded; execution prompts generated (Fable)
 
