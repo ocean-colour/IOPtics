@@ -926,6 +926,12 @@ Chain: screened 1-minute spectra → ±15 min median matchup onto the shallowest
 including underway; many CTD casts are pre-dawn and have no daylight
 radiometry).
 
+That n = 30 is a ceiling, not a matchup-tuning artefact: the only AMT24
+flow-cytometry deposit in existence is CTD-bottle-only (68 stations, verified
+again against a 2026-09-07 re-delivery — §13 item 1), and fewer than half of
+those casts have daylight radiometry. Reaching Lange's n therefore *requires*
+the underway samples; no amount of reprocessing on our side can substitute.
+
 **The basis reproduces.** PCA retraining on those 30 spectra (no column
 centring) recovers NASA's stored loadings **in order**: |cos| = 0.999 (PC1),
 0.998 (PC2), 0.96–0.98 (PC3–5) — from a different processing chain and less
@@ -1025,6 +1031,13 @@ Work we still wish to do, in priority order. (PML-bound data asks live in
    biggest fidelity upgrade available: it would lift target (i) from the
    CTD-only configuration (n = 30) toward Lange's n = 73–78, directly test
    the Syn 1.36→1.27 gap, and enable a genuine Tables 1–2 *equality* check.
+   **Still outstanding as of 2026-09-07.** A second copy of the AMT24 AFC
+   deposit was delivered (`AMT24_JR20140922_6param/`) and checked: it is the
+   same 814 CTD-bottle samples, numerically identical column by column, not a
+   superset. The deposit is structurally bottle-keyed (`BODC_bot`,
+   `Rosette_Pos`, `Firing_Seq`), so underway samples cannot appear in that
+   series at all — they need a separate series or a direct file from Tarran.
+   Details and the sharpened ask: `requests/PML_follow_up.md` §1 update.
 2. **Target iii-b: the operational PACE product vs in-situ counts** — the
    validation NASA says has never been done. Machinery
    (`match_pace_to_insitu`) is ready; needs the SeaBASS picophytoplankton

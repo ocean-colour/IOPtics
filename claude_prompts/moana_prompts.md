@@ -256,6 +256,8 @@ Use Fable if you can. Log your work.
 
 It is possible you will need me to run this on my workstation.  Tell me if so.  Use Fable if you can. Log your work.
 
+19. **PML follow-up**.  I believe that PML has provided the BODC deposit for AMT24.  Please examine those data in the `$OS_COLOR/AMT/AMT24/` folder.  If they are what you need, then proceed with that deferred anlysis and then update the Report and add a comment to the PML follow-up list.  Use Fable if you can. Log your work.
+
 ## Q&A
 
 ### Radiometry
@@ -1357,6 +1359,69 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-09-07 (Prompt 19 — PML re-delivery examined: same CTD-bottle data, so the deferred analysis stays blocked)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Verdict: the new deposit is not what we need, so I did not run the deferred
+analysis.** Prompt 19 was conditional ("if they are what you need, then
+proceed"), and the condition is not met. Reporting that rather than forcing the
+analysis on data that cannot support it.
+
+**What arrived.** `$OS_COLOR/AMT/AMT24/AMT24_JR20140922_6param/` — `AMT24_AFC.out`,
+`AMT24_JR20140922_AFC_Dataset.xlsx`, a BODC sample-metadata report and a flag key.
+The "6param" refers to the six taxon columns (Pro, Syn, picoeuk, cryptophytes,
+coccolithophores, nanoeukaryotes).
+
+**What I checked, rather than assuming from the filenames.** It is the *same*
+data we already had:
+
+- the `.xlsx` holds a single sheet, `botlist`, 814 rows × 29 columns — I opened it
+  specifically because a workbook can hide extra sheets, and an underway table
+  would plausibly have been one;
+- 68 stations, **every row `Gear=CTD` and `ODV_type=b`**;
+- joined on the `BODC_bot` bottle id, **all six taxon columns are numerically
+  identical** to `AMT24_JR20140922_AFC_Dataset.csv` (`np.allclose` on each);
+- only the container and the timestamp format differ (ISO vs `dd/mm/yyyy`).
+
+**The structural point, which is the useful part.** This is not "they sent the
+wrong file" — it is that the underway samples *cannot* live in this deposit. Its
+own metadata calls it a "Bottle Retrieval Data Report", and every row is keyed by
+`BODC_bot` with `Rosette_Pos` and `Firing_Seq`. An underway sample has no bottle,
+no rosette position and no firing sequence, so it is unrepresentable in this
+series. Re-requesting the DOI will therefore never help; the data need a separate
+BODC series or a direct file from Glen Tarran. I re-checked DataCite on the day
+(three query phrasings) and there is still exactly **one** AMT24 flow-cytometry
+DOI — the bottle one — so there is no second deposit sitting unfound.
+
+**Why it matters, in one number.** Our full-fit *Synechococcus* MAE on the
+CTD-only configuration is 1.36, essentially identical to Lange's own CTD-only
+figure of 1.37, against 1.27 with the underway samples. The missing data *is* the
+gap between our reproduction and theirs — which is a good argument for chasing it
+and a bad argument for pretending 30 samples can stand in for 73.
+
+I also made explicit in §12.2 something that was previously only implied: n = 30
+is a **ceiling, not a matchup-tuning artefact**. The only AMT24 FCM data in
+existence is bottle-only at 68 stations, and fewer than half those casts have
+daylight radiometry. No reprocessing on our side can reach Lange's n.
+
+**Updates made.** `requests/PML_follow_up.md` §1 gains a dated update recording
+the verification, the structural explanation, and a **sharpened ask**: the
+~30-minute underway run across 25–45° S (Lange §2.1, their Fig. 2b), three taxa in
+cells mL⁻¹ with UTC timestamp and lat/lon, and an explicit note that **a
+spreadsheet is sufficient — it need not be a BODC deposit for us to use it**. That
+last point may be what unsticks this, since the previous phrasing could have been
+read as asking for a formal archive submission. `reports/MOANA_Claude_Report.md`
+§13 item 1 records the re-delivery check so nobody re-treads it, and §12.2 gains
+the ceiling note.
+
+**No `pytest` run:** no code touched this pass — the changes are two markdown
+documents.
+
+**Files changed.** `requests/PML_follow_up.md`, `reports/MOANA_Claude_Report.md`,
+`claude_prompts/moana_prompts.md` (this entry). No new data files; nothing
+downloaded.
 
 ### 2026-09-07 (Prompt 18 — two new report figures: what the coefficient bug costs, and held-out skill drawn)
 

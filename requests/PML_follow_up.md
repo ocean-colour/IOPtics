@@ -28,6 +28,48 @@ degrades Syn MAE from 1.27 to 1.37).
 available — as a second BODC deposit we may have missed, or directly? Without
 them, any retraining is confined to the degraded CTD-only configuration.
 
+### Update 2026-09-07 — the re-delivery does not contain them
+
+A second copy of the AMT24 AFC deposit arrived as
+`$OS_COLOR/AMT/AMT24/AMT24_JR20140922_6param/` (`AMT24_AFC.out`,
+`AMT24_JR20140922_AFC_Dataset.xlsx`, metadata report, flag key). **It is the
+same data as the deposit we already had, not a superset.** Verified rather than
+assumed:
+
+- the `.xlsx` has a single sheet (`botlist`), 814 rows × 29 columns;
+- 68 stations, **all `Gear=CTD`, all `ODV_type=b`**;
+- joined on `BODC_bot`, **all six taxon columns are numerically identical**
+  to `AMT24_JR20140922_AFC_Dataset.csv` (Pro, Syn, picoeuk, crypto, cocco,
+  nanoeuk — `np.allclose` on every column);
+- only the container (`.out`/`.xlsx` vs `.csv`) and the timestamp format
+  (ISO vs `dd/mm/yyyy`) differ.
+
+**Why re-requesting this DOI can never deliver the underway samples.** The
+deposit is structurally a *bottle* product — its own metadata calls it a
+"Bottle Retrieval Data Report", and every row is keyed by `BODC_bot` with
+`Rosette_Pos` and `Firing_Seq`. Underway samples have no bottle, no rosette
+position and no firing sequence, so they cannot be represented in this series
+at all. They would have to be **a separate BODC series** (underway /
+non-bottle) or come **directly from Glen Tarran**. Re-checked on 2026-09-07:
+DataCite still returns exactly **one** AMT24 flow-cytometry DOI — the bottle
+one — so no underway deposit exists to be found.
+
+**The sharpened ask (→ Tarran).** What we need is the ~30-minute underway
+flow-cytometry run across the South Atlantic Gyre front (roughly 25–45° S;
+Lange et al. 2020 §2.1 and their Fig. 2b): *Prochlorococcus*,
+*Synechococcus* and autotrophic picoeukaryote abundances in cells mL⁻¹, with a
+UTC timestamp and latitude/longitude per sample. **A spreadsheet or plain CSV
+is entirely sufficient** — this does not need to be a BODC deposit for us to
+use it. Roughly 40–50 samples would take us from our present n = 30 to Lange's
+n = 73–78.
+
+**What it is worth, quantified.** Our full-fit *Synechococcus* MAE on the
+CTD-only configuration is **1.36**, which lands essentially on Lange's own
+CTD-only figure of **1.37** (their Table 2), against **1.27** with the underway
+samples included. So the missing data is not a nuisance — it is measurably the
+whole gap between our reproduction and theirs, and it is the one item that
+would let us test Table 1 as an equality rather than an inequality.
+
 ## 2. Bug report: the ES CSVs in the Level-2 delivery are wrong
 
 `AMT24_HSAS_<day>_ES.dat` is a **byte-identical copy** of
