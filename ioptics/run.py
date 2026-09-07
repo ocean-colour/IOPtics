@@ -809,6 +809,30 @@ def _record_seed(seed, algorithm, record):
     return zlib.crc32(key)          # 0..2**32-1: valid for np.random.seed
 
 
+def _warm_fit_imports():
+    """Import the fitting stack **before** a per-record seed is set.
+
+    ``bing.fitting.inference`` pulls in ``bing.evaluate``, which imports
+    JAX (the robust RT backends, bing 2026-08-30), and importing JAX draws
+    from the *legacy global* ``np.random`` stream — the very stream
+    :func:`_record_seed` seeds and BING's walker init then draws from.
+
+    That import is lazy (it lives inside :func:`fit_mcmc`), so in a fresh
+    process it happens **after** ``np.random.seed(_record_seed(...))``: the
+    first record a pool worker touches gets its walkers from a stream
+    advanced past the seed, while a serial run — where prepping the records
+    already imported BING — does not. Same seed, different chain, purely as
+    a function of pool layout, which is exactly what Task 13(a) promises
+    cannot happen. (It also splits a *single* worker: only its first record
+    pays the import.)
+
+    Warming the import here, ahead of the seed, makes the RNG state at
+    walker init a function of the seed alone. Idempotent and ~free once the
+    module is in ``sys.modules``.
+    """
+    from bing.fitting import inference  # noqa: F401
+
+
 def _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed):
     """MCMC-fit one record and persist its chain; the pool worker.
 
@@ -845,6 +869,9 @@ def _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed):
     if declined is not None:
         declined.provenance_id = pid
         return declined
+    # Before the seed, never after: importing the BING/JAX fitting stack
+    # consumes global-RNG draws (see _warm_fit_imports).
+    _warm_fit_imports()
     rng_state = np.random.get_state()
     np.random.seed(_record_seed(seed, spec.name, record))
     res, chains = None, None

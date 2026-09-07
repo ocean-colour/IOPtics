@@ -668,7 +668,108 @@ decided in Q17/Q37; the registered RT variants arrive in task 11).
     leave it?
 >A. Ok, investigae and fix before the big sweeps.
 
+---
+
+### Round 8 (2026-09-07) — after Execution task 10 (PACE dataset) + the Q45 fix
+
+Both landed green (see Log). Questions that surfaced:
+
+46. **Freeze the PACE-100 id list?** The draw is seeded (`20260906`) but the
+    population is "the 273 NPZs that join `pab.db` today" — if the one
+    orphan NPZ (missing from `pab.db`) ever gets back-filled, the population
+    becomes 274 and the sample changes wholesale. Freeze the 100 selected
+    ids into a committed CSV in the repo (recommended for citability), or
+    is the seeded rule enough? Related, two confirmations: (a) no screening
+    on `flagged`/`rank` was applied (PAB's mask ran upstream; Q24 declined
+    extra screening) — confirm; (b) `granules.time_end` is NULL throughout,
+    so observation time = `time_start` (worst-case θ_s error ≲0.6° over a
+    5-min granule) — acceptable?
+>A. Freeze the 100 ids into a committed CSV in the repo.  (a) confirmed; (b) acceptable.
+
+47. **RNG hardening beyond the fix.** The Q45 fix (see Log) warms the BING
+    import before per-record seeding. Optional extras: (a) also hoist the
+    warm-up into the pool's `initializer=` so each worker pays the ~1 s JAX
+    import once, outside the first fit's wall time (I'd do this in task 12
+    prep regardless — object if not); (b) longer-term bing-side hardening —
+    thread an explicit `Generator` through `fit_one → run_emcee →
+    init_walkers`, and/or make bing's JAX import lazy for gordon-only runs.
+    Do you want (b) filed as a BING follow-up now, or leave it?
+>A. (a) ok; (b) file it now
+
+48. **Pooled chains from 2026-08-30 → now are un-reproducible.** The bug
+    (jax import shifting the global RNG) affected the *first record each
+    pool worker touched* in any pooled MCMC sweep run since bing gained
+    `import jax` (2026-08-30). Chains are statistically fine, just not
+    bit-reproducible from their recorded seeds. Re-run/invalidate any
+    affected sweeps, note it in their provenance, or ignore?
+>A. Note it in the provenance.
+
+49. **`noise_seed` reproducibility gap (out-of-scope observation).**
+    `prep_one` with `noise_seed=None` draws from the unseeded global RNG,
+    so "same sweep config, same seed" isn't reproducible across process
+    invocations unless `noise_seed` is set. Should `cfg.seed` derive a
+    default `noise_seed` (small core change), or leave as-is and just set
+    it in the RT-test configs?
+>A. Leave as is and just set it in the RT-test configs.
+
 ## Logs
+
+### 2026-09-07 — Execution task 10: PACE dataset + Q45 MCMC-pooling fix (2× Opus 5, orchestrated by Fable)
+
+Round-7 answers recorded: Q44 confirmed (L23 θ_s follows `Y`); Q45 =
+investigate and fix before the big sweeps. Ran two Opus 5 agents in
+parallel with disjoint file scopes; orchestrator ran the combined
+full-suite verification. Nothing committed — JXP runs git.
+
+**Task 10 — PACE dataset (`ioptics @ rt-tests`):**
+- `ioptics/runs/prototypes/rt_tests/extract_pace_100.py` (new): enumerates
+  the 274 run1k NPZs, **excludes the one orphan that doesn't join
+  `pab.db` before the draw** (population 273 — drop-after-draw would have
+  silently yielded 99), samples 100 via `default_rng(20260906)`, joins
+  wmo/cycle→profile→matchup→granule→pixel for per-pixel lat/lon +
+  granule time, computes θ_s via `robust.solar`. Ran for real →
+  `$OS_COLOR/IOPtics/pace_pab_100/pace_pab_100.parquet` (13,600 rows =
+  100 spectra × 136 bands, tidy long). θ_s 12.5–71.5° (median 30.2°),
+  times 2024-03 … 2026-05; 31 negative-Rrs bands across 7 spectra kept
+  (Q24). `granules.time_end` is NULL everywhere → time = `time_start`
+  (θ_s error ≲0.6°; Q46b).
+- `PACEAdapter` registered as `PACE` in `ioptics/datasets.py` (reads only
+  the artifact; no `pab` import). `Rrs_err = sqrt(varRrs)` → prep's
+  `'insitu'` noise path consumes the stored varRrs **bit-for-bit**
+  (asserted rtol=atol=0); truth `{}`; meta carries the task-9 geometry
+  contract keys + stored θ_s (runtime `resolve_theta_s` matches to
+  <0.2° on all 100) + join columns. PAB's OC4 `Chl` deliberately NOT
+  carried (would masquerade as truth). New `needs_pace_pab` tier;
+  14 new tests; design-doc adapters table updated.
+
+**Q45 fix — MCMC pooling divergence (`ioptics/run.py`):**
+- **Root cause:** `import jax` advances the legacy global `np.random`
+  MT19937 stream by 10 draws at import time (measured; jax 0.11.1/numpy
+  2.5.2). bing imports jax at module level since 2026-08-30 (`7151898`,
+  robust-RT work) — *after* the test was written (2026-08-20), so the
+  invariant genuinely held, then broke. `fit_mcmc` imports the bing stack
+  lazily *inside* the fit, i.e. after `_mcmc_one`'s per-record
+  `np.random.seed(...)`: serial runs had bing pre-imported (no-op), fresh
+  forkserver workers paid the import post-seed → walker init started 10
+  draws downstream → different chains for the first record per worker.
+  Proven by parent/child bit-comparison matrices (threads exonerated;
+  `fork`-context matched; emcee's state snapshot exonerated).
+- **Fix:** `_warm_fit_imports()` called in `_mcmc_one` immediately before
+  seeding (documented, idempotent, no tolerances touched, no bing
+  changes). New tier-1 test pins the warm→seed call order and RNG
+  neutrality. Extra scale check: 5 records, serial vs n_cores=2 vs
+  reversed n_cores=3 — all bit-identical.
+- Fallout noted: pooled chains produced 2026-08-30→now are
+  un-reproducible for the first record per worker (Q48); `noise_seed`
+  reproducibility gap observed (Q49); optional hardening ideas (Q47).
+
+**Verification (orchestrator, after both agents):** full IOPtics suite
+**CI-equivalent: 457 passed, 57 skipped, 0 failed (168 s); with data:
+513 passed, 1 skipped, 0 failed (275 s)** — the previously-failing
+pooling test now green; the 1 data-mode skip is environmental.
+
+Open questions Q46–Q49 posed in Q&A. Next: task 11 (variants, configs,
+build script, smoke run).
 
 ### 2026-09-07 — Execution task 9: IOPtics core plumbing (Opus 5, orchestrated by Fable)
 

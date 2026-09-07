@@ -394,6 +394,18 @@ that imports ocpy.
 | `L23` | `hydrolight.loisel23.load_ds(X, Y)` | row index `0..N-1` | Hydrolight `Lambda` | **full spectral**: `a`, `bb`; `aph`→`a_ph`, `ag+ad`→`a_dg`, `anw`, `bbnw`→`bb_p`, `a−anw`→`a_w`, `bb−bbnw`→`bb_w`; scalars `Chl` (from `aph(440)/0.05582`), `Y` (Lee 2002), `Sdg` (`functions.fit_Sdg`) |
 | `PANGAEA` | `insitu.pangaea.load(key)` + `.spectrum(df, id, kind)` | global `ID` | per-family native λ (each `kind` has its own λ set) | `aph`→`a_ph`, `acdom`→`a_dg` (combined CDOM+detrital), `bbp`→`bb_p`, `kd`; scalars `chla`, `tss` |
 | `GLORIA` | `insitu.gloria.load_gloria()` | global `ID` | hyperspectral 350–900 @1 nm | **scalar only**: `a_cdom440`, `Chla`, `TSS`, `Secchi` (flag `a_cdom440` is CDOM-only vs retrieved `a_dg`) |
+| `PACE` | *none* — a pre-extracted parquet (`$OS_COLOR/IOPtics/pace_pab_100/pace_pab_100.parquet`) | run1k chain-file stem (`{wmo}_{cycle}_{granule}_{ix}_{iy}_ExpBPow`) | 136 OCI bands, 400–699 nm (588–613 nm gap absent) | **none** (`truth == {}`) — real satellite pixels, so a PACE sweep scores model selection + closure, never accuracy |
+
+The `PACE` adapter is the one that reads no upstream package: 100 seeded-random
+real PACE OCI pixels (route (a) of `claude_prompts/rt_tests.md` Q22) are joined
+out of the PAB `run1k` chain archive + its `pab.db` catalogue **once**, by
+`ioptics/runs/prototypes/rt_tests/extract_pace_100.py`, into a single tidy
+parquet. `Rrs_err = sqrt(varRrs)` is the granule's own per-pixel `Rrs_unc`
+(PAB's 2 % floor already applied), so prep's `insitu` path weights the fit by
+the measured uncertainty and tags it a bare `'insitu'`. `meta` carries the
+`time`/`lat`/`lon` geometry contract (plus the extraction-time `theta_s` as a
+cross-check) so `run.resolve_theta_s` gets a per-pixel solar zenith (Q17);
+viewing geometry is taken as nadir (Q37).
 
 ```python
 # ioptics/datasets.py
@@ -402,7 +414,7 @@ ADAPTERS = {}                       # name -> Adapter
 def register_dataset(name, adapter):
     ADAPTERS[name] = adapter
 
-def get_adapter(name):              # 'L23' | 'PANGAEA' | 'GLORIA'
+def get_adapter(name):              # 'L23' | 'PANGAEA' | 'GLORIA' | 'PACE'
     return ADAPTERS[name]
 
 class Adapter(Protocol):
@@ -501,6 +513,12 @@ def attach_noise(wave, Rrs, model='pace', *, add_noise=True, seed=None):
   the honest tag `noise_model='pct:0.05'` (never `'insitu'`), so the assumption
   is explicit in every prepared record, `provenance.yaml`, and report — it never
   masquerades as a measured error.
+- **PACE** takes the same `'insitu'` / `add_noise=False` path (note the name
+  collision: the *dataset* `PACE` does **not** use the `'pace'` *noise model* —
+  that one models L23's synthetic error, while the real pixels carry their own).
+  `Rrs_err = sqrt(varRrs)` from the granule means `varRrs` reaches the fitter as
+  the stored value, bit for bit, with no floor and no imputation; the tag is a
+  bare `'insitu'`.
 
 ### Prep API (`ioptics.prep`)
 

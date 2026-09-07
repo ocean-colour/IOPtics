@@ -162,6 +162,63 @@ def test_mcmc_subset_pooled_declines_red_records(tmp_path):
     assert not chains_dir.exists() or not list(chains_dir.glob('*.npz'))
 
 
+def test_mcmc_one_warms_the_fit_imports_before_seeding(tmp_path, monkeypatch):
+    """The BING/JAX import must land *before* the per-record seed.
+
+    ``bing.fitting.inference`` imports JAX, whose import draws from the
+    legacy global ``np.random`` stream — the same stream ``_record_seed``
+    seeds and BING's walker init then draws from. That import is lazy, so
+    in a fresh pool worker it happens on the first fit; if it happened
+    after the seed, that worker's first record would sample from a stream
+    advanced past its seed and its chain would differ from the serial
+    run's. Ordering, not tolerance, is the fix — so ordering is what this
+    asserts, without needing the L23 tree or a real fit.
+    """
+    import pytest
+
+    from ioptics import run
+    from ioptics.algorithms.spec import AlgorithmSpec
+    from ioptics.records import PreparedRecord
+
+    wave = np.arange(400.0, 701.0, 20.0)
+    rrs = 2e-3 + 0.01 * np.exp(-((wave - 450.0) / 60.0) ** 2)   # blue: in scope
+    rec = PreparedRecord(
+        dataset='X', obs_id=1, wave=wave, Rrs=rrs,
+        varRrs=(0.10 * rrs) ** 2, Rrs_clean=rrs, truth={}, truth_interp={},
+        init={'Chl': 1.0, 'Y': 0.5}, noise_model='pct:0.1', noise_seed=None)
+    spec = AlgorithmSpec.from_standard('giop')
+
+    class _Stop(Exception):
+        """Abort the fit the instant the seed is drawn."""
+
+    order = []
+    monkeypatch.setattr(run, '_warm_fit_imports',
+                        lambda: order.append('warm'))
+
+    def _seed_spy(*args, **kwargs):
+        order.append('seed')
+        raise _Stop
+    monkeypatch.setattr(run, '_record_seed', _seed_spy)
+
+    with pytest.raises(_Stop):
+        run._mcmc_one(rec, spec, 'sw_warm', 'pid', tmp_path, True,
+                      ((16, 84),), 5)
+    assert order == ['warm', 'seed']
+
+    # and the real warm-up is idempotent + RNG-neutral once it has run
+    monkeypatch.undo()
+    state = np.random.get_state()
+    try:
+        run._warm_fit_imports()
+        np.random.seed(1234)
+        before = np.random.get_state()
+        run._warm_fit_imports()
+        after = np.random.get_state()
+        assert np.array_equal(before[1], after[1]) and before[2] == after[2]
+    finally:
+        np.random.set_state(state)      # do not leak RNG state into the suite
+
+
 # ---------------------------------------------------------------------------
 # serial vs pooled equivalence (real, tiny, emcee fits)
 # ---------------------------------------------------------------------------

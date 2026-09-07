@@ -1,6 +1,6 @@
 """Dataset registry: thin adapters over ocpy loaders (+ bing for L23 truth).
 
-Maps a dataset name (``'L23'`` | ``'PANGAEA'`` | ``'GLORIA'``) to an adapter
+Maps a dataset name (``'L23'`` | ``'PANGAEA'`` | ``'GLORIA'`` | ``'PACE'``) to an adapter
 that enumerates observation ids and returns one observation's ``Rrs`` + truth
 IOPs on the dataset's **native wavelength grid**. This module reads observations
 via ocpy and, for the synthetic L23 dataset, reuses bing's canonical truth
@@ -13,12 +13,16 @@ pre-aligning spectral truth onto ``wave``, and computing the truth-free
 ``init`` values. No model/prior/RT work happens here.
 
 Stage 1 implements the **L23** adapter (Loisel et al. 2023 Hydrolight); Stage 6
-adds the **PANGAEA** in-situ adapter (GLORIA follows).
+adds the **PANGAEA** in-situ adapter (GLORIA follows). Stage 7's RT comparison
+adds **PACE** — 100 real PACE OCI pixels, which unlike the others is read from
+a pre-extracted artifact rather than through ocpy (see :class:`PACEAdapter`).
 """
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -430,8 +434,141 @@ class GLORIAAdapter:
                       Rrs_err=std, meta=meta_out)
 
 
-# Seed the registry with the L23 adapter (Stage 1) and the PANGAEA + GLORIA
-# in-situ adapters (Stage 6).
+# --- PACE adapter -----------------------------------------------------------
+
+#: Location of the PACE artifact, relative to ``$OS_COLOR/IOPtics``. Kept in
+#: sync with ``ioptics/runs/prototypes/rt_tests/extract_pace_100.py``, which
+#: writes it (``OUT_SUBDIR`` / ``OUT_FILE`` there).
+PACE_PAB_SUBDIR = 'pace_pab_100'
+PACE_PAB_FILE = 'pace_pab_100.parquet'
+
+#: Per-spectrum ``meta`` columns of the artifact that ride onto ``RawObs.meta``
+#: under the same names. The three geometry-contract keys are named via the
+#: ``*_META_KEY`` constants so a rename cannot desync the adapter from
+#: :func:`ioptics.run.resolve_theta_s`; the rest are join/provenance columns.
+_PACE_META_COLS = (TIME_META_KEY, LAT_META_KEY, LON_META_KEY,
+                   'theta_s', 'wmo', 'cycle', 'granule', 'ix', 'iy',
+                   'matchup_id', 'distance_km', 'rank', 'flagged')
+
+
+def pace_pab_path(path=None):
+    """Resolve the PACE artifact path.
+
+    ``path`` when given (a file, or a directory holding
+    :data:`PACE_PAB_FILE`), else ``$OS_COLOR/IOPtics/pace_pab_100/
+    pace_pab_100.parquet``. Raises :class:`RuntimeError` when neither is
+    available — the path is *resolved* here, not checked for existence.
+    """
+    if path is not None:
+        path = Path(path)
+        return path / PACE_PAB_FILE if path.is_dir() else path
+    osc = os.getenv('OS_COLOR')
+    if not osc:
+        raise RuntimeError(
+            'PACE artifact unresolved: set $OS_COLOR or pass path= '
+            f'(expected <$OS_COLOR>/IOPtics/{PACE_PAB_SUBDIR}/{PACE_PAB_FILE})')
+    return Path(osc) / 'IOPtics' / PACE_PAB_SUBDIR / PACE_PAB_FILE
+
+
+class PACEAdapter:
+    """Adapter for 100 real PACE OCI spectra drawn from the PAB run1k archive.
+
+    Unlike the other adapters this one reads **no** upstream package: the
+    spectra, their per-pixel uncertainties and their geolocation were joined
+    out of PAB's chain archive and its ``pab.db`` catalogue once, by
+    ``ioptics/runs/prototypes/rt_tests/extract_pace_100.py``, into a single
+    tidy parquet under ``$OS_COLOR/IOPtics/pace_pab_100/``. IOPtics therefore
+    depends on neither ``pab`` (not pip-installed) nor the PACE granules
+    themselves (design Q23).
+
+    Each observation is one PACE pixel matched to an Argo BGC profile: 136
+    bands over 400-699 nm (the OCI 588-613 nm gap is simply absent from the
+    grid), the V3_2 L2 ``Rrs``, and the granule's own per-band ``Rrs_unc**2``
+    as ``varRrs`` — PAB's 2%-of-``Rrs`` floor already applied where the
+    granule's value was unusable. The adapter hands that back as
+    ``Rrs_err = sqrt(varRrs)``, which is the signal
+    :func:`ioptics.prep.prep_one` reads as *measured* noise: with the
+    in-situ default (``noise='insitu'``, ``add_noise=False``) the record's
+    ``varRrs`` is exactly the stored one and the provenance tag is the bare
+    ``'insitu'`` — no floor, no imputation, unlike GLORIA.
+
+    There is **no truth** (``truth == {}``): these are satellite observations,
+    so a PACE sweep scores model selection and closure, never accuracy
+    (design Q26). Negative ``Rrs`` bands are kept, per Q24.
+
+    ``meta`` carries the observation-geometry contract (:data:`TIME_META_KEY`
+    / :data:`LAT_META_KEY` / :data:`LON_META_KEY`) so a robust RT backend can
+    resolve the solar zenith per pixel (Q17), alongside the ``theta_s``
+    computed at extraction time. The two are redundant on purpose: the
+    runtime path recomputes via :func:`ioptics.run.resolve_theta_s`, and the
+    stored value exists so a test (and a reader) can check the recomputation
+    against what the artifact was built with. Viewing geometry is taken as
+    nadir (Q37) — neither source stores the sensor angles.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path or None, optional
+        Explicit artifact file (or its directory); ``None`` resolves via
+        ``$OS_COLOR`` (:func:`pace_pab_path`).
+    """
+
+    def __init__(self, path=None):
+        self._path = path
+        self._by_obs = None             # obs_id -> DataFrame (wavelength-sorted)
+
+    def _load(self):
+        """Read + group the artifact once, keyed by ``obs_id``."""
+        if self._by_obs is None:
+            import pandas as pd
+
+            path = pace_pab_path(self._path)
+            if not Path(path).is_file():
+                raise FileNotFoundError(
+                    f'PACE artifact not found at {path}. Build it with '
+                    'ioptics/runs/prototypes/rt_tests/extract_pace_100.py '
+                    '(needs the PAB run1k archive), or pass '
+                    'PACEAdapter(path=...).')
+            df = pd.read_parquet(path).sort_values(['obs_id', 'wavelength'])
+            self._by_obs = {str(oid): grp
+                            for oid, grp in df.groupby('obs_id', sort=True)}
+        return self._by_obs
+
+    def obs_ids(self, **opts):
+        """The sampled observation ids (chain-file stems), sorted."""
+        return sorted(self._load())
+
+    def load_obs(self, obs_id, **opts):
+        """Load PACE observation ``obs_id`` as a :class:`RawObs`.
+
+        ``Rrs_err`` is ``sqrt(varRrs)`` from the granule, so prep's ``insitu``
+        weighting reproduces the stored variance exactly; ``truth`` is empty.
+        """
+        by_obs = self._load()
+        key = str(obs_id)
+        if key not in by_obs:
+            raise KeyError(
+                f'{obs_id!r} is not a PACE observation '
+                f'({len(by_obs)} available; ids are run1k chain-file stems)')
+        grp = by_obs[key]
+
+        wave = np.asarray(grp['wavelength'].to_numpy(), dtype=float)
+        Rrs = np.asarray(grp['Rrs'].to_numpy(), dtype=float)
+        varRrs = np.asarray(grp['varRrs'].to_numpy(), dtype=float)
+
+        row = grp.iloc[0]
+        meta = {'dataset': 'PACE', 'obs_id': key}
+        for col in _PACE_META_COLS:
+            if col in grp.columns:
+                val = row[col]
+                meta[col] = val.item() if hasattr(val, 'item') else val
+
+        return RawObs(wave=wave, Rrs=Rrs, truth={},
+                      Rrs_err=np.sqrt(varRrs), meta=meta)
+
+
+# Seed the registry with the L23 adapter (Stage 1), the PANGAEA + GLORIA
+# in-situ adapters (Stage 6), and the PACE satellite adapter (Stage 7).
 register_dataset('L23', L23Adapter())
 register_dataset('PANGAEA', PANGAEAAdapter())
 register_dataset('GLORIA', GLORIAAdapter())
+register_dataset('PACE', PACEAdapter())

@@ -157,6 +157,21 @@ def _gloria_available():
         return False
 
 
+def _pace_pab_available():
+    """True if the extracted PACE artifact is on disk.
+
+    Probes the very file ``ioptics.datasets.PACEAdapter`` reads
+    (``$OS_COLOR/IOPtics/pace_pab_100/pace_pab_100.parquet``), which is built
+    once by ``ioptics/runs/prototypes/rt_tests/extract_pace_100.py`` from the
+    PAB run1k archive and is not bundled anywhere.
+    """
+    try:
+        from ioptics.datasets import pace_pab_path
+        return os.path.isfile(pace_pab_path())
+    except Exception:
+        return False
+
+
 def _correct_atmosphere_available():
     """True if ``correct_atmosphere`` is importable (Chl-fluorescence ``Ed``).
 
@@ -209,6 +224,11 @@ needs_gloria = pytest.mark.skipif(
 
 needs_pace = pytest.mark.skipif(
     not _pace_data_available(), reason="requires ocpy's bundled PACE_error.csv")
+
+needs_pace_pab = pytest.mark.skipif(
+    not _pace_pab_available(),
+    reason='requires the extracted PACE artifact '
+           '($OS_COLOR/IOPtics/pace_pab_100/pace_pab_100.parquet)')
 
 needs_inelastic = pytest.mark.skipif(
     not _correct_atmosphere_available(),
