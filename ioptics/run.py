@@ -15,6 +15,14 @@ Stage 3. Two invariants:
   *observed* ``Rrs`` and ``record.init`` (Chl/Y), **never** from ``record.truth``
   (else the benchmark would be circular).
 
+The RT backend (``spec.rt.rt_backend``) decides which forward model runs. The
+default ``'gordon'`` path is exactly what it always was — a 4-tuple of items to
+BING, no geometry, no extra parameter. A ``robust_*`` backend additionally
+needs an observation geometry, resolved per record by :func:`resolve_geometry`
+and threaded as the items tuple's optional 5th element, and may fit ``B_p``
+(``spec.rt.fit_Bp``), which appends one trailing element to the fitted vector,
+the bounds, the seed, and every saved chain.
+
 .. note::
 
    Building BING models loads the L23 pure-water backscattering data, so the
@@ -24,6 +32,7 @@ Stage 3. Two invariants:
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Mapping
 
 import numpy as np
@@ -61,13 +70,25 @@ QAA_BLUE_NM = (443.0, 490.0)
 BOUND_INSET = 1e-3
 
 
-def _prior_bounds(models):
-    """Lower/upper parameter bounds from the models' priors (a then bb)."""
+def _prior_bounds(models, rt_dict=None):
+    """Lower/upper parameter bounds from the models' priors (a then bb).
+
+    ``rt_dict`` is consulted for one thing only: under ``fit_Bp`` the fitted
+    vector carries a trailing ``B_p`` element, so the bounds gain a matching
+    trailing slot taken from BING's own ``[BP_PRIOR_PMIN, BP_PRIOR_PMAX]`` —
+    the same numbers the MCMC prior uses, so the two fitters cannot disagree
+    about the range. ``None`` (the default) is the fixed-``B_p`` case and
+    returns exactly the model bounds, as before.
+    """
     lows, highs = [], []
     for model in models:
         for prior in model.priors.priors:
             lows.append(prior.pmin)
             highs.append(prior.pmax)
+    if rt_dict is not None and rt_dict.get('fit_Bp', False):
+        from bing.rt import defs as rt_defs
+        lows.append(rt_defs.BP_PRIOR_PMIN)
+        highs.append(rt_defs.BP_PRIOR_PMAX)
     return np.array(lows, dtype=float), np.array(highs, dtype=float)
 
 
@@ -254,11 +275,163 @@ def initial_guess(models, record, *, turbid=None):
     return np.clip(p0, lo + inset, hi - inset)
 
 
-def _prepare(spec, record):
-    """Build ``(p, models, rt_dict)`` for ``record``, models seeded truth-free."""
+class MissingGeometryError(ValueError):
+    """A robust RT backend was configured for a record with no place or time.
+
+    Raised by :func:`resolve_theta_s`. The robust forward models take a solar
+    zenith angle, and BING refuses to invent one
+    (``bing.rt.defs.validate_rt_dict``: "theta_s is never silently
+    defaulted"). IOPtics refuses one step earlier, naming the record and the
+    metadata keys it would have needed — the alternative is a sweep that
+    completes and publishes numbers computed at an angle nobody chose.
+    """
+
+
+#: Solar zenith angle (degrees) for an L23 record whose ``meta`` carries no
+#: ``Y`` load option. L23 is synthetic: it has no place and no time, but its
+#: ``Y`` *is* the Hydrolight solar-zenith index in degrees (00 / 30 / 60), so
+#: :func:`resolve_theta_s` reads that when present and falls back here
+#: otherwise. The fallback equals the ``Y=0`` default, so an ordinary L23
+#: sweep sees ``theta_s = 0``.
+L23_DEFAULT_THETA_S = 0.0
+
+#: Sensor zenith / relative azimuth (degrees) assumed for every record.
+#: Nadir viewing: none of the datasets IOPtics reads records a sensor
+#: geometry, and ``ObsGeometry``'s own defaults are the same pair.
+DEFAULT_THETA_V = 0.0
+DEFAULT_DPHI = 0.0
+
+
+def _usable(value):
+    """Whether a metadata cell is a real value (not ``None``/NaN/NaT/``''``).
+
+    A missing position is far more often a *present but empty* cell than an
+    absent key — a PANGAEA row with no coordinates arrives from pandas as
+    ``NaN``, and one with no timestamp as ``NaT`` — so absence has to be tested
+    on the value, not on the key. ``pandas.NaT`` needs its own branch because
+    it is an instance of :class:`datetime.datetime` that is not a time; the
+    ``value == value`` test is what separates it from a real one.
+    """
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return bool(value == value)
+    arr = np.asarray(value)
+    if arr.dtype.kind == 'M':                       # datetime64, possibly NaT
+        return not bool(np.isnat(arr))
+    if arr.dtype.kind in 'fc':
+        return bool(np.isfinite(arr))
+    if arr.dtype.kind in 'iub':
+        return True
+    return bool(arr.size)     # a non-numeric, non-empty object: take it as real
+
+
+def resolve_theta_s(record):
+    """Solar zenith angle (degrees) for ``record``, or raise.
+
+    - **L23** (synthetic) — the Hydrolight solar-zenith load option
+      ``meta['Y']`` in degrees, defaulting to :data:`L23_DEFAULT_THETA_S`.
+      There is no place or time to compute anything from, and none is needed:
+      the realization *was* generated at that zenith.
+    - **everything else** — computed from the observation's UTC time and
+      position with ``robust.solar.solar_zenith`` (the NOAA/Meeus geometric
+      zenith, ~0.01° over 1900–2100; no refraction, never clamped at the
+      horizon). The three metadata keys are
+      :data:`~ioptics.datasets.TIME_META_KEY` /
+      :data:`~ioptics.datasets.LAT_META_KEY` /
+      :data:`~ioptics.datasets.LON_META_KEY`.
+
+    Raises :class:`MissingGeometryError` when a non-L23 record is missing any
+    of the three. That is deliberate and load-bearing: the only alternatives
+    are to guess an angle or to drop the record, and a guessed ``theta_s``
+    would propagate silently into every retrieved IOP.
+
+    Parameters
+    ----------
+    record : PreparedRecord
+        The observation; ``dataset`` and ``meta`` are read.
+
+    Returns
+    -------
+    float
+        Solar zenith angle in degrees.
+    """
+    from ioptics import datasets as ipt_datasets
+
+    meta = getattr(record, 'meta', None) or {}
+    if str(record.dataset).upper().startswith('L23'):
+        y = meta.get('Y')
+        return float(y) if _usable(y) else float(L23_DEFAULT_THETA_S)
+
+    keys = (ipt_datasets.TIME_META_KEY, ipt_datasets.LAT_META_KEY,
+            ipt_datasets.LON_META_KEY)
+    values = [meta.get(k) for k in keys]
+    missing = [k for k, v in zip(keys, values) if not _usable(v)]
+    if missing:
+        raise MissingGeometryError(
+            f'{record.dataset}/{record.obs_id}: cannot resolve the solar '
+            f'zenith angle — record.meta is missing {missing} (needs '
+            f'{list(keys)}). A robust rt_backend requires an observation '
+            'geometry and theta_s is never silently defaulted; either use '
+            "rt_backend='gordon' or fit a dataset that records when and "
+            'where each spectrum was measured')
+    from robust import solar
+
+    time, lat, lon = values
+    return float(solar.solar_zenith(time, float(lat), float(lon)))
+
+
+def resolve_geometry(spec, record):
+    """Observation geometry for ``(spec, record)``, or ``None`` for Gordon.
+
+    A pure function, so every consumer — the fitters and the reconstruction in
+    :mod:`ioptics.evaluate` — derives the *same* geometry from the same record
+    without it having to be threaded through every return value.
+
+    Returns ``None`` when ``spec.rt.rt_backend`` is ``'gordon'``: the Gordon
+    forward model has no geometry input, so the fit items stay the legacy
+    4-tuple and nothing about the legacy path changes (not even an import of
+    ``robust``). Otherwise builds a ``bing.rt.geometry.ObsGeometry`` at
+    :func:`resolve_theta_s` with nadir viewing
+    (:data:`DEFAULT_THETA_V` / :data:`DEFAULT_DPHI`).
+
+    Parameters
+    ----------
+    spec : AlgorithmSpec
+        Supplies ``rt.rt_backend``.
+    record : PreparedRecord
+        Supplies the dataset and the time/lat/lon metadata.
+
+    Returns
+    -------
+    bing.rt.geometry.ObsGeometry or None
+    """
+    if getattr(spec.rt, 'rt_backend', 'gordon') == 'gordon':
+        return None
+    from bing.rt.geometry import ObsGeometry
+
+    return ObsGeometry(theta_s=resolve_theta_s(record),
+                       theta_v=DEFAULT_THETA_V, dphi=DEFAULT_DPHI)
+
+
+def _prepare(spec, record, *, geom=None):
+    """Build ``(p, models, rt_dict)`` for ``record``, models seeded truth-free.
+
+    ``geom`` is the record's :func:`resolve_geometry` result; when omitted it
+    is resolved here. It is not returned — it is a pure function of
+    ``(spec, record)`` — but it *is* handed to ``validate_rt_dict`` below, so a
+    misconfigured RT setup (an unknown backend, ``fit_Bp`` on Gordon, a robust
+    backend with no geometry, ``robust_hybrid`` outside 350–750 nm,
+    ``include_CDOM_fl`` without a separable ``a_dg``) fails once at setup with
+    BING's own message rather than deep inside the optimizer.
+    """
     from bing.rt import defs as rt_defs
     from bing.models import utils as model_utils
 
+    if geom is None:
+        geom = resolve_geometry(spec, record)
     p = spec.to_bing_p(wv_min=float(np.min(record.wave)),
                        wv_max=float(np.max(record.wave)))
     models = spec.build_models(record.wave)
@@ -275,8 +448,13 @@ def _prepare(spec, record):
     # wavelengths fall off the water/Gordon tables — trim the record to
     # ``[400, 700]`` for inelastic fits, as bing's own X=4 path does.)
     # Chl fluorescence, however, needs the downwelling irradiance ``Ed`` seeded
-    # on the a-model — mirror ``bing.fitting.l23``.
-    if spec.rt.include_Chl_fl:
+    # on the a-model — mirror ``bing.fitting.l23``. **Gordon backend only**: the
+    # robust backends compute their fluorescence from robust's own packaged Ed
+    # table (rt_tests Q36), so a robust Chl-fl fit must not import
+    # ``correct_atmosphere`` at all — it is a bing-side dependency that is not
+    # on PyPI, and requiring it would make the robust path unrunnable wherever
+    # the ``needs_inelastic`` guard skips.
+    if spec.rt.include_Chl_fl and spec.rt.rt_backend == 'gordon':
         from correct_atmosphere import downwelling
         from bing.rt import chl_fl
         Ed = downwelling.downwelling_irradiance(models[0].wave, 0.)
@@ -291,6 +469,8 @@ def _prepare(spec, record):
     Chl = None if Chl is None else np.asarray(Chl, dtype=float)
     model_utils.init_other_bits(models, Chl=Chl, Y=record.init.get('Y'),
                                 Rrs=record.Rrs)
+    # Fail fast, once, with bing's own errors (see the docstring).
+    rt_defs.validate_rt_dict(rt_dict, models=models, geom=geom)
     return p, models, rt_dict
 
 
@@ -328,14 +508,55 @@ class UnderdeterminedFitError(ValueError):
     """
 
 
-def _refuse_underdetermined(models, record):
-    """Raise :class:`UnderdeterminedFitError` when ``n_bands <= k``."""
+def n_free_params(models, rt_dict=None):
+    """Number of fitted parameters: the models', plus ``B_p`` under ``fit_Bp``.
+
+    The one definition of ``k``, shared by the underdetermined refusal
+    (:func:`_refuse_underdetermined`), the ``fit_failed`` / ``out_of_scope``
+    stats, and the AIC/BIC/dof in :mod:`ioptics.evaluate` — a free ``B_p`` is a
+    parameter the data has to pay for like any other.
+    """
     k = int(models[0].nparam + models[1].nparam)
+    if rt_dict is not None and rt_dict.get('fit_Bp', False):
+        k += 1
+    return k
+
+
+def _refuse_underdetermined(models, record, rt_dict=None):
+    """Raise :class:`UnderdeterminedFitError` when ``n_bands <= k``."""
+    k = n_free_params(models, rt_dict)
     n_bands = int(np.asarray(record.wave).size)
     if n_bands <= k:
         raise UnderdeterminedFitError(
             f'{record.dataset}/{record.obs_id}: n_bands={n_bands} <= k={k} '
             '-- the fit is underdetermined by construction')
+
+
+def _seed(models, record, rt_dict):
+    """The truth-free initial guess, with the ``B_p`` tail when it is free.
+
+    ``bing.fitting.inference.append_Bp_seed`` is the canonical place that tail
+    is defined (a *linear-space* ``Bp_value``, never log10'd); it is imported
+    only when ``fit_Bp`` is on, so the Gordon path keeps its import set — and
+    its behaviour — exactly as before.
+    """
+    p0 = initial_guess(models, record)
+    if rt_dict.get('fit_Bp', False):
+        from bing.fitting import inference as bing_inf
+        p0 = bing_inf.append_Bp_seed(p0, rt_dict)
+    return p0
+
+
+def _fit_items(record, p0, idx, geom):
+    """The BING items tuple: legacy 4-tuple, or 5-tuple carrying ``geom``.
+
+    BING accepts either, reading a missing 5th element as ``geom=None``.
+    Emitting the 4-tuple whenever there is no geometry (i.e. on the Gordon
+    backend) keeps the legacy call byte-for-byte what it was.
+    """
+    base = (np.asarray(record.Rrs, dtype=float),
+            np.asarray(record.varRrs, dtype=float), p0, idx)
+    return base if geom is None else base + (geom,)
 
 
 def fit_chisq(spec, record):
@@ -347,15 +568,20 @@ def fit_chisq(spec, record):
     spec's ``maxfev`` evaluation budget. Refuses an underdetermined record
     (``n_bands <= k``) up front with :class:`UnderdeterminedFitError` instead
     of letting scipy fail with a ``LinAlgError``.
+
+    Under a robust ``rt_backend`` the record's :func:`resolve_geometry` result
+    rides as the items tuple's optional 5th element; the Gordon path passes the
+    legacy 4-tuple unchanged. Under ``fit_Bp`` the seed and the bounds each
+    gain the trailing ``B_p`` slot.
     """
     from bing.fitting import chisq_fit
 
-    _, models, rt_dict = _prepare(spec, record)
-    _refuse_underdetermined(models, record)
-    p0 = initial_guess(models, record)
-    bounds = _prior_bounds(models)
-    items = (np.asarray(record.Rrs, dtype=float),
-             np.asarray(record.varRrs, dtype=float), p0, record.obs_id)
+    geom = resolve_geometry(spec, record)
+    _, models, rt_dict = _prepare(spec, record, geom=geom)
+    _refuse_underdetermined(models, record, rt_dict)
+    p0 = _seed(models, record, rt_dict)
+    bounds = _prior_bounds(models, rt_dict)
+    items = _fit_items(record, p0, record.obs_id, geom)
     # spec.maxfev is None for the open-ocean algorithms, which leaves
     # scipy's default budget alone; the turbid models raise it because they
     # otherwise run out of evaluations before converging.
@@ -372,15 +598,22 @@ def fit_mcmc(spec, record):
     ``bing.fitting.inference.{init_mcmc, fit_one}``. ``Chl``/``Y`` are passed in
     BING's idx-keyed form (an array indexed by the record's integer ``obs_id``),
     mirroring ``bing.fitting.l23.fit_one``.
+
+    Under a robust ``rt_backend`` the record's :func:`resolve_geometry` result
+    rides as the items tuple's optional 5th element. Under ``fit_Bp`` the
+    sampled vector grows a trailing ``B_p`` dimension: ``init_mcmc`` sizes
+    ``ndim``/``nwalkers`` for it and the seed carries the matching tail, so the
+    returned ``chains`` have one extra column.
     """
     from bing.fitting import inference as bing_inf
 
-    _, models, rt_dict = _prepare(spec, record)
-    _refuse_underdetermined(models, record)
-    p0 = initial_guess(models, record)
+    geom = resolve_geometry(spec, record)
+    _, models, rt_dict = _prepare(spec, record, geom=geom)
+    _refuse_underdetermined(models, record, rt_dict)
+    p0 = _seed(models, record, rt_dict)
 
     pdict = bing_inf.init_mcmc(models, nsteps=spec.mcmc.nsteps,
-                               nburn=spec.mcmc.nburn)
+                               nburn=spec.mcmc.nburn, rt_dict=rt_dict)
     # A single record is fit in isolation, so synthesize a positional index of 0
     # with size-1 Chl/Y arrays (BING keys Chl/Y by this idx). This replaces
     # ``int(record.obs_id)``, which fails on non-integer ids (e.g. GLORIA's
@@ -389,8 +622,7 @@ def fit_mcmc(spec, record):
     pdict['Chl'] = np.array([float(record.init.get('Chl', 0.0))])
     pdict['Y'] = np.array([float(record.init.get('Y', 0.0))])
 
-    items = (np.asarray(record.Rrs, dtype=float),
-             np.asarray(record.varRrs, dtype=float), p0, idx)
+    items = _fit_items(record, p0, idx, geom)
     chains, _ = bing_inf.fit_one(items, models=models, pdict=pdict,
                                  chains_only=True, rt_dict=rt_dict)
     return models, rt_dict, chains
@@ -424,14 +656,15 @@ def run_algorithm(spec, record, *, fit_method=None,
     if declined is not None:
         return declined
     try:
+        geom = resolve_geometry(spec, record)
         if method == 'chisq':
             models, rt_dict, ans, cov = fit_chisq(spec, record)
             return evaluate.from_chisq(spec, record, models, rt_dict, ans, cov,
-                                       perc=perc)
+                                       perc=perc, geom=geom)
         if method == 'mcmc':
             models, rt_dict, chains = fit_mcmc(spec, record)
             return evaluate.from_chains(spec, record, models, rt_dict, chains,
-                                        perc=perc)
+                                        perc=perc, geom=geom)
     except UnderdeterminedFitError:
         return _failed_result(spec, record, method)
     raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
@@ -467,7 +700,8 @@ def _unfit_result(spec, record, fit_method, status):
     stats = {'n_bands': int(np.asarray(record.wave).size)}
     try:
         models = spec.build_models(record.wave)
-        stats['k'] = int(models[0].nparam + models[1].nparam)
+        stats['k'] = n_free_params(
+            models, {'fit_Bp': getattr(spec.rt, 'fit_Bp', False)})
     except Exception:
         pass                    # model construction itself failed; omit k
     return RetrievalResult(
@@ -623,7 +857,8 @@ def _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed):
                     contextlib.redirect_stderr(devnull):
                 models, rt_dict, chains = fit_mcmc(spec, record)
             res = evaluate.from_chains(spec, record, models, rt_dict, chains,
-                                       perc=perc)
+                                       perc=perc,
+                                       geom=resolve_geometry(spec, record))
     except UnderdeterminedFitError:
         # a chosen status in BOTH strict modes, like run_algorithm
         res = _failed_result(spec, record, 'mcmc')
@@ -726,7 +961,10 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     ----------
     cfg : SweepConfig
         The sweep config (``sweep_id``, ``datasets``, ``algorithms``,
-        ``noise_model``, ``mcmc_subset``, ``seed``, ``results_root``).
+        ``noise_model``, ``mcmc_subset``, ``seed``, ``dataset_opts``,
+        ``leaderboard``, ``results_root``). ``dataset_opts[dataset]`` is
+        forwarded verbatim to :func:`ioptics.prep.prep_dataset` as adapter load
+        options and recorded under that dataset's provenance block.
     obs_ids : iterable, mapping or None, optional
         Restrict the prep to these observation ids (default: all). An iterable
         applies to **every** dataset; a **mapping** ``{dataset: ids}`` bounds each
@@ -757,17 +995,28 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     # Prep records per dataset (native grid, sweep-level noise model + seed).
     is_map = isinstance(obs_ids, Mapping)
     records, datasets_info = [], {}
+    dataset_opts = getattr(cfg, 'dataset_opts', None) or {}
     for dataset in cfg.datasets:
         ids = obs_ids.get(dataset) if is_map else obs_ids
+        # Per-dataset adapter load options (e.g. ``{'L23': {'X': 4}}``) reach
+        # the adapter through ``prep_dataset``'s ``**load_opts`` passthrough.
+        # ``config.load`` has already rejected a name outside ``cfg.datasets``,
+        # so nothing here can be silently dropped.
+        opts = dict(dataset_opts.get(dataset, {}))
         recs = prep.prep_dataset(dataset, obs_ids=ids,
                                  noise=cfg.noise_model, seed=cfg.seed,
                                  wv_min=cfg.wv_min, wv_max=cfg.wv_max,
-                                 n_cores=n_cores)
+                                 n_cores=n_cores, **opts)
         records.extend(recs)
         # Record the bound in provenance: "PANGAEA n_obs=3896" is a different claim
         # from "PANGAEA n_obs=3896 out of 64071 because the rest carry no truth",
         # and only the second is reproducible.
         info = {'n_obs': len(recs)}
+        if opts:
+            # verbatim, beside the count they produced: 3 320 L23 records at
+            # X=1 and at X=4 are different data, and the count alone cannot
+            # tell them apart.
+            info['opts'] = opts
         if ids is not None:
             info['n_requested'] = len(list(ids))
             info['bounded'] = True

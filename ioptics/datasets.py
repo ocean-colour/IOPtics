@@ -67,6 +67,25 @@ class RawObs:
 
 # --- registry ---------------------------------------------------------------
 
+# --- observation-geometry metadata contract ---------------------------------
+#
+# The three ``RawObs.meta`` keys that let :func:`ioptics.run.resolve_theta_s`
+# compute a record's solar zenith (and hence its ``bing.rt.geometry``
+# ``ObsGeometry``) for a robust RT backend. Named here, and imported by
+# :mod:`ioptics.run`, so the adapter side and the consumer side cannot drift
+# apart on a spelling. An adapter that knows none of them (L23 is synthetic —
+# it has no place and no time) simply omits them, and a robust-backend fit of
+# such a record raises rather than assuming an angle.
+
+#: ``meta`` key for the observation's UTC timestamp (anything
+#: ``robust.solar.solar_zenith`` accepts: ``datetime``, ISO-8601 string,
+#: ``numpy.datetime64``, ``pandas.Timestamp``).
+TIME_META_KEY = 'time'
+#: ``meta`` key for the observation latitude, degrees north.
+LAT_META_KEY = 'lat'
+#: ``meta`` key for the observation longitude, degrees east.
+LON_META_KEY = 'lon'
+
 ADAPTERS: dict = {}                     # name -> Adapter instance
 
 
@@ -180,6 +199,14 @@ _PANGAEA_TRUTH_KINDS = {
     'bbp':   'bb_p',    # particulate backscatter [1/m]
 }
 
+# Columns of ocpy's tidy PANGAEA ``rrs`` table that carry the observation's
+# place and time. ocpy renames PANGAEA's own ``Date/Time`` / ``Latitude`` /
+# ``Longitude`` headers to these friendly names and parses ``date_time`` to
+# real timestamps (``ocpy.insitu.pangaea``), so no string parsing happens here.
+_PANGAEA_TIME_COL = 'date_time'
+_PANGAEA_LAT_COL = 'lat'
+_PANGAEA_LON_COL = 'lon'
+
 
 def _finite(x):
     """True if ``x`` is a real, finite number (guards NaN / None cells)."""
@@ -287,12 +314,23 @@ class PANGAEAAdapter:
         per-contributor 0–72% at ~100% convergence — and had to join them
         from the source table by hand. Persisting them on ``results_scalar``
         makes per-source coverage a groupby.
+
+        ``date_time`` is emitted **twice**: as ``date`` (the pre-existing
+        provenance key) and as :data:`TIME_META_KEY` (``'time'``), the
+        observation-geometry contract :func:`ioptics.run.resolve_theta_s`
+        reads alongside :data:`LAT_META_KEY` / :data:`LON_META_KEY` to compute
+        the solar zenith for a robust RT backend. One name is the record's
+        provenance, the other is a fit input; keeping them separate means a
+        later change to either cannot silently move the other.
         """
         out: dict = {}
         if obs_id in rrs.index:
             row = rrs.loc[obs_id]
-            for col, mkey in (('lat', 'lat'), ('lon', 'lon'),
-                              ('depth_m', 'depth'), ('date_time', 'date'),
+            for col, mkey in ((_PANGAEA_LAT_COL, LAT_META_KEY),
+                              (_PANGAEA_LON_COL, LON_META_KEY),
+                              ('depth_m', 'depth'),
+                              (_PANGAEA_TIME_COL, 'date'),
+                              (_PANGAEA_TIME_COL, TIME_META_KEY),
                               ('subdataset', 'subdataset'),
                               ('contributor', 'contributor')):
                 if col in rrs.columns:

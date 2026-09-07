@@ -116,6 +116,17 @@ class PreparedRecord:
     meta : dict, optional
         Free-form metadata (lat/lon/date/source/sensor; L23 ``X``/``Y``; water
         type / trophic bin). Defaults to an empty dict.
+
+        Three keys are a **contract** rather than free-form, because the fit
+        reads them: :data:`~ioptics.datasets.TIME_META_KEY` (``'time'``),
+        :data:`~ioptics.datasets.LAT_META_KEY` (``'lat'``) and
+        :data:`~ioptics.datasets.LON_META_KEY` (``'lon'``) are what
+        :func:`ioptics.run.resolve_theta_s` turns into the solar zenith a
+        ``robust_*`` RT backend requires. A dataset that knows them fills them
+        in (PANGAEA does); a synthetic one does not (L23 has no place and no
+        time — its ``meta['Y']`` *is* the Hydrolight solar zenith), and a
+        robust-backend fit of a record with neither raises rather than
+        assuming an angle.
     qwip_score : float, optional
         Spectral-shape quality **annotation** (never an exclusion): the QWIP
         score of Dierssen et al. (2022, doi:10.3389/frsen.2022.869611) —

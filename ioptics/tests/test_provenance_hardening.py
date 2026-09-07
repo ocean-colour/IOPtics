@@ -327,3 +327,135 @@ def test_mixed_schemas_are_flagged_as_such_not_as_configuration_drift(tmp_path):
     plain = profiles._what_varied(same, 'expb_pow')
     assert 'What varied between sweeps' in plain
     assert 'different provenance schemas' not in plain
+
+
+# --------------------------------------------------------------------
+# provenance schema 4 — the RT backend, dataset_opts, and the board flag
+# --------------------------------------------------------------------
+def test_the_block_records_the_whole_rt_dict():
+    """Which forward model produced a number is not a detail."""
+    block = provenance.algorithm_block(registry.get('expb_pow'))
+    assert provenance.PROVENANCE_SCHEMA == 4
+    assert set(block['rt']) == {
+        'variable_Gordon', 'variable_Gordon_G0', 'variable_Gordon_bbp',
+        'include_Raman', 'include_Chl_fl', 'phi_C', 'double_gaussian',
+        'rt_backend', 'fit_Bp', 'Bp_value', 'include_CDOM_fl',
+        'cdom_fraction'}
+    assert block['rt']['rt_backend'] == 'gordon'
+    assert block['rt']['cdom_fraction'] == 0.8      # the Q32 proxy, on disk
+    yaml.safe_dump(block)
+
+
+def test_the_digest_moves_with_the_rt_backend():
+    spec = registry.get('expb_pow')
+    base = provenance.algorithm_digest(spec)
+    for field, value in (('rt_backend', 'robust_ztt'), ('fit_Bp', True),
+                         ('include_CDOM_fl', True), ('cdom_fraction', 0.5),
+                         ('Bp_value', 0.02)):
+        other = copy.deepcopy(spec)
+        setattr(other.rt, field, value)
+        assert provenance.algorithm_digest(other) != base, field
+
+
+def test_the_digest_of_a_pre_existing_algorithm_is_unchanged_by_schema_4():
+    """Widening the ``rt`` block must not re-hash every algorithm ever run.
+
+    ``_SCHEMA_FIELD_DEFAULTS`` cannot express this: the five new keys appeared
+    *inside* ``rt``, not beside it, so a missing top-level key never fires.
+    ``_SCHEMA_NESTED_DEFAULTS`` normalizes the other way — a sub-key at its
+    schema-4 default is dropped from the digest payload — so a seven-key
+    schema-3 block and a twelve-key schema-4 one hash identically whenever the
+    configuration really is the Gordon one.
+    """
+    spec = registry.get('expb_pow')
+    new = provenance.algorithm_block(spec)
+    # exactly what a schema-3 block looked like: the same seven RT toggles
+    old = copy.deepcopy(new)
+    old['rt'] = {k: v for k, v in new['rt'].items()
+                 if k not in ('rt_backend', 'fit_Bp', 'Bp_value',
+                              'include_CDOM_fl', 'cdom_fraction')}
+    assert len(old['rt']) == 7 and len(new['rt']) == 12
+    assert provenance.algorithm_digest(old) == provenance.algorithm_digest(new)
+    # ... and the same holds through the schema-1 normalization already in place
+    old1 = {k: v for k, v in old.items()
+            if k not in ('maxfev', 'mcmc', 'fits_turbid', 'schema', 'digest')}
+    old1['noise_model'] = 'pace'
+    factory = AlgorithmSpec.from_standard('expb_pow')
+    assert provenance.algorithm_digest(old1) \
+        == provenance.algorithm_digest(factory)
+
+
+def test_a_schema_3_provenance_file_still_loads_and_folds(tmp_path):
+    """Old artifacts on disk must keep working, digest included."""
+    _sweep(tmp_path, 'sc3')
+    spec = registry.get('expb_pow')
+    block = provenance.algorithm_block(spec)
+    for key in ('rt_backend', 'fit_Bp', 'Bp_value', 'include_CDOM_fl',
+                'cdom_fraction'):
+        block['rt'].pop(key)
+    block['schema'] = 3
+    d = io.sweep_dir('sc3', root=tmp_path)
+    (d / 'provenance.yaml').write_text(
+        yaml.safe_dump({'sweep_id': 'sc3', 'schema': 3, 'algorithms': [block]}))
+    assert leaderboard._algorithm_schemas(d) == {'expb_pow': 3}
+    assert leaderboard._algorithm_digests(d)['expb_pow'] \
+        == provenance.algorithm_digest(spec)
+
+
+def test_the_record_hoists_dataset_opts_and_the_leaderboard_flag():
+    cfg = config.loads(
+        'sweep_id: s4\ndatasets: [L23]\nalgorithms: [expb_pow]\n'
+        'dataset_opts:\n  L23: {X: 4}\nleaderboard: false\n')
+    rec = provenance.build('s4', cfg, [registry.get('expb_pow')])
+    assert rec['schema'] == 4
+    assert rec['dataset_opts'] == {'L23': {'X': 4}}
+    assert rec['leaderboard'] is False
+    # still inside the verbatim config copy, too
+    assert rec['config']['dataset_opts'] == {'L23': {'X': 4}}
+    assert yaml.safe_load(provenance.dump(rec)) == rec
+
+
+def test_the_record_defaults_the_new_sweep_level_keys():
+    rec = provenance.build('s5', None, [registry.get('expb_pow')])
+    assert rec['dataset_opts'] == {}
+    assert rec['leaderboard'] is True
+
+
+# --------------------------------------------------------------------
+# leaderboard: a sweep can decline to be a standing
+# --------------------------------------------------------------------
+def test_a_withheld_sweep_is_not_folded(tmp_path):
+    _sweep(tmp_path, 'keep')
+    _sweep(tmp_path, 'drop')
+    for sid, flag in (('keep', True), ('drop', False)):
+        cfg = config.loads(
+            f'sweep_id: {sid}\ndatasets: [L23]\nalgorithms: [expb_pow]\n'
+            f'leaderboard: {str(flag).lower()}\n')
+        provenance.write(sid, provenance.build(sid, cfg, []), root=tmp_path)
+
+    board = leaderboard.update(runs_root=tmp_path, out=tmp_path / 'lb.parquet')
+    assert set(board['sweep_id']) == {'keep'}
+    # naming it explicitly does not override the sweep's own statement
+    board = leaderboard.update(runs_root=tmp_path, out=tmp_path / 'lb.parquet',
+                               sweep_ids=['drop'])
+    assert set(board['sweep_id']) == {'keep'}
+
+
+def test_a_sweep_with_no_flag_or_no_provenance_is_still_folded(tmp_path):
+    """Every sweep written before the flag existed is a publishable one."""
+    _sweep(tmp_path, 'nopro')                 # no provenance.yaml at all
+    _sweep(tmp_path, 'oldpro')
+    (io.sweep_dir('oldpro', root=tmp_path) / 'provenance.yaml').write_text(
+        yaml.safe_dump({'sweep_id': 'oldpro', 'schema': 3}))
+    board = leaderboard.update(runs_root=tmp_path, out=tmp_path / 'lb.parquet')
+    assert set(board['sweep_id']) == {'nopro', 'oldpro'}
+
+
+def test_the_flag_is_read_from_the_embedded_config_as_a_fallback(tmp_path):
+    _sweep(tmp_path, 'cfgonly')
+    d = io.sweep_dir('cfgonly', root=tmp_path)
+    (d / 'provenance.yaml').write_text(yaml.safe_dump(
+        {'sweep_id': 'cfgonly', 'config': {'leaderboard': False}}))
+    assert leaderboard._leaderboard_enabled(d) is False
+    board = leaderboard.update(runs_root=tmp_path, out=tmp_path / 'lb.parquet')
+    assert board.empty or 'cfgonly' not in set(board['sweep_id'])

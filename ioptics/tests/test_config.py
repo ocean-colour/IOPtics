@@ -163,3 +163,77 @@ def test_from_dict_python_api():
     )
     # the Python-built object round-trips through YAML identically
     assert config.loads(config.dump(cfg)) == cfg
+
+
+# --------------------------------------------------------------------
+# dataset_opts — per-dataset adapter load options (rt-tests, 2026-09-05)
+# --------------------------------------------------------------------
+DATASET_OPTS_YAML = """\
+sweep_id: l23_x4_v1
+datasets: [L23, PANGAEA]
+algorithms: [expb_pow]
+dataset_opts:
+  L23: {X: 4, Y: 30}
+"""
+
+
+def test_dataset_opts_parse_and_round_trip():
+    cfg = config.loads(DATASET_OPTS_YAML)
+    assert cfg.dataset_opts == {'L23': {'X': 4, 'Y': 30}}
+    # PANGAEA simply runs at the adapter defaults
+    assert 'PANGAEA' not in cfg.dataset_opts
+    assert config.loads(config.dump(cfg)) == cfg
+    assert cfg.to_dict()['dataset_opts'] == {'L23': {'X': 4, 'Y': 30}}
+
+
+def test_dataset_opts_default_is_empty_and_unemitted():
+    cfg = config.loads(SAMPLE_YAML)
+    assert cfg.dataset_opts == {}
+    # an ordinary sweep's canonical config is unchanged by the key existing
+    assert 'dataset_opts' not in cfg.to_dict()
+
+
+def test_dataset_opts_rejects_a_dataset_the_sweep_does_not_run():
+    """A typo here would run the whole sweep at the adapter defaults.
+
+    ``prep_dataset`` takes ``**load_opts``, so an option addressed to a dataset
+    outside the sweep reaches nothing and raises nowhere — exactly the
+    silently-ignored-request failure the per-algorithm override whitelist
+    exists to prevent.
+    """
+    bad = ("sweep_id: s1\ndatasets: [L23]\nalgorithms: [expb_pow]\n"
+           "dataset_opts:\n  L32: {X: 4}\n")
+    with pytest.raises(ConfigError, match="dataset_opts.*L32"):
+        config.loads(bad)
+
+
+def test_dataset_opts_must_be_mappings():
+    for bad in ("dataset_opts: 4\n", "dataset_opts:\n  L23: 4\n",
+                "dataset_opts:\n  L23: [X, 4]\n"):
+        text = "sweep_id: s1\ndatasets: [L23]\nalgorithms: [expb_pow]\n" + bad
+        with pytest.raises(ConfigError, match='dataset_opts'):
+            config.loads(text)
+
+
+# --------------------------------------------------------------------
+# leaderboard — the publish/withhold flag
+# --------------------------------------------------------------------
+def test_leaderboard_defaults_true_and_is_unemitted():
+    cfg = config.loads(SAMPLE_YAML)
+    assert cfg.leaderboard is True
+    assert 'leaderboard' not in cfg.to_dict()
+
+
+def test_leaderboard_false_round_trips():
+    text = SAMPLE_YAML + 'leaderboard: false\n'
+    cfg = config.loads(text)
+    assert cfg.leaderboard is False
+    assert cfg.to_dict()['leaderboard'] is False
+    assert config.loads(config.dump(cfg)) == cfg
+
+
+def test_leaderboard_must_be_a_boolean():
+    text = ("sweep_id: s1\ndatasets: [L23]\nalgorithms: [expb_pow]\n"
+            "leaderboard: maybe\n")
+    with pytest.raises(ConfigError, match='leaderboard'):
+        config.loads(text)

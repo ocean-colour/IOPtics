@@ -97,14 +97,17 @@ Use Fable.  Log your work.
    byte-identity, on-adds-signal, gordon rejects, cache separation, MCMC
    round-trip). Run BING's full `pytest -q`. Q&A, Log.
 
-7. **RoB: solar-zenith utility** (repo `retrieve-or-bust`, branch `cdom-rt`).
+7. **Q&A 6:** Read my answers to the Q&A below and act accordingly.
+   Use Fable.  Log your work.
+
+8. **RoB: solar-zenith utility** (repo `retrieve-or-bust`, branch `cdom-rt`).
    New module (e.g. `robust/solar.py`): dependency-free NOAA solar-position
    `solar_zenith(time, lat, lon)` (UTC datetime/ISO string; vectorized;
    degrees; ±0.1° adequate). Docstring cites the NOAA algorithm. Tests
    against a few published ephemeris values incl. edge cases (polar night,
    date line). Run RoB's `pytest -q`. Q&A, Log.
 
-8. **IOPtics: core plumbing** (this repo). (a) `dataset_opts` key in
+9. **IOPtics: core plumbing** (this repo). (a) `dataset_opts` key in
    `SweepConfig` threaded `run_sweep → prep_dataset` and recorded in
    provenance; (b) extend `RTOptions` with `rt_backend`, `fit_Bp`,
    `Bp_value`, `include_CDOM_fl`, `cdom_fraction`, mapped through
@@ -116,7 +119,7 @@ Use Fable.  Log your work.
    `leaderboard.update()`. Tests for each; run `pytest -q` without
    `$OS_COLOR` (CI-equivalent) and with. Q&A, Log.
 
-9. **IOPtics: PACE dataset** (this repo + one extraction script). Extraction
+10. **IOPtics: PACE dataset** (this repo + one extraction script). Extraction
    script (may import PAB code paths and `run1k/pab.db`): seeded
    (`default_rng(20260906)`) sample of 100 of the 274 run1k chain NPZs →
    single parquet/NPZ under `$OS_COLOR/IOPtics/pace_pab_100/` with wave,
@@ -125,7 +128,7 @@ Use Fable.  Log your work.
    `pab` import in the package), `Rrs_err` from stored varRrs, truth `{}`,
    a `needs_pace_pab` test tier. Tests; `pytest -q` both modes. Q&A, Log.
 
-10. **IOPtics: variants, configs, build script, smoke run.**
+11. **IOPtics: variants, configs, build script, smoke run.**
     `register_rt_variants()` in `ioptics/algorithms/registry.py` (opt-in,
     five specs per the pinned matrix). Helper to derive + freeze the
     PANGAEA-97 id list (NOMAD ∩ aph∩acdom∩bbp truth) into a committed CSV.
@@ -138,18 +141,18 @@ Use Fable.  Log your work.
     end-to-end (χ²+MCMC on ~8 spectra × 5 variants) and sanity-check
     outputs before any long run. `pytest -q`. Q&A, Log.
 
-11. **Run sweep RT-A** (L23 X=4 + PANGAEA-97; χ² all + full MCMC ×5
+12. **Run sweep RT-A** (L23 X=4 + PANGAEA-97; χ² all + full MCMC ×5
     variants; ~a day-plus wall time — use checkpointing, `--n-cores`, and
     report progress). Then stage-2 metrics. Verify chain health on a sample
     (autocorrelation, acceptance, B_p posteriors vs prior edges). Log
     timings and any failures/domain warnings. Q&A, Log.
 
-12. **Run sweep RT-B** (PACE-100; χ² + full MCMC ×5 variants), then
+13. **Run sweep RT-B** (PACE-100; χ² + full MCMC ×5 variants), then
     metrics. Compare `expb_pow_hyb_el` posteriors against PAB's stored
     run1k ExpBPow (gordon-elastic) posteriors for the same pixels as a
     consistency check. Q&A, Log.
 
-13. **Report round.** Stage-5 report build: cross-variant pages for both
+14. **Report round.** Stage-5 report build: cross-variant pages for both
     sweeps + the PACE headline figure (distribution of fractional change in
     retrieved a_ph/a_dg/bb_p at 443 nm, elastic → full inelastic, plus the
     ΔBIC histogram) and the L23 truth-comparison views. Report text must
@@ -586,23 +589,27 @@ during implementation:
     wrong for this pixel" into the retrieval error. Keep as-is, or switch
     the truth line to `cdom_fraction × a_dg` to isolate the inversion from
     the proxy error (one-line change)? Decide before RT-A runs.
+>A. Keep as is
 
 39. **Pre-existing pin failure.** `test_fit_Bp_false_matches_provisional_pin`
     fails by 1 ULP (1.8e-16 relative, 1 of 61 elements) on the *unmodified*
     tree too — the exact BLAS/env drift its own docstring anticipates, and
     its byte-identity companion test is green. Regenerate
     `bing/tests/files/m3_fixed_bp_pin.npz` on this machine?
+>A. Fix the test so that it is machine independent.
 
 40. **CDOM-fl amplitude is fully fixed.** `cdom_fraction` (0.8) and
     `CDOMFl.scale` (1.0) are both constants, so the CDOM term has no
     adjustable amplitude during a fit. Fine for this experiment, or do you
     want a fitted amplitude (sampled like B_p) held in reserve if the sweeps
     show systematic over/under-shoot?
+>A. Fine for this experiment.
 
 41. **Unvalidated physics, eyes open.** robust's CDOM-fl term is
     analytic-only, its δ_C correction head is untrained, and there is no
     HydroLight CDOM-fl truth until RoB's M6. Confirm you want the sweeps to
     run on it as-is (the report will caveat this alongside the 0.8 proxy).
+>A. I confirm
 
 One implementation note inside the accepted Q28 scope (no question): keeping
 the RT variants out of the shared leaderboard (Q27) needs an explicit
@@ -611,7 +618,196 @@ the runs root whenever any build calls `build_landing()` — I'll add a
 provenance flag (e.g. `leaderboard: false` in the sweep config) that
 `leaderboard.update` honors, so the exclusion survives future rebuilds.
 
+---
+
+### Round 6 (2026-09-07) — after Execution task 8 (RoB solar-zenith utility)
+
+Task 8 is implemented and green (see Log). Two small maintainer-taste
+questions; the defaults chosen are fine unless you say otherwise:
+
+42. **API surface.** `robust/solar.py` exposes `solar_zenith`,
+    `solar_position`, `solar_declination`, `equation_of_time`, and an
+    `ALGORITHM` provenance string. Two choices made conservatively:
+    (a) `robust/__init__.py` was left untouched (its docstring says it
+    carries the version "and nothing else"), so callers write
+    `from robust import solar` — OK, or do you want `solar` re-exported?
+    (b) keep the `ALGORITHM` constant (handy for figure captions /
+    provenance tables), or trim `__all__` to functions only?
+>A. (a) Ok; (b) Keep the ALGORITHM constant.
+
+43. **Optional extras — default is "neither".** (a) An optional `height`
+    argument for topocentric correction (irrelevant at sea level, ~arcsec
+    scale; only matters for high-altitude lakes). (b) A `needs_astropy`
+    live cross-check test regenerating the reference table (currently a
+    frozen constant with its generating snippet in a comment; CI installs
+    no astropy). Want either?
+
+>A. Neither.
+
+---
+
+### Round 7 (2026-09-07) — after Execution task 9 (IOPtics core plumbing)
+
+Task 9 is implemented and green (see Log). Two questions; the agent's other
+two surfaced items are already answered by the plan (θ_v=0 everywhere was
+decided in Q17/Q37; the registered RT variants arrive in task 11).
+
+44. **L23 θ_s follows the `Y` load option.** Deliberate deviation from the
+    "L23 → 0" spec line: L23's `Y` option *is* the Hydrolight solar-zenith
+    index (0/30/60°), and `dataset_opts: {L23: {Y: 30}}` is now expressible —
+    hard-coding 0 would be silently wrong for exactly that config. So θ_s =
+    `meta['Y']` (absent → 0.0). Our sweeps load Y=0, so behavior is
+    unchanged for the plan. Confirm, or pin to literal 0.0?
+>A. Confirm
+
+45. **Pre-existing MCMC pooling failure.** With `$OS_COLOR`,
+    `test_mcmc_scale.py::test_mcmc_subset_pooled_and_reordered_match_serial`
+    fails on the *unmodified* tree too (pooled vs serial chains diverge) —
+    unrelated to this task, but it touches the machinery RT-A will use at
+    scale. Investigate/fix it as a side task before the big sweeps, or
+    leave it?
+>A. Ok, investigae and fix before the big sweeps.
+
 ## Logs
+
+### 2026-09-07 — Execution task 9: IOPtics core plumbing (Opus 5, orchestrated by Fable)
+
+Round-6 answers first: Q42 (keep conservative API surface + `ALGORITHM`
+constant) and Q43 (no height arg, no live astropy test) confirmed the
+task-8 defaults — no code changes. Then task 9, delegated to Opus 5,
+implemented on `ioptics @ rt-tests`. Nothing committed — JXP runs git.
+
+**What landed:**
+- **Config:** `SweepConfig.dataset_opts` (dataset → adapter load options;
+  unknown dataset names rejected at `config.load`) and `leaderboard`
+  (default true); both omitted from `to_dict()` at defaults so existing
+  configs round-trip byte-identically; both recorded in provenance.
+- **Spec:** `RTOptions` grew the 5 backend fields (`rt_backend`, `fit_Bp`,
+  `Bp_value`, `include_CDOM_fl`, `cdom_fraction`) with the Q32 proxy note
+  in the docstring; `to_bing_p` emits the full 12-key surface; YAML `rt:`
+  partial merge covers the new keys.
+- **Geometry:** PANGAEA adapter emits `time`/`lat`/`lon` meta (contract
+  documented on `PreparedRecord`); `run.resolve_theta_s` — L23 →
+  `meta['Y']` (the Hydrolight zenith index; absent → 0.0; see Q44),
+  otherwise `robust.solar.solar_zenith`; missing metadata with a robust
+  backend → `MissingGeometryError` naming record and keys, never a silent
+  default. `resolve_geometry` is a pure function; gordon → `None` (legacy
+  4-tuple, no robust import); robust → `ObsGeometry(θ_s, 0, 0)` threaded
+  as the 5th tuple element through both fitters, the MCMC pool workers,
+  and `evaluate.from_chisq/from_chains` (new `geom=` kwarg).
+  `validate_rt_dict(rt_dict, models, geom)` runs once at `_prepare`.
+  `correct_atmosphere` now gated to the gordon Chl-fl path only (robust
+  uses its packaged Ed — Q36), so robust-path tests don't need
+  `needs_inelastic`.
+- **B_p outputs:** param names from `chain_param_names` → trailing `B_p`
+  in `RetrievalResult.params`, chains (k+1 columns, saved with pnames),
+  and `B_p`/`sig_B_p` scalar columns on `results_scalar`; `k`, AIC/BIC,
+  dof, and the underdetermined refusal all use the new `n_free_params`.
+- **Provenance:** `PROVENANCE_SCHEMA = 4`. Digest stability via
+  `_SCHEMA_NESTED_DEFAULTS`: rt sub-keys at their schema-4 defaults are
+  dropped from the digest payload, so a 7-key schema-3 gordon block and a
+  12-key schema-4 gordon block hash identically (pinned by test), while
+  any non-default moves the digest. Schema-3 files still load and fold.
+- **Leaderboard:** `update()` skips sweeps whose provenance says
+  `leaderboard: false` (even when explicitly listed); no retro-deletion.
+- Docs: implementation doc → v0.24 with the new YAML surface; sphinx
+  `-W` build **succeeds** (sphinx 9.1.0 in ocean14).
+
+**Notable implementation choices:** `_prepare` kept its return shape
+(geom is derived by the pure resolver at every consumer — fit and
+reconstruction agree by construction); `evaluate` grew a `_forward`
+dispatcher (it never called bing's `reconstruct_*`); L23 θ_s honors `Y`
+(Q44).
+
+**Tests:** 45 new (new `test_rt_backends.py` = 18, plus additions to
+config/spec/provenance/datasets/run modules). **CI-equivalent (no
+`$OS_COLOR`): 446 passed, 53 skipped, 0 failed (171 s). With data:
+497 passed, 1 skipped, 1 failed (271 s)** — the failure
+(`test_mcmc_scale::test_mcmc_subset_pooled_and_reordered_match_serial`)
+is pre-existing, reproduced on a pristine `git archive HEAD` copy → Q45.
+
+Open questions Q44–Q45 posed in Q&A. Next: task 10 (PACE dataset), which
+now has everything it needs (`dataset_opts`, geometry meta contract,
+`robust.solar`).
+
+### 2026-09-07 — Execution task 8: RoB solar-zenith utility (Opus 5, orchestrated by Fable)
+
+Implemented on `retrieve-or-bust @ cdom-rt`. Delegated to an Opus 5 agent
+per JXP's instruction. Nothing committed — JXP runs git.
+
+**What landed:**
+- `robust/solar.py` (new, pure NumPy, no jax — a subprocess test pins that
+  importing it leaves jax out of `sys.modules`): `solar_zenith(time, lat,
+  lon)` plus natural companions `solar_position` (zenith, azimuth),
+  `solar_declination`, `equation_of_time`, and an `ALGORITHM` provenance
+  string. Time accepts naive/aware datetime, date, ISO-8601 (incl. `Z` and
+  offsets), `np.datetime64`, bytes, and arrays/sequences; lat/lon broadcast
+  by NumPy rules; any longitude branch; `NaT`→`nan`; float64 array return,
+  collapsed to scalar for all-scalar input; geometric (unrefracted) zenith,
+  unclamped (polar night ⇒ >90°).
+- `docs/api.rst`: new `solar` automodule section (RTD will be the first
+  real docs build — `myst_nb` isn't in ocean14).
+- **Algorithm choice (documented deviation):** the NOAA *Solar Calculator*
+  Julian-century series (Meeus ch. 25/28: equation of centre, apparent
+  longitude, nutation-corrected obliquity), NOT the simpler NOAA
+  fractional-year form — the latter's leap-cycle phase drift (~0.3°) would
+  have missed the ±0.1–0.2° target. Same code size, ~30× more accurate.
+
+**Accuracy (vs astropy/ERFA, refraction off):** worst case 0.0164° over a
+4,000-point sweep of 1900–2100 × the globe (p99 0.0116°, mean 0.0031°);
+0.0099° worst over the 10 hard-coded reference rows; Meeus printed examples
+matched to ≤0.0013°. Test gate 0.05° (~3× headroom). Far inside the ±0.1°
+requirement — θ_s error is negligible against the θ_v=0 approximation.
+
+**Tests:** `robust/tests/test_solar.py`, 51 tests — astropy reference
+table, Meeus 25.b/28.b, subsolar-point identity, equinox/solstice against
+USNO instants, solar-noon minimum, polar night/day, exact ±360° longitude
+wrap + date-line continuity, all time formats, tz correctness (with a
+negative control), broadcasting shapes, scalar/array convention, type
+rejection. 50 pass, 1 skip (South-Pole azimuth — genuinely undefined).
+**Full RoB suite: 532 passed, 5 skipped, 0 failures (114 s)** (baseline
+481/4 before this task). `ruff check` + `ruff format --check` clean;
+docstring doctests pass.
+
+Minor spec nit found by the agent: the task's date-line example
+(+179.9 vs −180.1) named the *same* meridian; the test covers both that
+exact-equality reading and the truly-0.2°-apart pair.
+
+Open questions Q42–Q43 posed in Q&A (API-surface taste; optional extras —
+defaults are fine). Next: task 9, IOPtics core plumbing.
+
+### 2026-09-07 — Execution task 7 (Q&A 6): round-5 decisions applied (Fable)
+
+Decisions recorded from JXP's round-5 answers:
+- **Q38:** keep the honest asymmetry — L23 synthetic truth uses true `a_g`,
+  retrieval uses the `0.8 × a_dg` proxy. No code change.
+- **Q39:** fix `test_fit_Bp_false_matches_provisional_pin` to be
+  machine-independent (not regenerate the fixture). **Done** — see below.
+- **Q40:** CDOM-fl amplitude stays fully fixed for this experiment.
+- **Q41:** confirmed — sweeps run on robust's analytic, pre-M6-validation
+  CDOM-fl term; report will caveat it alongside the 0.8 proxy.
+
+**The Q39 fix** (`bing/tests/test_evaluate_robust.py`, branch `rob_cdom`):
+root cause was the fixture *recipe guard*, not the fitter pins — the test
+recomputes the synthetic observation live through the Gordon forward model
+and compared it **bitwise** (`rtol=0, atol=0`) to the stored copy, so any
+1-ULP BLAS difference between machines failed it. Changed the guard to
+`rtol=1e-12` (≈4 decades above ULP noise, ≈6 below any real recipe change)
+and updated the docstring: all fixture comparisons are now tolerance-based;
+the fitter pins (rtol=1e-6) were already machine-tolerant and consume the
+*stored* spectrum, so they were never the problem. The stale
+"regenerate the fixture on env drift" advice was replaced with the
+machine-independence rationale.
+
+**Tests:** the fixed test + its byte-identity companion pass; full
+`test_evaluate_robust.py` 91/91; **full BING suite 311 passed, 2 skipped,
+0 failed (424 s)** — the suite is now fully green on this machine
+(task 6's single pre-existing failure eliminated).
+
+Task text specified Fable, and the change was a single surgical test edit,
+so no Opus delegation was used this round. No new open questions — Q&A has
+no round-6 entries; execution can proceed to task 8 (RoB solar-zenith
+utility). Nothing committed — JXP runs git.
 
 ### 2026-09-06 — Execution task 6: BING CDOM-fluorescence path (Opus 5, orchestrated by Fable)
 

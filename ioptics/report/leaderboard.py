@@ -90,6 +90,31 @@ def _provenance(sweep_dir):
         return {}
 
 
+def _leaderboard_enabled(sweep_dir):
+    """Whether this sweep's provenance permits folding it into the board.
+
+    Reads the sweep-level ``leaderboard`` flag (provenance schema 4), falling
+    back to the same key inside the embedded ``config`` copy, and finally to
+    ``True`` — every sweep written before the flag existed is a publishable
+    one, and a sweep with no provenance at all keeps its pre-existing
+    behaviour.
+
+    The flag exists because :func:`update` folds *every* sweep dir under the
+    runs root: a diagnostic run, a deliberately-crippled control, or a sweep
+    built to demonstrate a failure mode would otherwise be published as a
+    standing beside the real contests, and the only way to keep it out was to
+    move its directory. Withholding is now a property of the sweep, recorded
+    where the sweep is.
+    """
+    prov = _provenance(sweep_dir)
+    if 'leaderboard' in prov:
+        return bool(prov['leaderboard'])
+    cfg = prov.get('config') or {}
+    if isinstance(cfg, dict) and 'leaderboard' in cfg:
+        return bool(cfg['leaderboard'])
+    return True
+
+
 def _version_stamps(sweep_dir):
     """``{'ioptics': 'v@commit', 'bing': 'commit', 'ocpy': 'commit'}``.
 
@@ -281,6 +306,14 @@ def update(runs_root=None, *, root=None, out=None, sweep_ids=None):
     rows for a folded ``sweep_id`` replace any existing rows for it; sweeps not
     folded this call are preserved. Pass ``sweep_ids`` to fold a subset. Returns
     the full leaderboard DataFrame.
+
+    A sweep whose ``provenance.yaml`` says ``leaderboard: false`` is **skipped**
+    (:func:`_leaderboard_enabled`) — including when it is named explicitly in
+    ``sweep_ids``, since the flag is the sweep's own statement about whether its
+    numbers are a standing, and an operator listing sweep ids is not overruling
+    it. Note that skipping is not un-folding: rows folded before the flag was
+    set are left in place, so withdrawing a published sweep means deleting its
+    rows, not merely flipping the flag.
     """
     runs_root = Path(runs_root) if runs_root is not None else io.runs_root(root)
     out = Path(out) if out is not None else _default_out(runs_root)
@@ -288,6 +321,8 @@ def update(runs_root=None, *, root=None, out=None, sweep_ids=None):
     if sweep_ids is None:
         sweep_ids = sorted(p.name for p in runs_root.iterdir()
                            if (p / metrics.METRICS_SCALAR_FILE).is_file())
+    sweep_ids = [sid for sid in sweep_ids
+                 if _leaderboard_enabled(runs_root / sid)]
     folded = [f for f in (_fold_sweep(sid, runs_root) for sid in sweep_ids)
               if f is not None]
 

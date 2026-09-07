@@ -195,3 +195,47 @@ def test_gloria_load_obs_hyperspectral_and_scalar_truth():
         assert src_wave.tolist() == [440.0] and vals.size == 1
     for scalar in ({'Chl', 'tss', 'Secchi'} & set(raw.truth)):
         assert np.ndim(raw.truth[scalar]) == 0
+
+
+# --------------------------------------------------------------------
+# observation-geometry metadata (rt-tests, 2026-09-05)
+# --------------------------------------------------------------------
+def test_the_geometry_meta_keys_are_named_once():
+    """The adapter side and ``run.resolve_theta_s`` must not drift on spelling."""
+    assert (D.TIME_META_KEY, D.LAT_META_KEY, D.LON_META_KEY) == \
+        ('time', 'lat', 'lon')
+
+
+@needs_pangaea
+def test_pangaea_carries_the_time_and_place_a_robust_fit_needs():
+    """PANGAEA records when and where; a robust backend needs both.
+
+    ``date`` (the pre-existing provenance key) and
+    :data:`~ioptics.datasets.TIME_META_KEY` come from the same ocpy column and
+    must agree — one is the record's provenance, the other is a fit input.
+    """
+    import pandas as pd
+
+    from ioptics import prep, run
+
+    ad = D.get_adapter('PANGAEA')
+    ids = ad.obs_ids()
+    # find an observation that actually has all three (the table is permissive)
+    for obs_id in ids[:200]:
+        meta = ad.load_obs(obs_id).meta
+        if all(run._usable(meta.get(k)) for k in
+               (D.TIME_META_KEY, D.LAT_META_KEY, D.LON_META_KEY)):
+            break
+    else:
+        pytest.skip('no PANGAEA observation in the first 200 carries time+place')
+
+    assert pd.Timestamp(meta[D.TIME_META_KEY]) == pd.Timestamp(meta['date'])
+    assert -90.0 <= float(meta[D.LAT_META_KEY]) <= 90.0
+    assert -360.0 <= float(meta[D.LON_META_KEY]) <= 360.0
+
+    # ... and they survive prep onto the record, which is what the fitter reads
+    record = prep.prep_one('PANGAEA', obs_id)
+    for key in (D.TIME_META_KEY, D.LAT_META_KEY, D.LON_META_KEY):
+        assert key in record.meta, key
+    theta_s = run.resolve_theta_s(record)
+    assert 0.0 <= theta_s <= 180.0

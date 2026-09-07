@@ -14,6 +14,13 @@ same way for both fit methods so intervals are comparable:
 This module wraps ``bing.evaluate`` / ``bing.stats``; it operates on already-built
 models (so it does not itself load L23 data — but its inputs come from
 :func:`ioptics.run.fit_chisq`, which does).
+
+Two things the RT backend changes here. The forward model used to rebuild the
+components is dispatched on ``rt_dict['rt_backend']`` (:func:`_forward`), with
+the fit's own ``geom`` passed through, so the reconstruction is evaluated under
+exactly the physics the fit ran; and under ``rt_dict['fit_Bp']`` the fitted
+vector carries a trailing ``B_p`` column, peeled off before the a/bb split
+(:func:`_split_Bp`) and reported as a fitted parameter and a derived scalar.
 """
 
 from __future__ import annotations
@@ -88,6 +95,47 @@ def _shape_param_names(models):
     return names
 
 
+def _split_Bp(samples, rt_dict, n_wave):
+    """Peel the trailing ``B_p`` column off a ``(n, ndim)`` sample block.
+
+    Under ``rt_dict['fit_Bp']`` the fitted vector is
+    ``[a_params..., bb_params..., B_p]`` (BING design §3.3), so ``B_p`` must
+    come off *before* the a/bb split or every model parameter would be read one
+    slot to the left. Mirrors ``bing.evaluate.reconstruct_from_chains``,
+    including the ``(n_samples, n_wave)`` broadcast robust's forward models
+    expect for a batched ``B_p``.
+
+    Returns ``(model_params, Bp)`` with ``Bp`` ``None`` in the fixed-``B_p``
+    case — which is also the whole legacy path, left untouched.
+    """
+    if not rt_dict.get('fit_Bp', False):
+        return samples, None
+    Bp = np.broadcast_to(samples[:, -1:], (samples.shape[0], n_wave))
+    return samples[:, :-1], Bp
+
+
+def _forward(models, aparams, bparams, rt_dict, geom, Bp):
+    """Forward-model ``Rrs``/``a``/``bb``, dispatched on the RT backend.
+
+    ``'gordon'`` (also the value when the key is absent) keeps
+    ``bing.evaluate.calc_Rrs_from_models`` exactly as before; a robust backend
+    evaluates the same parameters through ``calc_Rrs_from_models_robust``,
+    which needs the fit's own ``geom`` and (under ``fit_Bp``) the per-sample
+    ``Bp``. Dispatching here — rather than at each call site — is what keeps
+    the reconstruction's physics identical to the fit's.
+    """
+    from bing.evaluate import calc_Rrs_from_models
+
+    if rt_dict.get('rt_backend', 'gordon') == 'gordon':
+        return calc_Rrs_from_models(models[0], aparams, models[1], bparams,
+                                    rt_dict, full_return=True)
+    from bing.evaluate import calc_Rrs_from_models_robust
+
+    return calc_Rrs_from_models_robust(models[0], aparams, models[1], bparams,
+                                       rt_dict, geom=geom, Bp=Bp,
+                                       full_return=True)
+
+
 def _fit_status(record, stats, finite):
     """Classify a fit: ``ok`` | ``poor_fit`` | ``out_of_scope`` | ``fit_failed``.
 
@@ -132,14 +180,17 @@ def _fit_status(record, stats, finite):
     return 'poor_fit'
 
 
-def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
-              fit_method, perc):
+def _assemble(spec, record, models, rt_dict, samples, point_params,
+              fit_method, perc, geom=None):
     """Build a :class:`RetrievalResult` from posterior **parameter samples**.
 
     Shared by both fit methods so χ² (covariance draws) and MCMC (chain) yield
-    identically-assembled components, params, scalars, and stats. ``aparams`` /
-    ``bparams`` are ``(n_samples, nparam)`` draws; ``point_params`` is the
-    point-estimate parameter vector.
+    identically-assembled components, params, scalars, and stats. ``samples``
+    is the ``(n_samples, ndim)`` block of fitted vectors and ``point_params``
+    the ``(ndim,)`` point estimate — both in the fitted layout
+    ``[a_params..., bb_params...]``, with a trailing ``B_p`` under
+    ``rt_dict['fit_Bp']`` (peeled off by :func:`_split_Bp` before the a/bb
+    split, and reported as its own parameter).
 
     **Central values come from the point estimate, uncertainties from the
     samples.** Every ``med``, every fitted parameter value, every derived
@@ -148,17 +199,27 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     median over the forward-modelled draws — silently fails whenever the draws
     are unreliable, which for a least-squares fit means whenever ``cov`` is
     near-singular (see :func:`_component_fit`).
+
+    ``geom`` is the fit's own observation geometry (``None`` on the Gordon
+    backend), forwarded to the robust forward model so the reconstruction is
+    evaluated under exactly the physics the fit used.
     """
-    from bing.evaluate import calc_Rrs_from_models
+    from bing.evaluate import chain_param_names
     from bing import stats as bing_stats
 
     na = models[0].nparam
-    k = na + models[1].nparam
+    k = na + models[1].nparam + (1 if rt_dict.get('fit_Bp', False) else 0)
     n_bands = int(record.wave.size)
+    n_wave = int(np.asarray(models[0].wave).size)
+
+    samples = np.atleast_2d(np.asarray(samples, dtype=float))
+    pp = np.atleast_2d(np.asarray(point_params, dtype=float))   # (1, ndim)
+    mparams, Bp_s = _split_Bp(samples, rt_dict, n_wave)
+    mpoint, Bp_pt = _split_Bp(pp, rt_dict, n_wave)
+    aparams, bparams = mparams[:, :na], mparams[:, na:]
 
     # Forward-model every sample, plus the sub-components over the samples.
-    Rrs_s, a_s, bb_s = calc_Rrs_from_models(
-        models[0], aparams, models[1], bparams, rt_dict, full_return=True)
+    Rrs_s, a_s, bb_s = _forward(models, aparams, bparams, rt_dict, geom, Bp_s)
     a_dg_s, a_ph_s = models[0].eval_anw(aparams, retsub_comps=True)
     bb_p_s = models[1].eval_bbnw(bparams)
     arrays = {'a': a_s, 'bb': bb_s, 'a_ph': a_ph_s, 'a_dg': a_dg_s,
@@ -167,11 +228,10 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     # The same curves at the **point estimate**. Every central value below is
     # taken from these; the samples supply only spreads and intervals. See
     # :func:`_component_fit` for why a median over the draws will not do.
-    pp = np.atleast_2d(np.asarray(point_params, dtype=float))   # (1, k)
-    Rrs_pt, a_pt, bb_pt = calc_Rrs_from_models(
-        models[0], pp[:, :na], models[1], pp[:, na:], rt_dict, full_return=True)
-    a_dg_pt, a_ph_pt = models[0].eval_anw(pp[:, :na], retsub_comps=True)
-    bb_p_pt = models[1].eval_bbnw(pp[:, na:])
+    Rrs_pt, a_pt, bb_pt = _forward(models, mpoint[:, :na], mpoint[:, na:],
+                                   rt_dict, geom, Bp_pt)
+    a_dg_pt, a_ph_pt = models[0].eval_anw(mpoint[:, :na], retsub_comps=True)
+    bb_p_pt = models[1].eval_bbnw(mpoint[:, na:])
     points = {'a': a_pt, 'bb': bb_pt, 'a_ph': a_ph_pt, 'a_dg': a_dg_pt,
               'bb_p': bb_p_pt, 'Rrs_model': Rrs_pt}
 
@@ -180,10 +240,10 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
                   for key in _SPECTRAL}
 
     # Fit parameters: point estimate + sample 1-sigma (fit space; log10 for
-    # amplitudes).
-    samples = np.concatenate([np.atleast_2d(aparams), np.atleast_2d(bparams)],
-                             axis=1)
-    pnames = list(models[0].pnames) + list(models[1].pnames)
+    # amplitudes). Names come from bing's own chain-column convention, so a
+    # free B_p is labelled identically here, in the saved chain, and in a
+    # corner plot.
+    pnames = chain_param_names(models, rt_dict)
     pvals, std = pp.ravel(), np.std(samples, axis=0)
     params = {pn: (float(pvals[i]), float(std[i]))
               for i, pn in enumerate(pnames)}
@@ -198,6 +258,13 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     for key in _shape_param_names(models):
         if key in params:
             scalars[key] = params[key]
+    # A free B_p is a fitted, linear-space, physically-meaningful quantity
+    # (the phase-function backscattering ratio), not a model parameter of
+    # either model — so it is promoted here rather than by
+    # :func:`_shape_param_names`, and reaches ``results_scalar`` as the
+    # ``B_p`` / ``sig_B_p`` column pair like any other extra scalar.
+    if 'B_p' in params:
+        scalars['B_p'] = params['B_p']
 
     # Fit statistics at the point estimate (on the native variable-Gordon model).
     from ioptics import metrics
@@ -228,21 +295,27 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
 
 
 def from_chisq(spec, record, models, rt_dict, ans, cov, *,
-               perc=((16, 84), (2.5, 97.5)), n_samples=1000, seed=1234):
+               perc=((16, 84), (2.5, 97.5)), n_samples=1000, seed=1234,
+               geom=None):
     """Assemble a :class:`RetrievalResult` from a least-squares fit.
 
     Draws ``n_samples`` from the fitted ``MultivariateNormal(ans, cov)`` and
     pushes them through the forward model (the covariance-propagated bands), then
     delegates to :func:`_assemble` with ``ans`` as the point estimate.
+
+    ``geom`` is the fit's own observation geometry
+    (:func:`ioptics.run.resolve_geometry`); required whenever ``rt_dict``
+    selects a robust backend, ignored by the Gordon one. Under ``fit_Bp``,
+    ``ans``/``cov`` already carry the trailing ``B_p`` slot and it is
+    reconstructed with the rest.
     """
     ans = np.asarray(ans, dtype=float)
     cov = np.asarray(cov, dtype=float)
-    na = models[0].nparam
     rng = np.random.default_rng(seed)
     samples = rng.multivariate_normal(ans, cov, size=n_samples,
                                       check_valid='ignore')
-    return _assemble(spec, record, models, rt_dict, samples[:, :na],
-                     samples[:, na:], ans, 'chisq', perc)
+    return _assemble(spec, record, models, rt_dict, samples, ans, 'chisq',
+                     perc, geom=geom)
 
 
 def chain_burn(spec, chains):
@@ -265,19 +338,23 @@ def chain_burn(spec, chains):
 
 
 def from_chains(spec, record, models, rt_dict, chains, *,
-                perc=((16, 84), (2.5, 97.5))):
+                perc=((16, 84), (2.5, 97.5)), geom=None):
     """Assemble a :class:`RetrievalResult` from an MCMC posterior chain.
 
     Burns/thins the emcee ``chains`` (shape ``(nsteps, nwalkers, nparam)``) to a
     flat ``(n_samples, nparam)`` posterior, then delegates to :func:`_assemble`
     with the posterior median as the point estimate — so the 68/95 bands are
     built exactly as in the χ² path.
+
+    ``geom`` is the fit's own observation geometry
+    (:func:`ioptics.run.resolve_geometry`); required whenever ``rt_dict``
+    selects a robust backend, ignored by the Gordon one. Under ``fit_Bp`` the
+    chain's ``nparam`` includes the trailing ``B_p`` column.
     """
     from bing.evaluate import thin_burn_chains
 
     chains = np.asarray(chains, dtype=float)
-    na = models[0].nparam
     flat = thin_burn_chains(chains, burn=chain_burn(spec, chains))
     point = np.median(flat, axis=0)
-    return _assemble(spec, record, models, rt_dict, flat[:, :na], flat[:, na:],
-                     point, 'mcmc', perc)
+    return _assemble(spec, record, models, rt_dict, flat, point, 'mcmc', perc,
+                     geom=geom)

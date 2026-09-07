@@ -118,6 +118,16 @@ def algorithm_block(spec):
             'include_Chl_fl': spec.rt.include_Chl_fl,
             'phi_C': spec.rt.phi_C,
             'double_gaussian': spec.rt.double_gaussian,
+            # Schema 4: the RT-backend selection. Which forward model turned
+            # (a, bb) into Rrs is not a detail — 'gordon' and 'robust_ztt' are
+            # different physics — and ``cdom_fraction`` records the value of
+            # the a_cdom = f x a_dg proxy any CDOM-fluorescence result rests
+            # on (a project decision, not a measurement; rt_tests Q32).
+            'rt_backend': spec.rt.rt_backend,
+            'fit_Bp': spec.rt.fit_Bp,
+            'Bp_value': spec.rt.Bp_value,
+            'include_CDOM_fl': spec.rt.include_CDOM_fl,
+            'cdom_fraction': spec.rt.cdom_fraction,
         },
         'set_Sdg': spec.set_Sdg,
         'sSdg': spec.sSdg,
@@ -142,7 +152,12 @@ def algorithm_block(spec):
 #: Schema 3 adds ``fits_turbid`` (the pre-fit ``out_of_scope`` scope claim,
 #: 2026-08-10) — it decides whether a red-peaked record is fitted at all, so
 #: two sweeps differing on it are not running the same algorithm.
-PROVENANCE_SCHEMA = 3
+#: Schema 4 (2026-09-05) widens the ``rt`` sub-block from BING's seven legacy
+#: Gordon toggles to the twelve keys of today's ``rt_dict``, adding
+#: ``rt_backend`` / ``fit_Bp`` / ``Bp_value`` / ``include_CDOM_fl`` /
+#: ``cdom_fraction``; the sweep-level record additionally carries
+#: ``dataset_opts`` and the ``leaderboard`` flag.
+PROVENANCE_SCHEMA = 4
 
 #: Keys added after schema 1, with the value that means "as the default"
 #: (schema 2: ``maxfev``/``mcmc``; schema 3: ``fits_turbid``). Digesting fills
@@ -155,6 +170,36 @@ _SCHEMA_FIELD_DEFAULTS = {
     'maxfev': None,
     'mcmc': {'nsteps': 40000, 'nburn': 1000, 'nMC': None},
     'fits_turbid': False,
+}
+
+#: The same idea one level down, for keys added *inside* an existing sub-block.
+#: :data:`_SCHEMA_FIELD_DEFAULTS` cannot express schema 4's change, because the
+#: five new RT keys did not appear beside ``rt`` — they appeared *within* it, so
+#: filling a missing top-level key would never fire and every pre-existing
+#: algorithm's digest would move the moment the block got wider.
+#:
+#: The normalization is the mirror image: for each listed sub-key, a value equal
+#: to its schema-4 default is **dropped** from the digest payload. An
+#: old seven-key ``rt`` block therefore hashes identically to a new twelve-key
+#: one that is configured the Gordon way, while any non-default value (a robust
+#: backend, a free ``B_p``, a CDOM fraction other than 0.8) survives into the
+#: payload and moves the digest, which is exactly the discrimination a digest
+#: is for.
+#:
+#: The cost, stated honestly: ``Bp_value`` only matters when ``fit_Bp`` is on
+#: and ``cdom_fraction`` only when ``include_CDOM_fl`` is, so a block that
+#: carries a non-default value for one of them with its switch off digests
+#: apart from an otherwise identical block that does not. That is the
+#: conservative direction — it splits two configurations that behave alike,
+#: rather than pooling two that do not.
+_SCHEMA_NESTED_DEFAULTS = {
+    'rt': {
+        'rt_backend': 'gordon',
+        'fit_Bp': False,
+        'Bp_value': 0.01,
+        'include_CDOM_fl': False,
+        'cdom_fraction': 0.8,
+    },
 }
 
 
@@ -176,8 +221,10 @@ def algorithm_digest(spec_or_block):
     whatever columns happened to survive into a table.
 
     **Stable across the schema change.** A block written before ``maxfev``/``mcmc``
-    were recorded is normalized against :data:`_SCHEMA_FIELD_DEFAULTS` first, so an old
-    sweep and its re-run agree whenever the configuration really is the same. The
+    were recorded is normalized against :data:`_SCHEMA_FIELD_DEFAULTS` first, and a
+    block written before the ``rt`` sub-block grew its five RT-backend keys is
+    normalized against :data:`_SCHEMA_NESTED_DEFAULTS` — so an old sweep and its
+    re-run agree whenever the configuration really is the same. The
     cost is honest and worth stating: a pre-schema-2 block cannot distinguish "ran at
     the default budget" from "ran at a raised budget nobody wrote down", so its digest
     is a claim about what was *recorded*, not a proof of what ran. ``schema`` on the
@@ -191,6 +238,11 @@ def algorithm_digest(spec_or_block):
     payload = {k: v for k, v in block.items() if k not in _DIGEST_EXCLUDE}
     for key, default in _SCHEMA_FIELD_DEFAULTS.items():
         payload.setdefault(key, default)
+    for key, defaults in _SCHEMA_NESTED_DEFAULTS.items():
+        sub = payload.get(key)
+        if isinstance(sub, dict):
+            payload[key] = {k: v for k, v in sub.items()
+                            if not (k in defaults and v == defaults[k])}
     canonical = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.md5(canonical.encode('utf-8')).hexdigest()[:12]
 
@@ -210,6 +262,17 @@ def build(sweep_id, cfg=None, specs=(), *, datasets=None, created=None):
         Per-dataset options/counts (e.g. ``{'L23': {'X': 1, 'Y': 0, 'n_obs': N}}``).
     created : str or None
         ISO timestamp; defaults to now (UTC).
+
+    Notes
+    -----
+    Two sweep-level keys are hoisted out of the config copy to the top of the
+    record (schema 4). ``dataset_opts`` is the verbatim per-dataset adapter
+    configuration — "L23" is not one dataset, it is one per ``(X, Y)``, and a
+    reader comparing two sweeps needs that without parsing the embedded config.
+    ``leaderboard`` is the publish/withhold flag
+    :func:`ioptics.report.leaderboard.update` reads, so the exclusion travels
+    with the artifacts. Both are also still present inside ``config``; the
+    hoisted copies are what the tooling reads.
     """
     blocks = []
     for s in specs:
@@ -221,12 +284,15 @@ def build(sweep_id, cfg=None, specs=(), *, datasets=None, created=None):
         block['schema'] = PROVENANCE_SCHEMA
         block['digest'] = algorithm_digest(block)
         blocks.append(block)
+    dataset_opts = getattr(cfg, 'dataset_opts', None) or {}
     return {
         'sweep_id': sweep_id,
         'created': created or _now(),
         'schema': PROVENANCE_SCHEMA,
         'versions': versions(),
         'config': cfg.to_dict() if cfg is not None else {},
+        'dataset_opts': {k: dict(v) for k, v in dataset_opts.items()},
+        'leaderboard': bool(getattr(cfg, 'leaderboard', True)),
         'datasets': datasets or {},
         'algorithms': blocks,
     }

@@ -31,7 +31,77 @@ from dataclasses import dataclass, field
 
 @dataclass
 class RTOptions:
-    """Radiative-transfer toggles (mirror of the ``p_ntuple`` RT fields)."""
+    """Radiative-transfer options — the full BING ``rt_dict`` surface.
+
+    The twelve keys ``bing.rt.defs.rt_dict_from_p`` reads: the seven legacy
+    Gordon-path toggles, plus the five that select and configure the
+    ``robust.rt`` backends (BING's ``rob_rt``/``rob_cdom`` integration). Every
+    field here maps 1:1 through :meth:`AlgorithmSpec.to_bing_p`, so
+    ``rt_dict_from_p(spec.to_bing_p())`` reproduces this object exactly.
+
+    All five new fields default to the values that reproduce the pre-existing
+    Gordon behaviour, so an untouched spec is byte-for-byte the algorithm it
+    was.
+
+    Parameters
+    ----------
+    variable_Gordon : bool
+        Use wavelength-dependent Gordon coefficients (``G1``/``G2``).
+    variable_Gordon_G0 : bool
+        Also apply the constant offset ``G0(lambda)``.
+    variable_Gordon_bbp : bool
+        Also apply the ``bbp``-dependent Gordon coefficients.
+    include_Raman : bool
+        Include the Raman-scattering term (L23 ``X=4``; elastic-only at
+        ``X=1``).
+    include_Chl_fl : bool
+        Include chlorophyll fluorescence. On the ``'gordon'`` backend this
+        additionally needs the downwelling irradiance ``Ed`` seeded on the
+        a-model, which :func:`ioptics.run._prepare` takes from
+        ``correct_atmosphere``; the robust backends carry their own packaged
+        ``Ed`` table and need no such wiring.
+    phi_C : float
+        Fluorescence quantum yield.
+    double_gaussian : bool
+        Use the double-Gaussian fluorescence emission model.
+    rt_backend : str
+        Which forward model turns ``(a, bb)`` into ``Rrs``: ``'gordon'``
+        (default — BING's own Gordon 1988 relation, unchanged), or one of
+        retrieve-or-bust's ``'robust_ztt'`` / ``'robust_hybrid'`` /
+        ``'robust_baseline'``. Every ``robust_*`` value **requires** an
+        observation geometry (:func:`ioptics.run.resolve_geometry`); the solar
+        zenith is never silently defaulted. ``'robust_hybrid'`` is additionally
+        valid only over 350–750 nm. See ``bing.rt.defs.RT_BACKENDS``.
+    fit_Bp : bool
+        Make ``B_p`` — the backscattering-ratio / phase-function parameter the
+        robust forward models take — a **free** parameter, appended as the
+        trailing element of the fitted vector (and of every saved chain).
+        Illegal with ``rt_backend='gordon'``, which has no phase-function
+        input. Its prior is a linear uniform over ``[0.004, 0.05]``
+        (``bing.rt.defs.BP_PRIOR_PMIN``/``BP_PRIOR_PMAX``).
+    Bp_value : float
+        Fixed value of ``B_p`` when ``fit_Bp`` is ``False``, and the walker
+        seed when it is ``True``. Default 0.01.
+    include_CDOM_fl : bool
+        Include robust's CDOM-fluorescence term (the Hawes et al. 1992 kernel,
+        ``robust.rt.cdom_fl``) as a third inelastic process. Robust backends
+        only, and not ``'robust_baseline'`` (elastic-only); it also requires an
+        a-model with a separable ``a_dg`` component (the ExpBricaud family,
+        GIOP, GSM, ExpNMF).
+    cdom_fraction : float
+        The **fixed-fraction CDOM proxy**::
+
+            a_cdom(lambda) = cdom_fraction * a_dg(lambda)
+
+        The Hawes kernel's emission source term is *pure CDOM* absorption, but
+        every BING a-model with a separable exponential term lumps dissolved
+        and detrital absorption together into one ``a_dg`` — there is no free
+        parameter that splits them. The default 0.8 is therefore a **project
+        decision** (JXP, 2026-09-05; ``claude_prompts/rt_tests.md`` Q32), *not*
+        a measured or retrieved quantity, and any result that depends on the
+        CDOM-fluorescence term inherits that assumption. Consulted only when
+        ``include_CDOM_fl`` is ``True``; carried (and ignored) otherwise.
+    """
 
     variable_Gordon:     bool = True
     variable_Gordon_G0:  bool = False
@@ -40,6 +110,12 @@ class RTOptions:
     include_Chl_fl:      bool = False     # turned on with L23 X=4
     phi_C:               float = 0.02
     double_gaussian:     bool = True
+    # --- robust.rt backend selection (bing rob_rt / rob_cdom) ---------------
+    rt_backend:          str = 'gordon'
+    fit_Bp:              bool = False
+    Bp_value:            float = 0.01
+    include_CDOM_fl:     bool = False
+    cdom_fraction:       float = 0.8      # a_cdom = 0.8 x a_dg (proxy, Q32)
 
 
 @dataclass
@@ -158,6 +234,13 @@ class AlgorithmSpec:
         ``set_Sdg``/``sSdg``/``beta``, ``nsteps``/``nburn``/``nMC``).
         ``overrides`` (e.g. ``wv_min=``, ``wv_max=``, ``satellite=``) pass
         through to ``gen``.
+
+        All twelve :class:`RTOptions` fields are emitted, so
+        ``bing.rt.defs.rt_dict_from_p`` on the result reproduces the spec's RT
+        configuration exactly. ``p_ntuple.gen`` builds its namedtuple from the
+        merged key set, so the five backend fields simply become extra
+        attributes of ``p`` — they are absent from BING's ``def_dict``, which is
+        why ``rt_dict_from_p`` reads them with defaults.
         """
         from bing.parameters import p_ntuple
 
@@ -173,6 +256,11 @@ class AlgorithmSpec:
             include_Chl_fl=self.rt.include_Chl_fl,
             phi_C=self.rt.phi_C,
             double_gaussian=self.rt.double_gaussian,
+            rt_backend=self.rt.rt_backend,
+            fit_Bp=self.rt.fit_Bp,
+            Bp_value=self.rt.Bp_value,
+            include_CDOM_fl=self.rt.include_CDOM_fl,
+            cdom_fraction=self.rt.cdom_fraction,
             set_Sdg=self.set_Sdg,
             sSdg=self.sSdg,
             beta=self.beta,
@@ -190,11 +278,16 @@ class AlgorithmSpec:
         Reads back the model names, priors, RT flags, and MCMC settings from the
         shipped combo (applying any ``overrides`` the factory accepts). The
         lossless inverse of :meth:`to_bing_p` for BING's shipped combos.
+
+        The five backend fields are read with :func:`getattr` defaults: BING's
+        shipped combos are built from ``p_ntuple.def_dict``, which does not
+        carry them, so a standard combo always seeds the Gordon configuration.
         """
         from bing.parameters import standard
 
         p = getattr(standard, name)(**overrides)
         anw_model, bbnw_model = p.model_names
+        _rt_defaults = RTOptions()
         rt = RTOptions(
             variable_Gordon=p.variable_Gordon,
             variable_Gordon_G0=p.variable_Gordon_G0,
@@ -203,6 +296,13 @@ class AlgorithmSpec:
             include_Chl_fl=p.include_Chl_fl,
             phi_C=p.phi_C,
             double_gaussian=p.double_gaussian,
+            rt_backend=getattr(p, 'rt_backend', _rt_defaults.rt_backend),
+            fit_Bp=getattr(p, 'fit_Bp', _rt_defaults.fit_Bp),
+            Bp_value=getattr(p, 'Bp_value', _rt_defaults.Bp_value),
+            include_CDOM_fl=getattr(p, 'include_CDOM_fl',
+                                    _rt_defaults.include_CDOM_fl),
+            cdom_fraction=getattr(p, 'cdom_fraction',
+                                  _rt_defaults.cdom_fraction),
         )
         mcmc = MCMCOptions(nsteps=p.nsteps, nburn=p.nburn, nMC=p.nMC)
         return cls(

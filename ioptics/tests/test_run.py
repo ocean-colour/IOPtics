@@ -7,6 +7,8 @@ that the least-squares fit converges to a finite, in-bounds solution that closes
 on the observed ``Rrs``.
 """
 
+from pathlib import Path
+
 import numpy as np
 
 from ioptics.tests.conftest import needs_l23
@@ -385,3 +387,52 @@ def test_run_batch_serial_and_parallel():
     # serial and parallel give the same point estimate (deterministic fit)
     np.testing.assert_allclose(serial[0].components['a'].med,
                                parallel[0].components['a'].med, rtol=1e-6)
+
+
+# --------------------------------------------------------------------
+# dataset_opts reach the adapter (Tier-1: prep is mocked, no data needed)
+# --------------------------------------------------------------------
+def test_run_sweep_threads_dataset_opts_into_prep(monkeypatch, tmp_path):
+    """A ``dataset_opts`` entry must arrive as adapter keyword arguments.
+
+    ``prep_dataset`` swallows unknown keywords into ``**load_opts``, so a bug
+    here is silent: the sweep runs to completion at the adapter defaults while
+    its provenance copy records the request that never took effect.
+    """
+    from ioptics import config, prep, run
+
+    seen = []
+    monkeypatch.setattr(prep, 'prep_dataset',
+                        lambda dataset, **kw: seen.append((dataset, kw)) or [])
+    cfg = config.loads(
+        'sweep_id: dsopts\ndatasets: [L23, PANGAEA]\nalgorithms: [expb_pow]\n'
+        'dataset_opts:\n  L23: {X: 4, Y: 30}\n')
+    out = run.run_sweep(cfg, root=tmp_path)
+
+    opts = {name: kw for name, kw in seen}
+    assert opts['L23']['X'] == 4 and opts['L23']['Y'] == 30
+    # the unmentioned dataset is called exactly as before -- no stray keywords
+    assert 'X' not in opts['PANGAEA'] and 'Y' not in opts['PANGAEA']
+    # ... and the sweep-level options still ride alongside
+    assert opts['L23']['noise'] == cfg.noise_model
+    assert out['sweep_id'] == 'dsopts'
+
+    import yaml
+    prov = yaml.safe_load(Path(out['provenance']).read_text())
+    assert prov['dataset_opts'] == {'L23': {'X': 4, 'Y': 30}}
+    assert prov['datasets']['L23']['opts'] == {'X': 4, 'Y': 30}
+    assert 'opts' not in prov['datasets']['PANGAEA']
+
+
+def test_run_sweep_without_dataset_opts_passes_no_extra_keywords(monkeypatch,
+                                                                 tmp_path):
+    from ioptics import config, prep, run
+
+    seen = []
+    monkeypatch.setattr(prep, 'prep_dataset',
+                        lambda dataset, **kw: seen.append(kw) or [])
+    cfg = config.loads(
+        'sweep_id: plain\ndatasets: [L23]\nalgorithms: [expb_pow]\n')
+    run.run_sweep(cfg, root=tmp_path)
+    assert set(seen[0]) == {'obs_ids', 'noise', 'seed', 'wv_min', 'wv_max',
+                            'n_cores'}

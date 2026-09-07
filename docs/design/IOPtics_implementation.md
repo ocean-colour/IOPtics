@@ -1,6 +1,6 @@
 # IOPtics Implementation Document
 
-**Version:** 0.23
+**Version:** 0.24
 **Date:** 2026-08-03
 **Authors:** JXP and Claude
 
@@ -718,7 +718,40 @@ algorithms:
     mcmc: {nsteps: 40000, nburn: 1000}
 fit_method: chisq                 # sweep default (least-squares first pass)
 mcmc_subset: 200                  # # spectra to also run with MCMC
+dataset_opts:                     # per-dataset adapter load options
+  L23: {X: 4, Y: 30}
+leaderboard: true                 # fold this sweep into the leaderboard (default)
 ```
+
+Two further sweep-level keys, both recorded in provenance (schema 4):
+
+| key | default | meaning |
+| --- | --- | --- |
+| `dataset_opts` | `{}` | `{dataset: {option: value}}`, forwarded verbatim as keyword arguments to `prep_dataset` for that dataset (L23's `X`/`Y`, PANGAEA's `min_rrs`, …). Every key must be one of `datasets` — a name outside the sweep reaches no adapter, so `config.load` rejects it rather than letting the sweep run at the defaults while the provenance copy records the request. Echoed into the provenance record's top-level `dataset_opts` and beside the count it produced in `datasets.<name>.opts`. |
+| `leaderboard` | `true` | Whether `report.leaderboard.update()` folds this sweep into the cross-sweep board. `false` withholds a diagnostic or deliberately-crippled sweep from the published standings; the flag rides in provenance, so the exclusion travels with the artifacts and survives a re-fold. |
+
+Per-algorithm `rt:` overrides reach the **whole** `rt_dict`, not only the seven
+legacy Gordon toggles — `rt_backend`, `fit_Bp`, `Bp_value`, `include_CDOM_fl`
+and `cdom_fraction` are ordinary `RTOptions` fields and merge partially like
+any other nested override:
+
+```yaml
+algorithms:
+  - name: expb_pow
+    rt: {rt_backend: robust_ztt, fit_Bp: true}
+```
+
+A `robust_*` backend requires an **observation geometry**. `run.resolve_theta_s`
+derives the solar zenith per record — from `meta['Y']` for L23 (Hydrolight's own
+solar-zenith index in degrees, default 0), and from
+`meta['time']`/`meta['lat']`/`meta['lon']` via `robust.solar.solar_zenith`
+otherwise — and raises `run.MissingGeometryError` when a record cannot say. It
+is never defaulted: a guessed `theta_s` would propagate silently into every
+retrieved IOP. `fit_Bp` appends a trailing `B_p` to the fitted vector, which
+surfaces as a `B_p` chain column, a `B_p` entry in `RetrievalResult.params`,
+`B_p`/`sig_B_p` columns on `results_scalar`, and `k + 1` in the fit statistics.
+`include_CDOM_fl` uses the fixed-fraction proxy `a_cdom = cdom_fraction × a_dg`
+(default 0.8) — a project decision (JXP, 2026-09-05), not a measurement.
 
 ## Retrieval & run
 

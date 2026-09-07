@@ -24,6 +24,9 @@ Example (the headline sweep YAML)::
         mcmc: {nsteps: 40000, nburn: 1000}
     fit_method: chisq                 # sweep default (least-squares first pass)
     mcmc_subset: 200
+    dataset_opts:                     # per-dataset adapter load options
+      L23: {X: 4}
+    leaderboard: true                 # fold this sweep into the leaderboard
 
 Validation rules (per the design doc):
 
@@ -35,6 +38,11 @@ Validation rules (per the design doc):
 - ``fit_method`` is **overridable per algorithm**; ``noise_model`` is **not**
   (a per-algorithm ``noise_model`` is a hard error — comparing one algorithm
   under two noise models is, by construction, two sweeps).
+- ``dataset_opts`` is a mapping ``{dataset: {option: value}}`` whose keys must
+  all appear in ``datasets`` — a typo there would otherwise run the whole
+  sweep at the adapter's defaults while the provenance copy recorded the
+  request that never took effect.
+- ``leaderboard`` is a boolean (default ``True``).
 """
 
 from __future__ import annotations
@@ -118,6 +126,22 @@ class SweepConfig:
         (Raman) wants ``[400, 700]``, and datasets whose native grid runs past
         the Gordon-coefficient table (e.g. GLORIA to 900 nm) need ``wv_max`` at
         or below the table's max (~750 nm).
+    dataset_opts : dict
+        Per-dataset **adapter load options**, ``{dataset: {option: value}}``
+        (e.g. ``{'L23': {'X': 4}}`` to sweep the inelastic L23 realization).
+        Forwarded verbatim as keyword arguments to
+        :func:`ioptics.prep.prep_dataset` for that dataset, and recorded
+        verbatim in provenance. ``{}`` (the default) means every dataset runs
+        at its adapter defaults. Every key must be one of ``datasets``:
+        a name that is not being swept is a typo, and silently ignoring it is
+        how a sweep runs a different configuration from the one it asked for.
+    leaderboard : bool
+        Whether :func:`ioptics.report.leaderboard.update` folds this sweep into
+        the cross-sweep board. ``True`` (default) is the normal case; set
+        ``False`` for a diagnostic, exploratory or deliberately-crippled sweep
+        whose numbers must not be published as a standing. Recorded in
+        provenance, so the exclusion travels with the artifacts rather than
+        living in the operator's head.
     results_root : str or None
         Output root override; ``None`` defers to ``$OS_COLOR/IOPtics/runs/``.
     extra : dict
@@ -133,6 +157,8 @@ class SweepConfig:
     seed:         int | None = None
     wv_min:       float | None = None
     wv_max:       float | None = None
+    dataset_opts: dict = field(default_factory=dict)
+    leaderboard:  bool = True
     results_root: str | None = None
     extra:        dict = field(default_factory=dict)
     # Where it was loaded from; not part of identity / round-trip.
@@ -156,6 +182,13 @@ class SweepConfig:
             out['wv_min'] = self.wv_min
         if self.wv_max is not None:
             out['wv_max'] = self.wv_max
+        if self.dataset_opts:
+            out['dataset_opts'] = {k: dict(v)
+                                   for k, v in self.dataset_opts.items()}
+        if not self.leaderboard:
+            # emitted only when it differs from the default, so an ordinary
+            # sweep's canonical config is unchanged by the key's existence
+            out['leaderboard'] = False
         if self.results_root is not None:
             out['results_root'] = self.results_root
         out.update(self.extra)
@@ -207,6 +240,56 @@ def _coerce_algorithm(entry, idx):
     raise ConfigError(
         f"algorithms[{idx}] must be a name (str) or a mapping with 'name', "
         f"got {type(entry).__name__}")
+
+
+def _coerce_dataset_opts(raw, datasets):
+    """Validate and normalize the ``dataset_opts`` mapping.
+
+    ``{dataset: {option: value}}``, every key one of the sweep's ``datasets``.
+    The name check is the point of validating here at all: an adapter takes
+    ``**load_opts``, so an option addressed to a dataset the sweep does not run
+    reaches nothing and raises nowhere — the sweep completes at the adapter
+    defaults while its provenance copy records the request that never took
+    effect. Same failure mode (and the same fix) as the per-algorithm override
+    whitelist above.
+
+    Parameters
+    ----------
+    raw : dict or None
+        The parsed ``dataset_opts`` value (``None`` when the key is absent).
+    datasets : list of str
+        The sweep's dataset names, against which the keys are checked.
+
+    Returns
+    -------
+    dict
+        A normalized copy (``{}`` when ``raw`` is ``None``).
+    """
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            "'dataset_opts' must be a mapping of dataset name -> options "
+            f"mapping, got {type(raw).__name__}")
+    unknown = [k for k in raw if k not in datasets]
+    if unknown:
+        raise ConfigError(
+            f"'dataset_opts' names {sorted(unknown)}, which this sweep does "
+            f"not run — its datasets are {sorted(datasets)}. Load options for "
+            "a dataset outside the sweep reach no adapter and would be "
+            "silently ignored")
+    out = {}
+    for name, opts in raw.items():
+        if not isinstance(opts, dict):
+            raise ConfigError(
+                f"dataset_opts['{name}'] must be a mapping of adapter load "
+                f"options, got {type(opts).__name__}")
+        if any(not isinstance(k, str) for k in opts):
+            raise ConfigError(
+                f"dataset_opts['{name}'] keys must be strings (they become "
+                "keyword arguments to the dataset adapter)")
+        out[name] = dict(opts)
+    return out
 
 
 def from_dict(mapping, *, source_path=None):
@@ -270,6 +353,13 @@ def from_dict(mapping, *, source_path=None):
     if wv_min is not None and wv_max is not None and wv_min >= wv_max:
         raise ConfigError(f"'wv_min' ({wv_min}) must be < 'wv_max' ({wv_max})")
 
+    dataset_opts = _coerce_dataset_opts(d.pop('dataset_opts', None), datasets)
+
+    leaderboard = d.pop('leaderboard', True)
+    if not isinstance(leaderboard, bool):
+        raise ConfigError(
+            f"'leaderboard' must be a boolean, got {type(leaderboard).__name__}")
+
     results_root = d.pop('results_root', None)
     if results_root is not None and not isinstance(results_root, str):
         raise ConfigError("'results_root' must be a string path")
@@ -284,6 +374,8 @@ def from_dict(mapping, *, source_path=None):
         seed=seed,
         wv_min=wv_min,
         wv_max=wv_max,
+        dataset_opts=dataset_opts,
+        leaderboard=leaderboard,
         results_root=results_root,
         extra=d,                       # any remaining keys, preserved
         source_path=source_path,
