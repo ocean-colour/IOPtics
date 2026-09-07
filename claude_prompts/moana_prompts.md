@@ -249,6 +249,13 @@ paths were `code/moana.py`, `tests/moana_tests.py`, `validation/moana_validation
 
 Use Fable if you can. Log your work.
 
+18. **Figures**.  Please generate two new figures for the report:
+
+    - A figure comparing the MOANA values using the wrong coefficients (those in operation today) versus the correct coefficients.   Add this to Section 7.1 and use the one PACE granule
+    - A figure showing the analysis in Section 12.3.  The table is nice, but let's include a figure too.
+
+It is possible you will need me to run this on my workstation.  Tell me if so.  Use Fable if you can. Log your work.
+
 ## Q&A
 
 ### Radiometry
