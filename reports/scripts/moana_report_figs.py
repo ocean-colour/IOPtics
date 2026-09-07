@@ -19,6 +19,11 @@ Outputs (written to ``reports/figures/``):
                                  sentinel and the unflagged clipped zeros exposed.
     moana_clipping.png        -- how often each product is clipped to zero, and the
                                  abundance distributions of what survives.
+    moana_mapping_verdict.png -- which PC mapping the shipping product uses.
+    moana_mapping_consequence.png -- what the misplaced coefficients cost,
+                                 operational vs as-published (section 7.1).
+    moana_heldout_skill.png   -- retrieved vs observed on Lange's held-out
+                                 cruises AMT23/25/28 (section 12.3).
 
 Colours follow the house data-viz palette: a single-hue blue sequential ramp for
 magnitude, the first three categorical slots for taxon identity (that subset is
@@ -28,6 +33,7 @@ for the clipped-zero defect, and recessive greys for chrome.
 
 import json
 import os
+import sys
 
 import h5py
 import numpy as np
@@ -44,6 +50,10 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir))
 DATA_DIR = os.path.join(_REPO, "ioptics", "data", "moana")
 FIG_DIR = os.path.join(_REPO, "reports", "figures")
+# Run-as-a-script support: sys.path[0] is this file's directory, so the
+# repo root (and hence ``ioptics``) is not importable without this.
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
 
 # One PACE MOANA granule (prompt-3 original location, then the prompt-14
 # earthaccess cache) plus its matching L3M AOP Rrs input for the mapping-
@@ -81,6 +91,22 @@ LAND_GREY = "#c3c2b7"
 # Single-hue sequential ramp (blue 100 -> 700) for continuous magnitude.
 BLUE_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 SEQ_CMAP = LinearSegmentedColormap.from_list("moana_blue", BLUE_RAMP)
+
+
+# Diverging ramp for SIGNED differences (blue <-> red, neutral grey midpoint),
+# per the house palette's diverging pair. palette.md tabulates only the blue
+# arm, so the red arm is stepped to mirror its lightness progression.
+_DIV_BLUE = ["#0d366b", "#184f95", "#256abf", "#3987e5", "#6da7ec", "#9ec5f4",
+             "#cde2fb"]
+_DIV_GREY = "#f0efec"
+_DIV_RED = ["#f7d4d4", "#efabab", "#e68282", "#e34948", "#c22f2f", "#9b2222",
+            "#6e1616"]
+DIV_CMAP = LinearSegmentedColormap.from_list(
+    "moana_div", _DIV_BLUE + [_DIV_GREY] + _DIV_RED)
+
+#: The two disputed coefficient placements (report §7.1): operational
+#: picophyt.json vs ATBD v1.2. Only these two terms move.
+DISPUTED_PC = {"syn": ("PC16", "U13"), "pro": ("PC7", "U17")}
 
 # Sentinels used by the MOANA products.
 LAND, FILL, I32MIN = 254, -32767, -2147483648
@@ -528,6 +554,311 @@ def plot_mapping_verdict(n_pixels=60_000, seed=0, outfile=None):
     plt.close(fig)
 
 
+def _retrieve_both_mappings(n_pixels=None, seed=0):
+    """Run our retrieval under both PC mappings on the PACE granule's Rrs.
+
+    Both runs use the *same* constant SST, which is legitimate because the two
+    mappings share the intercept and the ``log10(SST)`` term: those cancel in
+    the Prochlorococcus difference, so ``pro_op - pro_atbd`` is exact and
+    SST-independent even though absolute Pro is not recoverable without the
+    real GHRSST field. ``nasa_compat=False`` keeps raw floats, so neither the
+    negative-Pro clamp nor the int32 truncation contaminates the comparison.
+
+    Inputs
+    ------
+    n_pixels : int or None
+        Random subsample of valid ocean pixels; None uses all of them.
+    seed : int
+        Subsample seed.
+
+    Outputs
+    -------
+    dict with ``out`` ({mapping: retrieval dict}), ``iy``/``ix`` (pixel
+    indices into the granule grid), ``shape``, ``lat``, ``lon``.
+    """
+    import xarray as xr
+    from ioptics.moana import run_moana
+
+    aop = xr.open_dataset(AOP_GRANULE)
+    moana = xr.open_dataset(GRANULE)
+    rrs = aop["Rrs"].sel(lat=moana["lat"].values, lon=moana["lon"].values,
+                         method="nearest", tolerance=1e-3)
+    wave = aop["wavelength"].values.astype(float)
+    nasa = moana["syncoccus_moana"].values
+    nasa_pro = moana["prococcus_moana"].values
+    lat = moana["lat"].values
+    lon = moana["lon"].values
+
+    # Real retrievals only: not land-254, not fill, positive in NASA's product.
+    valid = np.isfinite(nasa) & (nasa != LAND) & (nasa != FILL) & (nasa > 0)
+    iy, ix = np.nonzero(valid)
+    if n_pixels is not None and iy.size > n_pixels:
+        pick = np.random.default_rng(seed).choice(iy.size, n_pixels,
+                                                  replace=False)
+        iy, ix = iy[pick], ix[pick]
+    spectra = rrs.values[iy, ix, :]
+    shape = nasa.shape
+    pro_ref = nasa_pro[iy, ix].astype(float)   # NASA Pro, for scaling
+    aop.close(), moana.close()
+
+    out = {m: run_moana(wave, spectra, sst=20.0, pc_mapping=m,
+                        nasa_compat=False)
+           for m in ("operational", "atbd")}
+    return {"out": out, "iy": iy, "ix": ix, "shape": shape,
+            "lat": lat, "lon": lon, "pro_ref": pro_ref}
+
+
+def plot_mapping_consequence(data=None, outfile=None):
+    """How much do the misplaced coefficients change the product? (§7.1)
+
+    Distinct from ``plot_mapping_verdict``, which asks *which* mapping NASA
+    ships. This asks what the misplacement costs: our own retrieval under the
+    operational (in-service) mapping against the same retrieval under the
+    ATBD (as-published) mapping, on the one PACE granule.
+
+    Inputs
+    ------
+    data : dict, optional — from :func:`_retrieve_both_mappings`; computed if
+        omitted.
+    outfile : str or None — PNG path.
+
+    Outputs
+    -------
+    matplotlib.figure.Figure
+    """
+    d = data if data is not None else _retrieve_both_mappings()
+    op, at = d["out"]["operational"], d["out"]["atbd"]
+    iy, ix, shape = d["iy"], d["ix"], d["shape"]
+    lat, lon = d["lat"], d["lon"]
+    extent = [lon.min() - 0.05, lon.max() + 0.05,
+              lat.min() - 0.05, lat.max() + 0.05]
+
+    # Synechococcus: both mappings are SST-free, so the ratio is exact.
+    ok_s = (np.isfinite(op["syn"]) & np.isfinite(at["syn"])
+            & (op["syn"] > 0) & (at["syn"] > 0))
+    dlog_s = np.log10(op["syn"][ok_s]) - np.log10(at["syn"][ok_s])
+    # Prochlorococcus: the difference is exact (intercept + SST cancel).
+    ok_p = np.isfinite(op["pro"]) & np.isfinite(at["pro"])
+    dpro = op["pro"][ok_p] - at["pro"][ok_p]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15.5, 5.2), facecolor=SURFACE)
+
+    # (a) Syn, operational vs ATBD, log-log density
+    ax = axes[0]
+    x = np.log10(at["syn"][ok_s])
+    y = np.log10(op["syn"][ok_s])
+    # Robust limits floored at 0: our raw (unclipped) retrieval has a thin
+    # tail below 1 cell/mL that would otherwise squash the populated range.
+    lims = (max(0.0, float(np.nanpercentile(np.r_[x, y], 1.0))),
+            float(np.nanpercentile(np.r_[x, y], 99.9)))
+    ax.hexbin(x, y, gridsize=70, cmap=SEQ_CMAP, bins="log",
+              extent=(*lims, *lims), linewidths=0)
+    ax.plot(lims, lims, color=BASELINE, lw=1.2, ls=(0, (4, 3)), zorder=3)
+    med = float(np.median(dlog_s))
+    ax.text(0.04, 0.96,
+            f"median $\\Delta$log$_{{10}}$ = {med:+.3f}\n"
+            f"i.e. operational is {10**med:.2f}$\\times$ the ATBD value\n"
+            f"n = {ok_s.sum():,}",
+            transform=ax.transAxes, va="top", fontsize=9.5, color=INK_PRIMARY)
+    ax.set_xlabel("ATBD mapping (as published, U13)  log$_{10}$ Syn",
+                  fontsize=9.5, color=INK_PRIMARY)
+    ax.set_ylabel("operational mapping (in service, PC16)  log$_{10}$ Syn",
+                  fontsize=9.5, color=INK_PRIMARY)
+    ax.set_xlim(lims), ax.set_ylim(lims), ax.set_aspect("equal")
+    ax.set_title("$\\it{Synechococcus}$: the two mappings disagree\n"
+                 "systematically, not randomly", fontsize=10.5,
+                 color=INK_PRIMARY)
+    _style_axes(ax)
+
+    # (b) map of the Syn ratio
+    ax = axes[1]
+    field = np.full(shape, np.nan)
+    field[iy[ok_s], ix[ok_s]] = dlog_s
+    v = float(np.nanpercentile(np.abs(dlog_s), 95))
+    im = ax.imshow(field, extent=extent, origin="upper", cmap=DIV_CMAP,
+                   vmin=-v, vmax=v, interpolation="nearest")
+    ax.set_title("$\\Delta$log$_{10}$ $\\it{Synechococcus}$\n"
+                 "(operational $-$ ATBD)", fontsize=10.5, color=INK_PRIMARY)
+    cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.06,
+                      fraction=0.045)
+    cb.set_label("$\\Delta$log$_{10}$ cells mL$^{-1}$", fontsize=8.5,
+                 color=INK_MUTED)
+    cb.ax.tick_params(labelsize=7, colors=INK_MUTED)
+    cb.outline.set_edgecolor(BASELINE)
+    _style_axes(ax)
+
+    # (c) map of the Pro difference (SST-free, therefore exact)
+    ax = axes[2]
+    field = np.full(shape, np.nan)
+    field[iy[ok_p], ix[ok_p]] = dpro / 1e3     # 10^3 cells/mL: compact ticks
+    v = float(np.nanpercentile(np.abs(dpro / 1e3), 95))
+    im = ax.imshow(field, extent=extent, origin="upper", cmap=DIV_CMAP,
+                   vmin=-v, vmax=v, interpolation="nearest")
+    ax.set_title("$\\Delta$ $\\it{Prochlorococcus}$\n"
+                 "(operational $-$ ATBD; SST cancels)", fontsize=10.5,
+                 color=INK_PRIMARY)
+    cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.06,
+                      fraction=0.045)
+    cb.set_label("$\\Delta$  $10^3$ cells mL$^{-1}$", fontsize=8.5,
+                 color=INK_MUTED)
+    cb.ax.tick_params(labelsize=7, colors=INK_MUTED)
+    cb.outline.set_edgecolor(BASELINE)
+    # Scale to NASA's shipped Pro, which supplies the SST term we cannot
+    # reconstruct: this turns an abstract offset into a relative error.
+    ref = d["pro_ref"][ok_p]
+    frac = np.abs(dpro[ref > 0]) / ref[ref > 0]
+    ax.text(0.03, 0.03,
+            f"median |$\\Delta$| = {np.median(np.abs(dpro))/1e3:,.0f}"
+            f"$\\times10^3$ cells mL$^{{-1}}$\n"
+            f"= {100*np.median(frac):.0f}% of NASA's own value",
+            transform=ax.transAxes, va="bottom", fontsize=9,
+            color=INK_PRIMARY)
+    _style_axes(ax)
+
+    fig.suptitle("What the misplaced coefficients cost: our retrieval under "
+                 "the operational vs the as-published mapping "
+                 "(2025-07-01 granule)", fontsize=12, color=INK_PRIMARY)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    if outfile:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+        fig.savefig(outfile, dpi=150, facecolor=SURFACE)
+        print(f"wrote {outfile}")
+    plt.close(fig)
+    return fig
+
+
+#: Cruise identity for the held-out figure (categorical slots 1-3; the taxon
+#: is the facet there, so colour is free to carry the cruise).
+CRUISE_COLOR = {23: "#2a78d6", 25: "#eb6834", 28: "#1baf7a"}
+
+#: Lange et al. (2020) Table 3, held-out cruises via Aqua-MODIS -- the only
+#: previously published held-out numbers, for reference in the same panels.
+LANGE_HELDOUT = {"pro": (1.75, 2.26, 0.54), "syn": (0.93, 2.20, 0.40),
+                 "peuk": (1.05, 1.53, 0.60)}
+
+
+def heldout_skill_data():
+    """Run target (ii) and return its matchups and metrics (report §12.3).
+
+    Needs the Brewin et al. (2023) in-situ hyperspectral Rrs and the AMT23/25/28
+    BODC flow-cytometry deposits, both under ``$OS_COLOR/AMT/``.
+
+    Inputs
+    ------
+    None.
+
+    Outputs
+    -------
+    dict — ``pairs`` : DataFrame (cruise, taxon, pred, obs) of every matchup;
+    ``metrics`` : per-cruise and pooled metric dicts.
+    """
+    from ioptics.moana.io import load_fcm
+    from ioptics.moana.validation import validate_heldout_cruises
+
+    tables = {c: load_fcm(cruise=c) for c in (23, 25, 28)}
+    res = validate_heldout_cruises(fcm_tables=tables, verbose=False)
+    return {"pairs": res["pairs"], "metrics": res["metrics"]}
+
+
+def plot_heldout_skill(data=None, outfile=None):
+    """Retrieved vs observed on Lange's held-out cruises (report §12.3).
+
+    One panel per taxon, points coloured by cruise, with 1:1 and factor-of-3
+    guides. This is the figure behind the section's table: picoeukaryotes fall
+    on the 1:1 line, while Prochlorococcus sits high and Synechococcus fans
+    out -- the transferability failure the table reports as numbers.
+
+    Inputs
+    ------
+    data : dict, optional — from :func:`heldout_skill_data`; computed if omitted.
+    outfile : str or None — PNG path.
+
+    Outputs
+    -------
+    matplotlib.figure.Figure
+    """
+    d = data if data is not None else heldout_skill_data()
+    pairs, metrics = d["pairs"], d["metrics"]
+
+    fig, axes = plt.subplots(1, 3, figsize=(14.5, 5.6), facecolor=SURFACE)
+    order = [("pro", "Prochlorococcus"), ("syn", "Synechococcus"),
+             ("peuk", "picoeukaryotes")]
+
+    for ax, (taxon, label) in zip(axes, order):
+        sub = pairs[pairs["taxon"] == taxon]
+        sub = sub[np.isfinite(sub["pred"]) & np.isfinite(sub["obs"])
+                  & (sub["pred"] > 0) & (sub["obs"] > 0)]
+        # Robust limits: a single wild retrieval (Syn has one at ~1e-5)
+        # would otherwise compress the populated range to invisibility.
+        both = np.r_[sub["pred"].to_numpy(), sub["obs"].to_numpy()]
+        lo = float(np.percentile(both, 1.0)) * 0.5
+        hi = float(np.percentile(both, 99.0)) * 2.0
+        n_out = int(((both < lo) | (both > hi)).sum())
+
+        # Guides first, so the data sit on top of them.
+        ax.plot([lo, hi], [lo, hi], color=BASELINE, lw=1.2, ls=(0, (4, 3)),
+                zorder=1)
+        for f in (3.0, 1 / 3.0):
+            ax.plot([lo, hi], [lo * f, hi * f], color=GRIDLINE, lw=1.0,
+                    ls=(0, (1, 2)), zorder=1)
+
+        for cruise, colour in CRUISE_COLOR.items():
+            c = sub[sub["cruise"] == cruise]
+            ax.scatter(c["obs"], c["pred"], s=42, facecolor=colour,
+                       edgecolor=SURFACE, linewidth=0.8, alpha=0.9,
+                       label=f"AMT{cruise}", zorder=3)
+
+        m = metrics["pooled"][taxon]
+        lb, lm, lr = LANGE_HELDOUT[taxon]
+        r2_scale = "linear" if taxon == "pro" else "log$_{10}$"
+        ax.text(0.04, 0.96,
+                f"pooled  n = {m['n']}\n"
+                f"bias {m['bias']:.2f}   MAE {m['mae']:.2f}\n"
+                f"R$^2$ {m['r2']:+.2f} ({r2_scale})",
+                transform=ax.transAxes, va="top", fontsize=9.5,
+                color=INK_PRIMARY)
+        ax.text(0.96, 0.06,
+                f"Lange+2020 held-out\n(MODIS): {lb:.2f} / {lm:.2f} / {lr:+.2f}",
+                transform=ax.transAxes, va="bottom", ha="right", fontsize=8,
+                color=INK_MUTED)
+
+        if n_out:
+            ax.text(0.04, 0.09,
+                    f"{n_out} point{'s' if n_out > 1 else ''} beyond axes",
+                    transform=ax.transAxes, fontsize=8, color=INK_MUTED)
+        ax.set_xscale("log"), ax.set_yscale("log")
+        ax.set_xlim(lo, hi), ax.set_ylim(lo, hi), ax.set_aspect("equal")
+        ax.set_title(f"$\\it{{{label}}}$", fontsize=11, color=INK_PRIMARY)
+        ax.set_xlabel("observed (flow cytometry)  cells mL$^{-1}$",
+                      fontsize=9.5, color=INK_PRIMARY)
+        ax.grid(True, which="major", color=GRIDLINE, lw=0.7, zorder=0)
+        ax.set_axisbelow(True)
+        _style_axes(ax)
+
+    axes[0].set_ylabel("retrieved (MOANA, in-situ hyperspectral Rrs)  "
+                       "cells mL$^{-1}$", fontsize=9.5, color=INK_PRIMARY)
+    handles, labels = axes[0].get_legend_handles_labels()
+    # Legend under the title: the bottom-centre slot collides with the
+    # middle panel's x-axis label.
+    fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False,
+               fontsize=9.5, labelcolor=INK_PRIMARY,
+               bbox_to_anchor=(0.5, 0.945))
+    fig.suptitle("Held-out skill: the published MOANA coefficients on "
+                 "AMT23/25/28 in-situ hyperspectral Rrs  "
+                 "(dashed 1:1, dotted $\\pm$3$\\times$)",
+                 fontsize=12, color=INK_PRIMARY)
+    # Explicit margins, not tight_layout: the equal-aspect log panels fight
+    # its rect and the x-axis labels end up clipped off the canvas.
+    fig.subplots_adjust(left=0.062, right=0.995, top=0.845,
+                        bottom=0.155, wspace=0.22)
+    if outfile:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+        fig.savefig(outfile, dpi=150, facecolor=SURFACE)
+        print(f"wrote {outfile}")
+    plt.close(fig)
+    return fig
+
+
 def main():
     """Build every report figure and print a short summary of the tables."""
     wave, loadings, coefs = load_moana_tables()
@@ -569,6 +900,22 @@ def main():
         return
     plot_mapping_verdict(
         outfile=os.path.join(FIG_DIR, "moana_mapping_verdict.png"))
+
+    # Same granule pair, but our retrieval under each mapping against the
+    # other -- what the misplacement costs, rather than which NASA ships.
+    both = _retrieve_both_mappings()
+    plot_mapping_consequence(
+        data=both,
+        outfile=os.path.join(FIG_DIR, "moana_mapping_consequence.png"))
+
+    # --- held-out skill needs the AMT trees, not the PACE granules -------
+    try:
+        hd = heldout_skill_data()
+    except Exception as exc:            # missing AMT data is not an error
+        print(f"\nskipping held-out skill figure: {exc}")
+        return
+    plot_heldout_skill(
+        data=hd, outfile=os.path.join(FIG_DIR, "moana_heldout_skill.png"))
 
 
 if __name__ == "__main__":

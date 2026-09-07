@@ -380,6 +380,37 @@ available to us.
 > the likely reason **no L3M MOANA collection exists** (§7.4's oddity
 > explained).
 
+**And what does the misplacement cost?** The verdict box above settles *which*
+mapping ships; this is the separate question of how much it changes the numbers.
+Running our own retrieval under both mappings on the same granule — so the only
+difference is where those two coefficients sit — gives the answer directly:
+
+![What the misplaced coefficients cost](figures/moana_mapping_consequence.png)
+
+- ***Synechococcus*: the operational product is a systematic 0.80× the
+  as-published value** (median Δlog₁₀ = −0.098 over 166,733 ocean pixels), i.e.
+  ~20 % low almost everywhere. The left panel shows why "systematic" is the right
+  word: the two mappings track each other along a displaced ridge rather than
+  scattering, because swapping PC16 for U13 replaces one well-behaved score with
+  another rather than injecting noise.
+- ***Prochlorococcus* moves by a median 54 × 10³ cells mL⁻¹ — 21 % of NASA's own
+  retrieved value.** This difference is *exact* despite our not having the GHRSST
+  field, because the intercept and the `log₁₀(SST)` term are identical under both
+  mappings and cancel in the subtraction; only the relocated PC term survives.
+- **picoeukaryotes are bit-identical under the two mappings**, which is the
+  built-in control: its coefficient assignment is undisputed (§7.1 table), so any
+  difference there would have indicated a bug in our own implementation rather
+  than in NASA's table.
+
+The right-hand panel carries the part that matters most for how the product gets
+used. The *Prochlorococcus* difference **changes sign regionally** — negative
+through the subtropical gyres, positive at the high-latitude margins and in the
+equatorial band — so this is not a calibration offset that a user could absorb
+into a scale factor. It distorts *spatial gradients*, which is precisely what
+MOANA is most often used for (biogeography, gyre-boundary delineation, model
+evaluation). A 21 % error that reversed sign across the very fronts the algorithm
+was designed to detect is a qualitatively different problem from a 21 % bias.
+
 ### 7.2 The ATBD contradicts itself on spectral range
 
 Its abstract requires valid `Rrs` over **395–705 nm**; its Mathematical Theory
@@ -934,6 +965,18 @@ cruises (bias/MAE/R²):
 | pro | 1.20/1.59/−1.8 | 2.47/2.90/0.15 | 3.17/4.07/−0.4 | **2.19/2.75/−0.14** | 1.75/2.26/0.54 |
 | syn | 1.26/1.77/0.71 | 1.08/2.05/0.54 | 0.48/3.90/−10.6 | **0.85/2.46/−3.0** | 0.93/2.20/0.40 |
 | peuk | 0.79/1.40/0.76 | 1.16/1.58/0.77 | 1.24/1.43/0.80 | **1.07/1.47/0.78** | 1.05/1.53/0.60 |
+
+![Held-out skill on AMT23/25/28](figures/moana_heldout_skill.png)
+
+The same three columns as the table, drawn: picoeukaryotes lie along 1:1 inside the
+±3× guides, while *Prochlorococcus* is **flat** — retrieved abundance sits at
+1–4 × 10⁵ cells mL⁻¹ almost regardless of what was counted, across nearly four
+decades of observed values. That flatness is the negative R² made visible, and it
+is the same pathology as §7.3's clipping seen from the other side: the model
+cannot express low *Prochlorococcus*, so when the truth is genuinely low it
+neither tracks it nor flags it. *Synechococcus* sits in between — broadly along
+1:1 but with ±3× scatter and its largest observed values pulled low, which is what
+turns a respectable-looking bias of 0.85 into an MAE of 2.46.
 
 The reading, and it is the report's most important scientific result so far:
 **picoeukaryotes transfer** (pooled MAE 1.47, R² 0.78 — *better* than the

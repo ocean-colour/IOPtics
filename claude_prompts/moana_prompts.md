@@ -1358,6 +1358,106 @@ but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
 
+### 2026-09-07 (Prompt 18 — two new report figures: what the coefficient bug costs, and held-out skill drawn)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**No workstation run needed.** Prompt 18 offered that possibility; it turned out
+everything was already local. My first pass looked for the data before JXP had
+finished reorganising it and I wrongly concluded two pieces were missing — the
+AMT23/25/28 flow-cytometry tables and the L3M AOP Rrs granule. Re-checking after
+his prompt found both: the FCM deposits had moved to `$OS_COLOR/AMT/AMT<n>/`
+(where `load_fcm` looks for them, so all four cruises load cleanly) and the 181 MB
+AOP granule was in the `moana_validation` cache. Everything ran here in ~10 s.
+
+**Figure 1 — `moana_mapping_consequence.png`, added to §7.1.** Deliberately a
+*different* question from the existing `moana_mapping_verdict.png`, which asks
+which mapping NASA ships. This one asks what the misplacement costs, by running
+our own retrieval under both mappings on the same granule so the only difference
+is where the two disputed coefficients sit.
+
+The methodological point I was most pleased with: **the *Prochlorococcus*
+difference is exactly computable even though we have no GHRSST field.** The
+intercept and the `log₁₀(SST)` term are identical under both mappings, so they
+cancel in the subtraction and only the relocated PC term survives — meaning a
+figure I had assumed would need an ancillary download needed none. I pass a
+constant SST purely to exercise the public `run_moana` path, and `nasa_compat=False`
+so neither the negative-Pro clamp nor the int32 truncation contaminates the
+difference.
+
+Results: *Synechococcus* under the operational mapping is a systematic **0.80×**
+the as-published value (median Δlog₁₀ = −0.098, n = 166,733); *Prochlorococcus*
+moves by a median **54 × 10³ cells mL⁻¹, which is 21 % of NASA's own retrieved
+value**; and **picoeukaryotes come out bit-identical**, which is the useful part —
+its assignment is undisputed, so agreement there is a control confirming the
+difference is NASA's table and not our code.
+
+The finding worth the section text: the *Prochlorococcus* difference **changes
+sign regionally** — negative through the gyres, positive at the high-latitude
+margins and the equatorial band. So it is not a calibration offset a user could
+absorb into a scale factor; it distorts spatial gradients, across the very fronts
+the algorithm exists to detect. I scaled the difference to NASA's own Pro field
+rather than leaving it as raw cells mL⁻¹, because "21 % of the value" is
+interpretable and "54,000 cells" is not.
+
+**Figure 2 — `moana_heldout_skill.png`, added to §12.3.** Retrieved vs observed,
+one panel per taxon, coloured by cruise, with 1:1 and ±3× guides and the
+Lange+2020 MODIS held-out numbers quoted in each panel for reference. It draws
+the table's story: picoeukaryotes on 1:1, *Synechococcus* fanning, and
+*Prochlorococcus* **flat** — retrieved 1–4 × 10⁵ cells mL⁻¹ almost regardless of
+what was counted, across nearly four decades of truth. That flatness is the
+negative R² made visible, and it is §7.3's clipping seen from the other side: the
+model cannot express low Pro, so when the truth is low it neither tracks it nor
+flags it.
+
+**One small library change.** `validate_heldout_cruises` computed the matchup
+pairs and then discarded them, keeping only the metrics. Rather than duplicate the
+±3 h matching logic in a report script — which would have been a second place for
+it to drift — I added a `pairs` DataFrame to its return. Backwards-compatible
+(new key only), documented, and the metrics it reproduces are unchanged: the run
+matched §12.3's published table exactly, cruise by cruise, before I touched
+anything.
+
+**Mistakes I made and fixed.** Two worth recording. First, my margin patches for
+the held-out figure kept landing on `plot_mapping_consequence` instead, because I
+anchored the replacements on a `tight_layout(rect=...)` string that appears in
+several functions and only asserted that *some* replacement had happened. Three
+rounds of "fixed it" produced byte-identical output before I checked the function
+body and found the real cause; I then re-anchored by line number and verified
+every layout call against its owning function. The lesson is that
+`assert s != orig` is too weak a guard when a patch makes several edits — it
+passes if any one lands. Second, the equal-aspect log panels genuinely do defeat
+`tight_layout`'s `rect` (and `bbox_inches="tight"` did not rescue it), so that
+figure now uses explicit `subplots_adjust`.
+
+I also fixed a **pre-existing bug** while regenerating: running
+`python reports/scripts/moana_report_figs.py` directly failed with
+`ModuleNotFoundError: ioptics`, because `sys.path[0]` is the script's own
+directory, not the repo root. It had only ever worked when driven from an
+interpreter already rooted in the repo. The script now inserts `_REPO` on
+`sys.path`, so the whole set — including the older verdict figure, which had the
+same latent problem — regenerates from one command.
+
+**Verification.** Loaded the house data-viz guidance before writing chart code.
+Magnitude stays on the single-hue blue sequential ramp; the two signed-difference
+maps use the palette's diverging blue↔red with a neutral grey midpoint and
+symmetric limits at the 95th percentile of |Δ| (the red arm is stepped to mirror
+the blue arm's lightness, since `palette.md` tabulates only the blue); cruise
+identity uses the first three categorical slots, which are documented as
+validated all-pairs — the right gate for a scatter, where every pair is
+co-visible. Still no JS runtime here, so the validator could not be run; I relied
+on the documented validation of that exact subset rather than eyeballing, as
+before. Rendered and inspected every figure, which is what caught the axis and
+legend faults. `pytest -q`: **300 passed**.
+
+**Files changed.** `reports/scripts/moana_report_figs.py` (two figure functions,
+diverging ramp, `sys.path` fix, wired into `main()`),
+`reports/MOANA_Claude_Report.md` (§7.1 and §12.3 additions),
+`ioptics/moana/validation.py` (`pairs` in the return),
+`claude_prompts/moana_prompts.md` (this entry). New:
+`reports/figures/moana_mapping_consequence.png`,
+`reports/figures/moana_heldout_skill.png`.
+
 ### 2026-08-17 (Prompt 17 — report rev. 4: scale, decadal drift, new-basin training, and the AMT accounting)
 
 **Model:** run as Claude Fable 5, per "Use Fable if you can".

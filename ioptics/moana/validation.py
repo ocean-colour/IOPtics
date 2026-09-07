@@ -236,7 +236,10 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
     dict — ``retrievals`` : DataFrame (cruise, datetime, lat, lon, sst,
     pro/syn/apeuk, flags, recon_residual); ``metrics`` : per-taxon metric
     dicts per cruise plus a ``'pooled'`` entry across all scored cruises;
-    ``missing_counts`` : cruise numbers lacking a truth table.
+    ``missing_counts`` : cruise numbers lacking a truth table;
+    ``pairs`` : DataFrame (cruise, taxon, pred, obs) — one row per
+    matchup, i.e. the points behind the metrics (used by the report
+    figures).
     """
     brewin = load_brewin2023()
     st = brewin['stations']
@@ -249,6 +252,7 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
 
     metrics, missing = {}, []
     pooled = {t: ([], []) for t in _TAXA}      # (pred, obs) across cruises
+    pair_rows = []                             # every matchup, for plotting
     for cruise in sorted(st['cruise'].unique()):
         table = (fcm_tables or {}).get(cruise)
         if table is None:
@@ -271,6 +275,10 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
                 'linear' if t == 'pro' else 'log10')
             pooled[t][0].extend(pred)
             pooled[t][1].extend(obs)
+            pair_rows.extend(
+                {'cruise': int(cruise), 'taxon': t,
+                 'pred': float(pp), 'obs': float(oo)}
+                for pp, oo in zip(pred, obs))
         metrics[int(cruise)] = rows
     if metrics:
         metrics['pooled'] = {
@@ -287,7 +295,8 @@ def validate_heldout_cruises(fcm_tables=None, verbose=True):
                       f"bias {m['bias']:5.2f}  MAE {m['mae']:5.2f}  "
                       f"R2 {m['r2']:6.2f}  unphys {m['frac_unphysical']:.2f}")
     return {'retrievals': retrievals, 'metrics': metrics,
-            'missing_counts': missing}
+            'missing_counts': missing,
+            'pairs': pd.DataFrame(pair_rows)}
 
 
 # ---------------------------------------------------------------------------
