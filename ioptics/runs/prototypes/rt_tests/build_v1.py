@@ -14,11 +14,15 @@ forward model and nothing else:
 - ``expb_pow_hyb_ramfl``       ... + chlorophyll fluorescence
 - ``expb_pow_hyb_ramflcdom``   ... + CDOM fluorescence
 
-All five fit ``B_p`` free, so ``k = 6``.
+``B_p`` is free (``k = 6``) on the L23 and PACE arms, FIXED (``k = 5``) on the
+PANGAEA arm (rt_tests Q51/Q52 — free where the bands can afford it, fixed where
+NOMAD's 6-band spectra would otherwise be underdetermined by construction).
 
-Two arms, because the two questions need different data:
+Three sweeps across two arms, because the questions need different data and
+noise conventions (one noise model per sweep — the arm-A split is rt_tests Q53):
 
-- **arm A** (``run_rta.yaml``) — L23 X=4 + PANGAEA-97: graded against IOP truth.
+- **arm A / L23** (``run_rta_l23.yaml``) — all 3,320 L23 X=4 spectra @ ``pace``.
+- **arm A / PANGAEA** (``run_rta_pangaea.yaml``) — the 97 NOMAD ids @ ``insitu``.
 - **arm B** (``run_rtb.yaml``) — 100 real PACE OCI pixels: no truth, so it scores
   model selection (ΔBIC) and closure on real hyperspectral radiance.
 
@@ -26,11 +30,15 @@ Usage (one stage per call, mirroring ``build_v2.py`` / ``build_v3.py``)::
 
     python build_v1.py <flg> [--n-cores N] [--strict BOOL] [--config NAME]
 
-    1  run     arm A -> results_{spectral,scalar}.parquet + provenance
-    2  metrics arm A -> metrics_{spectral,scalar,pairwise}
+    1  run     arm A (PANGAEA sweep, then L23) -> results + provenance per sweep
+    2  metrics arm A (both sweeps)             -> metrics parquets per sweep
     3  run     arm B
     4  metrics arm B
-    5  report  (both arms; see the stage-5 stub)
+    5  report  (all sweeps; see the stage-5 stub)
+
+Stages 1/2 iterate over both arm-A sweeps by default (PANGAEA first — it
+finishes in hours and validates the split before the multi-day L23 half);
+``--config rta_l23`` / ``--config rta_pangaea`` runs just one.
 
 ``0`` is a no-op. ``--config smoke`` redirects stages **1** and **2** onto
 ``run_smoke.yaml`` (16 records, all three datasets) — the end-to-end gate that
@@ -62,8 +70,12 @@ from ioptics import config, run
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-#: Arm A: L23 (X=4) + PANGAEA-97, graded against IOP truth.
-CONFIG_RTA = os.path.join(HERE, 'run_rta.yaml')
+#: Arm A, L23 half: all 3,320 X=4 spectra, free B_p, noise ``pace``.
+CONFIG_RTA_L23 = os.path.join(HERE, 'run_rta_l23.yaml')
+
+#: Arm A, PANGAEA half: the 97 NOMAD ids, FIXED B_p (k=5), noise ``insitu``.
+#: The split (two sweeps instead of one) is rt_tests Q53; the fixed B_p is Q52.
+CONFIG_RTA_PANGAEA = os.path.join(HERE, 'run_rta_pangaea.yaml')
 
 #: Arm B: 100 real PACE OCI pixels, scored on model selection + closure.
 CONFIG_RTB = os.path.join(HERE, 'run_rtb.yaml')
@@ -71,10 +83,14 @@ CONFIG_RTB = os.path.join(HERE, 'run_rtb.yaml')
 #: The 16-record, three-dataset end-to-end smoke (``--config smoke``).
 CONFIG_SMOKE = os.path.join(HERE, 'run_smoke.yaml')
 
-CONFIGS = {'rta': CONFIG_RTA, 'rtb': CONFIG_RTB, 'smoke': CONFIG_SMOKE}
+CONFIGS = {'rta_l23': CONFIG_RTA_L23, 'rta_pangaea': CONFIG_RTA_PANGAEA,
+           'rtb': CONFIG_RTB, 'smoke': CONFIG_SMOKE}
 
-#: Which config each stage operates on by default. ``--config`` overrides it.
-STAGE_CONFIG = {1: 'rta', 2: 'rta', 3: 'rtb', 4: 'rtb'}
+#: Which config(s) each stage operates on by default — a tuple means "run each
+#: in order" (PANGAEA first: it finishes in hours and validates the split
+#: before the multi-day L23 half starts). ``--config`` overrides it.
+STAGE_CONFIG = {1: ('rta_pangaea', 'rta_l23'), 2: ('rta_pangaea', 'rta_l23'),
+                3: 'rtb', 4: 'rtb'}
 
 #: The frozen PANGAEA population (see ``derive_pangaea97.py``).
 PANGAEA_IDS_CSV = os.path.join(HERE, 'pangaea97_ids.csv')
@@ -128,12 +144,11 @@ SMOKE_N_PACE = 4
 def bounded_obs_ids(config_name='rta'):
     """The per-dataset ``{dataset: [ids]}`` bound for one config, or ``None``.
 
-    Arm A bounds **PANGAEA alone** to its 97 frozen ids; L23 is absent from the
-    mapping and therefore runs in full (all 3 320 X=4 spectra carry the complete
-    truth decomposition, so there is nothing to bound away). Arm B needs no
-    bound at all — the PACE dataset *is* the 100 frozen spectra — so it returns
-    ``None``, which :func:`ioptics.run.run_sweep` reads as "everything". The
-    smoke bounds all three.
+    The PANGAEA sweep bounds its one dataset to the 97 frozen ids; the L23
+    sweep returns ``None`` and runs in full (all 3 320 X=4 spectra carry the
+    complete truth decomposition, so there is nothing to bound away). Arm B
+    needs no bound at all — the PACE dataset *is* the 100 frozen spectra. The
+    smoke bounds all three datasets.
 
     Parameters
     ----------
@@ -145,7 +160,9 @@ def bounded_obs_ids(config_name='rta'):
     dict or None
         ``{dataset: ids}`` for :func:`ioptics.run.run_sweep`'s ``obs_ids``.
     """
-    if config_name == 'rta':
+    if config_name == 'rta_l23':
+        return None
+    if config_name == 'rta_pangaea':
         return {'PANGAEA': pangaea97_ids()}
     if config_name == 'rtb':
         return None
@@ -211,13 +228,17 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name=None):
             f'--config {config_name} redirects stages 1 (run) and 2 (metrics) '
             f'only; stage {flg} is arm B and already has its own config. Use '
             f'stage 1/2 with --config {config_name}, or drop --config.')
-    name = config_name or STAGE_CONFIG.get(flg)
+    default = STAGE_CONFIG.get(flg)
+    names = ((config_name,) if config_name is not None
+             else default if isinstance(default, tuple) else (default,))
 
     if flg in (1, 3):
-        _run(name, n_cores=n_cores, strict=strict, obs_ids=obs_ids)
+        for name in names:
+            _run(name, n_cores=n_cores, strict=strict, obs_ids=obs_ids)
 
     elif flg in (2, 4):
-        _metrics(name)
+        for name in names:
+            _metrics(name)
 
     elif flg == 5:
         # Stage numbering is kept stable so the run notes and the shell history

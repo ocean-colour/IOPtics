@@ -761,6 +761,48 @@ surfaced real design decisions that should be settled **before RT-A runs
 
 ## Logs
 
+### 2026-09-10 — Execution task 12: RT-A configured per round-9 answers and LAUNCHED (Fable)
+
+Round-9 decisions applied (all five):
+- **Q50 (c):** free-B_p prior stays [0.004, 0.05] where B_p is free; emulator
+  DomainWarnings accepted; report will caveat.
+- **Q51:** B_p stays **free on L23 and PACE** (k=6) — deliberately, to show it
+  is not well constrained.
+- **Q52:** B_p **fixed (0.01, k=5) on PANGAEA** via per-rung YAML
+  `rt: {fit_Bp: false}` overrides → all 97 NOMAD ids fittable (no
+  underdetermined refusals by construction). Note: 0.01 sits 2.6% below the
+  emulator's trained span — same Q50(c) acceptance.
+- **Q53:** arm A **split into two sweeps**: `rt_tests_A_l23_v1` (L23 X=4,
+  noise `pace`, free B_p) and `rt_tests_A_pangaea_v1` (PANGAEA-97, noise
+  `insitu`, fixed B_p). ΔBIC verdicts quoted per sweep, never pooled.
+- **Q54:** full 3,320-spectrum L23 MCMC confirmed.
+
+**Code changes (Fable, no delegation):** `run_rta.yaml` replaced by
+`run_rta_l23.yaml` + `run_rta_pangaea.yaml` (both heavily annotated with the
+Q-references); `build_v1.py` — CONFIGS/`STAGE_CONFIG` now iterate the two
+arm-A sweeps (PANGAEA first: hours, and it validates the split before the
+multi-day L23 half), `bounded_obs_ids` updated, docstring rewritten;
+`test_rt_tests.py` updated + 2 new tests (per-rung fixed-B_p override on the
+PANGAEA arm only; per-sweep noise conventions). Tests: **91 passed**
+(test_rt_tests + test_metrics, data mode); **39 passed/4 skipped**
+CI-equivalent.
+
+**Launch (2026-09-10 05:34 PT):** detached runner
+`$OS_COLOR/IOPtics/runs/rt_tests_A_runner.sh` (setsid nohup, survives any
+session) → stage 1 (both sweeps, `--n-cores 20 --strict false`) then stage 2
+(metrics both) automatically. Log: `$OS_COLOR/IOPtics/runs/rt_tests_A_run.log`.
+Verified running: PANGAEA sweep started, bounded to 97. Expected: PANGAEA
+sweep ~hours; L23 sweep ~4.5–6 days; metrics automatic afterward.
+Benign-looking jax `overflow encountered in cast` RuntimeWarnings in the log
+(float32 casts on extreme optimizer probes) — will confirm harmless at the
+chain-health check.
+
+**Still owed for task 12 when the run completes:** chain-health verification
+on a sample (autocorrelation, acceptance, B_p posteriors vs prior edges),
+timing/failure/domain-warning accounting, and the stage-2 metrics
+verification. No new Q&A questions this round — all round-9 decisions were
+executable as answered. Nothing committed — JXP runs git.
+
 ### 2026-09-09 — Execution task 11: variants, configs, build script, smoke run (Opus 5, orchestrated by Fable)
 
 Round-8 answers applied (Q46 freeze CSVs / confirmations; Q47a pool

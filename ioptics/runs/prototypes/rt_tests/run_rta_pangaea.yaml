@@ -1,0 +1,48 @@
+# RT tests, arm A-PANGAEA — the five-rung RT ladder on the 97 NOMAD truth ids.
+#
+# Split out of the original single arm-A sweep (rt_tests Q53): one noise model
+# per sweep is a schema rule, and PANGAEA is scored under its own convention
+# (`insitu` — which, PANGAEA V3 shipping no per-band Rrs uncertainty, degrades
+# to the documented flat-10% fallback) rather than L23's `pace`. ΔBIC scales
+# with 1/sigma^2, so the two arms' model-selection verdicts are quoted per
+# sweep, never pooled.
+#
+# THE ONE CONFIG DIFFERENCE FROM THE L23 ARM: B_p is FIXED here (rt_tests Q52).
+# NOMAD is multispectral — 72 of the 97 ids have 6 usable bands and 2 have 5 —
+# so with a free B_p (k = 6) 74 of 97 would be underdetermined by construction
+# and the arm would shrink to the 25 eleven-band `nomad_rb-01-02` spectra.
+# Fixing B_p at the default 0.01 restores k = 5 and lets the 6-band spectra
+# fit. (0.01 sits 2.6% below the hybrid emulator's trained span
+# [0.0103, 0.018]; accepted and caveated per rt_tests Q50, as on every arm.)
+# The five ladder rungs below therefore carry an explicit `rt: {fit_Bp: false}`
+# override — their provenance digests differ from the L23 arm's, as they must.
+sweep_id: rt_tests_A_pangaea_v1
+datasets: [PANGAEA]
+
+noise_model: insitu            # PANGAEA's convention. V3 has no per-band Rrs
+                               #   uncertainty, so this is the flat 10% fallback —
+                               #   invented but honest, and it is the weighting
+                               #   PANGAEA results are quoted under elsewhere.
+seed: 20260907                 # same seed family as the L23 arm.
+
+algorithms:                    # the RT ladder; fixed B_p (k = 5) on every rung
+  - name: expb_pow_ztt_el
+    rt: {fit_Bp: false}
+  - name: expb_pow_hyb_el
+    rt: {fit_Bp: false}
+  - name: expb_pow_hyb_ram
+    rt: {fit_Bp: false}
+  - name: expb_pow_hyb_ramfl
+    rt: {fit_Bp: false}
+  - name: expb_pow_hyb_ramflcdom
+    rt: {fit_Bp: false}
+
+fit_method: mcmc
+mcmc_subset: 97                # ALL 97 (the build script bounds PANGAEA to the
+                               #   frozen pangaea97_ids.csv population).
+
+wv_min: 400                    # same window as the L23 arm — the ladder is only
+wv_max: 750                    #   comparable within a sweep if every rung sees
+                               #   the same bands.
+
+leaderboard: false             # same rationale as the L23 arm.

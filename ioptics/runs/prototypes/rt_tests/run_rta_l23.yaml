@@ -1,0 +1,66 @@
+# RT tests, arm A-L23 — the five-rung RT ladder against inelastic HydroLight truth.
+#
+# One IOP parameterization (`expb_pow`: ExpBricaud + Pow) held fixed while the
+# radiative transfer is varied five ways, so any difference between two rows is
+# the RT and nothing else. The rungs are registered by
+# `ioptics.algorithms.registry.register_rt_variants()`, which the build script
+# calls before this config's algorithm names are resolved — they are opt-in and
+# are NOT in the standard seed.
+#
+#   expb_pow_ztt_el          robust_ztt, elastic          (analytic robust RT)
+#   expb_pow_hyb_el          robust_hybrid, elastic       (+ learned emulator)
+#   expb_pow_hyb_ram         robust_hybrid + Raman
+#   expb_pow_hyb_ramfl       ... + chlorophyll fluorescence
+#   expb_pow_hyb_ramflcdom   ... + CDOM fluorescence      (the full stack)
+#
+# Arm A was SPLIT into this sweep + run_rta_pangaea.yaml (rt_tests Q53): one
+# noise model per sweep is a schema rule, and L23's convention (`pace`,
+# absolute error) is the right weighting for the few-percent inelastic
+# features, while PANGAEA's own convention is the flat-10% `insitu` fallback.
+# Both sweeps are folded into one report round.
+#
+# On this arm all five rungs fit `B_p` free (k = 6; rt_tests Q51 — kept free
+# deliberately, to make the point that it is not well constrained). The
+# free-B_p posteriors roam outside the hybrid emulator's trained span
+# [0.0103, 0.018]; per rt_tests Q50 this is ACCEPTED and caveated in the
+# report, not clamped.
+sweep_id: rt_tests_A_l23_v1
+datasets: [L23]
+
+dataset_opts:
+  L23: {X: 4}                  # the INELASTIC HydroLight realization. X=1 has no
+                               #   Raman and no fluorescence in the truth at all,
+                               #   so rungs 3-5 would be testing for a signal the
+                               #   data-generating model never put there.
+
+noise_model: pace              # L23's own convention (every expb_giop sweep uses
+                               #   it): an ABSOLUTE per-band error, which keeps
+                               #   the few-percent inelastic features this sweep
+                               #   exists to detect above the noise.
+seed: 20260907                 # noise draw + per-record MCMC walker seeding
+                               #   (run._record_seed). Fixed: it is what makes the
+                               #   chi-squared weights and the chains reproducible.
+
+algorithms:                    # the RT ladder, in order (bare names: no overrides)
+  - expb_pow_ztt_el
+  - expb_pow_hyb_el
+  - expb_pow_hyb_ram
+  - expb_pow_hyb_ramfl
+  - expb_pow_hyb_ramflcdom
+
+fit_method: mcmc               # sweep-level. `run_sweep` chi-squared-fits EVERY
+                               #   record for every algorithm regardless; this
+                               #   additionally opts all five into the MCMC pass.
+mcmc_subset: 3320              # ALL of L23 X=4 (rt_tests Q54: full, not a
+                               #   subset). `run_sweep` takes
+                               #   `records[:mcmc_subset]`.
+
+wv_min: 400                    # 400-750 nm: inside robust_hybrid's 350-750 nm
+wv_max: 750                    #   emulator training domain, and blueward of 400 nm
+                               #   the Raman excitation wavelengths fall off the
+                               #   water tables.
+
+leaderboard: false             # NOT a cross-algorithm standing. These five rows are
+                               #   one algorithm under five physics packages, not
+                               #   five competing retrievals, and folding them would
+                               #   put five near-clones of expb_pow on the board.

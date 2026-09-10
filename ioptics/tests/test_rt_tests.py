@@ -241,7 +241,7 @@ def test_id_csv_round_trips(tmp_path):
 # --------------------------------------------------------------------
 # Tier 1 — the sweep configs
 # --------------------------------------------------------------------
-@pytest.mark.parametrize('name', ['rta', 'rtb', 'smoke'])
+@pytest.mark.parametrize('name', ['rta_l23', 'rta_pangaea', 'rtb', 'smoke'])
 def test_config_parses_and_validates(name):
     build = _load('build_v1')
     cfg = config.load(build.CONFIGS[name])
@@ -253,6 +253,27 @@ def test_config_parses_and_validates(name):
     assert cfg.wv_min == 400.0 and 700.0 <= cfg.wv_max <= 750.0
     # round-trips through the provenance copy
     assert config.loads(config.dump(cfg)) == cfg
+
+
+def test_pangaea_arm_fixes_Bp_on_every_rung():
+    # Q52: NOMAD's 6-band spectra are underdetermined at k=6, so the PANGAEA
+    # sweep overrides fit_Bp off on all five rungs (k=5). The L23 arm keeps
+    # B_p free (Q51) — no rt override at all.
+    build = _load('build_v1')
+    cfg = config.load(build.CONFIGS['rta_pangaea'])
+    for ac in cfg.algorithms:
+        assert ac.overrides['rt'] == {'fit_Bp': False}
+    cfg_l23 = config.load(build.CONFIGS['rta_l23'])
+    for ac in cfg_l23.algorithms:
+        assert 'rt' not in ac.overrides
+
+
+def test_arm_a_split_uses_each_datasets_own_noise_model():
+    # Q53: one noise model per sweep — L23 under its `pace` convention,
+    # PANGAEA under its `insitu` convention. Never pooled.
+    build = _load('build_v1')
+    assert config.load(build.CONFIGS['rta_l23']).noise_model == 'pace'
+    assert config.load(build.CONFIGS['rta_pangaea']).noise_model == 'insitu'
 
 
 def test_config_windows_respect_the_hybrid_emulator_domain():
@@ -267,7 +288,7 @@ def test_config_windows_respect_the_hybrid_emulator_domain():
 
 def test_arm_a_sweeps_the_inelastic_l23_realization():
     build = _load('build_v1')
-    for name in ('rta', 'smoke'):
+    for name in ('rta_l23', 'smoke'):
         cfg = config.load(build.CONFIGS[name])
         assert cfg.dataset_opts['L23'] == {'X': 4}
 
@@ -276,8 +297,10 @@ def test_arm_a_mcmc_subset_covers_the_whole_population():
     # ``run_sweep`` takes ``records[:mcmc_subset]``, so the value has to be at
     # least the population or the sweep quietly samples a prefix of it.
     build = _load('build_v1')
-    cfg = config.load(build.CONFIGS['rta'])
-    assert cfg.mcmc_subset >= 3320 + len(build.pangaea97_ids())
+    cfg = config.load(build.CONFIGS['rta_l23'])
+    assert cfg.mcmc_subset >= 3320
+    cfg_p = config.load(build.CONFIGS['rta_pangaea'])
+    assert cfg_p.mcmc_subset >= len(build.pangaea97_ids())
     cfg_b = config.load(build.CONFIGS['rtb'])
     assert cfg_b.mcmc_subset >= len(build.pace100_ids())
 
@@ -295,9 +318,10 @@ def test_config_algorithm_names_resolve_after_opt_in(rt_registered):
 # --------------------------------------------------------------------
 def test_bounded_obs_ids_bounds_pangaea_only_for_arm_a():
     build = _load('build_v1')
-    bound = build.bounded_obs_ids('rta')
-    assert set(bound) == {'PANGAEA'}                   # L23 runs in full
+    bound = build.bounded_obs_ids('rta_pangaea')
+    assert set(bound) == {'PANGAEA'}
     assert len(bound['PANGAEA']) == 97
+    assert build.bounded_obs_ids('rta_l23') is None    # L23 runs in full
     assert build.bounded_obs_ids('rtb') is None        # PACE *is* the 100
 
 
@@ -316,7 +340,9 @@ def test_stage_five_is_a_stub_with_stable_numbering():
     build = _load('build_v1')
     with pytest.raises(SystemExit, match='task 13'):
         build.main(5)
-    assert build.STAGE_CONFIG == {1: 'rta', 2: 'rta', 3: 'rtb', 4: 'rtb'}
+    assert build.STAGE_CONFIG == {1: ('rta_pangaea', 'rta_l23'),
+                                  2: ('rta_pangaea', 'rta_l23'),
+                                  3: 'rtb', 4: 'rtb'}
 
 
 def test_config_override_refuses_the_arm_b_stages():
