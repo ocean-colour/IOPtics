@@ -882,10 +882,52 @@ def with_strata(scalar_df):
                            how='left')
 
 
-def _caveat(dataset, component):
-    """GLORIA ``a_dg`` vs ``a_cdom440`` truth-mapping caveat flag (else '')."""
+#: Algorithms whose forward model includes **CDOM fluorescence**
+#: (``rt.include_CDOM_fl``). Named rather than introspected: :func:`compute`
+#: scores a results *table*, which carries algorithm names and no specs, and
+#: reading the sweep's provenance to recover the flag would make the metrics
+#: layer depend on an artifact it otherwise never opens. Keep in step with
+#: :data:`ioptics.algorithms.registry.RT_VARIANT_SEED` (asserted in the tests).
+CDOM_FL_ALGORITHMS = frozenset({'expb_pow_hyb_ramflcdom'})
+
+#: Datasets whose truth was generated **without** a CDOM-fluorescence term, so
+#: a retrieval that models one is graded against a forward model that does not
+#: have it. L23 is HydroLight output: its inelastic realization (``X=4``)
+#: carries Raman scattering and chlorophyll fluorescence and nothing else, so
+#: any CDOM-fluorescence signal an ``include_CDOM_fl`` fit puts into the
+#: ~515 nm region is absorbed by the other free parameters before the IOPs are
+#: compared. The numbers are still computed — they are simply not a clean test
+#: of the term, which is what the flag says.
+NO_CDOM_FL_TRUTH_DATASETS = ('L23',)
+
+#: The caveat strings :func:`_caveat` can emit.
+CAVEAT_CDOM_VS_ADG = 'CDOM_vs_adg'
+CAVEAT_NO_CDOM_FL_TRUTH = 'no_CDOMfl_truth'
+
+
+def _caveat(dataset, component, algorithm=None):
+    """Truth-mapping caveat flag for one metrics row (``''`` when there is none).
+
+    Two rules, both saying "this row's *truth* does not mean quite what the
+    column header implies":
+
+    ``CDOM_vs_adg``
+        GLORIA ``a_dg`` rows. GLORIA measures CDOM absorption alone, whereas
+        ``a_dg`` is CDOM **+** detritus, so the retrieval is being graded
+        against a strictly smaller quantity.
+    ``no_CDOMfl_truth``
+        a CDOM-fluorescence algorithm (:data:`CDOM_FL_ALGORITHMS`) on a dataset
+        whose truth has no such term (:data:`NO_CDOM_FL_TRUTH_DATASETS`).
+
+    ``algorithm`` is optional so the GLORIA rule — which predates it and does
+    not depend on the algorithm — behaves identically when it is not supplied.
+    """
     if str(dataset).upper().startswith('GLORIA') and component == 'a_dg':
-        return 'CDOM_vs_adg'
+        return CAVEAT_CDOM_VS_ADG
+    if algorithm in CDOM_FL_ALGORITHMS and any(
+            str(dataset).upper().startswith(d)
+            for d in NO_CDOM_FL_TRUTH_DATASETS):
+        return CAVEAT_NO_CDOM_FL_TRUTH
     return ''
 
 
@@ -962,7 +1004,8 @@ def _ref_accuracy_rows(ref):
         # The trial count coverage was actually measured over — not this row's
         # ``n``, which counts finite-and-positive (retrieved, truth) pairs.
         row['coverage_n'] = coverage_n(O, g['lo68'], g['hi68'])
-        row['caveat'] = _caveat(row['dataset'], row['component'])
+        row['caveat'] = _caveat(row['dataset'], row['component'],
+                                row.get('algorithm'))
         out.append(row)
     return pd.DataFrame(out)
 
@@ -1063,6 +1106,14 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
     return pd.DataFrame(out)
 
 
+def _configured_pair(dbic_pair):
+    """``dbic_pair`` as an unordered frozenset, or ``None`` if unusable."""
+    if not dbic_pair:
+        return None
+    pair = tuple(dbic_pair)
+    return frozenset(pair) if len(pair) == 2 else None
+
+
 def _pairwise_metrics(ref, scalar, *, dbic_pair):
     """metrics_pairwise: §5 wins (per component/ref) + §3 ΔBIC contest."""
     frames = []
@@ -1088,6 +1139,16 @@ def _pairwise_metrics(ref, scalar, *, dbic_pair):
     # algorithm pair, not just the configured one: a sweep whose algorithms are
     # not the configured pair used to get no ΔBIC row at all (and a page with a
     # blank panel plus prose about an algorithm that never ran).
+    #
+    # ``dbic_pair`` therefore does not *select* which contests run — it names the
+    # one the sweep exists to answer, and each row records whether it is that one
+    # in ``configured``. Before this the parameter was accepted and then read by
+    # nobody, so a caller could ask for a contest and get no signal back that the
+    # request had landed (the same "apply or reject" failure the per-algorithm
+    # overrides had). A sweep whose configured pair does not appear at all —
+    # because one of the two algorithms failed everywhere — is then visible as
+    # "no row has configured=True" rather than invisible.
+    want = _configured_pair(dbic_pair)
     rows = []
     for kvals, g in scalar.groupby(['dataset', 'fit_method', 'stratum'],
                                    sort=False):
@@ -1103,6 +1164,7 @@ def _pairwise_metrics(ref, scalar, *, dbic_pair):
                 'frac_favor_a': res['frac_favor_a'],
                 'frac_favor_b': res['frac_favor_b'],
                 'median_dbic': float(np.median(res['dbic'])),
+                'configured': want is not None and frozenset((a, b)) == want,
             })
     if rows:
         frames.append(pd.DataFrame(rows))
@@ -1190,11 +1252,17 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
       χ²ᵥ > ``chi2nu_qc_max``, the noise-model-free ``rel_misfit_median`` /
       ``rel_misfit_median_all`` (:func:`rel_misfit`), plus the coverage block
       ``n_attempted`` + ``frac_<status>``); accuracy metrics carry
-      cross-algorithm ranks. GLORIA ``a_dg`` rows are flagged ``caveat``.
+      cross-algorithm ranks. Rows whose truth does not mean what the column
+      header implies are flagged ``caveat`` (see :func:`_caveat`: GLORIA
+      ``a_dg``, and a CDOM-fluorescence algorithm on a dataset with no
+      CDOM-fluorescence truth).
     - **metrics_pairwise** — §5 ``wins`` head-to-head per ``(dataset,
-      fit_method, stratum, component, ref_wave)`` and the §3 ΔBIC contest
-      (``dbic_pair``, default ``expb_pow`` vs ``giop``) per ``(dataset,
-      fit_method, stratum)``.
+      fit_method, stratum, component, ref_wave)`` and the §3 ΔBIC contest per
+      ``(dataset, fit_method, stratum)``, run over **every** algorithm pair
+      present. ``dbic_pair`` (default ``expb_pow`` vs ``giop``) names the
+      contest the sweep exists to answer; its rows are marked
+      ``configured = True``, so "the pair I asked for was scored" is a table
+      lookup rather than an assumption.
 
     **Only rows whose ``status`` is in ``score_statuses`` are scored**
     (default :data:`SCORE_STATUSES`, i.e. ``'ok'`` alone). The rest are

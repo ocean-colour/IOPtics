@@ -764,7 +764,10 @@ def run_batch(spec, records, *, fit_method=None, n_cores=1, strict=True,
         from functools import partial
         fn = partial(_run_one_star, spec=spec, fit_method=fit_method,
                      perc=perc, strict=strict)
-        with ProcessPoolExecutor(max_workers=n_cores) as ex:
+        # Pay the BING/JAX import once per worker at start-up rather than on
+        # its first record (see :func:`_warm_fit_imports`).
+        with ProcessPoolExecutor(max_workers=n_cores,
+                                 initializer=_warm_fit_imports) as ex:
             return list(ex.map(fn, records))
     if strict:
         return [run_algorithm(spec, record, fit_method=fit_method, perc=perc)
@@ -829,6 +832,15 @@ def _warm_fit_imports():
     Warming the import here, ahead of the seed, makes the RNG state at
     walker init a function of the seed alone. Idempotent and ~free once the
     module is in ``sys.modules``.
+
+    Also used as the ``initializer=`` of every fitting process pool
+    (:func:`run_batch`, :func:`_mcmc_subset`), which is the belt to this
+    braces: a worker then pays the multi-second JAX import **once at start-up**
+    instead of on its first record, so the pool's records cost the same as one
+    another and a wall-clock-per-fit estimate means something. One import
+    reaches both fitters — ``bing.fitting.inference`` pulls in
+    ``bing.evaluate``, which is where JAX (and, via it, ``chisq_fit``) comes
+    from.
     """
     from bing.fitting import inference  # noqa: F401
 
@@ -960,7 +972,10 @@ def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
         fn = partial(_mcmc_one, spec=spec, sweep_id=sweep_id, pid=pid,
                      root=root, strict=strict, perc=perc, seed=seed)
         pairs = []
-        with ProcessPoolExecutor(max_workers=n_cores) as ex:
+        # Warm the fitting stack at worker start-up; ``_mcmc_one`` calls the
+        # same function again before each record's seed, and it is idempotent.
+        with ProcessPoolExecutor(max_workers=n_cores,
+                                 initializer=_warm_fit_imports) as ex:
             for i, (res, record) in enumerate(zip(ex.map(fn, records),
                                                   records)):
                 _progress(i, record, res)

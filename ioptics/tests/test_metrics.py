@@ -549,6 +549,107 @@ def test_compute_pairwise_wins_and_dbic(tmp_path):
     assert np.isclose(db['frac_favor_a'], 0.75)
 
 
+# --------------------------------------------------------------------
+# dbic_pair — the configured contest (Stage 8 / rt_tests task 11)
+# --------------------------------------------------------------------
+def test_dbic_rows_flag_the_configured_pair(tmp_path):
+    # ΔBIC still runs for every pair; ``dbic_pair`` only *names* one, and the
+    # naming has to be visible in the table or the parameter is a no-op (which
+    # is what it was until this landed).
+    pw = _synthetic_sweep(tmp_path).pairwise
+    db = pw[pw.contest == 'dbic']
+    assert not db.empty
+    assert db['configured'].all()               # default pair = the two present
+
+
+def test_dbic_configured_is_false_for_an_unmatched_pair(tmp_path):
+    pairs = []
+    for obs_id in range(4):
+        pairs.append(_make_pair(obs_id, 'expb_pow', 1.0, 0.5, 10))
+        pairs.append(_make_pair(obs_id, 'giop', 2.0, 0.5, 15))
+    io.write_results('sweep_dbp', pairs, root=tmp_path)
+    tables = metrics.compute('sweep_dbp', root=tmp_path,
+                             dbic_pair=('gsm', 'expb_pow'))
+    db = tables.pairwise[tables.pairwise.contest == 'dbic']
+    # the (expb_pow, giop) contest is still scored — it is simply not the one
+    # the caller asked for, and the table says so rather than staying silent.
+    assert not db.empty and not db['configured'].any()
+
+
+def test_dbic_configured_ignores_pair_order(tmp_path):
+    pairs = []
+    for obs_id in range(4):
+        pairs.append(_make_pair(obs_id, 'expb_pow', 1.0, 0.5, 10))
+        pairs.append(_make_pair(obs_id, 'giop', 2.0, 0.5, 15))
+    io.write_results('sweep_dbo', pairs, root=tmp_path)
+    tables = metrics.compute('sweep_dbo', root=tmp_path,
+                             dbic_pair=('giop', 'expb_pow'))   # reversed
+    db = tables.pairwise[tables.pairwise.contest == 'dbic']
+    assert db['configured'].all()
+
+
+# --------------------------------------------------------------------
+# _caveat — truth-mapping flags
+# --------------------------------------------------------------------
+def test_caveat_gloria_rule_is_unchanged_by_the_algorithm_argument():
+    # The GLORIA rule predates the algorithm argument and must not depend on it.
+    for algo in (None, 'expb_pow', 'expb_pow_hyb_ramflcdom'):
+        assert metrics._caveat('GLORIA', 'a_dg', algo) == 'CDOM_vs_adg'
+        assert metrics._caveat('GLORIA', 'a_ph', algo) == ''
+        assert metrics._caveat('L23', 'a_dg', algo) != 'CDOM_vs_adg'
+
+
+def test_caveat_no_cdomfl_truth_rule():
+    cdom_algo, = sorted(metrics.CDOM_FL_ALGORITHMS)
+    assert metrics._caveat('L23', 'a_ph', cdom_algo) == 'no_CDOMfl_truth'
+    assert metrics._caveat('L23', 'a_dg', cdom_algo) == 'no_CDOMfl_truth'
+    # ... and nowhere else: not for another algorithm on L23,
+    assert metrics._caveat('L23', 'a_ph', 'expb_pow_hyb_ramfl') == ''
+    assert metrics._caveat('L23', 'a_ph', 'expb_pow') == ''
+    # not for the same algorithm on a dataset outside the list,
+    assert metrics._caveat('PANGAEA', 'a_ph', cdom_algo) == ''
+    assert metrics._caveat('PACE', 'a_ph', cdom_algo) == ''
+    # and not when the algorithm is simply unknown to the row.
+    assert metrics._caveat('L23', 'a_ph', None) == ''
+
+
+def test_caveat_algorithm_list_matches_the_registry():
+    # metrics names the CDOM-fluorescence algorithms rather than introspecting
+    # specs it never sees; this is the assertion that keeps the two in step.
+    import dataclasses
+
+    from ioptics.algorithms import registry
+
+    before = dict(registry.REGISTRY)
+    try:
+        specs = registry.register_rt_variants()
+    finally:
+        registry.REGISTRY.clear()
+        registry.REGISTRY.update(before)
+    on = {n for n, s in specs.items() if s.rt.include_CDOM_fl}
+    assert on == set(metrics.CDOM_FL_ALGORITHMS)
+    assert dataclasses.is_dataclass(next(iter(specs.values())))
+
+
+def test_compute_stamps_no_cdomfl_truth_on_l23_rows_only(tmp_path):
+    cdom_algo, = sorted(metrics.CDOM_FL_ALGORITHMS)
+    pairs = []
+    for obs_id in range(3):
+        for dataset in ('L23', 'PANGAEA'):
+            pairs.append(_make_pair(obs_id, cdom_algo, 1.0, 0.5, 10,
+                                    dataset=dataset))
+            pairs.append(_make_pair(obs_id, 'expb_pow_hyb_el', 1.2, 0.5, 12,
+                                    dataset=dataset))
+    io.write_results('sweep_cav', pairs, root=tmp_path)
+    sc = metrics.compute('sweep_cav', root=tmp_path).scalar
+    flagged = sc[sc['caveat'] == 'no_CDOMfl_truth']
+    assert not flagged.empty
+    assert set(flagged['dataset']) == {'L23'}
+    assert set(flagged['algorithm']) == {cdom_algo}
+    # every other row is uncaveated
+    assert set(sc[sc['caveat'] != ''].index) == set(flagged.index)
+
+
 def test_compute_strata_present(tmp_path):
     sc = _synthetic_sweep(tmp_path).scalar
     strata = set(sc['stratum'])

@@ -712,7 +712,121 @@ Both landed green (see Log). Questions that surfaced:
     it in the RT-test configs?
 >A. Leave as is and just set it in the RT-test configs.
 
+---
+
+### Round 9 (2026-09-09) — after Execution task 11 (variants, configs, smoke run)
+
+Task 11 is green and the smoke run worked end-to-end (see Log) — but it
+surfaced real design decisions that should be settled **before RT-A runs
+(~4.5–6 days at 20 cores)**:
+
+50. **Hybrid emulator vs free B_p — the big one.** The hybrid emulator was
+    trained on B_p ∈ [0.0103, 0.018], but our free-B_p prior is
+    [0.004, 0.05] and the smoke posteriors sit mostly *outside* the trained
+    span (medians ≈ 0.027; every hybrid fit raised a DomainWarning).
+    Four of the five ladder rungs would run where robust itself calls the
+    emulator "unreliable". Options: (a) narrow the B_p prior to the trained
+    span [0.0103, 0.018]; (b) drop `fit_Bp` on hybrid variants (fix B_p at
+    0.01, inside the span); (c) accept and caveat. Which?
+
+>A. (c)
+
+51. **B_p is weakly identified anyway.** Posteriors are broad — 97.5th
+    percentiles press against the 0.05 prior edge on most L23/PANGAEA fits.
+    Related to Q50: is a free B_p buying us anything here, or fix it
+    everywhere (identical k across variants either way)?
+>A. Let's keep it free; mainly to make the point clear that it is not well constrained.
+
+52. **PANGAEA arm shrinks to 25 of 97.** With `fit_Bp` (k=6), 74 of the 97
+    NOMAD ids are underdetermined by construction (mostly 6-band spectra ≤
+    k). Options: (a) fix B_p on PANGAEA (k=5 → the 6-band spectra fit);
+    (b) restrict to the 25 eleven-band `nomad_rb-01-02` spectra; (c) widen
+    to MERMAID hyperspectral ids (breaks the single-protocol criterion).
+    Note Q50/Q51 answers may resolve this for free (fixed B_p ⇒ k=5).
+>A. Ok, fix B_p for PANGAEA.
+
+53. **RT-A noise model.** One `noise_model` per sweep; the smoke used
+    `pace` (L23's convention; absolute error; preserves the few-%
+    inelastic signals). PANGAEA's own convention is 10% (`insitu`), and
+    ΔBIC scales with 1/σ², so this choice moves the verdict. Keep one
+    sweep @ `pace`, or split RT-A into L23@pace + PANGAEA@insitu (two
+    sweep_ids, same report round)?
+>A. Split is fine
+
+54. **Confirm RT-A scale.** Full 3,320-spectrum L23 MCMC ≈ 4.5–6 days at
+    20 cores (measured per-fit costs, ~1.85× pool degradation). Confirm
+    full L23, or use a stratified subset (e.g. 1,000) to answer the same
+    question in ~1.5 days?
+>A. Yes, full L23
+
 ## Logs
+
+### 2026-09-09 — Execution task 11: variants, configs, build script, smoke run (Opus 5, orchestrated by Fable)
+
+Round-8 answers applied (Q46 freeze CSVs / confirmations; Q47a pool
+initializer; Q47b bing follow-up filed; Q48 provenance notes; Q49
+noise_seed in configs). Delegated to Opus 5; ~47-min smoke run included.
+Nothing committed — JXP runs git.
+
+**What landed (IOPtics @ rt-tests):**
+- `register_rt_variants()` (opt-in, one `register()` per spec): the five
+  variants differ from `expb_pow` ONLY in name/label/rt/fit_method
+  (asserted field-by-field); all `fit_Bp=True`, `fit_method='mcmc'`;
+  five distinct provenance digests.
+- Frozen populations: `pangaea97_ids.csv` — **exactly 97** (usable Rrs ∩
+  aph ∩ acdom ∩ bbp ∩ NOMAD; funnel 64,071 → 263 all-three ∩ Rrs → 97
+  NOMAD; the 166 others are MERMAID/SeaBASS); `pace100_ids.csv` (from the
+  artifact; extractor now refuses drifted rewrites without explicit
+  flags).
+- Configs `run_rta.yaml` (L23 X=4 + PANGAEA-97, 400–750, mcmc-all,
+  noise `pace`, seed 20260907, leaderboard: false), `run_rtb.yaml`
+  (PACE, 400–700), `run_smoke.yaml`; `build_v1.py` stages 1–4 (+ stage 5
+  stub pointing at task 13), `bounded_obs_ids()` from the CSV.
+- Metrics: `dbic_pair` now actually consumed — dbic rows carry a
+  `configured` flag for `(expb_pow_hyb_el, expb_pow_hyb_ramflcdom)`;
+  `_caveat` algorithm-aware → `no_CDOMfl_truth` stamps exactly
+  (L23 × ramflcdom) rows; GLORIA rule untouched (tested); a test pins
+  `CDOM_FL_ALGORITHMS` to the registry's include_CDOM_fl set.
+- Q47a: `initializer=_warm_fit_imports` on both pools; serial vs pooled
+  chains verified **bit-identical** end-to-end.
+- Q48 (deviation): the stated ≥2026-08-30 criterion matched zero sweeps;
+  the only MCMC sweep (`expb_giop_L23_mcmc_full`, 2026-08-19) was
+  annotated with accurate wording (chains internally consistent; re-runs
+  at same seed differ today). Loader tolerance tested.
+- Q47b: `bing/claude_prompts/rng_hardening_followup.md` (corrected:
+  `init_walkers` already takes rng=; the gap is `run_emcee`/`fit_one`
+  never thread one + `sampler._random` snapshots the global stream).
+- **Core bug found by the smoke and fixed**: mixed str/int `obs_id`
+  across datasets crashed `to_parquet` (ArrowInvalid) after a full χ²
+  pass — `io._harmonize_obs_id()` casts to str only when kinds coexist;
+  regression-tested; pure-int sweeps keep their dtype.
+- Docs: models.rst section for the opt-in family; sphinx -W green.
+
+**Smoke run** (`rt_tests_smoke`: 8 L23-X4 + 4 PANGAEA + 4 PACE × 5
+variants, χ²+MCMC, n_cores=16, 47 min): all cells populated; statuses
+clean (PANGAEA 2 fit_failed = the designed n_bands≤k refusal); 70 chains
+all (1950,16,6) with pnames ending B_p; B_p in-prior everywhere;
+provenance schema 4 with leaderboard:false + dataset_opts + seed; smoke
+absent from leaderboard.parquet; metrics parquets complete (140 dbic
+rows / 14 configured; caveat scoping exact). Physics sanity: el→ram Δ
+peaks in the blue (2.3% of max Rrs), ram→ramfl peaks at 685 nm,
+ramfl→ramflcdom at 515 nm, ztt↔hyb 1.4–3.7% — all signatures where they
+belong. χ²ᵥ ≈ 1 on L23. Timings: MCMC 224–346 s/fit unloaded, ~1.85×
+degradation under a 16-worker pool → **RT-A ≈ 4.5–6 days at 20 cores;
+RT-B ≈ 4 h**.
+
+**Two scientific flags from the smoke** (→ Q50–Q54): every hybrid fit
+raised a DomainWarning — the emulator's B_p training span [0.0103,
+0.018] vs our free-B_p prior [0.004, 0.05], posterior medians ~0.027
+(outside); and with k=6, 74 of PANGAEA's 97 ids are underdetermined
+(arm shrinks to 25). Plus the sweep-level noise-model choice (pace vs
+insitu) and the RT-A budget confirmation.
+
+**Verification:** full suite data mode **560 passed, 1 skipped, 0
+failed**; CI mode **500 passed, 61 skipped, 0 failed**; sphinx -W green.
+
+Open questions Q50–Q54 posed in Q&A — **RT-A should not launch until
+they're answered**; RT-B is unaffected by Q52/Q53 but shares Q50/Q51.
 
 ### 2026-09-07 — Execution task 10: PACE dataset + Q45 MCMC-pooling fix (2× Opus 5, orchestrated by Fable)
 

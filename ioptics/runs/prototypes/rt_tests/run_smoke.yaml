@@ -1,0 +1,54 @@
+# RT tests — the end-to-end smoke sweep. NOT a scientific result.
+#
+# Its whole job is to exercise the machinery arms A and B depend on, across all
+# three datasets and all five RT rungs, in ~half an hour instead of days:
+# opt-in registration, per-record geometry (L23's Y-as-theta_s, PANGAEA's and
+# PACE's time/lat/lon), the robust backends, the free `B_p` trailing parameter
+# and its chain column, chain persistence, provenance schema 4, the metrics
+# tables, the ΔBIC pair and the `no_CDOMfl_truth` caveat.
+#
+# 16 records x 5 algorithms, chi-squared over all of them plus a full-length
+# MCMC over all 16. Run it with the build script:
+#
+#     python build_v1.py 1 --config smoke --n-cores 8 --strict false
+#     python build_v1.py 2 --config smoke
+sweep_id: rt_tests_smoke
+datasets: [L23, PANGAEA, PACE]  # all three, so the geometry paths and the
+                                #   truth/no-truth metric paths are all covered
+
+dataset_opts:
+  L23: {X: 4}                   # inelastic realization, as in arm A
+
+noise_model: pace               # one model for all three (config schema). `pace`
+                                #   matches arm A and keeps L23's inelastic features
+                                #   readable. The cost is PACE-the-dataset: its own
+                                #   measured per-pixel Rrs_unc is bypassed for the
+                                #   ocpy error table, unlike arm B (`insitu`). That
+                                #   is acceptable for a smoke and is why the smoke's
+                                #   PACE chi2_nu is not comparable with arm B's.
+seed: 20260907                  # same seed as both real arms
+
+algorithms:
+  - expb_pow_ztt_el
+  - expb_pow_hyb_el
+  - expb_pow_hyb_ram
+  - expb_pow_hyb_ramfl
+  - expb_pow_hyb_ramflcdom
+
+fit_method: mcmc                # chi-squared over all records happens regardless
+mcmc_subset: 16                 # ALL 16 records (8 L23 + 4 PANGAEA + 4 PACE), in
+                                #   `run_sweep`'s record order
+
+wv_min: 400                     # 400-700 nm: the ONE window all three datasets and
+wv_max: 700                     #   robust_hybrid can share. PACE's grid stops at
+                                #   699 nm, so arm A's 400-750 would silently become
+                                #   400-699 for that dataset; stating 700 makes the
+                                #   common window explicit.
+
+leaderboard: false              # a smoke must never reach the published board
+
+# The per-dataset id bounds live in build_v1.py (`SMOKE_OBS_IDS`), not here:
+# `obs_ids` is a run-time argument to `run_sweep`, not a config key. The PANGAEA
+# four are deliberately two 11-band and two 6-band spectra, so the smoke exercises
+# both a real fit and the `n_bands <= k` underdetermined refusal that 74 of arm A's
+# 97 PANGAEA records will hit.

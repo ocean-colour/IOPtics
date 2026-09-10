@@ -294,13 +294,54 @@ def _scalar_row(result, record):
     }
 
 
+def _harmonize_obs_id(*frames):
+    """Cast ``obs_id`` to ``str`` — in **every** frame — if any of them is mixed.
+
+    An observation id is whatever its dataset calls one: L23 and PANGAEA number
+    them, GLORIA and PACE name them (``'GID_1'``,
+    ``'1902304_156_PACE_OCI...._ExpBPow'``). A sweep over one dataset therefore
+    gets a clean ``int64`` or ``str`` column and nothing notices. A sweep over
+    **both kinds** gets a column of mixed Python objects, and ``to_parquet``
+    refuses it outright::
+
+        ArrowInvalid: Could not convert '1902304_156_PACE_OCI...' with type str:
+        tried to convert to int64
+
+    — which is how the first {L23, PANGAEA, PACE} sweep died, after every fit had
+    already run. Ids are labels, never arithmetic, so ``str`` is a lossless
+    common type; casting *all* the frames (not only the offending one) keeps
+    ``results_spectral`` and ``results_scalar`` joinable on
+    ``(dataset, obs_id)``, which every metric depends on.
+
+    The test is deliberately **named ids vs numbered ids**, not "more than one
+    Python type": a mixed ``{int, numpy.int64}`` column is perfectly writable
+    (L23 enumerates with plain ints, PANGAEA's index yields ``int64``), and
+    stringifying it would gratuitously change the dtype of every existing
+    L23+PANGAEA sweep's artifacts. A homogeneous column is left exactly as it
+    was.
+    """
+    frames = [f for f in frames if f is not None and 'obs_id' in f.columns]
+    kinds = set()
+    for f in frames:
+        if f.empty:
+            continue
+        kinds |= {isinstance(v, str) for v in f['obs_id'].unique()}
+    mixed = len(kinds) > 1
+    if mixed:
+        for f in frames:
+            f['obs_id'] = f['obs_id'].astype(str)
+    return mixed
+
+
 def results_to_frames(pairs):
     """Flatten ``[(RetrievalResult, PreparedRecord), ...]`` to two DataFrames."""
     spectral, scalar = [], []
     for result, record in pairs:
         spectral.extend(_spectral_rows(result, record))
         scalar.append(_scalar_row(result, record))
-    return pd.DataFrame(spectral), pd.DataFrame(scalar)
+    spectral_df, scalar_df = pd.DataFrame(spectral), pd.DataFrame(scalar)
+    _harmonize_obs_id(spectral_df, scalar_df)
+    return spectral_df, scalar_df
 
 
 def write_results(sweep_id, pairs, *, root=None):

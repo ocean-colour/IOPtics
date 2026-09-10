@@ -1,0 +1,46 @@
+# RT tests, arm B — the same five-rung RT ladder on real PACE OCI spectra.
+#
+# Arm A grades the ladder against IOP truth; this arm has none (PACE is a
+# satellite observation, design Q26), so it scores **model selection and
+# closure** instead: does the extra RT physics pay for its parameters on real
+# hyperspectral water-leaving radiance? That is the ΔBIC contest
+# `expb_pow_hyb_el` vs `expb_pow_hyb_ramflcdom`, which the build script passes
+# to `metrics.compute` as `dbic_pair`.
+#
+# The rungs are opt-in — the build script calls
+# `ioptics.algorithms.registry.register_rt_variants()` before this config's
+# algorithm names are resolved.
+sweep_id: rt_tests_B_v1
+datasets: [PACE]               # the 100 extracted PACE OCI pixels; ids frozen in
+                               #   pace100_ids.csv. 136 bands, real per-pixel
+                               #   Rrs_unc, real place+time (so theta_s is computed
+                               #   per pixel, which every robust backend requires).
+
+noise_model: insitu            # the granule's OWN per-band Rrs_unc**2, handed back
+                               #   by PACEAdapter as Rrs_err. This is the one
+                               #   dataset here whose uncertainty is genuinely
+                               #   measured: no floor, no imputation, tag `insitu`.
+seed: 20260907                 # same seed as arm A. It has no effect on the noise
+                               #   (add_noise is False for every non-L23 dataset, so
+                               #   nothing is drawn) but it IS the base of the
+                               #   per-record MCMC walker seeding, which is the part
+                               #   that has to be reproducible here.
+
+algorithms:                    # the RT ladder, in order
+  - expb_pow_ztt_el
+  - expb_pow_hyb_el
+  - expb_pow_hyb_ram
+  - expb_pow_hyb_ramfl
+  - expb_pow_hyb_ramflcdom
+
+fit_method: mcmc               # every rung chi-squared-fit first (run_sweep always
+                               #   does), then sampled
+mcmc_subset: 100               # ALL of them (the population is exactly 100)
+
+wv_min: 400                    # the artifact's own grid is 400-699 nm (the OCI
+wv_max: 700                    #   588-613 nm gap is simply absent), well inside
+                               #   robust_hybrid's 350-750 nm training domain. The
+                               #   trim is a no-op that states the window explicitly.
+
+leaderboard: false             # five physics packages, not five competing
+                               #   retrievals — and no truth to score anyway

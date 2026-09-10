@@ -358,6 +358,73 @@ The seed is also held strictly *inside* the prior bounds
 (:data:`~ioptics.run.BOUND_INSET`) rather than clipped onto them, since a
 bounded solver has no direction to search from a parameter pinned to its bound.
 
+RT-test variants (opt-in)
+=========================
+
+Everything above varies the **IOP model** through one forward model — BING's
+Gordon (1988) relation. The RT-test variants do the opposite: they freeze the
+IOP model at ``expb_pow`` and vary the **radiative transfer**, so a difference
+between two of their rows is the forward model and nothing else.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 22 48
+
+   * - Name
+     - ``rt_backend``
+     - Inelastic processes
+   * - ``expb_pow_ztt_el``
+     - ``robust_ztt``
+     - none (elastic)
+   * - ``expb_pow_hyb_el``
+     - ``robust_hybrid``
+     - none (elastic)
+   * - ``expb_pow_hyb_ram``
+     - ``robust_hybrid``
+     - Raman
+   * - ``expb_pow_hyb_ramfl``
+     - ``robust_hybrid``
+     - Raman + chlorophyll fluorescence
+   * - ``expb_pow_hyb_ramflcdom``
+     - ``robust_hybrid``
+     - Raman + chlorophyll fluorescence + CDOM fluorescence
+
+``robust_ztt`` is retrieve-or-bust's analytic forward model; ``robust_hybrid``
+adds a learned emulator correction and is valid only over 350–750 nm
+(:data:`bing.rt.defs.ROBUST_HYBRID_WAVE_MIN` /
+:data:`~bing.rt.defs.ROBUST_HYBRID_WAVE_MAX`), which is what fixes the sweeps'
+wavelength window. Every robust backend requires an observation geometry — the
+solar zenith is resolved per record by :func:`ioptics.run.resolve_theta_s` and
+is **never** silently defaulted.
+
+All five make :math:`B_p`, the backscattering-ratio / phase-function parameter
+the robust forward models take, a **free** parameter
+(:attr:`~ioptics.algorithms.spec.RTOptions.fit_Bp`), appended as the trailing
+element of the fitted vector and of every saved chain. So **k = 6**, not 5, and
+that is not bookkeeping: a spectrum with six or fewer bands is then
+underdetermined and :func:`ioptics.run.run_algorithm` declines it — which is
+most of NOMAD.
+
+Two shared constants deserve to be read as the assumptions they are: the
+chlorophyll-fluorescence quantum yield is held at ``phi_C = 0.02``, and the
+CDOM-fluorescence source term is the fixed-fraction proxy
+:math:`a_{cdom} = 0.8 \times a_{dg}` (``cdom_fraction``) — a project decision,
+not a measurement, because no BING absorption model separates dissolved from
+detrital absorption. Any rung-5 result inherits it.
+
+Like the turbid models, these are **not** seeded — they are one algorithm under
+five physics packages, not five competing retrievals, so seeding them would put
+five near-clones of ``expb_pow`` on every cross-algorithm board:
+
+.. code-block:: python
+
+    from ioptics.algorithms import registry
+
+    registry.register_rt_variants()     # adds all five
+    spec = registry.get('expb_pow_hyb_ramflcdom')
+
+The sweeps that use them live in ``ioptics/runs/prototypes/rt_tests/``.
+
 Fit status: what counts as a solution
 =====================================
 
