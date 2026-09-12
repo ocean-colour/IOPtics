@@ -70,6 +70,64 @@ samples included. So the missing data is not a nuisance — it is measurably the
 whole gap between our reproduction and theirs, and it is the one item that
 would let us test Table 1 as an equality rather than an inequality.
 
+### Update 2026-09-10 — Tom's reply answers a different question; suggested re-ask
+
+Tom replied: *"the cell counts are the final set of columns in
+`AMT24_JR20140922_AFC_Dataset.xlsx`, and these 'number codes' map onto the meta
+data definitions in `AMT24_AFC_BODC_sample_metadata_report.html`. e.g. P700A90Z is
+Abundance of Synechococcus"*.
+
+**That is correct, and it is already exactly what we do** — so the request has
+been misheard as "we cannot find the cell counts" when it is "we cannot find the
+*underway* cell counts". Checked on receipt:
+
+- the metadata report defines exactly **six** codes, and the workbook carries
+  exactly those six columns — nothing is hidden or extra;
+- our reader's mapping (`ioptics/moana/io.py:FCM_CODES`) is identical code for
+  code, `P700A90Z → Synechococcus` and `P701A90Z → Prochlorococcus` included;
+- the values we load match the workbook **cell for cell** (`np.allclose` per
+  column, 810–812 finite samples each).
+
+So there is no decoding problem, and no data in that file we are failing to use.
+The gap is *which samples exist*, and it is visible in the file itself:
+
+| | this deposit | Lange et al. (2020) |
+|---|---|---|
+| sampling mode | 814 bottles, **all `Gear=CTD`** | CTD casts **+ ~30-min underway run** |
+| surface samples (≤ 10 m) | **68**, one per station | — |
+| time of day | bimodal at 03–06 h and 12–15 h UTC (the two daily casts) | plus continuous daylight underway |
+| in the 25–45° S front band | **16 samples**, median **14.9 h** / 1.11° (~66 nM) apart | ~30 min apart |
+| usable for training | n = 30 (those with daylight radiometry) | n = 73–78 |
+
+The 25–45° S row is the crux: that band is exactly where Lange et al. §2.1 and
+their Fig. 2b describe the 30-minute underway sampling, and where their Table 2
+shows it is what makes the *Synechococcus* model work. This deposit has 16 samples
+there, roughly 15 hours apart.
+
+**Suggested re-ask (wording matters here — please lead with the first sentence):**
+
+> Thanks — we do have those columns and we are reading them correctly
+> (P700A90Z → *Synechococcus*, P701A90Z → *Prochlorococcus*, etc.), and they
+> match the metadata report. Our question is about a different set of samples.
+>
+> The deposit contains the 814 CTD-bottle samples from the 68 rosette stations.
+> Lange et al. (2020) also trained on the **underway** flow-cytometry samples
+> taken from the ship's non-toxic supply roughly every 30 minutes while crossing
+> the front between the South Atlantic Gyre and temperate waters (~25–45° S) —
+> their §2.1 and Fig. 2b. Those samples are not in the BODC deposit, and cannot
+> be: it is a bottle product, keyed by `BODC_bot` / `Rosette_Pos` /
+> `Firing_Seq`, and an underway sample has none of those.
+>
+> Do those underway counts still exist — with Glen Tarran, or in a separate
+> series? **A spreadsheet or CSV with UTC timestamp, latitude, longitude and the
+> three taxa in cells mL⁻¹ is all we need**; it does not have to be archived.
+> Around 40–50 samples would take our reproduction from n = 30 to Lange's
+> n = 73–78.
+
+One useful by-product of the exchange: the code→taxon mapping is now confirmed by
+the data originators, not just inferred by us from the metadata document. That is
+recorded at `ioptics/moana/io.py:FCM_CODES`.
+
 ## 2. Bug report: the ES CSVs in the Level-2 delivery are wrong
 
 `AMT24_HSAS_<day>_ES.dat` is a **byte-identical copy** of

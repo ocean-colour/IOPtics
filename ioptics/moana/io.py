@@ -65,6 +65,10 @@ HSAS_WAVE = 306.0 + 3.5 * np.arange(_N_WAVE)
 # (`AMT24_AFC_Document_468667.htm`, BODC document 468667) — NOT guessed from
 # the code strings, which are misleading (P700* is Synechococcus, P701* is
 # Prochlorococcus). load_fcm() asserts all expected codes are present.
+#: BODC parameter code -> our short taxon name. Derived from each cruise's own
+#: metadata document, and **confirmed directly by PML** (Tom, 2026-09-10: "the
+#: cell counts are the final set of columns ... P700A90Z is Abundance of
+#: Synechococcus"). Verified cell-for-cell against the 2026-09 AMT24 re-delivery.
 FCM_CODES = {
     'P701A90Z': 'pro',     # Prochlorococcus       [cells/ml]
     'P700A90Z': 'syn',     # Synechococcus         [cells/ml]

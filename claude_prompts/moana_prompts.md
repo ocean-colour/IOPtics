@@ -258,6 +258,9 @@ It is possible you will need me to run this on my workstation.  Tell me if so.  
 
 19. **PML follow-up**.  I believe that PML has provided the BODC deposit for AMT24.  Please examine those data in the `$OS_COLOR/AMT/AMT24/` folder.  If they are what you need, then proceed with that deferred anlysis and then update the Report and add a comment to the PML follow-up list.  Use Fable if you can. Log your work.
 
+20. **Tom response**.  Tom has written: "the cell counts are the final set of columns in AMT24_JR20140922_AFC_Dataset.xlsx, and these `number codes' map onto the meta data definitions in AMT24_AFC_BODC_sample_metadata_report.html.
+e.g. P700A90Z is Abundance of Synechococcus".  Please review this and see what you have for the BODC deposit now.  Use Fable if you can. Log your work.
+
 ## Q&A
 
 ### Radiometry
@@ -1359,6 +1362,61 @@ to settle §4(a) empirically — if we reproduce NASA's product with the JSON ma
 but not the ATBD mapping, the operational code is definitively using PC7/PC16.
 
 ### Logs
+
+### 2026-09-10 (Prompt 20 — Tom's reply reviewed: mapping confirmed, but it answers a different question)
+
+**Model:** run as Claude Fable 5, per "Use Fable if you can".
+
+**Tom is right, and it is already what we do.** He wrote that the cell counts are
+the final columns of `AMT24_JR20140922_AFC_Dataset.xlsx` and that the codes map
+onto `AMT24_AFC_BODC_sample_metadata_report.html`, e.g. `P700A90Z` =
+*Synechococcus*. Verified on receipt rather than taken on trust:
+
+- the metadata report defines exactly **six** codes, and the workbook carries
+  exactly those six taxon columns — nothing hidden, nothing extra;
+- our reader's `FCM_CODES` is identical code for code, including
+  `P700A90Z → syn` and `P701A90Z → pro`;
+- the values our loader returns match the workbook **cell for cell**
+  (`np.allclose` per column; 810–812 finite samples each).
+
+So there is no decoding problem and no column we were failing to read. The request
+has been misheard as *"we cannot find the cell counts"* when it is *"we cannot find
+the **underway** cell counts"*.
+
+**I turned the gap into numbers, since prose has now failed twice.** Straight from
+the deposit: 814 bottles, all `Gear=CTD`, 68 stations, 68 surface (≤ 10 m) samples,
+their times bimodal at 03–06 h and 12–15 h UTC — i.e. the two daily rosette casts,
+which is exactly what a bottle product should look like. The decisive row is the
+front band: **in 25–45° S, where Lange et al. §2.1 and their Fig. 2b describe the
+30-minute underway run, this deposit has 16 surface samples with a median spacing
+of 14.9 hours (1.11°, ~66 nM).** That is the whole discrepancy in one line, and it
+is checkable by anyone with the file.
+
+**Deliverable is a re-ask, worded to stop the loop.** Added to
+`requests/PML_follow_up.md` §1: the verification above, a comparison table
+(sampling mode / surface count / time of day / front-band coverage / usable n),
+and draft text that **opens by confirming we have the columns and read them
+correctly** before asking the actual question. The previous phrasing evidently
+invited a re-explanation of the codes; leading with "thanks, we do have those and
+they match" should prevent a third round. It also repeats the two points most
+likely to unstick it: that a bottle deposit *structurally cannot* contain underway
+samples (`BODC_bot`/`Rosette_Pos`/`Firing_Seq`), and that **a plain spreadsheet is
+sufficient — no archiving needed**.
+
+**One genuine gain.** The code→taxon mapping is now confirmed by the data
+originators rather than inferred by us from the metadata document. That is a real
+provenance upgrade for every AMT cruise we score, so I recorded it at
+`ioptics/moana/io.py:FCM_CODES` with the quote and date. Small, but it is the kind
+of thing that is annoying to re-derive later.
+
+**No new analysis.** The deferred underway retraining remains blocked for exactly
+the reason logged on 2026-09-07 — nothing in this exchange changed the data on
+disk. `pytest -q`: **300 passed** (the io.py change is a comment, but the loader is
+on the tested path so it was worth confirming).
+
+**Files changed.** `requests/PML_follow_up.md` (§1 update + re-ask),
+`ioptics/moana/io.py` (provenance note on `FCM_CODES`),
+`claude_prompts/moana_prompts.md` (this entry).
 
 ### 2026-09-07 (Prompt 19 — PML re-delivery examined: same CTD-bottle data, so the deferred analysis stays blocked)
 
