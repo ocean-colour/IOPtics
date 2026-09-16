@@ -98,6 +98,13 @@ def _fit_status(record, stats, finite):
     outside what this model family is built for, so the failure is a
     statement about scope rather than about this algorithm.
 
+    As of 2026-08-10 the pipeline assigns ``out_of_scope`` **before** fitting
+    (:func:`ioptics.run.run_algorithm` declines red-peaked records unless the
+    spec sets ``fits_turbid``), so through ``run_algorithm`` a red-peaked
+    record never reaches this classifier. The post-hoc branch is kept for
+    force-fits — an algorithm with ``fits_turbid=True`` whose fit still went
+    poorly on a red-peaked spectrum earns the same scope label.
+
     Parameters
     ----------
     record : PreparedRecord
@@ -193,6 +200,8 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
             scalars[key] = params[key]
 
     # Fit statistics at the point estimate (on the native variable-Gordon model).
+    from ioptics import metrics
+
     Rrs_pt = np.atleast_1d(np.squeeze(np.asarray(Rrs_pt, dtype=float)))
     sigma = np.sqrt(np.asarray(record.varRrs, dtype=float))
     chi2 = float(bing_stats.calc_chisq(Rrs_pt,
@@ -201,8 +210,14 @@ def _assemble(spec, record, models, rt_dict, aparams, bparams, point_params,
     dof = max(n_bands - k, 1)
     # AIC/BIC per bing.stats.calc_ICs formulas, but on our variable-Gordon
     # model_Rrs (calc_ICs re-derives Rrs without rt_dict, which would mismatch).
+    # ``rel_misfit`` is the noise-model-free companion to chi2_nu — the one
+    # fit-quality number that owes nothing to the assumed error bar, persisted
+    # per fit since 2026-08-12 (PANGAEA investigation Task-4 A2, approved by
+    # JXP) so diagnostics stop recomputing it from millions of spectral rows.
     stats = {'chi2': chi2, 'chi2_nu': chi2 / dof, 'AIC': 2.0 * k + chi2,
-             'BIC': k * np.log(n_bands) + chi2, 'n_bands': n_bands, 'k': k}
+             'BIC': k * np.log(n_bands) + chi2, 'n_bands': n_bands, 'k': k,
+             'rel_misfit': metrics.rel_misfit(
+                 Rrs_pt, np.asarray(record.Rrs, dtype=float))}
 
     finite = bool(np.all(np.isfinite(point_params)) and np.all(np.isfinite(Rrs_pt)))
     return RetrievalResult(
@@ -230,6 +245,25 @@ def from_chisq(spec, record, models, rt_dict, ans, cov, *,
                      samples[:, na:], ans, 'chisq', perc)
 
 
+def chain_burn(spec, chains):
+    """Burn-in steps to discard from the head of a production chain.
+
+    ``bing.fitting.inference.run_emcee`` already ran (and reset away)
+    ``spec.mcmc.nburn`` burn-in steps before the production chain, so this is
+    a second, conservative discard of the chain's head, capped at half the
+    chain so a tiny-``nsteps`` run never discards everything. It lives in one
+    function so the percentiles (:func:`from_chains`) and the persisted chain
+    (:func:`ioptics.io.save_chain`, via the MCMC subset in :mod:`ioptics.run`)
+    cannot disagree about the burn boundary. (They still differ in *density*:
+    the percentiles use every post-burn sample, while the persisted chain is
+    additionally thinned by :data:`ioptics.io.CHAIN_THIN` — so intervals
+    re-derived from a saved chain reproduce the persisted ones only to within
+    the thinning's Monte Carlo error.)
+    """
+    chains = np.asarray(chains)
+    return min(int(spec.mcmc.nburn), max(chains.shape[0] // 2, 0))
+
+
 def from_chains(spec, record, models, rt_dict, chains, *,
                 perc=((16, 84), (2.5, 97.5))):
     """Assemble a :class:`RetrievalResult` from an MCMC posterior chain.
@@ -243,9 +277,7 @@ def from_chains(spec, record, models, rt_dict, chains, *,
 
     chains = np.asarray(chains, dtype=float)
     na = models[0].nparam
-    # Burn from the spec (capped so a tiny-nsteps run never discards everything).
-    burn = min(int(spec.mcmc.nburn), max(chains.shape[0] // 2, 0))
-    flat = thin_burn_chains(chains, burn=burn)
+    flat = thin_burn_chains(chains, burn=chain_burn(spec, chains))
     point = np.median(flat, axis=0)
     return _assemble(spec, record, models, rt_dict, flat[:, :na], flat[:, na:],
                      point, 'mcmc', perc)

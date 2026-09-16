@@ -1,0 +1,11 @@
+dataset,component,ref_wave,model_a,model_b,n_paired,win_frac_a,mae_a,mae_b,delta_mae,d_lo,d_hi,verdict
+L23,a,440,expb_pow,giop,20,0.7,0.0624,0.0725,-0.0102,-0.0341,0.0103,indistinguishable
+L23,a,443,expb_pow,giop,20,0.7,0.0595,0.0719,-0.0124,-0.0337,0.0072,indistinguishable
+L23,a_dg,440,expb_pow,giop,20,0.35,0.1845,0.1256,0.0588,-0.0229,0.1459,underpowered
+L23,a_dg,443,expb_pow,giop,20,0.3,0.2014,0.1366,0.0648,-0.0276,0.1553,underpowered
+L23,a_ph,440,expb_pow,giop,20,0.4,1.1706,0.3254,0.8452,-0.0951,4.3106,underpowered
+L23,a_ph,443,expb_pow,giop,20,0.4,1.1494,0.3546,0.7947,-0.1423,4.0802,underpowered
+L23,bb,555,expb_pow,giop,20,0.45,0.038,0.0351,0.0029,-0.0094,0.0186,indistinguishable
+L23,bb,670,expb_pow,giop,20,0.75,0.0713,0.1058,-0.0345,-0.0739,0.0101,indistinguishable
+L23,bb_p,555,expb_pow,giop,20,0.45,0.0893,0.0774,0.0119,-0.0206,0.0528,indistinguishable
+L23,bb_p,670,expb_pow,giop,20,0.75,0.1272,0.1813,-0.0541,-0.1163,0.0421,underpowered

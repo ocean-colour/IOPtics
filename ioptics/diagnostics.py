@@ -229,6 +229,348 @@ def residual_spectra(spectral, scalar, obs_id, *, dataset=None,
     return out
 
 
+def rrs_fit_data(spectral, scalar, obs_id, *, dataset=None, fit_method=None):
+    """Observed **and** modelled Rrs for one observation, with its fit numbers.
+
+    :func:`residual_spectra` gives the *difference* between the two spectra and
+    discards both absolutes, which is the right view for closure but the wrong one
+    for an exemplar panel: a reader judging whether a fit is any good wants to see
+    the model laid over the observation, in the shape the spectrum actually has.
+
+    Returns ``dict(obs_id, wave, rrs, peak_nm, models)`` where ``models`` maps
+    algorithm to ``dict(wave, rrs, chi2_nu, rel_misfit, status)``. ``peak_nm`` is
+    the wavelength of the observed Rrs maximum — the clear→turbid ordering key
+    (:data:`ioptics.records.RED_PEAK_NM` is the packaged threshold), and ``nan``
+    when no observed spectrum was persisted. ``rel_misfit`` is recomputed here
+    from the two spectra via :func:`ioptics.metrics.rel_misfit` because it is a
+    per-fit quantity that is **not** on disk: ``metrics_scalar`` persists only its
+    per-algorithm median.
+
+    Unlike :func:`residual_spectra`, the ``chi2_nu``/``status`` lookup is filtered
+    on ``dataset``/``fit_method`` as well as algorithm, so an unfiltered
+    multi-dataset ``scalar`` cannot annotate a panel with another dataset's row.
+    """
+    sp = spectral[spectral['obs_id'] == obs_id]
+    sc = scalar[scalar['obs_id'] == obs_id]
+    if dataset is not None:
+        sp = sp[sp['dataset'] == dataset]
+        sc = sc[sc['dataset'] == dataset]
+    if fit_method is not None:
+        sp = sp[sp['fit_method'] == fit_method]
+        sc = sc[sc['fit_method'] == fit_method]
+
+    mod = sp[sp['component'] == 'Rrs_model']
+    obs = sp[sp['component'] == 'Rrs_obs']
+    out = {'obs_id': obs_id, 'wave': np.array([], dtype=float),
+           'rrs': np.array([], dtype=float), 'peak_nm': np.nan, 'models': {}}
+
+    # The observation is the same spectrum whichever algorithm inverted it, but it
+    # is stored once per algorithm; de-duplicate on wavelength so a four-algorithm
+    # sweep does not draw the observed points four times over.
+    if not obs.empty:
+        o = (obs.drop_duplicates(subset='wavelength').sort_values('wavelength'))
+        wave = o['wavelength'].to_numpy(dtype=float)
+        rrs = o['value'].to_numpy(dtype=float)
+        out['wave'], out['rrs'] = wave, rrs
+        good = np.isfinite(rrs)
+        if good.any():
+            out['peak_nm'] = float(wave[good][int(np.argmax(rrs[good]))])
+
+    for algo, gmod in mod.groupby('algorithm', sort=False):
+        gobs = obs[obs['algorithm'] == algo]
+        merged = gmod.merge(gobs, on=['dataset', 'obs_id', 'algorithm',
+                                      'fit_method', 'wavelength'],
+                            suffixes=('_mod', '_obs')).sort_values('wavelength')
+        row = sc[sc['algorithm'] == algo]
+        m = merged['value_mod'].to_numpy(dtype=float)
+        o_ = merged['value_obs'].to_numpy(dtype=float)
+        g = gmod.sort_values('wavelength')
+        out['models'][str(algo)] = {
+            'wave': g['wavelength'].to_numpy(dtype=float),
+            'rrs': g['value'].to_numpy(dtype=float),
+            'chi2_nu': (float(row['chi2_nu'].iloc[0])
+                        if len(row) and 'chi2_nu' in row else np.nan),
+            'rel_misfit': metrics.rel_misfit(m, o_) if m.size else np.nan,
+            'status': (str(row['status'].iloc[0])
+                       if len(row) and 'status' in row else ''),
+        }
+    return out
+
+
+#: How many exemplar fits a page carries: best, worst, and the rest drawn from the
+#: middle of the fit-quality distribution (Stage 7 Task 7 asks for 10).
+EXEMPLAR_N = 10
+
+#: The ``role`` values :func:`exemplar_obs` assigns, in fit-quality order.
+EXEMPLAR_ROLES = ('best', 'median', 'worst')
+
+#: What identifies one observation. ``obs_id`` alone does **not**: the package's own
+#: multi-dataset convention reuses ids across datasets (``test_sweep_multi`` runs
+#: ``obs in (0, 1)`` on all three), so grouping on ``obs_id`` alone silently pools
+#: two unrelated spectra — it ranked every observation of a two-dataset sweep at the
+#: median of an L23 fit (χ²ᵥ ≈ 1) and a GLORIA fit (χ²ᵥ ≈ 400).
+OBS_KEYS = ('dataset', 'obs_id')
+
+_EXEMPLAR_COLS = ['dataset', 'obs_id', 'role', 'chi2_nu', 'rel_misfit',
+                  'peak_nm', 'fit_quality']
+
+
+def _obs_keys(df):
+    """The subset of :data:`OBS_KEYS` this frame actually carries."""
+    return [k for k in OBS_KEYS if k in getattr(df, 'columns', ())]
+
+
+def exemplar_obs(scalar, spectral=None, *, fit_method='chisq', n=EXEMPLAR_N,
+                 statuses=None):
+    """Pick the exemplar observations for a sweep: best, worst, and ``n-2`` median.
+
+    Fit quality is ranked by **distance from χ²ᵥ = 1 in log space**,
+    ``|log10(chi2_nu)|``, not by χ²ᵥ ascending. Ascending χ²ᵥ calls the *most
+    over-fit* spectrum in the sweep the "best" one, and this package already names
+    χ²ᵥ < 1 as over-fitting (``frac_overfit`` in the closure row) — on GLORIA, where
+    the assumed error floor moved χ²ᵥ by 5x while the fits did not move at all, a
+    χ²ᵥ of 0.01 is evidence about the noise model, not about the retrieval. Both
+    tails are therefore "worse" than the middle, and each panel prints its own χ²ᵥ
+    so the reader can see which tail it came from.
+
+    Where several algorithms fit the same observation, the observation is ranked by
+    the **median** χ²ᵥ across them: the panel shows every algorithm at once, so it
+    is the observation, not one algorithm's fit, being chosen. "The same
+    observation" means the same :data:`OBS_KEYS`, *not* the same ``obs_id``.
+
+    Returns a DataFrame (:data:`OBS_KEYS`, ``role``, ``chi2_nu``, ``rel_misfit``,
+    ``peak_nm``, ``fit_quality``) ordered **clear→turbid** by ``peak_nm`` when
+    ``spectral`` carries ``Rrs_obs``, else by ``fit_quality`` ascending. Empty if
+    nothing is rankable.
+    """
+    empty = pd.DataFrame(columns=_EXEMPLAR_COLS)
+    if scalar is None or scalar.empty or 'chi2_nu' not in scalar.columns:
+        return empty
+    sub = scalar
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    if statuses is not None and 'status' in sub.columns:
+        sub = sub[sub['status'].isin(list(statuses))]
+    sub = sub[np.isfinite(sub['chi2_nu'].to_numpy(dtype=float))
+              & (sub['chi2_nu'] > 0)]
+    if sub.empty:
+        return empty
+
+    keys = _obs_keys(sub)
+    per_obs = (sub.groupby(keys, sort=False)['chi2_nu'].median().reset_index())
+    per_obs['fit_quality'] = np.abs(np.log10(
+        per_obs['chi2_nu'].to_numpy(dtype=float)))
+    ranked = (per_obs.sort_values(['fit_quality'] + keys)
+                     .reset_index(drop=True))
+
+    idx, roles = _exemplar_slots(
+        len(ranked), n, worst=_worst_slot(ranked))
+    picked = ranked.iloc[idx].copy()
+    picked['role'] = roles
+
+    # per-observation relative misfit + Rrs peak, both derived from the spectra
+    peaks, misfits = {}, {}
+    if spectral is not None and not spectral.empty:
+        sp = spectral
+        if fit_method is not None and 'fit_method' in sp.columns:
+            sp = sp[sp['fit_method'] == fit_method]
+        wanted = set(map(tuple, picked[keys].to_numpy()))
+        sp = sp[sp[keys].apply(tuple, axis=1).isin(wanted)] if not sp.empty else sp
+        obs_rows = sp[sp['component'] == 'Rrs_obs']
+        for kvals, g in obs_rows.groupby(keys, sort=False):
+            g = g.drop_duplicates(subset='wavelength').sort_values('wavelength')
+            wave = g['wavelength'].to_numpy(dtype=float)
+            rrs = g['value'].to_numpy(dtype=float)
+            good = np.isfinite(rrs)
+            if good.any():
+                key = kvals if isinstance(kvals, tuple) else (kvals,)
+                peaks[key] = float(wave[good][int(np.argmax(rrs[good]))])
+        misfits.update(_rel_misfit_per_obs(sp, keys=keys))
+
+    rows = [tuple(r) for r in picked[keys].to_numpy()]
+    picked['peak_nm'] = [peaks.get(r, np.nan) for r in rows]
+    picked['rel_misfit'] = [misfits.get(r, np.nan) for r in rows]
+
+    sort_key = 'peak_nm' if picked['peak_nm'].notna().any() else 'fit_quality'
+    picked = picked.sort_values(sort_key, na_position='last')
+    for missing in (c for c in _EXEMPLAR_COLS if c not in picked.columns):
+        picked[missing] = np.nan
+    return picked[_EXEMPLAR_COLS].reset_index(drop=True)
+
+
+def _worst_slot(ranked):
+    """Row position of the **largest χ²ᵥ** in a fit-quality-ranked frame.
+
+    JXP's decision: the *selection* ranks by distance from χ²ᵥ = 1 (so the most
+    over-fit spectrum is not published as the sweep's best fit), but the word
+    **"worst" means the largest χ²ᵥ** — the most under-fit spectrum. Those differ
+    whenever the over-fit tail reaches further from 1 than the under-fit one does
+    (χ²ᵥ = 0.001 is 3 decades below 1, χ²ᵥ = 100 only 2 above), and "worst" pointing
+    at an over-fit panel is not what the word conveys to a reader.
+    """
+    if ranked.empty:
+        return None
+    return int(np.argmax(ranked['chi2_nu'].to_numpy(dtype=float)))
+
+
+def _exemplar_slots(total, n, *, worst=None):
+    """``(indices, roles)`` into a fit-quality-ranked list of ``total`` entries.
+
+    ``n`` is the number of panels wanted; the middle ``n - 2`` are taken from around
+    the median so "median" means median rather than "whatever was left". Asking for
+    fewer than three panels yields exactly that many (``n=1`` used to return *two*
+    rows, since an empty middle range still left a best and a worst).
+
+    ``worst`` is the row position to label ``'worst'`` — :func:`_worst_slot`'s
+    largest-χ²ᵥ row rather than simply the last rank. It is ``None`` for callers that
+    want the last rank.
+    """
+    n = max(0, int(n))
+    if total <= 0 or n == 0:
+        return [], []
+    if n == 1:
+        return [0], ['best']
+    if worst is None or not 0 <= worst < total:
+        worst = total - 1
+    if worst == 0:                      # a degenerate sweep: one χ²ᵥ for everything
+        worst = total - 1
+    if total <= n:
+        idx = list(range(total))
+        roles = ['median'] * total
+        roles[0] = 'best'
+        if total >= 2:
+            roles[worst] = 'worst'
+        return idx, roles
+    # the middle n-2, taken around the median and never reusing best or worst
+    n_mid = n - 2
+    mid = total // 2
+    start = min(max(1, mid - n_mid // 2), total - 1 - n_mid)
+    middle = [i for i in range(start, start + n_mid) if i not in (0, worst)]
+    for i in range(1, total - 1):       # backfill if worst fell inside the window
+        if len(middle) >= n_mid:
+            break
+        if i not in middle and i not in (0, worst):
+            middle.append(i)
+    middle = sorted(middle)[:n_mid]
+    return ([0] + middle + [worst],
+            ['best'] + ['median'] * len(middle) + ['worst'])
+
+
+def _rel_misfit_per_obs(spectral, *, keys=None):
+    """``{obs key: median relative misfit across algorithms}`` from the Rrs rows."""
+    need = {'Rrs_model', 'Rrs_obs'}
+    if not need <= set(spectral.get('component', pd.Series(dtype=str))):
+        return {}
+    keys = list(keys) if keys else _obs_keys(spectral)
+    fit_keys = keys + [k for k in ('algorithm', 'fit_method')
+                       if k in spectral.columns]
+    cols = fit_keys + ['wavelength', 'value']
+    mod = spectral[spectral['component'] == 'Rrs_model'][cols]
+    obs = (spectral[spectral['component'] == 'Rrs_obs'][cols]
+           .rename(columns={'value': 'obs'}))
+    both = mod.merge(obs, on=fit_keys + ['wavelength'])
+    if both.empty:
+        return {}
+    out = {}
+    for kvals, g in both.groupby(fit_keys, sort=False):
+        kvals = kvals if isinstance(kvals, tuple) else (kvals,)
+        obs_key = kvals[:len(keys)]
+        out.setdefault(obs_key, []).append(metrics.rel_misfit(
+            g['value'].to_numpy(dtype=float), g['obs'].to_numpy(dtype=float)))
+    return {k: float(np.nanmedian(v)) if np.isfinite(v).any() else np.nan
+            for k, v in out.items()}
+
+
+def accuracy_spectrum_data(metrics_spectral, component, *, metric='mae',
+                           dataset=None, fit_method='chisq', stratum='all',
+                           min_n=1):
+    """Accuracy **as a function of wavelength**, per algorithm, for one component.
+
+    ``metrics_spectral`` already carries one row per
+    ``(dataset, algorithm, fit_method, stratum, component, wavelength)`` — the whole
+    table was computed and persisted but never read by the report layer, so the
+    figure an ocean-colour reader looks for first (how a retrieval's error varies
+    across the spectrum) was not being drawn from data we already had.
+
+    Returns ``dict(component, metric, series, perfect)`` where ``series`` maps
+    algorithm to ``dict(wave, value, n)`` sorted by wavelength, and ``perfect`` is
+    the metric's perfect value (0 for the multiplicative errors, 1 for
+    ``median_ratio``) so the panel can draw the right reference line. Rows with
+    ``n < min_n`` or a non-finite metric are dropped: a band nobody scored must not
+    be drawn as a point at zero error.
+    """
+    out = {'component': component, 'metric': metric, 'series': {},
+           'perfect': metrics.perfect_value(metric)}
+    ms = metrics_spectral
+    if ms is None or getattr(ms, 'empty', True):
+        return out
+    need = {'component', 'wavelength', 'algorithm', metric}
+    if not need <= set(ms.columns):
+        return out
+    sub = ms[ms['component'] == component]
+    if dataset is not None and 'dataset' in sub.columns:
+        sub = sub[sub['dataset'] == dataset]
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    if stratum is not None and 'stratum' in sub.columns:
+        sub = sub[sub['stratum'] == stratum]
+    if 'n' in sub.columns:
+        sub = sub[sub['n'].fillna(0) >= min_n]
+    sub = sub[np.isfinite(sub[metric].to_numpy(dtype=float))]
+    if sub.empty:
+        return out
+    for algo, g in sub.groupby('algorithm', sort=True):
+        g = g.sort_values('wavelength')
+        out['series'][str(algo)] = {
+            'wave': g['wavelength'].to_numpy(dtype=float),
+            'value': g[metric].to_numpy(dtype=float),
+            'n': (g['n'].to_numpy(dtype=float) if 'n' in g
+                  else np.full(len(g), np.nan)),
+        }
+    return out
+
+
+#: How many scored bands a component needs before its accuracy is called a
+#: *spectrum*. JXP's number. Two bands draw a line segment, which is technically a
+#: spectrum and still misleading — five is the point at which a shape is a shape
+#: rather than an artefact of joining a couple of points.
+MIN_SPECTRUM_WAVES = 5
+
+
+def scored_components(metrics_spectral, *, dataset=None, fit_method='chisq',
+                      stratum='all', metric='mae',
+                      min_waves=MIN_SPECTRUM_WAVES):
+    """Components whose accuracy varies over enough bands to plot, best-covered first.
+
+    Returns ``[(component, n_waves, n_algos)]``. ``min_waves``
+    (:data:`MIN_SPECTRUM_WAVES`) is the point of it: a component scored at one or two
+    wavelengths cannot show a spectral shape, so plotting it invites a reader to see a
+    trend that is not there.
+    """
+    ms = metrics_spectral
+    if ms is None or getattr(ms, 'empty', True):
+        return []
+    if not {'component', 'wavelength', 'algorithm', metric} <= set(ms.columns):
+        return []
+    sub = ms
+    if dataset is not None and 'dataset' in sub.columns:
+        sub = sub[sub['dataset'] == dataset]
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    if stratum is not None and 'stratum' in sub.columns:
+        sub = sub[sub['stratum'] == stratum]
+    if 'n' in sub.columns:
+        sub = sub[sub['n'].fillna(0) > 0]
+    sub = sub[np.isfinite(sub[metric].to_numpy(dtype=float))]
+    if sub.empty:
+        return []
+    agg = sub.groupby('component').agg(n_waves=('wavelength', 'nunique'),
+                                       n_algos=('algorithm', 'nunique'))
+    agg = agg[agg['n_waves'] >= int(min_waves)]
+    agg = agg.sort_values(['n_waves', 'n_algos'], ascending=False)
+    return [(str(c), int(r.n_waves), int(r.n_algos)) for c, r in agg.iterrows()]
+
+
 def corner_data(chain_file):
     """Flattened posterior samples + labels from a saved chain NPZ.
 

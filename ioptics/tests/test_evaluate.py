@@ -64,6 +64,9 @@ def test_from_chisq_assembles_result():
         assert res.stats['n_bands'] == record.wave.size
         assert 0.0 < res.stats['chi2_nu'] < 5.0
         assert np.isfinite(res.stats['AIC']) and np.isfinite(res.stats['BIC'])
+        # the noise-model-free companion (Task-4 A2): a good L23 fit misses
+        # by a few percent, and the number must be on the stats dict itself
+        assert 0.0 <= res.stats['rel_misfit'] < 0.2
 
         # derived scalar present
         assert 'a_cdom440' in res.scalars

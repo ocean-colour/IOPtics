@@ -1,6 +1,9 @@
-========
-Datasets
-========
+=================
+Dataset reference
+=================
+
+This page describes **the data**. For how algorithms scored on each dataset, see
+the per-dataset profile pages linked from :doc:`/reports/index`.
 
 IOPtics scores IOP-retrieval algorithms against a growing set of ocean-colour
 datasets. Each observation is a measured (or simulated) **remote-sensing
@@ -16,6 +19,13 @@ wavelength grid** (no resampling), its available truth IOPs, and a model for the
 algorithm's retrieval against that truth on the intersection of available bands
 and components.
 
+The **Loader** column below says only that the adapter works and the data resolves
+on this machine. Whether a dataset has actually been *evaluated*, and by which
+algorithms, is a different question with a different answer — the **coverage
+matrix** on :doc:`/reports/index` is the authority, because it is built by walking
+the runs tree rather than from prose that can go stale. At the time of writing it
+reports rather less coverage than this page's three "working" rows might suggest.
+
 .. list-table:: Datasets in IOPtics
    :header-rows: 1
    :widths: 14 12 20 38 16
@@ -24,25 +34,25 @@ and components.
      - Type
      - Grid
      - Truth available
-     - Status
+     - Loader
    * - **L23**
      - synthetic
      - Hydrolight, 81 bands (400–700 nm)
      - full spectral IOPs: :math:`a`, :math:`b_b`, :math:`a_{ph}`,
        :math:`a_{dg}`, :math:`b_{bp}`; scalars ``Chl``, ``Sdg``
-     - **active** (first sweep)
+     - **working**
    * - PANGAEA
      - in situ
      - per-family native λ
      - :math:`a_{ph}`, :math:`a_{dg}` (from ``acdom``), :math:`b_{bp}`
        (from ``bbp``); scalars ``Chl`` (from ``chla``), ``tss``
-     - **active** (Stage 6)
+     - **working**
    * - GLORIA
      - in situ
      - hyperspectral (350–900 nm @ 1 nm)
      - scalar only: ``a_cdom440`` (as :math:`a_{dg}(440)`), ``Chl`` (from
        ``Chla``), ``TSS``, ``Secchi``
-     - **active** (Stage 6)
+     - **working**
 
 L23 — Loisel et al. (2023)
 ==========================
@@ -55,6 +65,17 @@ were *prescribed* rather than measured, L23 provides **exact, noise-free truth**
 for every IOP — the ideal first-pass benchmark. IOPtics loads it via
 ``ocpy.hydrolight.loisel23``.
 
+.. note::
+
+   **Read L23's ~99% retrieval success as a consistency check, not a
+   score.** L23 is noise-free by construction (Loisel et al. 2023: the
+   simulations are "free of measurement errors"); IOPtics perturbs each
+   spectrum with the same noise model it is then scored against, so a
+   correct pipeline is *near-guaranteed* to score ~99% ``ok`` here. The
+   number validates the machinery. Contrasts with in-situ datasets (e.g.
+   PANGAEA's rates) conflate data quality with metric calibration — see
+   ``reports/pangaea_fits_report.md``.
+
 .. figure:: _static/l23_overview.png
    :width: 100%
 
@@ -65,8 +86,9 @@ for every IOP — the ideal first-pass benchmark. IOPtics loads it via
    reflectance spectra; clear water peaks in the blue, and the peak shifts toward
    the green as phytoplankton and particles increase.
 
-- **Scope of the first sweep.** All **3320** L23 spectra (the ``X=1`` elastic
-  scenario; ``X=4`` adds Raman + fluorescence, deferred to Stage 6).
+- **Scope.** The loader exposes all **3320** L23 spectra (the ``X=1`` elastic
+  scenario; ``X=4`` adds Raman + fluorescence, not yet exercised). How many of them
+  any published sweep actually fitted is stated on that sweep's own page.
 - **Truth.** The full spectral decomposition — total absorption :math:`a`, total
   backscatter :math:`b_b`, and the components :math:`a_{ph}` (phytoplankton),
   :math:`a_{dg}` (CDOM + detritus), :math:`b_{bp}` (particulate backscatter) —
@@ -101,12 +123,15 @@ carried for provenance.
 
    **PANGAEA has no per-band** :math:`R_{rs}` **uncertainty.** The V3 tables
    report no measurement error, so the ``'insitu'`` weighting has nothing to
-   build
-   ``varRrs`` from. IOPtics therefore falls back to a **flat 5% fractional
-   error** (``varRrs = (0.05 · Rrs)²``) and records the honest provenance tag
-   ``noise_model='pct:0.05'`` — never ``'insitu'`` — so this assumption is
-   explicit in every prepared record, provenance file, and report rather than
-   silently masquerading as a measured error.
+   build ``varRrs`` from. IOPtics therefore falls back to a **flat 10%
+   fractional error** (``varRrs = (0.10 · Rrs)²``) and records the honest
+   provenance tag ``noise_model='pct:0.1'`` — never ``'insitu'`` — so this
+   assumption is explicit in every prepared record, provenance file, and
+   report rather than silently masquerading as a measured error. (The
+   fraction was 5% until 2026-08-10; at 5% the invented error bar, not the
+   fits, dominated the published retrieval-success rates — see
+   ``reports/pangaea_fits_report.md``. It now matches GLORIA's imputed-error
+   level.)
 
 Enumeration is **permissive**: every observation with at least a handful of
 finite :math:`R_{rs}` bands is kept (``min_rrs=5`` by default), even if it lacks

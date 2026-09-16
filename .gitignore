@@ -8,6 +8,7 @@ __pycache__/
 
 # Context files
 docs/PDFs/
+papers/*.pdf
 
 # Distribution / packaging
 .Python

@@ -18,10 +18,22 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
+# --- repo-root import guard (these run as scripts, so sys.path[0] is
+# docs/figures/, not the repo root) ---------------------------------------
+import os
+import sys
+_REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     '..', '..'))
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+
+from ioptics import style   # noqa: E402  (after the path guard)
+
 OUT = Path(__file__).resolve().parent.parent / 'source' / '_static' / 'l23_overview.png'
 
 
 def main():
+    style.use_ioptics_style()
     from ocpy.hydrolight import loisel23
 
     ds = loisel23.load_ds(1, 0)

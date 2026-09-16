@@ -45,7 +45,9 @@ if _REPO not in sys.path:
 _FIGDIR = os.path.join(_REPO, 'reports', 'figures')
 os.makedirs(_FIGDIR, exist_ok=True)
 
-from ioptics import prep, run, noise, datasets as D    # noqa: E402
+from ioptics import prep, run, noise, style, datasets as D    # noqa: E402
+
+style.use_ioptics_style()   # one project-wide figure style (ioptics.style)
 from ioptics.algorithms import registry                # noqa: E402
 from ioptics.algorithms.spec import MCMCOptions         # noqa: E402
 from bing.fitting.chisq_fit import fit_func             # noqa: E402

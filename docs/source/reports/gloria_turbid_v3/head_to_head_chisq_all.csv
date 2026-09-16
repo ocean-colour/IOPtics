@@ -1,0 +1,7 @@
+dataset,component,ref_wave,model_a,model_b,n_paired,win_frac_a,mae_a,mae_b,delta_mae,d_lo,d_hi,verdict
+GLORIA,a_dg,440,expb_pow,expb_pow2,12,0.4167,1.0016,1.0076,-0.006,-0.1739,0.1083,underpowered
+GLORIA,a_dg,440,expb_pow,expb_pow2flat,12,0.5833,1.0016,1.0026,-0.001,-0.0309,0.0217,indistinguishable
+GLORIA,a_dg,440,expb_pow,expb_powflex,12,0.2917,1.0016,1.0596,-0.058,-0.36,0.1915,underpowered
+GLORIA,a_dg,440,expb_pow2,expb_pow2flat,12,0.8333,1.0076,1.0026,0.005,-0.1109,0.1816,underpowered
+GLORIA,a_dg,440,expb_pow2,expb_powflex,12,0.5,1.0076,1.0596,-0.052,-0.237,0.084,underpowered
+GLORIA,a_dg,440,expb_pow2flat,expb_powflex,12,0.5,1.0026,1.0596,-0.057,-0.392,0.1815,underpowered

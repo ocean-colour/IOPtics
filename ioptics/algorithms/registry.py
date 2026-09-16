@@ -54,11 +54,24 @@ def available():
 # seeds normally and the Tier-1 tests assert it.
 _STANDARD_SEED = [('expb_pow', 'ExpB_Pow'), ('giop', 'GIOP'), ('gsm', 'GSM')]
 
+#: Default optimizer evaluation budget for **every** seeded algorithm. At
+#: scipy's own default, 30% of ``expb_pow``'s PANGAEA rows "crashed" with the
+#: budget exhausted; at 40 000 the ``fit_failed`` residue is a fully-named
+#: deterministic floor (underdetermined + non-positive-Rrs spectra), and only
+#: 7 of the 442 recovered rows changed their verdict to ``ok`` — the budget
+#: governs whether Levenberg-Marquardt returns, not how well the model fits
+#: (``reports/pangaea_fits_report.md``; raised from None per JXP's Task-1
+#: answers in ``claude_prompts/pangaea_fits.md``, 2026-08-10).
+DEFAULT_MAXFEV = 40000
+
 
 def _seed_standard():
+    import dataclasses
+
     for name, label in _STANDARD_SEED:
         try:
-            register(AlgorithmSpec.from_standard(name, label=label),
+            spec = AlgorithmSpec.from_standard(name, label=label)
+            register(dataclasses.replace(spec, maxfev=DEFAULT_MAXFEV),
                      overwrite=True)
         except Exception:
             pass
@@ -85,8 +98,10 @@ TURBID_SEED = [
 # Evaluation budget for the turbid specs. The two-component models need it:
 # at scipy's default budget they fail to converge on a substantial fraction of
 # spectra (5 of 8 and 6 of 8 clear L23 spectra in bing's own benchmark,
-# dev/turbid_bbp), versus 8 of 8 with a raised budget.
-TURBID_MAXFEV = 40000
+# dev/turbid_bbp), versus 8 of 8 with a raised budget. The standard seed now
+# runs at the same budget (:data:`DEFAULT_MAXFEV`); the alias is kept because
+# sweep drivers and tests reference it by this name.
+TURBID_MAXFEV = DEFAULT_MAXFEV
 
 
 def register_turbid(*, overwrite=True, maxfev=TURBID_MAXFEV):
@@ -122,6 +137,9 @@ def register_turbid(*, overwrite=True, maxfev=TURBID_MAXFEV):
     out = {}
     for name, label in TURBID_SEED:
         spec = AlgorithmSpec.from_standard(name, label=label)
+        # Red-peaked water is these algorithms' purpose, so it is in scope:
+        # run_algorithm's pre-fit out_of_scope guard must not decline it.
+        spec = dataclasses.replace(spec, fits_turbid=True)
         if maxfev is not None:
             spec = dataclasses.replace(spec, maxfev=maxfev)
         register(spec, overwrite=overwrite)

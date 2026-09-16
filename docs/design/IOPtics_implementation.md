@@ -1,7 +1,7 @@
 # IOPtics Implementation Document
 
-**Version:** 0.22
-**Date:** 2026-06-29
+**Version:** 0.23
+**Date:** 2026-08-03
 **Authors:** JXP and Claude
 
 ---
@@ -804,9 +804,26 @@ class RetrievalResult:
     params:  dict                    # {pname: (med, sigma)} incl. Sdg, beta, Adg, Aph, Bnw
     scalars: dict                    # derived scalars ± unc: Chl, a_cdom440, ...
     stats:   dict                    # chi2, chi2_nu, AIC, BIC, n_bands, k
-    status:  str                     # 'ok' | 'fit_failed' | QC flag (e.g. 'Rrs_MAE>0.25')
+    status:  str                     # 'ok' | 'poor_fit' | 'out_of_scope' | 'fit_failed'
     provenance_id: str               # → the sweep's provenance record + algorithm block
 ```
+
+**Status vocabulary (as implemented; `records.STATUSES`).** The single QC-flag string
+of the original sketch became four explicit states, because "the fit did not converge",
+"it converged but is not a solution" and "this spectrum is outside the model family's
+regime" are different facts and were previously counted as one:
+
+- `ok` — converged with reduced χ²ᵥ ≤ `CHI2NU_POOR_FIT` (5.0, shared with
+  `metrics.CHI2NU_QC_MAX` so the per-row status and the aggregate `frac_qc_fail`
+  cannot drift apart).
+- `poor_fit` — converged, but χ²ᵥ above that bound: a non-solution.
+- `out_of_scope` — the spectrum is outside the open-ocean model family's regime
+  (turbid, by `Rrs` peak wavelength; threshold from the GLORIA investigation).
+- `fit_failed` — the fitter did not return a result.
+
+Reports must keep these distinct: on the first GLORIA sweep 63% of spectra were
+`out_of_scope` and 16% `poor_fit`, which is a statement about the *models*, whereas
+collapsing them into one "failed" number reads as a defect in IOPtics.
 
 ### Sweep layers
 
@@ -936,6 +953,35 @@ block, so any single row is traceable to the exact model, priors, RT options, fi
 method, and noise model that produced it — and the whole sweep regenerates from
 `provenance.yaml`.
 
+**⚠ Gaps found in the first real sweeps (2026-08) — must be closed before
+cross-sweep profile pages are published.** The block above is not yet sufficient to
+identify an algorithm run:
+
+- **`maxfev` and the whole `mcmc` block are omitted** from the emitted algorithm
+  block. The turbid GLORIA sweep raised `maxfev` to 40 000 by registry mutation, and
+  its build script credits that budget with the difference between 72 failed fits
+  and none — yet its persisted block is byte-identical to a default `expb_pow`. Add
+  both fields, plus a **digest of the algorithm block** so a results row can be
+  matched to a configuration cheaply.
+- **`noise_model` in the algorithm block is stale by construction.** It records the
+  `AlgorithmSpec` field (default `pace`, documented as descriptive only) while the
+  sweep config said `insitu` and the true per-record tags were `insitu+floor:0.05` /
+  `insitu+imputed:0.05`. Either resolve it to what actually ran or drop it, and
+  persist the **per-record `noise_model`/`noise_seed`** into `results_scalar` — the
+  fact that ~70% of GLORIA records had wholly imputed weights is currently recorded
+  nowhere on disk.
+- **`AlgorithmConfig.overrides` is accepted by `config` and never applied by
+  `run_sweep`**, so the verbatim config copy can advertise priors or RT settings the
+  run never used. Apply them or reject them at load; silently ignoring them makes
+  the provenance copy misleading.
+- **`provenance_id` stops at `results_scalar`** — it is not carried into
+  `metrics_*` or the leaderboard, so the only path from a published number back to
+  its configuration is `sweep_id` plus a manual YAML read.
+- **No cost is recorded anywhere** — no wall time, no function-evaluation count, no
+  MCMC step count. `nfev` is not even retrievable downstream, because BING's χ²
+  fitter calls `curve_fit(..., full_output=False)`. Any cost reporting needs
+  instrumentation here plus a re-run (design §Open Questions, item 11).
+
 ## Metrics & diagnostics
 
 *Implements the design doc's **Metrics** section (§1–6 and "Handling
@@ -999,10 +1045,20 @@ MAE/bias), with the χ²ᵥ/AIC/BIC already in `results_scalar`:
 
 - **χ²ᵥ** carried through from `run` (BING `stats`); headline single-fit flag —
   ≈1 good, **<1 overfit**, >1 underfit.
-- **Rrs MAE/bias** (log-space §1 form on `Rrs`) with the **dual-sided window**
-  (Erickson): good ≈ measurement noise (~5%); flag **`fit_noise`** when MAE falls
-  *well below* the noise floor; QC-fail **`Rrs_MAE>0.25`** marks non-solutions
-  (mirrors the `status` set in `run`).
+- ~~**Rrs MAE/bias** with the dual-sided window and `Rrs_MAE>0.25` QC-fail~~ —
+  **superseded 2026-07.** `Rrs` crosses zero in the red (L23 above ~600 nm is ≈0 and
+  negative under PACE noise), so the multiplicative ratio is dominated by the red
+  tail: it reported `frac_qc_fail = 1.0` for both algorithms on fits whose χ²ᵥ was
+  ≈1. The array helpers (`rrs_window`, `rrs_closure`) remain valid for
+  strictly-positive `Rrs` but are no longer wired into `compute`. Replaced by:
+- **χ²ᵥ-based QC**: `frac_qc_fail = mean(χ²ᵥ > CHI2NU_QC_MAX)` (5.0), reported with
+  `chi2_nu_median` and the dof-scaled `frac_good` / `frac_overfit` /
+  `frac_underfit` split.
+- **Relative misfit** (`rel_misfit_median`, and `rel_misfit_median_all` over every
+  attempted fit): median `|Rrs_model − Rrs_obs| / Rrs_obs` over strictly-positive
+  bands. Noise-model-independent — added after χ²ᵥ moved 5× on the same fits when the
+  assumed error floor changed. This is GIOP's **ΔRrs**; report it under that name for
+  continuity with the IOP literature.
 
 ### §3 Model selection / complexity
 
@@ -1044,6 +1100,22 @@ def wins(table, *, by=('dataset','component','ref_wave'), metric='abs_log_err'):
 def rankings(metrics_scalar):    ...    # per-variable rank by |bias|, MAE, wins (Erickson Tbl 2)
 ```
 
+**Revisit scheduled (2026-08) — `wins` cannot support a paired test as written.** It
+tallies `wins`/`contests` **per algorithm and discards the opponent's identity**, so
+with four algorithms the "36 contests" on the GLORIA sweep are 12 spectra × 3
+opponents, non-independent, and not even the A-vs-B tally is recoverable. Likewise the
+per-spectrum ΔBIC vector is computed inside the figure builder and thrown away. To
+report ties as ties (design §Metrics 5) a new pass is needed — feasible from the
+persisted tables with **no re-fitting**, since `results_spectral` carries per-`(obs_id,
+algorithm)` retrieved-vs-truth and `results_scalar` carries per-spectrum `BIC`/`k`:
+
+- keep the **opponent identity** (a per-pair row, or the per-spectrum difference
+  vector) so a sign test / bootstrap CI is possible;
+- persist the **per-spectrum ΔBIC** rather than only its CDF summary;
+- expect small `n`: only 12 GLORIA spectra have `a_dg(440)` truth *and* `status=='ok'`,
+  so "underpowered to distinguish" will often be the honest verdict and should be
+  printable as such.
+
 ### Handling non-uniformity (partial retrievals)
 
 The one rule that makes "uniform metrics" honest when algorithms/datasets differ:
@@ -1078,6 +1150,22 @@ fixed sweep noise model. **Water type (Case I/II)** is **deferred** until in-sit
 metadata is wired in (no reliable per-obs flag yet for L23/PANGAEA) — the
 `stratum` machinery already supports adding it later without schema change.
 
+**⚠ Computed but never surfaced (2026-08).** The stratum machinery works and every
+scalar metric exists per bin, but `report.tables` is called with `stratum='all'` and
+`fit_method='chisq'` only, so **no per-stratum and no MCMC result has ever reached a
+page** — and `plotting.dbic_cdf` accepts a `by=` stratification that nothing passes.
+The same is true of `metrics_spectral.parquet`: it is written, loaded into
+`SweepArtifacts`, and consumed by nothing, so there is no accuracy-vs-wavelength
+figure anywhere despite the design calling per-λ reporting the extension over
+BING/Erickson. All three slices are scheduled for the reporting rework (Stage 7).
+
+**Optical water types.** Trophic Chl bins remain the working stratification, but the
+community is moving toward **optical water type** classification (ACIX-Aqua stratifies
+across 7 OWTs; OC-CCI ships OWT-specific per-pixel uncertainties). There is no agreed
+scheme yet — an IOCCG working group exists precisely because of that — so if OWTs are
+adopted, name the scheme explicitly, keep it swappable, weight per-class statistics by
+(fuzzy) membership rather than hard-assigning, and report the unclassifiable fraction.
+
 ### Diagnostics (`ioptics.diagnostics`) — figure data, not figures
 
 `diagnostics` computes the **arrays** behind each standard figure (so `report` and
@@ -1104,6 +1192,58 @@ artifacts, so a report (next section) is fully regenerable from
 (`figures`, `tables`, `leaderboard`, `bokeh`, `rst`, `standard`) over
 `ioptics.plotting`. Consumes only the persisted sweep artifacts — fully
 regenerable, no re-fitting.*
+
+### ⚠ Reporting rework (2026-08) — read before touching this section
+
+The first two report pages went live (a 20-spectrum L23 smoke and the turbid GLORIA
+sweep) and audited badly. This subsection records **what is defective** so the rest of
+the section is read as intent, not as description of a working system. The decided
+scope is Stage 7 below; the open decisions are design §Open Questions items 6-12.
+
+**Defects to fix (all verified against the published pages and the persisted tables):**
+
+| # | Defect | Where |
+|---|---|---|
+| 1 | Figure set hardcoded to `a(440)`/`bb(555)` and the `expb_pow`-vs-`giop` ΔBIC pair, so a sweep with different truth publishes **blank "no data" panels under confident captions** — every static figure on the GLORIA page is empty | `standard._REP_REFS`, `figures.dbic_cdf` defaults |
+| 2 | A degenerate panel is a valid path, so empty sections are always published | `standard._fig_section` |
+| 3 | Generated prose interpolates **no numbers** — it explains figure *types*; no page states a result | `standard._intro`, the `desc=` blurbs |
+| 4 | Prose is wrong in places: "all accuracy metrics 0 = perfect" (false for `coverage68/95`, `median_ratio`, `win_frac`), "left/right" for vertically stacked figures, and an invitation to use selectors that have one option | `standard.py` |
+| 5 | `spectra_set` renders only under `kind='per_algorithm'`; `closure_set`, `corner_set` and `ratio_hist` are never called by any kind | `standard.py`, `figures.py` |
+| 6 | `kind='per_algorithm'` **crashes on string `obs_id`** (`int(...min())`), so it has never run on GLORIA | `standard.py` |
+| 7 | No figure styling: no rcParams, no constrained layout, no units — colliding tick labels, and a "Taylor diagram" whose azimuth is labelled in degrees with no centred-RMSD arcs | `plotting.py` |
+| 8 | Algorithm colour comes from within-figure appearance order (`groupby(sort=False)` + default cycle), so a model changes colour between pages | `plotting.scatter_log` |
+| 9 | `tables.accuracy` drops `dataset` and merges wins on `(algorithm, component, ref_wave)`; `tables.qc` merges on `algorithm` alone → silent row multiplication and cross-dataset mixing on any multi-dataset sweep | `tables.py` |
+| 10 | The leaderboard fold has the **same dataset-blind wins merge** (verified: 352 rows where 320 were expected, win fractions cross-assigned), filters `fit_method=='chisq'` so **MCMC results can never appear**, and drops the `bing`/`ocpy` commits | `leaderboard._fold_sweep` |
+| 11 | Ranks are assigned by `cumcount()+1` with no finiteness check — 144 of 160 published rows are all-NaN and still ranked 1-4 | `leaderboard.ranked` |
+| 12 | Interactive figure depends on `cdn.bokeh.org` (5 tags, version pinned into committed RST and already drifting 3.9.0/3.9.1); hover lacks `obs_id`; guide-line convention differs from the static scatters | `bokeh.py`, `rst.bokeh_embed` |
+| 13 | No `:alt:` text, no column widths, full float64 precision in the CSV tables (`0.09642020657366057`, ranks as `2.0`, wavelengths as `440.0`) | `rst.py`, `tables.py` |
+| 14 | `standard.build` never prunes its report dir, so changing the figure set leaves orphaned committed PNGs | `standard.py` |
+| 15 | The landing page is 2 423 lines of `list-table` with a bare `:glob: */*` toctree — sweeps appear as undescribed links | `leaderboard.render`, `rst.ensure_glob_toctree` |
+
+**Contract changes that follow** (detail in design §Reporting):
+
+- Figure/table selection is **derived from the sweep**, and sections with no data are
+  omitted with a prose explanation rather than published blank.
+- Every page carries **numbers in its prose** and an optional hand-written
+  `findings.rst` include that the generator will not overwrite.
+- Add an **exemplar-fits page** per sweep: best + worst + 8 median fits, each labelled
+  with `obs_id`, χ²ᵥ and relative misfit.
+- Add **cross-sweep profile pages** (per algorithm, per dataset) folded from the
+  leaderboard plus each sweep's `metrics_*`, with the per-sweep pages demoted to the
+  audit trail they are, plus a **coverage matrix** (algorithms × datasets) that
+  distinguishes *not evaluated* from *evaluated and unscorable* from *failed*. Note
+  that absence of a leaderboard row is currently ambiguous between those, so the
+  matrix must walk the runs tree.
+- Surface the three discarded slices: **per-stratum**, **MCMC vs χ²**, and
+  **accuracy vs wavelength** (from `metrics_spectral`).
+- **Name the denominators** wherever an `n` is printed: `n_attempted` (100 on the
+  GLORIA sweep), spectra scored (21), surviving truth pairs (12).
+- One **style module** (ocean palette, constrained layout, units) shared by
+  `plotting`, `docs/figures/` and `reports/scripts/`; **registry-assigned colour +
+  marker** per algorithm; **BokehJS vendored** into `_static`.
+- Publish the hand-written GLORIA investigation as RST (keeping the markdown original),
+  and document `gsm` plus the turbid trio, which are registered but absent from the
+  docs.
 
 ### Inputs and the regenerability contract
 
@@ -1163,6 +1303,17 @@ them only for a **curated handful** — the MCMC subset plus a few exemplars per
 trophic bin (selected by `cfg`) — while the full population is covered by the
 aggregate figures (scatter, Taylor/Target, ratio-hist) and the interactive Bokeh.
 
+**Status of the table above (2026-08).** Only `scatter_set`, `taylor_target` and
+`dbic_cdf` have ever rendered onto a page; `spectra_set` is reachable only through the
+never-built `per_algorithm` kind, and `closure_set`, `corner_set` and `ratio_hist` are
+called by nothing outside the tests — so the report carries **no spectral information
+at all**, which is the single biggest gap for a reader who wants to judge a fit. The
+"curated handful" is now pinned: **10 exemplars per sweep on their own page — the best
+fit, the worst fit, and 8 median fits** — selected by fit quality rather than by
+`obs_id` order (the current code picks `obs_id.min()`, which is not curation, and
+crashes outright on GLORIA's string ids). `ratio_hist` needs a `figures.*` builder to
+be reachable at all.
+
 ### `report.leaderboard` — persistent, cross-sweep
 
 The headline deliverable: a leaderboard that **accumulates across sweeps** rather
@@ -1188,6 +1339,22 @@ As algorithms are added (the `expb_pow`/`giop` pair, then `gsm`, …) each new s
 just calls `leaderboard.update()` and the standing comparison grows — the design's
 "accumulates and updates" leaderboard.
 
+**Required changes (2026-08).** The fold as written cannot support the profile pages:
+
+- add **`dataset`** to the wins merge keys (the omission row-multiplies and
+  cross-assigns win fractions across datasets — reproduced on a synthetic two-dataset
+  table);
+- add **`fit_method`** as a folded column and stop hard-filtering to `chisq`, so an
+  MCMC-fit algorithm is representable;
+- **no rank without a finite metric**;
+- carry the **`bing`/`ocpy` commits** and the algorithm-block digest, not just the
+  `ioptics` commit, so a row identifies the algorithm that produced it;
+- keep the closure columns the fold currently discards (`chi2_nu_median`,
+  `frac_poor_fit`/`frac_out_of_scope`/`frac_fit_failed`, `rel_misfit_median`), since
+  "why weren't the other 79% scored" is a question the profile page must answer without
+  re-reading every sweep;
+- promote **`frac_ok`** to a scored quantity (Brewin's η), not a trailing column.
+
 ### `report.bokeh` — standalone/static interactive figures
 
 Per the pinned decision, **self-contained BokehJS HTML** (no Bokeh server): JS
@@ -1201,6 +1368,18 @@ def interactive_leaderboard(runs_root) -> str
 # rendered with bokeh.embed.file_html(..., CDN→inline) so the .html works offline /
 # embeds directly in readthedocs.
 ```
+
+**As actually shipped, and what changes (2026-08).** Sphinx does **not** copy a
+standalone HTML file into the build output, so the original iframe approach 404'd on
+readthedocs. The page therefore embeds a `bokeh.embed.components` fragment inline via
+`.. raw:: html`, with the point cloud downsampled (stratified, seeded, capped) so page
+size is independent of sweep size. Two corrections outstanding: the BokehJS
+`<script>` tags point at **`cdn.bokeh.org`** rather than a vendored copy in `_static`
+(so the figures die offline, and the pinned version has already drifted between pages),
+and `interactive_leaderboard` is implemented but unused while the landing page carries a
+2 400-line static table. Also: the downsampled figure must state its sampling fraction,
+hover must carry `obs_id`, and the guide lines must match the static scatters'
+1:1 / 3:1 / 1:3 convention.
 
 ### `report.rst` / `report.standard` — the on-demand report & site
 
@@ -1449,6 +1628,48 @@ tandem to exercise the comparison tooling), then broaden. Each stage has a singl
 - **Touches:** `datasets`, `algorithms`, `run` (RT toggles). **Design:** Data,
   Algorithm registry, Reporting (leaderboard).
 
+### Stage 7 — Reporting rework: make the comparison usable by the community
+
+The first published reports showed that the machinery works and the *presentation*
+does not (see ⚠ Reporting rework above for the 15 verified defects). This stage turns
+sweep artifacts into pages an outside ocean-colour scientist can act on.
+
+- **Build, in dependency order:**
+  1. a shared **figure-style module** (ocean palette, constrained layout, units) +
+     **registry-assigned colour/marker** per algorithm; readable summary diagrams
+     (statistics annotated in-panel, Type-II fit lines, Taylor demoted to optional);
+  2. **data-driven figure/table selection** + suppression of empty sections, which is
+     what makes a non-L23 dataset reportable at all;
+  3. the **metrics/leaderboard corrections** — dataset-aware joins, `fit_method` in the
+     fold, no ranks without data, coverage against nominal, opponent-preserving pairwise
+     stats for tie detection, the three named denominators;
+  4. **profile pages** (per algorithm, per dataset) + the **coverage matrix** + a
+     metrics **glossary**; per-sweep pages demoted to audit trail with an optional
+     hand-written `findings.rst`;
+  5. the **exemplar-fits page** (best / worst / 8 median);
+  6. landing-page rework (headline table, drill-down, summary cards, interactive
+     leaderboard) and **vendored BokehJS**;
+  7. publish the GLORIA investigation as RST; document `gsm` and the turbid trio; fix
+     the stale scoping text on the site.
+- **Also in scope:** provenance hardening (`maxfev`, `mcmc`, block digest, per-record
+  noise tag, `provenance_id` into `metrics_*`) — without it, cross-sweep profiles can
+  pool runs that were not the same algorithm.
+- **Exit:** a reader arriving cold can answer "which model should I use for water like
+  mine, and can I trust its uncertainties?" from the site; no published figure is blank;
+  every page states numbers; the leaderboard folds every sweep with no spurious ranks;
+  and an algorithm's row traces back to the exact configuration that produced it.
+- **Touches:** `plotting`, `report/*`, `metrics`, `leaderboard`, `provenance`, `docs/`.
+  **Design:** Reporting, Metrics (§4, §5), Provenance.
+- **Evidence to run it against:** the `multi_v2` driver ({L23, PANGAEA} × {`expb_pow`,
+  `giop`, `gsm`}) exists and has never been run on real data — bounded to PANGAEA's
+  3 247 truth-carrying ids it fills two more matrix columns cheaply. The full 3 320-
+  spectrum L23 sweep remains outstanding (workstation), and the currently published L23
+  page is a 20-spectrum smoke.
+- **Open decisions gating parts of it:** design §Open Questions items 6-12 (metric
+  family, tie statistic, cross-sweep identity, how opinionated the site is, profile URLs
+  and generation, cost, the community on-ramp). Tracked with the answers in
+  `claude_prompts/improve_reporting.md`.
+
 ### Dependency / sequencing summary
 
 ```
@@ -1459,11 +1680,14 @@ Stage 0 (records, config, CI)
                         └─▶ Stage 4 (metrics + diagnostics)
                                └─▶ Stage 5 (plotting + report + leaderboard + bokeh)
                                       └─▶ Stage 6 (PANGAEA·GLORIA, gsm, L23 X=4)
+                                             └─▶ Stage 7 (reporting rework: profiles,
+                                                  style, honest leaderboard, glossary)
 ```
 
 Every stage is shippable and tested before the next begins; Stages 0–5 deliver the
-complete `expb_pow`/`giop` × L23 story (the design's first deliverable), and
-Stage 6 turns the cranks the architecture was built to turn.
+complete `expb_pow`/`giop` × L23 story (the design's first deliverable), Stage 6 turns
+the cranks the architecture was built to turn, and Stage 7 makes the result legible to
+the community the project exists to serve.
 
 Each stage has a dedicated code-generation prompt doc,
 `claude_prompts/coding_prompts_stage<NN>.md`, with **one prompt per module** in

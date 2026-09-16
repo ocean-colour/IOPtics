@@ -188,6 +188,44 @@ def test_prep_one_per_family_truth_aligned_onto_wave(fake_insitu_dataset):
     assert isinstance(r.truth['Chl'], float)
 
 
+def test_qwip_score_matches_the_published_polynomial():
+    """Pin the QWIP curve (Dierssen et al. 2022, Eq. 4) at readable anchors.
+
+    From the paper's Figure 4A: the polynomial sits near −1 at AVW = 450 nm
+    (blue water), crosses zero between ~550 and 565 nm, and is clearly
+    positive (~+0.4) by 580 nm. A typo in any coefficient moves these by
+    orders of magnitude, so figure-reading tolerances still pin every digit
+    that matters.
+    """
+    assert np.polyval(prep._QWIP_P, 450.0) == pytest.approx(-1.0, abs=0.1)
+    assert np.polyval(prep._QWIP_P, 550.0) < 0.0 < np.polyval(prep._QWIP_P, 565.0)
+    assert np.polyval(prep._QWIP_P, 580.0) == pytest.approx(0.4, abs=0.1)
+
+
+def test_qwip_score_annotates_and_declines_gracefully():
+    # a smooth synthetic spectrum: the score must compute and be finite
+    # (a toy exponential is not natural water, so no on-manifold claim —
+    # correctness of the curve itself is pinned above)
+    wave = np.arange(400.0, 701.0, 10.0)
+    Rrs = 0.012 * np.exp(-0.008 * (wave - 400.0)) + 2e-4
+    assert np.isfinite(prep.qwip_score(wave, Rrs))
+
+    # no coverage of the 665 nm NDI band -> NaN, never a crash
+    short = wave[wave <= 600.0]
+    assert np.isnan(prep.qwip_score(short, Rrs[: short.size]))
+
+    # too few bands -> NaN
+    assert np.isnan(prep.qwip_score(wave[:3], Rrs[:3]))
+
+    # and prep_one attaches it to the record (data-free fake dataset below)
+
+
+def test_prep_one_attaches_qwip_score(fake_insitu_dataset):
+    r = prep.prep_one(fake_insitu_dataset, 0)
+    # the fake in-situ spectrum spans 400-700, so the score must be computed
+    assert np.isfinite(r.qwip_score)
+
+
 def test_prep_one_insitu_without_errors_falls_back_to_pct(fake_insitu_dataset):
     # default noise for a non-L23 dataset is 'insitu'; with no measured Rrs_err
     # prep falls back to the flat fractional model (and records it honestly).

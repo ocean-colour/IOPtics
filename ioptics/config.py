@@ -191,6 +191,17 @@ def _coerce_algorithm(entry, idx):
             raise ConfigError(
                 f"algorithms[{idx}] ('{name}'): fit_method must be one of "
                 f"{ALLOWED_FIT_METHODS}, got {fit_method!r}")
+        # Validate override *keys* at load time. The alternative is discovering a
+        # typo after a multi-hour sweep has run at the default — or worse, not
+        # discovering it, which is what happened while overrides were ignored
+        # entirely. The registry is not consulted here (config stays a neutral
+        # carrier, resolvable without the algorithm layer); only the field names are.
+        from ioptics.algorithms.spec import OVERRIDABLE_FIELDS
+        unknown = [k for k in d if k not in OVERRIDABLE_FIELDS]
+        if unknown:
+            raise ConfigError(
+                f"algorithms[{idx}] ('{name}'): cannot override {sorted(unknown)} — "
+                f"overridable fields are {sorted(OVERRIDABLE_FIELDS)}")
         return AlgorithmConfig(name=name, fit_method=fit_method, overrides=d)
 
     raise ConfigError(

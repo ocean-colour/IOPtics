@@ -120,6 +120,12 @@ def test_fit_mcmc_accepts_string_obs_id():
     from ioptics import prep, run
     from ioptics.algorithms import registry
 
+    # BING seeds its walker init from numpy's **global** legacy RNG, so this test's
+    # outcome depended on how many random draws the preceding tests happened to
+    # make — adding a test file elsewhere in the suite was enough to flip it to
+    # 'fit_failed'. Pin the global stream so the assertion means what it says.
+    np.random.seed(20260806)
+
     record = prep.prep_one('L23', 0, wv_min=400, wv_max=750)
     record.obs_id = 'GID_str'                       # non-integer id, as GLORIA gives
     spec = copy.deepcopy(registry.get('giop'))

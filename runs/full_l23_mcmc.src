@@ -1,0 +1,59 @@
+#!/bin/sh
+# full_l23_mcmc.src — full-L23 MCMC sweep (expb_giop_L23_mcmc_full), unattended.
+#
+# Stage 7 Task 13: put the chi^2-vs-MCMC comparison and the interval-calibration
+# claim on a real footing (coverage_n goes from 8 to ~3320). Runs the whole
+# pipeline in the background on the workstation:
+#   stage 1 = sweep (chi^2 over all 3320 L23 spectra for expb_pow + giop, then
+#             expb_pow MCMC over ALL 3320 — pooled over N_CORES since Task 13;
+#             chains persisted burned + thinned, ~0.6 MB each),
+#   stage 2 = metrics.compute,
+#   stage 3 = report.standard.build + leaderboard fold + landing rebuild.
+#
+# Measured on this workstation (24 cores): ~68 s per MCMC fit idle, but
+# ~141 s effective under a loaded 20-worker pool (memory-bandwidth bound;
+# ~8.5 fits/min) -> stage 1 is ~6.5 h at N_CORES=20. Chains total ~2.1 GB
+# (was ~40 GB unthinned). Roughly a third of the per-fit cost is evaluating
+# percentiles over the full unthinned posterior — see the Task-13 Q&A.
+#
+# Launch with `at` (survives logout):
+#     at now -f runs/full_l23_mcmc.src
+# or plain background:
+#     nohup sh runs/full_l23_mcmc.src >/dev/null 2>&1 &
+#
+# Progress/results are appended to  $REPO/full_l23_mcmc.log  (tail -f it; the
+# MCMC pass logs one line per completed fit).
+#
+# ---- EDIT if these differ ---------------------------------------------------
+OS_COLOR="${OS_COLOR:-/home/xavier/Oceanography/data/Color}"           # data tree
+PY="${PY:-/home/xavier/miniconda3/envs/ocean14/bin/python}"            # ocean14 python
+REPO="${REPO:-/mnt/tank/Oceanography/python/IOPtics}"                  # repo root
+# ---- knobs ------------------------------------------------------------------
+STAGES="${STAGES:-1 2 3}"   # "1" = run-only; "1 2 3" = full report + re-fold
+N_CORES="${N_CORES:-20}"    # pool size for prep + chi^2 + MCMC (24-core box)
+STRICT="${STRICT:-false}"   # false = robust (failed fits -> fit_failed rows)
+# ------------------------------------------------------------------------------
+
+export OS_COLOR
+BUILD="$REPO/ioptics/runs/prototypes/expb_giop/build_v1.py"
+LOG="$REPO/full_l23_mcmc.log"
+
+set -eu
+{
+  echo "================================================================"
+  echo "IOPtics full-L23 MCMC sweep — start $(date)"
+  echo "OS_COLOR=$OS_COLOR"
+  echo "PY=$PY"
+  echo "REPO=$REPO  STAGES='$STAGES'  N_CORES=$N_CORES  STRICT=$STRICT"
+  echo "================================================================"
+  cd "$REPO"
+  for s in $STAGES; do
+    echo "--- stage $s : start $(date) ---"
+    "$PY" "$BUILD" "$s" --n-cores "$N_CORES" --strict "$STRICT" \
+        --config l23_mcmc_full
+    echo "--- stage $s : done  $(date) ---"
+  done
+  echo "=== ALL STAGES DONE $(date) ==="
+  echo "results: \$OS_COLOR/IOPtics/runs/expb_giop_L23_mcmc_full/  (parquet + chains)"
+  echo "report : \$REPO/docs/source/reports/expb_giop_L23_mcmc_full/  (review, then commit)"
+} >> "$LOG" 2>&1
