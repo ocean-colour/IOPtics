@@ -1,5 +1,7 @@
 # IOPtics
 
+[![DOI](https://zenodo.org/badge/1368007081.svg)](https://doi.org/10.5281/zenodo.22797970)
+
 Analysis of IOP algorithms. For the community. Hopefully by the community.
 
 **IOPtics** is a Python package for testing and evaluating a wide range of IOP
