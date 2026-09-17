@@ -1,6 +1,6 @@
 # IOPtics
 
-[![DOI](https://zenodo.org/badge/1368007081.svg)](https://doi.org/10.5281/zenodo.22797970)
+[![DOI](https://zenodo.org/badge/1270344465.svg)](https://doi.org/10.5281/zenodo.22798014)
 
 Analysis of IOP algorithms. For the community. Hopefully by the community.
 
