@@ -70,6 +70,10 @@ proceed to finish your exploration, generate the Python scripts and figures, and
 write the `context/WHN/WATERHYPERNET.md` file.
 Use Fable if you can.  Log your work.
 
+4. I shared your exploration file with Kevin Ruddick and he provided some comments.  I put these in a file named `context/WHN/kevin_comments.md`. Please see his comments and discuss them with me in the Q&A/Explore section below.  We will modify the file after our discussion. Use Fable if you can.  Log your work.
+
+5. I have answered your queestions and comments that came from reading Kevin's comments.  Please see my answers and proceed to finish your exploration, generate the Python scripts and figures, and update the `context/WHN/WATERHYPERNET.md` file.  Also produce the `context/WHN/respond_to_kevin.md` file. Use Fable if you can.  Log your work.
+
 ## Q&A
 
 ### Explore
@@ -242,6 +246,130 @@ ocpy (`nb/` or `papers/`), or stay in IOPtics? And do you want a skip-guarded
 the data are not bundled?
 >A. Stay in IOPtics, in `context/WHN`.  Yes, have the skip-guarded test.
 
+### Explore — round 3: Kevin Ruddick's comments
+
+He accepts the summary, praises four things specifically (the HYPSTAR/PANTHYR
+harmonisation gaps, the loader hazards, the temporal-coverage plot, and the
+document's value alongside their own documentation), and raises four things that
+need a decision from you. Nothing in `WATERHYPERNET.md` has been changed yet.
+
+**K1 — Shared y-axis on the per-site spectra. Agreed in principle; the question
+is how.** His reason is good: a common axis shows instantly which sites are dark
+and which are bright. The catch is the dynamic range — median Rrs(560) runs from
+0.0030 sr^-1 (WRUK) to 0.036 (MAFR), a factor of 12, and the peaks span 0.003 to
+~0.05. On one **linear** axis the four dark sites (WRUK, THFR, BEFR, and to a
+degree VEIT/GAIT/CBUS) collapse to near-flat lines and all spectral shape is
+lost — which is most of what the figure currently conveys. Three ways:
+
+  (a) **Shared linear** — literally what he asked for; magnitude ordering is
+      instant, shape detail at the dark sites is gone.
+  (b) **Shared symlog** — both magnitude and shape stay legible, and it handles
+      the negative NIR bands honestly; slightly more effort for the reader.
+  (c) **Shared linear as the primary figure, keeping the present autoscaled
+      version as a second figure.**
+
+I recommend **(c)**: it gives Kevin exactly the comparison he wants without
+losing the per-site detail that makes the figure useful for algorithm work. If
+you would rather ship one figure, I would pick (b). Which?
+
+>A. Yes, let's use (c)
+
+**K2 — Cluster 5 "obviously not good ... how did that pass QC?" I have the
+answer, and I think it is a finding worth sending back to him.** All 9 spectra:
+
+  - **all HYPSTAR, all at the three darkest sites** — THFR_H 5, BEFR_H 2,
+    WRUK_H 2. No PANTHYR, no turbid site.
+  - **all have `quality_flag = 0` and all 6/6 scans valid.** They passed QC
+    cleanly; nothing in the flag bitmask fired.
+  - solar zenith is *not* the explanation: five are high-sun-angle (79-86 deg)
+    but four are ordinary (23, 26, 52, 60 deg).
+  - **the diagnosis is the Similarity Spectrum correction over-subtracting.** In
+    every one of the 9, `reflectance_nosc` is positive and entirely plausible
+    (median over 440-600 nm: 0.0003 to 0.0071), while the corrected
+    `reflectance` is at or below zero or close to it. The correction removes
+    more than the entire signal.
+
+That is the mirror image of the caveat in the release notes: they warn that
+`reflectance` is poor at the **turbid** sites (LPAR, MAFR, O1BE), whereas this
+says it also fails at the **darkest** sites, where the subtracted offset exceeds
+the water signal. Rarity, over the 4,400-spectrum pool: 9 in cluster 5 (0.2%),
+and 4 spectra whose visible-band (440-600 nm) median Rrs is actually <= 0
+(THFR_H 3, BEFR_H 1).
+
+Three questions: do you want this (i) added to `WATERHYPERNET.md` as a short
+subsection, (ii) sent to Kevin as a separate note with the 9 filenames, or
+(iii) both? And should I **extend the check across the full archive** for the
+three dark sites (THFR + BEFR + WRUK = 8,947 files, roughly 10 minutes) so he
+gets a real rate rather than a pool estimate? I would do (iii) plus the full
+scan — it is the most useful thing in his reply and it is cheap.
+
+>A. Let's do both.  We will create a file named `context/WHN/respond_to_kevin.md`.  Yes, do the full scan too.
+
+**K3 — He pushes back on the IOP framing, and I think he is substantially
+right.** My section is titled *"The glaring absence: there are no IOPs, and no
+biogeochemistry at all"*. His points: HYPERNETS is deliberately a single-
+parameter network designed as a core for expansion; reflectance is in his view
+the most important parameter; a reflectance-only archive supports four real
+applications (satellite validation, water-quality monitoring, spectral-
+variability research, AERONET-OC cross-comparison); and IOPs are "an
+intermediate, explanatory parameter, not an end-user parameter".
+
+"Glaring absence" frames a deliberate design choice as a deficiency, and he has
+the standing to correct that. But you asked in round 1 for the absence to be
+recorded prominently, and the *fact* matters for IOPtics regardless — so I do
+not want to quietly drop it. My proposal is to keep every verified fact and the
+IOPtics consequence, and change only the judgement:
+
+  - retitle to something like **"Scope: reflectance only, by design"**;
+  - keep the exhaustive verification (440 files, constant variable set) and keep
+    the plain statement that no truth-scored IOPtics metric applies;
+  - add his four use cases and the design rationale, attributed to him;
+  - add that some PIs hold extra measurements from short-duration deployments,
+    and that he will ask them and suggest HYPERNETS advertise this.
+
+Confirm the reframing, or tell me to hold the original tone?
+
+>A. Yes, reframe.
+
+**K4 — Dissemination. This one is yours, not mine.** He offers two options, not
+exclusive: link from a WATERHYPERNET "exploitation tools" page to the GitHub
+section *"if it is stable"*, and/or freeze a PDF with author (XP) and a date into
+the WATERHYPERNET documentation. Things to settle before you answer him:
+
+  - **Authorship and credit.** He proposes "(XP)". Your call entirely — including
+    whether and how this conversation's tooling is acknowledged.
+  - **Stability.** `github.com/ocean-colour/IOPtics` is public, but `context/WHN/`
+    is currently **uncommitted on the `waterhypernet` branch** — nothing for him
+    to link to yet. A link implies you will keep that path stable; a frozen PDF
+    carries no such commitment. If you want both, the PDF is the safer first
+    step.
+  - **Audience.** The document is written for IOPtics. If it becomes a
+    WATERHYPERNET-facing artifact, a few things should change: the
+    "Consequence for IOPtics" framing, the `$OS_COLOR` paths, the artifact-split
+    note, and the internal references to `claude_prompts/`. I would produce an
+    external variant rather than repoint the internal one.
+  - He should probably also get right of reply on anything that reads as
+    criticism of their processing (K2 above, and the hazards list) before it is
+    published under their documentation.
+
+>A. Answers:
+   - Use JXP for the Authorship and credit.
+   - We will get this report onto `main` soon.  But we should also create a PDF
+   - Let us make it a WATERHYPERNET-facing artifact.  There can be a final section discussing the IOPtics implications.
+   - Agreed, put comemnts on this in the `context/WHN/respond_to_kevin.md` file.
+
+
+**K5 — A forward-looking note, no action needed yet.** What he would most like
+to see added to the sites is automated flow cytometry, turbidimeters and
+chlorophyll fluorimeters — explicitly *not* IOPs. If companion data ever
+arrives, it will most likely be **Chl, turbidity and phytoplankton composition**.
+That is better news for IOPtics than it sounds: `Chl` and `tss` are already
+scalar truth keys in `ioptics/datasets.py`, so that data would map onto existing
+machinery, whereas spectral `a_ph`/`a_dg`/`bb_p` truth would not arrive at all.
+Worth a sentence in the document? I think yes.
+
+>A. Sounds good.  Indeed, Chl, turbidity and phytoplankton composition would be terrific.  And, maybe WATERHYPERNET will be more valuable for my retrieve-or-bust (RoB) effort. 
+
 ## Logs
 
 ### 2026-09-15 — Explore prompt 1 (survey, no code written)
@@ -357,3 +485,88 @@ Findings added beyond rounds 1-2:
   auto-selects a finer Natural Earth scale for a zoomed extent and blocks on the
   download (scales now pinned); and cartopy does not clip annotation text, so
   out-of-extent site labels distorted the saved map.
+
+### 2026-09-18 — Explore prompt 4 (Kevin Ruddick's comments reviewed, discussion posed)
+
+- Read `context/WHN/kevin_comments.md`. He accepts the summary and singles out
+  four things as useful (HYPSTAR/PANTHYR harmonisation gaps, the loader-hazards
+  list, the temporal-coverage figure, and its value beside their own docs).
+  Four items need decisions; they are posed in Q&A round 3. **No change made to
+  `WATERHYPERNET.md` yet** -- the prompt says we modify after discussing.
+- **Investigated his Cluster-5 question** ("obviously not good... how did that
+  pass QC?") rather than just relaying it. All 9 members are HYPSTAR at the three
+  darkest sites (THFR_H 5, BEFR_H 2, WRUK_H 2); every one has `quality_flag = 0`
+  and 6/6 valid scans; solar zenith does not explain them (5 at 79-86 deg but 4
+  at 23-60 deg). The cause is the Similarity Spectrum correction over-
+  subtracting: in all 9, `reflectance_nosc` is positive and plausible (median
+  440-600 nm, 0.0003-0.0071) while the corrected `reflectance` sits at or below
+  zero. This is the mirror image of the release notes' warning, which flags
+  `reflectance` as poor at the *turbid* sites -- it also fails at the *darkest*
+  ones, where the offset exceeds the water signal.
+- Quantified over the 4,400-spectrum pool: cluster 5 is 9 spectra (0.2%); 4
+  spectra have a visible-band (440-600 nm) median Rrs <= 0 (THFR_H 3, BEFR_H 1).
+  Offered to extend the scan to all 8,947 files at the three dark sites for a
+  true rate.
+- On the shared-y-axis request: measured the obstacle rather than assuming one.
+  Median Rrs(560) spans 0.0030 (WRUK) to 0.036 sr^-1 (MAFR), a factor of 12, so a
+  shared *linear* axis flattens the dark sites. Three options put to JXP, with
+  shared-linear-plus-autoscaled-companion recommended.
+- On his push-back over the IOP framing: recommended keeping every verified fact
+  and the IOPtics consequence but retitling away from "glaring absence", since
+  that judges a deliberate single-parameter network design. Held for JXP's
+  confirmation rather than acting, because JXP asked in round 1 for the absence
+  to be prominent.
+- Checked one fact relevant to his dissemination offer: the IOPtics GitHub repo
+  is public, but `context/WHN/` is uncommitted on the `waterhypernet` branch, so
+  there is nothing for him to link to yet. Authorship, stability commitment and
+  the audience shift are flagged as JXP's decisions.
+- No code or figures changed this round.
+
+### 2026-09-18 — Explore prompt 5 (Kevin's comments actioned; doc reframed, response drafted)
+
+Built to the round-3 answers: figure option (c); cluster-5 finding both in the
+document and in a response file, plus the full scan; IOP framing reframed;
+WATERHYPERNET-facing artifact authored "J. Xavier Prochaska" with a final
+IOPtics section; PDF produced.
+
+- **Full over-subtraction scan** (`whn_simspec_check.py`, new). Scanned all
+  **8,947 files** at the three dark sites. Flag = `median(reflectance) <= 0 <
+  median(reflectance_nosc)` over 440-600 nm. Result **30 of 8,947 (0.335%)** --
+  THFR_H 26/6,260 (0.42%), BEFR_H 4/1,798 (0.22%), WRUK_H 0/889. All 30 have
+  `quality_flag = 0` and 6/6 valid scans. Solar zenith spans 21.1-87.6 deg
+  (median 54.4; only a third above 70), so low sun is **not** the explanation --
+  BEFR's four are all Dec 2023 at sza 85-87, but THFR's 26 span all months and
+  all sun angles. The common factor is **water darkness**: flagged spectra have
+  uncorrected rho_w(440-600) median 0.00043 against site medians of 0.0106 /
+  0.0097 / 0.0072, i.e. ~20x darker than typical. The subtracted offset is
+  0.00063, about **145% of the entire signal**. Spread over 2023/2025/2026, so
+  persistent. Exported as `simspec_flagged.csv`.
+- Noted carefully that this rate is a **lower bound**: it counts only sign
+  changes, whereas the shape clustering also caught WRUK spectra distorted
+  without the median going negative (which is why WRUK reads 0.00% here but
+  contributed 2 of the 9 cluster-5 members). Both statements are in the doc and
+  the response.
+- **Figures**: `fig_median_spectra_autoscale.png` added; `fig_median_spectra.png`
+  is now the shared-axis version, and both are in the document as a pair. The
+  shared axis does exactly what Kevin predicted -- LPAR/MAFR/O1BE dominate while
+  BEFR/THFR/WRUK (and, less obviously, VEIT/GAIT) are nearly flat.
+- **`WATERHYPERNET.md` rewritten as an external artifact**: authored J. Xavier
+  Prochaska, dated, numbered sections, reframed section 2 ("Scope: reflectance
+  only, by design") carrying Kevin's rationale and his four use cases, new
+  section 9.2 on the over-subtraction, and a final section 14 confining the
+  IOPtics implications. Internal references (`$OS_COLOR`, `claude_prompts/`, the
+  artifact-split note) removed in favour of the public repo path.
+- **`respond_to_kevin.md`** written to Kevin: what changed, the cluster-5
+  investigation in full with the 10 worst cases tabulated, the reframing and
+  thanks for the correction, and the dissemination answer -- PDF first (no
+  maintenance commitment), repo link once merged to `main`, plus an explicit
+  offer of right of reply on section 9.2 and the hazards list, including pulling
+  9.2 from the public version if he would rather raise it internally first.
+- **PDF**: none of pandoc/weasyprint/wkhtmltopdf/python-markdown are installed in
+  `ocean14`, so `make_pdf.py` converts the Markdown subset used here to styled
+  HTML and prints it with the headless Chrome already on the machine.
+  `WATERHYPERNET.pdf` (1.8 MB, ~14 pp) and `respond_to_kevin.pdf` verified by
+  reading the rendered pages.
+- Tests extended to 18 (4 new for the over-subtraction check, including a
+  regression guard on a specific flagged spectrum). Full suite **286 passed**.
+- Nothing committed; `__pycache__` is already gitignored.

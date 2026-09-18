@@ -6,7 +6,9 @@ Consumes the tables written by :mod:`whn_explore` (stages 1-2) and produces, in
 - ``summary_table.csv`` + ``summary_table.md`` -- one row per site.
 - ``figs/fig_sites_map.png``      -- where the 11 sites are.
 - ``figs/fig_data_volume.png``    -- how much data each site has, and when.
-- ``figs/fig_median_spectra.png`` -- per-site median Rrs with percentile envelopes.
+- ``figs/fig_median_spectra.png`` -- per-site median Rrs with percentile
+                                     envelopes, on one common y axis.
+- ``figs/fig_median_spectra_autoscale.png`` -- the same, per-panel autoscaled.
 - ``figs/fig_clusters.png``       -- pooled spectral-shape clusters (OWT-like)
                                      and each site's composition.
 - ``figs/fig_band_timeseries.png``-- Rrs(490/560/665) against time, per site.
@@ -267,21 +269,39 @@ def fig_data_volume(index, summary):
     _save(fig, 'fig_data_volume.png')
 
 
-def fig_median_spectra(pool, grids):
-    """Per-site median Rrs with 25-75 and 10-90 percentile envelopes."""
+def fig_median_spectra(pool, grids, shared=True, name=None):
+    """Per-site median Rrs with 25-75 and 10-90 percentile envelopes.
+
+    Parameters
+    ----------
+    shared : bool, optional
+        True (default) puts every panel on one common y axis, so the relative
+        brightness of the sites reads at a glance -- the network spans a factor
+        of ~12 in median Rrs(560), which is the single most useful thing a
+        reader can take from this figure. False lets each panel autoscale,
+        which preserves the spectral shape of the dark sites; the two are
+        produced as companion figures.
+    name : str or None, optional
+        Output filename; defaults to the appropriate one for ``shared``.
+    """
     sites = sorted(pool.site.unique())
-    fig, axes = plt.subplots(3, 4, figsize=(15, 9), sharex=True)
+    fig, axes = plt.subplots(3, 4, figsize=(15, 9), sharex=True,
+                             sharey=bool(shared))
     axes = axes.ravel()
 
+    lims = [np.inf, -np.inf]
     for ax, site in zip(axes, sites):
         rows = pool.index[(pool.site == site).values & pool.selected.values]
         g = grids[rows]
         med = np.nanmedian(g, axis=0)
         c = SYS_COLOR[pool.loc[rows[0], 'system']]
         for lo, hi, a in ((10, 90, 0.18), (25, 75, 0.32)):
-            ax.fill_between(ANALYSIS_WAVE, np.nanpercentile(g, lo, axis=0),
-                            np.nanpercentile(g, hi, axis=0), color=c, alpha=a,
+            band_lo = np.nanpercentile(g, lo, axis=0)
+            band_hi = np.nanpercentile(g, hi, axis=0)
+            ax.fill_between(ANALYSIS_WAVE, band_lo, band_hi, color=c, alpha=a,
                             lw=0)
+            lims = [min(lims[0], np.nanmin(band_lo)),
+                    max(lims[1], np.nanmax(band_hi))]
         ax.plot(ANALYSIS_WAVE, med, color=c, lw=1.6)
         ax.axhline(0, color='0.5', lw=0.6, ls=':')
         ax.set_title(f'{site} — {SITE_NAME.get(site, "")}\n'
@@ -290,6 +310,12 @@ def fig_median_spectra(pool, grids):
         if site in NOSC_SITES:
             ax.patch.set_facecolor('#fff6ef')
 
+    if shared:
+        pad = 0.04 * (lims[1] - lims[0])
+        for ax in axes[:len(sites)]:
+            ax.set_ylim(lims[0] - pad, lims[1] + pad)
+            ax.tick_params(labelleft=True)        # sharey hides inner labels
+
     ncol = axes.size // 3
     for j in range(ncol):                        # sharex hides all but the last
         col = [i for i in range(len(sites)) if i % ncol == j]
@@ -297,16 +323,24 @@ def fig_median_spectra(pool, grids):
             axes[col[-1]].tick_params(labelbottom=True)
     for ax in axes[len(sites):]:
         ax.axis('off')
-    axes[len(sites)].text(0.05, 0.6,
-                          'median with 25–75 and\n10–90 percentile envelopes\n\n'
-                          'shaded panels use\nreflectance_nosc\n(turbid sites)',
-                          fontsize=9, va='top')
+
+    note = ('median with 25–75 and\n10–90 percentile envelopes\n\n'
+            'shaded panels use\nreflectance_nosc\n(turbid sites)')
+    note += ('\n\ncommon y axis:\nbrightness compares\ndirectly between sites'
+             if shared else
+             '\n\nper-panel y axis:\nshape detail at the\ndark sites')
+    axes[len(sites)].text(0.05, 0.95, note, fontsize=9, va='top',
+                          transform=axes[len(sites)].transAxes)
+
     fig.supxlabel('wavelength [nm]')
     fig.supylabel('R$_{rs}$ = ρ$_w$/π  [sr$^{-1}$]')
+    kind = 'common y axis' if shared else 'per-panel y axis'
     fig.suptitle('Per-site Rrs distribution — WATERHYPERNET Release 2 '
-                 '(~100 optically-sampled spectra per site)', fontsize=12)
+                 f'(~100 optically-sampled spectra per site; {kind})',
+                 fontsize=12)
     fig.tight_layout(rect=(0.01, 0.01, 1, 0.96))
-    _save(fig, 'fig_median_spectra.png')
+    _save(fig, name or ('fig_median_spectra.png' if shared
+                        else 'fig_median_spectra_autoscale.png'))
 
 
 def fig_clusters(pool, grids, centers):
@@ -443,7 +477,8 @@ def main():
 
     fig_sites_map(summary)
     fig_data_volume(index, summary)
-    fig_median_spectra(pool, grids)
+    fig_median_spectra(pool, grids, shared=True)
+    fig_median_spectra(pool, grids, shared=False)
     fig_clusters(pool, grids, centers)
     fig_band_timeseries(pool, grids)
 

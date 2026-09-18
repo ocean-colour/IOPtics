@@ -196,3 +196,56 @@ def test_build_index_small():
     assert df.datetime.notna().all()
     assert df.site.nunique() == 11
     assert set(df.system.unique()) == {'HYPSTAR', 'PANTHYR'}
+
+
+# --- Similarity-Spectrum over-subtraction check ------------------------------
+
+import whn_simspec_check as sc        # noqa: E402
+
+
+def test_flag_oversubtraction_logic():
+    """Flagged only when the corrected product died and the raw one did not."""
+    med_ref = np.array([-0.0002, 0.0050, -0.0003, 0.0000])
+    med_nosc = np.array([0.0004, 0.0060, -0.0001, 0.0004])
+    assert sc.flag_oversubtraction(med_ref, med_nosc).tolist() == \
+        [True, False, False, True]      # a zero corrected median counts
+
+
+def test_dark_sites_are_hypstar_only():
+    """The check targets the three darkest sites, all HYPSTAR."""
+    assert sc.DARK_SITES == ('THFR_H', 'BEFR_H', 'WRUK_H')
+    assert all(s.endswith('_H') for s in sc.DARK_SITES)
+    assert sc.TEST_RANGE == (440.0, 600.0)
+
+
+@needs_whn
+def test_check_file_on_a_known_oversubtracted_spectrum():
+    """A file identified by the full scan still reads as over-subtracted.
+
+    Regression guard on the whole chain: fill handling, the 440-600 nm window
+    and the sign test.
+    """
+    path = os.path.join(
+        wx.whn_root(), 'THFR_H', '2025', '11', '28',
+        'HYPERNETS_W_THFR_L2B_REF_20251128T0730_20260528T2005_270_v2.1.nc')
+    if not os.path.exists(path):
+        pytest.skip('reference spectrum not present in this copy of the archive')
+
+    stats = sc.check_file(path)
+    assert stats is not None
+    assert stats['med_ref'] <= 0 < stats['med_nosc']
+    assert stats['quality_flag'] == 0          # it passed QC
+    assert stats['n_valid'] == stats['n_total']
+    assert sc.flag_oversubtraction(stats['med_ref'], stats['med_nosc'])
+
+
+@needs_whn
+def test_check_file_on_a_normal_spectrum():
+    """A bright-site spectrum is not flagged."""
+    import glob
+    path = sorted(glob.glob(os.path.join(
+        wx.whn_root(), 'GAIT_H', '*', '*', '*', '*.nc')))[0]
+    stats = sc.check_file(path)
+    assert stats is not None
+    assert stats['med_ref'] > 0
+    assert not sc.flag_oversubtraction(stats['med_ref'], stats['med_nosc'])

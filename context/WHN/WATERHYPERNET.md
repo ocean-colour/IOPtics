@@ -1,18 +1,26 @@
-# WATERHYPERNET — Data Release 2
+# WATERHYPERNET Data Release 2 — an independent data-user's summary
 
-A description of the WATERHYPERNET Release 2 archive as it exists on disk at
-`$OS_COLOR/WATERHYPERNET/RELEASE_2`, written for IOPtics work. Every number here
-was measured from the archive itself or read from its release notes; the
-provenance of each is given in [How this was produced](#how-this-was-produced).
+**J. Xavier Prochaska** (University of California, Santa Cruz) · 18 September 2026
+
+*An independent exploration of the WATERHYPERNET Release 2 archive, written from
+the perspective of a data user preparing the dataset for ocean-colour algorithm
+work. It is intended to complement — not replace — the official release notes.
+A draft was reviewed by Kevin Ruddick, whose comments are incorporated
+throughout; any remaining errors are mine.*
+
+Every number here was measured from the archive itself or read from the release
+notes. Scope of each measurement is stated in
+[How this was produced](#how-this-was-produced), and all of the code is
+available (see the same section) so any figure can be reproduced or extended.
 
 ---
 
-## What it is
+## 1. What the release contains
 
 WATERHYPERNET is a network of automated above-water hyperspectral radiometers
 providing water-leaving reflectance for satellite validation and water-quality
 monitoring. Release 2 (dated 2026-09-11) holds **56,669 measurements** —
-**9.8 GB**, one NetCDF file per measurement — from **11 site-instrument
+**9.8 GB**, one NetCDF file per measurement — from **11 site–instrument
 combinations** at 10 physical locations, spanning **2023-01-04 to 2026-09-09**.
 
 Two instrument systems contribute:
@@ -31,38 +39,44 @@ Acqua Alta (VEIT) is the only location carrying both systems, which makes
 
 ---
 
-## ⚠ The glaring absence: there are no IOPs, and no biogeochemistry at all
+## 2. Scope: reflectance only, by design
 
-**Release 2 contains reflectance, viewing/solar geometry and QC — and nothing
-else.** There is no absorption, no backscatter, no attenuation, no chlorophyll,
-no TSS/SPM, no turbidity, no salinity, and no water temperature anywhere in the
-archive.
+The archive contains reflectance, viewing/solar geometry and QC — and nothing
+else. There is no absorption, backscatter or attenuation, and no chlorophyll,
+TSS/SPM, turbidity, salinity or water temperature.
 
-This was checked exhaustively, not assumed:
+This was checked exhaustively rather than assumed. The union of every variable
+and global-attribute name over **440 files spanning all 11 sites** is perfectly
+constant: **29 variables / 57 attributes** (HYPSTAR) and **22 variables / 58
+attributes** (PANTHYR). No file anywhere carries a variable the others do not.
+The only name matching any in-water-property pattern is `system_temperature`, an
+instrument-housekeeping attribute, and it is `NaN` in every file examined.
 
-- The union of every variable and global-attribute name over **440 files
-  spanning all 11 sites** is perfectly constant: **29 variables / 57 attributes**
-  (HYPSTAR) and **22 variables / 58 attributes** (PANTHYR). No file anywhere
-  carries a variable the others do not.
-- The only name matching any in-water-property pattern is `system_temperature`,
-  an instrument-housekeeping attribute, and it is `NaN` in every file examined.
-- The release notes never mention absorption, chlorophyll, IOPs or water
-  sampling. They state the network's purpose plainly (p.4): *"The core business
-  of HYPERNETS is to provide uniquely valuable in situ measurements of
-  hyperspectral water reflectance"*.
+**This is a deliberate design, not an omission.** As Kevin Ruddick puts it,
+HYPERNETS is a single-parameter network — water reflectance — conceived as a
+*core* that individual site PIs can expand according to their resources and
+interests. Adding a common protocol for further measurands at every site is
+logistically and financially out of reach for the network as a whole. Some PIs
+do hold additional measurements, typically from short-duration deployments of
+extra instruments; these are not part of this release, and the network is
+considering how to advertise their existence to data users.
 
-**Consequence for IOPtics.** No truth-scored metric in the package applies to
-this dataset as it stands. An IOP algorithm can be *run* on these spectra, and
-the Rrs residual can be scored, but nothing here constrains the retrieved
-`a_ph`, `a_dg`, `bb_p`, `Chl` or `Sdg`. Using WATERHYPERNET for retrieval
-validation requires companion in-situ data from some other source.
+It is worth stating plainly what a reflectance-only archive is good for, because
+it is a great deal:
 
-The one lead the release notes offer is **AERONET-OC**, noted as co-located at
-VEIT, CBUS, TBBE and LPAR — but that is also radiometry, not IOPs.
+1. **Satellite validation** — the network's primary purpose.
+2. **Water-quality monitoring** for local users: time series of chlorophyll-a and
+   phytoplankton type for water managers and aquatic biologists.
+3. **Aquatic-optics research** into spectral variability itself.
+4. **Cross-comparison with AERONET-OC**, co-located at VEIT, CBUS, TBBE and
+   LPAR, which informs data quality and processing improvements for both.
+
+What this scope *does* constrain is retrieval validation, and that is discussed
+in [§11](#11-implications-for-iop-retrieval-work).
 
 ---
 
-## Sites
+## 3. Sites
 
 ![Site locations](figs/fig_sites_map.png)
 
@@ -83,20 +97,20 @@ VEIT, CBUS, TBBE and LPAR — but that is also radiometry, not IOPs.
 HYPSTAR coordinates are fixed per-site attributes. PANTHYR files instead carry
 per-file GPS averages that jitter at the ~1e-5° level, so the values above are
 medians. The coordinate is the radiometer's position; the water target is 3–20 m
-away. GAIT and WRUK coordinates were **wrong in Release 1** and corrected here.
+away. GAIT and WRUK coordinates were wrong in Release 1 and are corrected here.
 
 ### Coverage is very uneven
 
 ![Data volume and temporal coverage](figs/fig_data_volume.png)
 
-VEIT_H alone is 31% of the archive; WRUK_H is 1.6%. More importantly for any
-sampling scheme, **only 6 of the 11 sites span a full seasonal cycle**: BEFR
-(2023-06 → 2024-01), WRUK (2024 only), CBUS (7 distinct months) and GAIT
-(9 months) do not. Several sites have multi-month gaps mid-record.
+VEIT_H alone is 31% of the archive; WRUK_H is 1.6%. More importantly for anyone
+designing a sampling scheme, **only 6 of the 11 sites span a full seasonal
+cycle**: BEFR (2023-06 → 2024-01), WRUK (2024 only), CBUS (7 distinct months)
+and GAIT (9 months) do not. Several sites have multi-month gaps mid-record.
 
 ---
 
-## Layout and file naming
+## 4. Layout and file naming
 
 ```
 RELEASE_2/
@@ -104,17 +118,17 @@ RELEASE_2/
   <SITE>/<YYYY>/<MM>/<DD>/<one file per measurement>.nc
 ```
 
-The two systems use different filename grammars — note that the azimuth and
-processing-time fields are **swapped** between them, and that acquisition time
-is minute-resolution for HYPSTAR but second-resolution for PANTHYR:
+The two systems use different filename grammars. Note that the azimuth and
+processing-time fields are **swapped** between them, and that acquisition time is
+minute-resolution for HYPSTAR but second-resolution for PANTHYR:
 
 ```
 HYPSTAR:  HYPERNETS_W_{SITE}_L2B_REF_{acqYYYYMMDDThhmm}_{procYYYYMMDDThhmm}_{RAA}_v2.1.nc
 PANTHYR:  PANTHYR_W_{SITE}_L2A_REF_{acqYYYYMMDDThhmmss}_{AZ}_{procYYYYMMDDThhmmss}_v20240912_QA.nc
 ```
 
-All 56,669 filenames parse cleanly under these two patterns. The azimuth token
-is the relative azimuth for HYPSTAR (90 / 270, plus 225 at WRUK) and a constant
+All 56,669 filenames parse cleanly under these two patterns. The azimuth token is
+the relative azimuth for HYPSTAR (90 / 270, plus 225 at WRUK) and a constant
 absolute pointing direction for PANTHYR (90 at CBUS, 270 elsewhere). LPAR is the
 only site with a substantially mixed azimuth population (4,670×270 vs 1,312×090);
 WRUK splits 476×270 / 413×225 and is the only site where two files share an
@@ -122,12 +136,12 @@ acquisition timestamp (345 such pairs, same `sequence_id`, different azimuth).
 
 ---
 
-## File contents
+## 5. File contents
 
 One spectrum per file in both systems (HYPSTAR `series=1`; PANTHYR
 `sequence=1, time=1`). NETCDF4, no groups.
 
-**Both systems provide two reflectance products:**
+Both systems provide two reflectance products:
 
 | variable | meaning |
 |---|---|
@@ -139,7 +153,9 @@ irradiance, per-band standard deviations, the similarity-spectrum epsilons, the
 air–water interface reflectance factor `rhof` (Mobley 1999) and its wind input,
 scan counts, geometry and a quality flag.
 
-The two schemas differ in ways that matter to any reader:
+The two schemas differ in ways that matter to any reader — these are the
+harmonisation gaps most likely to trip up a data user writing one loader for
+both systems:
 
 | quantity | HYPSTAR | PANTHYR |
 |---|---|---|
@@ -153,11 +169,11 @@ The two schemas differ in ways that matter to any reader:
 
 ---
 
-## Units: the products are ρw, not Rrs
+## 6. Units: the products are ρw, not Rrs
 
 Both `reflectance` and `reflectance_nosc` are **water-leaving reflectance ρw**
-(dimensionless; `preferred_symbol = rhow`). This was confirmed numerically
-rather than taken from the attribute: for both systems,
+(dimensionless; `preferred_symbol = rhow`). This was confirmed numerically rather
+than taken from the attribute: for both systems,
 
 ```
 reflectance_nosc / (water_leaving_radiance / Ed) = 3.14159…  = π   (exactly)
@@ -171,11 +187,11 @@ The same ratio computed with the similarity-corrected `reflectance` gives 3.20
 (HYPSTAR) and 2.96 (PANTHYR) — i.e. it differs from π exactly by the similarity
 correction, which is applied to the reflectance but not to the stored radiance.
 
-**Everything in this directory's scripts, figures and tables is Rrs = ρw/π.**
+**All figures and tables in this document are Rrs = ρw/π.**
 
 ---
 
-## Wavelength grids
+## 7. Wavelength grids
 
 - **PANTHYR** is a fixed 237-band grid, 355–945 nm at exactly 2.5 nm, identical
   at all four sites and across sensor swaps (each PANTHYR site has used 2–3
@@ -191,20 +207,20 @@ not assume a per-site grid.
 
 The release notes flag **<400 nm, >900 nm, and the ~762 nm O₂-A band** as
 possibly unreliable and not recommended for satellite validation. Note that
-despite the presence of `epsilon_SWIR` variables, there is no SWIR coverage — no
+despite the presence of `epsilon_SWIR` variables there is no SWIR coverage — no
 HYPSTAR grid extends past 1100 nm.
 
 ---
 
-## Uncertainty
+## 8. Uncertainty
 
-**There is no uncertainty budget.** `unc_comps` is empty on the reflectance and
+There is no uncertainty budget: `unc_comps` is empty on the reflectance and
 radiance variables, and the release notes state uncertainties are "not yet
 mature" and "currently not reported".
 
 What *is* present is a per-band standard deviation (`std_reflectance` /
 `reflectance_std` and their `_nosc` counterparts), and it is populated
-everywhere: finite in **all 220 files sampled across all 11 sites**. Typical
+everywhere — finite in **all 220 files sampled across all 11 sites**. Typical
 magnitude, as median σ/|Rrs| over 450–650 nm:
 
 | site | σ/Rrs | site | σ/Rrs |
@@ -223,50 +239,101 @@ the true uncertainty rather than an estimate of it.
 
 ---
 
-## Quality control and negative reflectance
+## 9. Quality control
 
 `quality_flag` was **0 in all 440 files checked** — 40 per site, spread through
 each site's record, read with masking off so fill and zero are distinguishable —
 so the release appears to ship only measurements that already passed QC. HYPSTAR
-defines a 30-bit flag (`lon_default`, `bad_pointing`, `outliers`,
-`L0_threshold`, `dark_masked`, `not_enough_dark_scans`, `no_clear_sky_sequence`,
-`simil_fail`, …); PANTHYR's is a uint8 whose `flag_meanings` are still
-placeholders (`flag1 … flag8`).
+defines a 30-bit flag (`lon_default`, `bad_pointing`, `outliers`, `L0_threshold`,
+`dark_masked`, `not_enough_dark_scans`, `no_clear_sky_sequence`, `simil_fail`,
+…); PANTHYR's is a uint8 whose `flag_meanings` are still placeholders
+(`flag1 … flag8`).
 
-**Negative reflectance is common and is retained deliberately.** The release
-notes give two reasons (p.2): it is "metrologically entirely valid to record a
-negative reflectance" when the true value is near zero and zero lies within the
-uncertainty range, and excluding negatives biases the statistics of any
-comparison. Frequency of spectra with at least one negative band in 400–900 nm,
-over the pool sampled here:
+### 9.1 Negative reflectance is expected, and deliberate
+
+The release notes give two reasons for retaining it: it is "metrologically
+entirely valid to record a negative reflectance" when the true value is near zero
+and zero lies within the uncertainty range, and excluding negatives biases the
+statistics of any comparison. Frequency of spectra with at least one negative
+band in 400–900 nm, over the pool sampled here:
 
 | VEIT_H | GAIT_H | BEFR_H | THFR_H | WRUK_H | TBBE_P | VEIT_P | MAFR_H | CBUS_P | LPAR_H | O1BE_P |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 57% | 56% | 32% | 30% | 25% | 2.8% | 2.2% | 1.0% | 0% | 0% | 0% |
 
 The three sites reading 0% are exactly the turbid ones read here via
-`reflectance_nosc` (§ Conventions), plus Chesapeake: bright water and no
-similarity correction leave no near-zero bands to go negative.
+`reflectance_nosc` (§10), plus Chesapeake: bright water and no similarity
+correction leave no near-zero bands to go negative. **Do not filter these out**
+without a specific reason to.
 
-**Do not filter these out** without a specific reason to.
+### 9.2 Similarity-Spectrum over-subtraction at the darkest sites
+
+Clustering the spectra by shape (§12) isolated a small group that is negative
+across most of the visible — not near-zero-with-noise, but systematically
+negative. Following it up produced a finding worth reporting back to the
+network, since **every one of these spectra passed QC with `quality_flag = 0`**.
+
+The test: compare the median of `reflectance` and of `reflectance_nosc` over
+440–600 nm. Where the corrected product is ≤ 0 while the uncorrected one is still
+positive, the Similarity-Spectrum correction has removed more than the entire
+water signal. Scanning **all 8,947 files** at the three darkest sites:
+
+| site | files | flagged | rate |
+|---|---:|---:|---:|
+| THFR_H | 6,260 | 26 | 0.42% |
+| BEFR_H | 1,798 | 4 | 0.22% |
+| WRUK_H | 889 | 0 | 0.00% |
+| **total** | **8,947** | **30** | **0.335%** |
+
+Characteristics of the 30:
+
+- **All have `quality_flag = 0` and all have 6/6 valid scans.** Nothing in the
+  flag bitmask fires.
+- **Low sun is not the explanation.** Solar zenith spans 21.1–87.6°, median
+  54.4°; only a third exceed 70°. (BEFR's four are all December 2023 at
+  sza 85–87°, but THFR's 26 are spread across the whole year and all sun angles.)
+- **Water darkness is the common factor.** For flagged spectra the *uncorrected*
+  ρw(440–600) median is 0.00043, against site medians of 0.0106 (BEFR), 0.0097
+  (THFR) and 0.0072 (WRUK) — roughly 20× darker than typical for the same site.
+- **The offset subtracted exceeds the signal.** Median ρw removed is 0.00063
+  against an uncorrected signal of 0.00043 — about **145% of the entire
+  signal** — leaving a corrected median of −0.00019.
+- They are spread across months and years (2023: 4, 2025: 9, 2026: 17), so this
+  is a persistent behaviour rather than one bad episode.
+
+This is the mirror image of the caveat already in the release notes: those warn
+that `reflectance` is poor at the **turbid** sites (LPAR, MAFR, O1BE), where the
+NIR signal is high. The behaviour here appears at the opposite extreme — the
+**darkest** water, where the subtracted offset is comparable to or larger than
+the water signal itself.
+
+Two notes on scope. First, the rate is small (0.3%) and is a *lower* bound on
+affected spectra, since it counts only cases where the visible median actually
+changes sign; the shape-based clustering also picked up WRUK spectra that are
+badly distorted without the median going negative. Second, `reflectance_nosc` is
+positive and plausible in every one of the 30, so the underlying measurements
+look sound — this concerns the correction, not the data acquisition.
 
 ---
 
-## Which product to use
+## 10. Which product to use
 
 The release notes single out **LPAR, MAFR and O1BE** as sites where the
 similarity-corrected `reflectance` is "known to be poor" — high NIR reflectance
-in turbid water — and state `reflectance_nosc` is "definitely recommended"
-there. Everywhere else the corrected `reflectance` is the standard product.
+in turbid water — and state `reflectance_nosc` is "definitely recommended" there.
+Everywhere else the corrected `reflectance` is the standard product, and that is
+the convention used throughout this document. Section 9.2 suggests a user working
+at the darkest sites may want to apply a sanity check on the corrected product as
+well.
 
 ---
 
-## Geometry and ancillary data
+## 11. Geometry and ancillary data
 
 Viewing zenith is ~40° throughout (HYPSTAR 39.8–40.3°, PANTHYR exactly 40.0°).
-Solar zenith in the sampled pool spans 15.7–87.7°, i.e. the archive includes
-very low-sun measurements that a user may wish to screen. Wind speed is present
-as the GDAS-derived `rhof_wind` variable (HYPSTAR) or the `fresnel_wind` global
+Solar zenith in the sampled pool spans 15.7–87.7°, i.e. the archive includes very
+low-sun measurements that a user may wish to screen. Wind speed is present as the
+GDAS-derived `rhof_wind` variable (HYPSTAR) or the `fresnel_wind` global
 attribute (PANTHYR). PANTHYR applies a clear-sky test (Lsky/Ed at 750 nm < 0.05);
 HYPSTAR does not.
 
@@ -276,24 +343,28 @@ attributes (`system_temperature`, pressure, humidity, illuminance) are all NaN.
 
 ---
 
-## What the spectra look like
+## 12. What the spectra look like
 
-![Per-site median spectra](figs/fig_median_spectra.png)
+![Per-site median spectra, common y axis](figs/fig_median_spectra.png)
 
-The network spans a wide optical range: median Rrs(560) runs from 0.0030 sr⁻¹ at
-Wraysbury reservoir to 0.036 sr⁻¹ at the Gironde — a factor of 12 — and the
-blue–green ratio Rrs(490)/Rrs(560) from 0.52 (Berre) to 1.03 (Acqua Alta),
-i.e. from strongly green/turbid to near-marine. Highly turbid sites (LPAR, MAFR,
-O1BE) show the characteristic broad red/NIR shoulder.
+On a common y axis the range of the network is immediate: the Río de la Plata,
+Gironde and Oostende are bright, while Berre, Thau, Wraysbury and — perhaps
+surprisingly — Acqua Alta and Lake Garda are dark enough to be nearly flat at
+this scale. Median Rrs(560) runs from 0.0030 sr⁻¹ at Wraysbury to 0.036 sr⁻¹ at
+the Gironde, a factor of 12, and the blue–green ratio Rrs(490)/Rrs(560) from 0.52
+(Berre) to 1.03 (Acqua Alta) — from strongly green/turbid to near-marine.
+
+The same data with each panel autoscaled recovers the spectral shape at the dark
+sites, which the common axis necessarily suppresses:
+
+![Per-site median spectra, per-panel autoscale](figs/fig_median_spectra_autoscale.png)
 
 ![Spectral-shape clustering](figs/fig_clusters.png)
 
 Clustering the L2-normalised 400–800 nm shapes across all sites (k=8) shows the
-sites occupy genuinely different optical regimes rather than one continuum:
-LPAR is almost entirely one cluster, CBUS and O1BE another, while VEIT and GAIT
-split across several. One small cluster (n=9) collects spectra that are negative
-across most of the range — a useful reminder that such records exist and are not
-errors to be silently dropped.
+sites occupy genuinely different optical regimes rather than one continuum: LPAR
+is almost entirely one cluster, CBUS and O1BE another, while VEIT and GAIT split
+across several. Cluster 5 (n=9) is the group discussed in §9.2.
 
 ![Band time series](figs/fig_band_timeseries.png)
 
@@ -302,20 +373,22 @@ turbid with little seasonal structure.
 
 ---
 
-## Hazards for an automated loader
+## 13. Hazards for an automated loader
+
+A checklist for anyone writing code against this archive:
 
 1. **Two schemas.** Same variable names for the core products, different names
    for the std and irradiance variables, different dims and dtypes.
-2. **The products are ρw, not Rrs.** Divide by π (and divide the std too).
+2. **The products are ρw, not Rrs.** Divide by π — and divide the std too.
 3. **HYPSTAR grids vary within a site**, by instrument serial.
 4. **No CF-decodable time.** `wavelength` has no `units` attribute in either
    system; HYPSTAR `acquisition_time` has `units = "s"` (not `seconds since …`)
    and PANTHYR's has none, so xarray will not decode either as a datetime.
-5. **PANTHYR `_FillValue = 0`** on `quality_flag`, the angles and `bandwidth`.
-   A legitimate flag value of 0 is therefore masked — and `quality_flag` reads
-   as *missing*, not as *passed*. `bandwidth` is entirely fill.
-   Integer variables also cannot hold NaN: cast to float **before** filling, or
-   `netCDF4` raises `TypeError: Cannot convert fill_value nan to dtype uint8`.
+5. **PANTHYR `_FillValue = 0`** on `quality_flag`, the angles and `bandwidth`. A
+   legitimate flag value of 0 is therefore masked — `quality_flag` reads as
+   *missing*, not as *passed*. `bandwidth` is entirely fill. Integer variables
+   also cannot hold NaN: cast to float **before** filling, or netCDF4 raises
+   `TypeError: Cannot convert fill_value nan to dtype uint8`.
 6. **Negative reflectance is expected**, so any log-space handling or
    area-normalisation must tolerate it.
 7. **Filename says `L2B` for HYPSTAR, but `product_level` inside says `W_L2A`.**
@@ -328,16 +401,56 @@ turbid with little seasonal structure.
 
 ---
 
-## Licence and citation
+## 14. Implications for IOP retrieval work
+
+This section is specific to the use case that motivated the exploration:
+evaluating inherent-optical-property (IOP) retrieval algorithms, the purpose of
+the [IOPtics](https://github.com/ocean-colour/IOPtics) package.
+
+A reflectance-only archive can exercise such algorithms but cannot, on its own,
+validate what they retrieve. An algorithm can be run on these spectra and the Rrs
+residual scored; algorithms can be compared against one another for consistency
+and for the spread of their retrieved IOPs. But nothing in the release constrains
+retrieved `a_ph`, `a_dg`, `bb_p`, chlorophyll or the spectral slopes, so no
+truth-referenced error metric is available. That is a statement about the
+intended scope of the network, not a defect.
+
+Three things nonetheless make the archive valuable for this work:
+
+- **Optical diversity with a stable instrument.** Eleven sites spanning a factor
+  of 12 in brightness and 0.52–1.03 in blue–green ratio, measured with two
+  well-characterised systems on a fixed geometry, is a good stress test for
+  algorithm robustness — particularly the very turbid sites, where many
+  ocean-colour IOP algorithms degrade.
+- **Hyperspectral resolution.** The HYPSTAR grid (~0.49 nm) is far finer than
+  the satellite bands most IOP algorithms were built for, so the same spectrum
+  can be convolved to PACE, MODIS, SeaWiFS or SBG bands and the retrieval
+  compared across spectral configurations.
+- **Repeat measurements at fixed stations.** Thousands of spectra from one
+  location allow the *stability* of a retrieval to be assessed — how much of the
+  retrieved variance is water and how much is algorithm noise — which
+  single-visit field campaigns cannot support.
+
+Looking ahead, the measurands Kevin Ruddick would most like to see added to the
+sites — automated flow cytometry (phytoplankton composition), turbidimeters and
+chlorophyll fluorimeters — would be **more** directly useful for validating
+in-water retrievals than IOPs would, and he notes that IOPs are usually an
+intermediate, explanatory parameter rather than an end-user product. Chlorophyll
+and turbidity/TSS also map onto truth quantities that retrieval-evaluation
+frameworks already handle, so such data could be folded in without new machinery.
+
+---
+
+## 15. Licence and citation
 
 HYPSTAR files carry `licence = "Attribution-NonCommercial-NoDerivs CC BY-NC-ND"`
 and a long `acknowledgement` attribute asking users to respect PI priority use,
 cite the key HYPERNETS papers, and offer PI co-authorship where the data are a
 principal component of a publication. **PANTHYR files carry no licence
-attribute.** The release notes carry no explicit licence clause; they refer to
-the WATERHYPERNET data policy and ask users to cite Ruddick et al. (2024) and
-De Vis et al. (2024). Data are distributed via the password-protected
-`https://ftp.waterhypernet.org/`.
+attribute** — one of the harmonisation gaps noted above. The release notes carry
+no explicit licence clause; they refer to the WATERHYPERNET data policy and ask
+users to cite Ruddick et al. (2024) and De Vis et al. (2024). Data are
+distributed via the password-protected `https://ftp.waterhypernet.org/`.
 
 Key references from the release notes:
 
@@ -361,42 +474,35 @@ Key references from the release notes:
 
 ## How this was produced
 
-Scripts live beside this file and are re-runnable end to end:
+All code is in the public [IOPtics repository](https://github.com/ocean-colour/IOPtics)
+under `context/WHN/`, and runs end to end against a local copy of the archive:
 
 ```bash
-python whn_explore.py 1      # index all 56,669 files from their names
-python whn_explore.py 2      # read 400/site, cluster, sample 100/site
-python whn_figures.py        # summary table + the five figures
-pytest -q test_whn_explore.py
+python whn_explore.py 1        # index all 56,669 files from their names
+python whn_explore.py 2        # read 400/site, cluster, sample 100/site
+python whn_figures.py          # summary table + figures
+python whn_simspec_check.py    # full over-subtraction scan at the dark sites
+pytest -q test_whn_explore.py  # 18 tests; data-dependent ones self-skip
 ```
 
-- `whn_explore.py` — archive indexing, single-spectrum reading (product choice,
-  ρw→Rrs), spectral-shape clustering and the representative sampling.
-- `whn_figures.py` — `summary_table.{csv,md}` and the figures in `figs/`.
-- `test_whn_explore.py` — 14 tests; the data-dependent ones skip automatically
-  when the archive is not mounted.
-
-Intermediates (`index.parquet`, `pool.parquet`, `sample.parquet`,
-`pool_spectra.npz`) are written to `$OS_COLOR/IOPtics/whn_explore/`, outside the
-repository, following the project's artifact split. Only figures and the summary
-table are kept here.
-
-**Conventions used in this exploration** (agreed in
-`claude_prompts/waterhypernet_prompts.md`): `reflectance` everywhere except
-LPAR_H, MAFR_H and O1BE_P which use `reflectance_nosc`; Rrs = ρw/π and
-σ = σ(ρw)/π; the archive's own σ used as-is with no floor; no wavelength
-trimming and no resampling of the data itself; negatives retained.
+**Conventions.** `reflectance` everywhere except LPAR_H, MAFR_H and O1BE_P, which
+use `reflectance_nosc`; Rrs = ρw/π and σ = σ(ρw)/π; the archive's own σ used as-is
+with no floor; no wavelength trimming and no resampling of the data itself;
+negative values retained.
 
 **Sampling.** The ~100 spectra per site were drawn by optical diversity: 400
 spectra per site spread uniformly through that site's record were read, their
-L2-normalised 400–800 nm shapes were clustered across all sites at once (k=8,
-seed 1234), and each site's 100 were apportioned across the clusters it occupies
+L2-normalised 400–800 nm shapes clustered across all sites at once (k-means,
+k=8, seed 1234), and each site's 100 apportioned across the clusters it occupies
 by largest remainder — at least one per occupied cluster — spreading the picks
-evenly in time within each cluster.
+evenly in time within each cluster. L2 rather than area normalisation, because
+retained negative values can drive an integral towards zero.
 
-**Scope of the numbers.** File counts, date ranges, azimuth counts and the site
-table come from all 56,669 files. Optical statistics (σ/Rrs, negative fractions,
-Rrs magnitudes, clusters) come from the 4,400-spectrum pool — 400 per site. The
-variable/attribute census covers 440 files across all 11 sites; the σ coverage
-check covers 220. Figures are drawn on a display grid (350–900 nm at 2.5 nm)
-used only for plotting and clustering, never as a record grid.
+**Scope of each number.** File counts, date ranges, azimuth counts and the site
+table come from all 56,669 files. The over-subtraction rates in §9.2 come from
+all 8,947 files at the three dark sites. Optical statistics (σ/Rrs, negative
+fractions, Rrs magnitudes, clusters) come from the 4,400-spectrum pool — 400 per
+site. The variable/attribute census covers 440 files across all 11 sites; the σ
+coverage check covers 220; the `quality_flag` check covers 440. Figures are drawn
+on a display grid (350–900 nm at 2.5 nm) used only for plotting and clustering,
+never as a record grid.
