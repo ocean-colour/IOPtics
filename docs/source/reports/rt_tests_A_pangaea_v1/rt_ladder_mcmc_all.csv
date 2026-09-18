@@ -1,0 +1,6 @@
+rung,label,n_attempted,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed,chi2_nu_median,rel_misfit_median,a_ph_440_n,a_ph_440_mae,a_ph_440_bias,a_ph_440_cov68,a_dg_440_n,a_dg_440_mae,a_dg_440_bias,a_dg_440_cov68,bb_p_555_n,bb_p_555_mae,bb_p_555_bias,bb_p_555_cov68
+expb_pow_ztt_el,ExpB_Pow ZTT elastic,97.0,0.7732,0.2062,0.0,0.0206,1.6632,0.0484,75,0.5072,0.2083,0.6133,75,2.8638,-0.7359,0.36,75,0.4981,0.4649,0.08
+expb_pow_hyb_el,ExpB_Pow hybrid elastic,97.0,0.8557,0.1237,0.0,0.0206,1.4497,0.0458,83,0.7643,-0.1199,0.5663,83,2.1297,-0.6668,0.5542,82,0.3001,0.2409,0.3049
+expb_pow_hyb_ram,ExpB_Pow hybrid +Raman,97.0,0.8557,0.1237,0.0,0.0206,1.5283,0.046,83,1.0057,-0.2807,0.4699,83,1.8476,-0.6254,0.6024,82,0.2378,0.1407,0.4878
+expb_pow_hyb_ramfl,ExpB_Pow hybrid +Raman +Chl-fl,97.0,0.7423,0.2371,0.0,0.0206,2.0955,0.0495,72,2.1788,-0.6621,0.3611,72,0.3608,-0.0732,0.7361,72,0.1925,-0.0271,0.5417
+expb_pow_hyb_ramflcdom,ExpB_Pow hybrid +Raman +Chl-fl +CDOM-fl,97.0,0.7938,0.1856,0.0,0.0206,1.9398,0.0449,77,3.7161,-0.7581,0.3506,77,0.3732,-0.0885,0.7013,77,0.414,-0.1749,0.4156

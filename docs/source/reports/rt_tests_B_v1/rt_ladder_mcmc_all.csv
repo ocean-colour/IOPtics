@@ -1,0 +1,6 @@
+rung,label,n_attempted,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed,chi2_nu_median,rel_misfit_median
+expb_pow_ztt_el,ExpB_Pow ZTT elastic,100.0,0.99,0.0,0.01,0.0,0.4229,0.0491
+expb_pow_hyb_el,ExpB_Pow hybrid elastic,100.0,0.99,0.0,0.01,0.0,0.5577,0.056
+expb_pow_hyb_ram,ExpB_Pow hybrid +Raman,100.0,0.99,0.0,0.01,0.0,0.5949,0.0564
+expb_pow_hyb_ramfl,ExpB_Pow hybrid +Raman +Chl-fl,100.0,0.99,0.0,0.01,0.0,0.5015,0.0524
+expb_pow_hyb_ramflcdom,ExpB_Pow hybrid +Raman +Chl-fl +CDOM-fl,100.0,0.99,0.0,0.01,0.0,0.5365,0.0545

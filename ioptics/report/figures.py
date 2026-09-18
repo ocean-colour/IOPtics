@@ -538,3 +538,57 @@ def corner_set(sweep, *, root=None, limit=MAX_CORNERS):
                        f"corner_{_safe(row['algorithm'])}_{_safe(row['obs_id'])}")
         drawn += 1
     return paths
+
+
+# --------------------------------------------------------------------------- #
+# RT ladder builders (one parameterization, several radiative transfers)
+# --------------------------------------------------------------------------- #
+
+def rt_fractional_change(sweep, *, model_a, model_b, ref=443.0,
+                         components=('a_ph', 'a_dg', 'bb_p'),
+                         fit_method='mcmc', root=None):
+    """Fractional change of retrieved IOPs at ``ref`` between two RT rungs.
+
+    Truth-free by construction (see
+    :func:`ioptics.diagnostics.fractional_change_data`), so it is the headline
+    figure for a sweep with no truth (the PACE arm) and a useful companion on the
+    arms that have it.  Returns the written paths (``[]`` when the two rungs share
+    no retrieved band near ``ref``).
+    """
+    sweep = resolve(sweep, root)
+    data = diagnostics.fractional_change_data(
+        sweep.spectral, model_a, model_b, ref=ref, components=components,
+        fit_method=fit_method)
+    fig = plotting.fractional_change_hist(data)
+    tag = f'frac_change_{int(ref)}_{_safe(model_a)}_to_{_safe(model_b)}_{fit_method}'
+    return _save(fig, _figdir(sweep), tag)
+
+
+def dbic_hist(sweep, *, model_a, model_b, fit_method='mcmc', root=None):
+    """ΔBIC histogram for one contest (companion to :func:`dbic_cdf`).
+
+    Unlike :func:`dbic_cdf` this takes an explicit ``fit_method``: the RT ladder is
+    fitted by MCMC throughout, and a like-for-like contest between rungs of equal
+    ``k`` is a pure likelihood contest, which is exactly what the RT tests ask.
+    """
+    sweep = resolve(sweep, root)
+    data = diagnostics.dbic_cdf_data(sweep.scalar, model_a, model_b,
+                                     fit_method=fit_method)
+    fig = plotting.dbic_hist(data)
+    tag = f'dbic_hist_{_safe(model_a)}_vs_{_safe(model_b)}_{fit_method}'
+    return _save(fig, _figdir(sweep), tag)
+
+
+def dbic_cdf_method(sweep, *, model_a, model_b, fit_method='mcmc', root=None):
+    """ΔBIC CDF for one contest under an explicit ``fit_method``.
+
+    :func:`dbic_cdf` is χ²-only by its docstring and default; the RT ladder needs
+    the same curve for its MCMC population.  Kept separate rather than changing
+    the default so every existing page keeps its numbers.
+    """
+    sweep = resolve(sweep, root)
+    data = diagnostics.dbic_cdf_data(sweep.scalar, model_a, model_b,
+                                     fit_method=fit_method)
+    fig = plotting.dbic_cdf(data)
+    tag = f'dbic_cdf_{_safe(model_a)}_vs_{_safe(model_b)}_{fit_method}'
+    return _save(fig, _figdir(sweep), tag)

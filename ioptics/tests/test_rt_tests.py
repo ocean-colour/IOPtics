@@ -336,13 +336,28 @@ def test_smoke_pangaea_ids_are_a_subset_of_the_frozen_97():
     assert set(build.SMOKE_PANGAEA_IDS) <= set(build.pangaea97_ids())
 
 
-def test_stage_five_is_a_stub_with_stable_numbering():
+def test_stage_five_builds_a_ladder_page_per_arm_that_has_run(monkeypatch):
+    """Stage 5 is the RT-ladder page (task 14): one page per arm with results.
+
+    Arms whose sweep has not run are skipped rather than raised, so the stage can
+    be re-run as the arms land; the numbering of stages 1-4 is unchanged.
+    """
+    from ioptics.report import rt_ladder
+
     build = _load('build_v1')
-    with pytest.raises(SystemExit, match='task 13'):
-        build.main(5)
-    assert build.STAGE_CONFIG == {1: ('rta_pangaea', 'rta_l23'),
-                                  2: ('rta_pangaea', 'rta_l23'),
-                                  3: 'rtb', 4: 'rtb'}
+    assert build.STAGE_CONFIG[5] == ('rta_pangaea', 'rta_l23', 'rtb')
+    assert {k: v for k, v in build.STAGE_CONFIG.items() if k < 5} == {
+        1: ('rta_pangaea', 'rta_l23'), 2: ('rta_pangaea', 'rta_l23'),
+        3: 'rtb', 4: 'rtb'}
+
+    built = []
+    monkeypatch.setattr(rt_ladder, 'build',
+                        lambda sid, **kw: built.append((sid, kw.get('pair'))))
+    # Only the PANGAEA arm "has results" here.
+    monkeypatch.setattr(build, '_sweep_has_results',
+                        lambda sid: sid == 'rt_tests_A_pangaea_v1')
+    build.main(5)
+    assert built == [('rt_tests_A_pangaea_v1', build._dbic_pair())]
 
 
 def test_config_override_refuses_the_arm_b_stages():

@@ -759,7 +759,213 @@ surfaced real design decisions that should be settled **before RT-A runs
     question in ~1.5 days?
 >A. Yes, full L23
 
+### Round 10 (2026-09-18) — after Execution task 14 (the RT-ladder page)
+
+54. **Two `multi_L23_PANGAEA_v2` trees with one sweep id.** The Mac transfer
+    landed today (all five trees verified against Drive with 0 differences).
+    Three trees had no counterpart here and were copied straight into
+    `$OS_COLOR/IOPtics/runs/` (`expb_giop_L23_test20`, `gloria_turbid_v3`) and
+    `$OS_COLOR/IOPtics/whn_explore`. Two collided with what `profx` already
+    holds and were **staged** instead, under
+    `$OS_COLOR/IOPtics/transfer_2026-09-17/`: (a) `multi_L23_PANGAEA_v2` — the
+    Mac copy carries the figures and tables the committed page was built from
+    (2026-08-08) and a `results_*.parquet` that differs from the `profx` copy
+    (2026-08-10; 6 files differ in content, 41 exist only on the Mac side), so
+    these are two runs sharing one id; (b) `leaderboard.parquet` — the Mac's
+    (2026-08-08, 39.8 KB) predates the full-L23 fold, `profx`'s (2026-08-19,
+    41.1 KB) contains it. Which `multi_L23_PANGAEA_v2` is canonical?
+    *Recommended:* keep `profx`'s parquets (the later run), copy the Mac's
+    `figures/` and `tables/` alongside them only if a re-run of stage 3 does not
+    regenerate identical assets, keep `profx`'s leaderboard and re-fold test20
+    and GLORIA into it. This is prompt 8's consolidation step in
+    `claudes-phd-thesis/claude_prompts/qual_exam_prompts.md`; nothing was merged
+    today.
+
+55. **The PACE headline went in now, not in prompt 7.** Task 14 asked for the
+    PACE fractional-change figure and RT-B had already run (task 13 closed
+    2026-09-17), so the page type was built for all three arms and the
+    `rt_tests_B_v1` page carries the headline. The thesis prompt 6 said to leave
+    it out because it assumed RT-B had not run; the reason no longer held.
+    Prompt 7 therefore reduces to reviewing that page. Object if you would rather
+    the PACE page wait.
+
 ## Logs
+
+### 2026-09-18 — Execution task 14 COMPLETE: the RT-ladder page type built and run for all three arms (Fable)
+
+**What was built.** Stage 5 of `build_v1.py` was a stub that raised; it is now
+a report stage. New module `ioptics/report/rt_ladder.py` (`build(sweep_id,
+pair=, docs_root=)`) writes `docs/source/reports/<sweep_id>/rt_ladder.rst` and
+its display assets, one page per arm, without touching the leaderboard or the
+landing page (the glob toctree already covers `*/*`; `index.rst` is byte-
+identical). Supporting code: `diagnostics.fractional_change_data` (per-spectrum
+ratio of a retrieved IOP between two rungs at the band nearest a reference
+wavelength — truth-free, so it works on PACE), `plotting.fractional_change_hist`
+(log-ratio axis, folded end bins; a percent axis was unreadable because a_ph
+ratios reach hundreds) and `plotting.dbic_hist`, and three figure builders in
+`report/figures.py` (`rt_fractional_change`, `dbic_hist`, `dbic_cdf_method` —
+the last because the existing `dbic_cdf` is χ²-only by contract). Tables the
+page adds: `rt_ladder_<fit>_all.csv` (one row per rung: QC plus mae/bias/cov68
+at a(440), a_ph(440), a_dg(440), bb(555), bb_p(555), bb_p(670), with the
+`no_CDOMfl_truth` caveat carried per cell) and `dbic_contests_mcmc_all.csv`
+(every pairwise ΔBIC contest, ladder-ordered, `configured` marked). The
+standard `accuracy_*`, `qc_*` and `head_to_head_mcmc_all` tables are built for
+both fit methods. Stage 5 runs `('rta_pangaea', 'rta_l23', 'rtb')` and skips an
+arm whose sweep has no results, so it can be re-run as arms land.
+
+**Page contents, in order:** overview derived from the artefacts (rungs present,
+n spectra, window, noise tag, B_p free or fixed, truth or not, the X=4 note on
+L23); the limitations block — θ_v = 0 and Δφ = 0 everywhere, `a_cdom = 0.8 ×
+a_dg` (Q32), analytic unvalidated CDOM-fl (Q41), packaged-sky Ed from
+`ed_l23.npz`, learned corrections off (`corrections=False`), the hybrid
+emulator evaluated outside its trained B_p span (Q50c), L23 X=4 truth lacking
+CDOM-fl and using a single-Gaussian line where the fits used double, PANGAEA's
+flat-10 % error and fixed B_p (Q52/Q53), PACE's noisy red bands, and the
+leaderboard exclusion; the fractional-change headline at 443 nm (native band
+445 on L23, 442 on PACE) for the configured pair; the ladder tables (MCMC then
+χ²); retrieved-vs-true panels, ratio histograms and accuracy-vs-wavelength for
+the MCMC population where truth exists; ΔBIC CDF and histogram for the
+configured pair under both fit methods plus the all-pairs table; head-to-head
+verdicts (MCMC); accuracy and QC tables; a "not shown" section (on PACE: every
+truth panel, by design).
+
+**Decision taken without asking.** The thesis prompt 6 said to leave the PACE
+headline out because RT-B had not run. Task 13 closed on 2026-09-17, so the
+page type was built for all three arms and `rt_tests_B_v1/rt_ladder.rst`
+carries the headline (a_ph +5 %, a_dg +1 %, bb_p −21 % median change from
+`hyb_el` to `ramflcdom` at 442 nm, n = 99; ΔBIC bimodal, 52 % favour the
+inelastic stack, 30 % strongly). Raised as Q55 above in case you want it held.
+
+**Reconciliation.** Every number on the three pages was checked against the
+stage-2 metrics tables that the thesis repository's provisional
+`reports/rta_headline.md` was read from, and the L23 table against the
+hand-typed Q1 table in `qual_exam_prompts.md`:
+`claudes_phd_thesis/scripts/rta_reconcile.py` → `reports/rta_reconcile.md`,
+150 page cells + 45 Q1 cells, **0 discrepancies**. The pages supersede the
+provisional read, which now carries a note saying so.
+
+**Verification.** `ioptics/tests/test_report_rt_ladder.py` (10 tests: the
+diagnostics helper, both plot primitives incl. the empty-input flag, the three
+builders, the ladder and contests tables, the page build, idempotence and
+stale-asset pruning, the no-pair path, and a `sphinx -W` render of the page);
+`test_rt_tests.py`'s stub test replaced by one that checks stage 5 builds one
+page per arm with results. Full suite **without `$OS_COLOR`: 513 passed, 61
+skipped** (was 503/61 before this task). Full docs tree `sphinx-build -W`:
+**exit 0** with the three new pages rendered. One RST pitfall fixed on the
+way: `|ΔBIC|` in prose is a substitution reference under docutils; written
+`abs(ΔBIC)`.
+
+**Also this session (thesis prompt 6, same sitting).** The Mac→profx Drive
+transfer was pulled and verified (`rclone check`, 0 differences on all five
+trees) and the Drive copy purged; two trees collided with existing `profx`
+copies and were staged rather than overwritten — Q54 above. The Overleaf
+`Claude-PhD-Thesis` clone already existed on `profx` at `d611a28` (the same
+tip the Mac holds); nothing to clone.
+
+**Not done.** No merge of the staged trees (Q54, prompt 8). No leaderboard
+re-fold. Nothing committed — JXP runs git: new `ioptics/report/rt_ladder.py`,
+`ioptics/tests/test_report_rt_ladder.py`, three `docs/source/reports/rt_tests_*/`
+directories; modified `diagnostics.py`, `plotting.py`, `report/figures.py`,
+`runs/prototypes/rt_tests/build_v1.py`, `tests/test_rt_tests.py`, this file.
+
+### 2026-09-17 — Execution task 13 COMPLETE: RT-B run, verified, PAB-consistent (Fable)
+
+**Run:** `rt_tests_B_v1` launched 08:37 PT, **stage 3 exit 0 at 13:27:24,
+stage 4 (metrics) exit 0 at 13:27:32** — 4.8 h wall on 20 cores, zero
+tracebacks. **495 chains = (100 − 1) × 5 exactly**: one PACE spectrum
+(red-peak screen) excluded identically on all five rungs; every fitted
+record `ok` (no poor_fit, no fit_failed on PACE). Preflight note: RoB's
+`cdom-rt` had been merged into `inelastic-rt` (PR #21 + an "off nadir"
+commit); bing CDOM tests 30/30 and ioptics RT tests 43/43 re-verified
+green against the new HEAD before launch.
+
+**Chain health (15 sampled/rung):** τ (raw steps) median 318–595 vs
+40,000-step chains → ESS median 1,048–1,962, min 162. Healthy. B_p
+posterior medians 0.020–0.028 — above the emulator's trained span, same
+Q50(c) caveat as arm A.
+
+**Headline (ΔBIC el→ramflcdom, MCMC ok rows, n=99):** median **+1.2**,
+51.5% of pixels favor the full inelastic stack — but the distribution is
+**bimodal: 30.3% favor it strongly (ΔBIC > 10)** while the rest are
+indifferent-to-negative. On real PACE radiances the inelastic terms matter
+a lot for a third of pixels and little for the others — the per-pixel
+fractional-IOP-change figure (task 14) is exactly the right headline.
+χ²ν medians 0.42–0.60 (PACE per-pixel Rrs_unc is conservative; elastic
+ztt lowest, as on PANGAEA).
+
+**Metrics verified:** all three parquets written; configured dbic rows
+present (4); zero caveat rows (correct — `no_CDOMfl_truth` targets L23
+only); leaderboard untouched.
+
+**PAB run1k consistency check (hyb_el vs PAB's stored gordon-elastic
+ExpBPow posteriors, same pixels, same Rrs/varRrs/window):** all 99
+matched. Posterior-median correlations: Adg 0.987, Sdg 0.939, Aph 0.966,
+Bnw 0.998, beta 0.936. Median |Δ| in the log10 params 0.001–0.084 (beta
+loosest, as expected). Derived Chl ratio ours/PAB: median 1.054,
+16–84% [0.94, 1.35], log-correlation 0.966. The small systematic offsets
+are the expected imprint of the elastic-model swap (robust_hybrid vs
+Gordon, 1.4–3.7% in Rrs) plus the extra free B_p — no anomalies.
+**Consistency check: PASS.**
+
+No new Q&A questions — all findings are report material under existing
+decisions. Nothing committed — JXP runs git. Next: task 14 (report round).
+
+### 2026-09-17 — Task 12 CLOSED OUT (RT-A complete + verified); task 13 (RT-B) launched (Fable)
+
+**RT-A completed 2026-09-16 19:24 PT** — stage 1 exit 0, stage 2 (metrics,
+both sweeps) exit 0, zero tracebacks over the 6.6-day log (launched 09-10
+05:34; ~2 days of heavy competing load mid-run explain the overshoot vs the
+4.5–6-day estimate). Note: RoB's `cdom-rt` was merged into `inelastic-rt`
+(PR #21) with a new "off nadir" commit during the run; bing CDOM tests
+(30/30) and ioptics RT tests (43/43) re-verified green against it today.
+
+**Completeness:** `rt_tests_A_pangaea_v1` 475 chains = 95 fittable × 5
+(2 five-band ids refused, by design). `rt_tests_A_l23_v1` 16,545 = 3,309 × 5
+(11 red-peak `out_of_scope` scenes, identical on every rung → fair ladder).
+MCMC statuses — L23: 16,518 ok / 55 out_of_scope / 27 poor_fit (0.16%);
+PANGAEA: 390 ok / 85 poor_fit (17.5%, thin 6-band spectra) / 10 fit_failed.
+
+**Chain health (25 sampled chains per rung per sweep):** integrated
+autocorrelation (raw steps) median 360–744, max 1,853 — vs 40,000-step
+chains, so ESS median ≈ 840–1,730, minimum 337. Healthy everywhere; no
+rung- or dataset-dependence of concern. (Acceptance fractions aren't
+persisted in the chain NPZs — ESS/τ used as the health metric.)
+
+**B_p posteriors (L23, free B_p):** medians 0.026–0.029 per rung —
+confirming the smoke-run finding that posteriors sit *above* the hybrid
+emulator's trained span [0.0103, 0.018] (Q50(c) accepted+caveat). Edge
+pile-up is negligible: ≤0.3% of samples within 2% of the 0.004 floor,
+≤2.3% near the 0.05 ceiling. DomainWarning accounting: 13,619 warned MCMC
+records / 40,321 warning lines — i.e. essentially every hybrid-backend fit,
+as expected; report text must carry the Q50 caveat prominently.
+
+**Headline ΔBIC (elastic hyb_el vs full-stack ramflcdom, MCMC, ok rows):**
+- **L23 (n=3,300): median ΔBIC = +2.1 favoring the full inelastic stack;
+  70.6% of scenes favor it; 16.5% strongly (ΔBIC>10).** χ²ν medians:
+  1.14/1.14/1.07/1.08/1.12 (el/ram/ramfl/ramflcdom/ztt) — the fluorescence
+  term is what moves χ²ν on inelastic-truth data.
+- **PANGAEA (n=72): median ΔBIC = −1.1 — elastic slightly favored; no
+  strong inelastic wins.** χ²ν medians rise for the fluorescence rungs
+  (1.45 el → 2.10 ramfl / 1.94 ramflcdom): on 6–11-band real spectra under
+  flat-10% noise, the inelastic terms don't pay for themselves. A real
+  finding for the report, not a bug.
+
+**Metrics verified:** `no_CDOMfl_truth` caveat on exactly 80 rows, all
+(L23 × ramflcdom), nowhere else; PANGAEA sweep carries none. Configured
+dbic pair present in both sweeps' pairwise tables (8 and 7 rows).
+
+**Timing (L23, chain-mtime spans):** ztt_el 21.0 h → hyb_el 22.4 →
+ram 33.2 → ramfl 35.6 → ramflcdom 41.1 h; ~153 h total incl. contention.
+The inelastic terms roughly double the per-fit cost vs elastic.
+
+**Task 13 launched:** RT-B (PACE-100) runner started 2026-09-17 08:37 PT
+(`rt_tests_B_runner.sh`, stages 3+4, 20 cores, detached; log
+`rt_tests_B_run.log`). Remaining for task 13 when it lands (~4 h): metrics
+verification, the PAB run1k consistency check (hyb_el vs stored
+gordon-elastic ExpBPow posteriors, same pixels), Q&A, Log.
+
+No new Q&A questions from the close-out — all findings above are report
+material under already-made decisions. Nothing committed — JXP runs git.
 
 ### 2026-09-10 — Execution task 12: RT-A configured per round-9 answers and LAUNCHED (Fable)
 

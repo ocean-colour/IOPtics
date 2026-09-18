@@ -1,0 +1,6 @@
+dataset,algorithm,frac_not_ok,n_attempted,n_scored,chi2_nu_median,rel_misfit_median,rel_misfit_median_all,frac_good,frac_overfit,frac_underfit,frac_qc_fail,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed
+PANGAEA,expb_pow_hyb_el,0.0722,97,90,0.44,0.0182,0.0223,0.9667,0.0,0.0333,0.0515,0.9278,0.0515,0.0,0.0206
+PANGAEA,expb_pow_hyb_ram,0.0515,97,92,0.452,0.0196,0.0233,0.9457,0.0,0.0543,0.0309,0.9485,0.0309,0.0,0.0206
+PANGAEA,expb_pow_hyb_ramfl,0.1237,97,85,1.2563,0.0435,0.0468,0.8118,0.0,0.1882,0.1031,0.8763,0.1031,0.0,0.0206
+PANGAEA,expb_pow_hyb_ramflcdom,0.0825,97,89,1.04,0.0402,0.043,0.8764,0.0,0.1236,0.0619,0.9175,0.0619,0.0,0.0206
+PANGAEA,expb_pow_ztt_el,0.1237,97,85,0.8218,0.0322,0.0373,0.9059,0.0,0.0941,0.1031,0.8763,0.1031,0.0,0.0206
