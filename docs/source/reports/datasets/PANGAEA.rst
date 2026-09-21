@@ -25,17 +25,17 @@ A dataset can only score what it carries truth for; a component with no truth he
      - scored
      - 6372
      - 1628
-     - 243
+     - 773
    * - ``giop``
      - scored
      - 6372
      - 2107
-     - 361
+     - 1020
    * - ``gsm``
      - scored
      - 6372
      - 761
-     - 50
+     - 565
 
 Ranked contests
 ---------------
@@ -118,6 +118,50 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - chisq
      - 2
      - ranked
+     - gsm
+     - 0.453
+     - -0.0991
+     - 0.656
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.392
+     - 0.0984
+     - 0.717
+     - 
+   * - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.427
+     - -0.178
+     - 0.641
+     - 
+   * - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.609
+     - -0.0396
+     - 0.639
+     - 
+   * - a_dg
+     - 440
+     - all
+     - chisq
+     - 3
+     - ranked
      - expb_pow
      - 0.72
      - -0.162
@@ -127,18 +171,18 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - eutrophic
      - chisq
-     - 2
+     - 3
      - ranked
-     - gsm
-     - 0.209
-     - 0.209
-     - 0.5
+     - expb_pow
+     - 1.93
+     - -0.49
+     - 0.578
      - 
    * - a_dg
      - 440
      - mesotrophic
      - chisq
-     - 2
+     - 3
      - ranked
      - giop
      - 0.514
@@ -149,7 +193,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - oligotrophic
      - chisq
-     - 2
+     - 3
      - ranked
      - giop
      - 1.02
@@ -160,7 +204,51 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - unknown
      - chisq
-     - 2
+     - 3
+     - ranked
+     - giop
+     - 1.49
+     - -0.479
+     - 0.459
+     - 
+   * - a_dg
+     - 440
+     - all
+     - chisq
+     - 4
+     - ranked
+     - expb_pow
+     - 1.05
+     - -0.329
+     - 0.451
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 4
+     - ranked
+     - gsm
+     - 0.209
+     - 0.209
+     - 0.5
+     - 
+   * - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.536
+     - -0.246
+     - 0.481
+     - 
+   * - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 4
      - ranked
      - expb_pow
      - 0.777
@@ -171,7 +259,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - all
      - chisq
-     - 3
+     - 5
      - ranked
      - giop
      - 2.23
@@ -182,7 +270,51 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - eutrophic
      - chisq
-     - 3
+     - 5
+     - ranked
+     - giop
+     - 7.21
+     - -0.865
+     - 0.248
+     - 
+   * - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.574
+     - -0.196
+     - 0.377
+     - 
+   * - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 1.78
+     - -0.503
+     - 0.435
+     - 
+   * - a_dg
+     - 440
+     - all
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 2.14
+     - -0.634
+     - 0.405
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 6
      - ranked
      - giop
      - 6.11
@@ -193,7 +325,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - mesotrophic
      - chisq
-     - 3
+     - 6
      - ranked
      - expb_pow
      - 0.546
@@ -204,7 +336,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - oligotrophic
      - chisq
-     - 3
+     - 6
      - ranked
      - expb_pow
      - 1.46
@@ -215,12 +347,45 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - unknown
      - chisq
-     - 3
+     - 6
      - ranked
+     - expb_pow
+     - 0.861
+     - -0.138
+     - 0.402
+     - 
+   * - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
      - giop
-     - 1.78
-     - -0.503
-     - 0.435
+     - 1.13
+     - -0.433
+     - 0.692
+     - 
+   * - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 1.19
+     - -0.491
+     - 0.417
+     - 
+   * - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - gsm
+     - 1.18
+     - -0.445
+     - 0.385
      - 
    * - a_dg
      - 443
@@ -283,6 +448,50 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - chisq
      - 2
      - ranked
+     - gsm
+     - 0.453
+     - -0.0991
+     - 0.656
+     - 
+   * - a_dg
+     - 443
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.392
+     - 0.0984
+     - 0.717
+     - 
+   * - a_dg
+     - 443
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.427
+     - -0.178
+     - 0.641
+     - 
+   * - a_dg
+     - 443
+     - unknown
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.609
+     - -0.0396
+     - 0.639
+     - 
+   * - a_dg
+     - 443
+     - all
+     - chisq
+     - 3
+     - ranked
      - expb_pow
      - 0.72
      - -0.162
@@ -292,18 +501,18 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - eutrophic
      - chisq
-     - 2
+     - 3
      - ranked
-     - gsm
-     - 0.209
-     - 0.209
-     - 0.5
+     - expb_pow
+     - 1.93
+     - -0.49
+     - 0.578
      - 
    * - a_dg
      - 443
      - mesotrophic
      - chisq
-     - 2
+     - 3
      - ranked
      - giop
      - 0.514
@@ -314,7 +523,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - oligotrophic
      - chisq
-     - 2
+     - 3
      - ranked
      - giop
      - 1.02
@@ -325,7 +534,51 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - unknown
      - chisq
-     - 2
+     - 3
+     - ranked
+     - giop
+     - 1.49
+     - -0.479
+     - 0.459
+     - 
+   * - a_dg
+     - 443
+     - all
+     - chisq
+     - 4
+     - ranked
+     - expb_pow
+     - 1.05
+     - -0.329
+     - 0.451
+     - 
+   * - a_dg
+     - 443
+     - eutrophic
+     - chisq
+     - 4
+     - ranked
+     - gsm
+     - 0.209
+     - 0.209
+     - 0.5
+     - 
+   * - a_dg
+     - 443
+     - mesotrophic
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.536
+     - -0.246
+     - 0.481
+     - 
+   * - a_dg
+     - 443
+     - unknown
+     - chisq
+     - 4
      - ranked
      - expb_pow
      - 0.777
@@ -336,7 +589,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - all
      - chisq
-     - 3
+     - 5
      - ranked
      - giop
      - 2.23
@@ -347,7 +600,51 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - eutrophic
      - chisq
-     - 3
+     - 5
+     - ranked
+     - giop
+     - 7.21
+     - -0.865
+     - 0.248
+     - 
+   * - a_dg
+     - 443
+     - mesotrophic
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.574
+     - -0.196
+     - 0.377
+     - 
+   * - a_dg
+     - 443
+     - unknown
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 1.78
+     - -0.503
+     - 0.435
+     - 
+   * - a_dg
+     - 443
+     - all
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 2.14
+     - -0.634
+     - 0.405
+     - 
+   * - a_dg
+     - 443
+     - eutrophic
+     - chisq
+     - 6
      - ranked
      - giop
      - 6.11
@@ -358,7 +655,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - mesotrophic
      - chisq
-     - 3
+     - 6
      - ranked
      - expb_pow
      - 0.546
@@ -369,7 +666,7 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - oligotrophic
      - chisq
-     - 3
+     - 6
      - ranked
      - expb_pow
      - 1.46
@@ -380,345 +677,48 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - unknown
      - chisq
-     - 3
-     - ranked
-     - giop
-     - 1.78
-     - -0.503
-     - 0.435
-     - 
-   * - a_ph
-     - 440
-     - all
-     - chisq
-     - 1
-     - ranked
-     - giop
-     - 0.579
-     - 0.242
-     - 0.578
-     - 
-   * - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - 1
+     - 6
      - ranked
      - expb_pow
-     - 0.826
-     - -0.299
-     - 0.565
+     - 0.861
+     - -0.138
+     - 0.402
      - 
-   * - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - 1
-     - ranked
-     - expb_pow
-     - 0.288
-     - -0.207
-     - 0.818
-     - 
-   * - a_ph
-     - 440
-     - all
-     - chisq
-     - 2
-     - ranked
-     - expb_pow
-     - 1.03
-     - -0.167
-     - 0.507
-     - 
-   * - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - 2
-     - ranked
-     - giop
-     - 0.494
-     - 0.0593
-     - 0.558
-     - 
-   * - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - 2
-     - ranked
-     - giop
-     - 0.716
-     - 0.218
-     - 0.615
-     - 
-   * - a_ph
-     - 440
-     - all
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 1.06
-     - -0.453
-     - 0.253
-     - 
-   * - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 0.611
-     - -0.272
-     - 0.264
-     - 
-   * - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 0.668
-     - -0.4
-     - 0.0833
-     - 
-   * - a_ph
-     - 440
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - giop
-     - 0.669
-     - 0.526
-     - 0.66
-     - 
-   * - a_ph
-     - 440
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - expb_pow
-     - 1.34
-     - 0.0289
-     - 0.351
-     - 
-   * - a_ph
-     - 440
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - gsm
-     - 0.199
-     - -0.166
-     - 0.25
-     - 
-   * - a_ph
-     - 440
-     - unknown
-     - chisq
-     - —
-     - indistinguishable
-     - expb_pow
-     - 1.09
-     - -0.19
-     - 0.613
-     - 
-   * - a_ph
-     - 440
-     - unknown
-     - chisq
-     - —
-     - indistinguishable
-     - gsm
-     - 36
-     - -0.973
-     - 0.429
-     - 
-   * - a_ph
-     - 440
-     - unknown
-     - chisq
-     - —
-     - indistinguishable
-     - giop
-     - 0.516
-     - 0.0705
-     - 0.4
-     - 
-   * - a_ph
-     - 443
-     - all
-     - chisq
-     - 1
-     - ranked
-     - giop
-     - 0.579
-     - 0.242
-     - 0.578
-     - 
-   * - a_ph
-     - 443
-     - mesotrophic
-     - chisq
-     - 1
-     - ranked
-     - expb_pow
-     - 0.826
-     - -0.299
-     - 0.565
-     - 
-   * - a_ph
+   * - a_dg
      - 443
      - oligotrophic
      - chisq
-     - 1
-     - ranked
-     - expb_pow
-     - 0.288
-     - -0.207
-     - 0.818
-     - 
-   * - a_ph
-     - 443
-     - all
-     - chisq
-     - 2
-     - ranked
-     - expb_pow
-     - 1.03
-     - -0.167
-     - 0.507
-     - 
-   * - a_ph
-     - 443
-     - mesotrophic
-     - chisq
-     - 2
-     - ranked
+     - —
+     - indistinguishable
      - giop
-     - 0.494
-     - 0.0593
-     - 0.558
+     - 1.13
+     - -0.433
+     - 0.692
      - 
-   * - a_ph
+   * - a_dg
      - 443
      - oligotrophic
      - chisq
-     - 2
-     - ranked
-     - giop
-     - 0.716
-     - 0.218
-     - 0.615
+     - —
+     - indistinguishable
+     - expb_pow
+     - 1.19
+     - -0.491
+     - 0.417
      - 
-   * - a_ph
-     - 443
-     - all
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 1.06
-     - -0.453
-     - 0.253
-     - 
-   * - a_ph
-     - 443
-     - mesotrophic
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 0.611
-     - -0.272
-     - 0.264
-     - 
-   * - a_ph
+   * - a_dg
      - 443
      - oligotrophic
      - chisq
-     - 3
-     - ranked
-     - gsm
-     - 0.668
-     - -0.4
-     - 0.0833
-     - 
-   * - a_ph
-     - 443
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - giop
-     - 0.669
-     - 0.526
-     - 0.66
-     - 
-   * - a_ph
-     - 443
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - expb_pow
-     - 1.34
-     - 0.0289
-     - 0.351
-     - 
-   * - a_ph
-     - 443
-     - eutrophic
-     - chisq
      - —
      - indistinguishable
      - gsm
-     - 0.199
-     - -0.166
-     - 0.25
-     - 
-   * - a_ph
-     - 443
-     - unknown
-     - chisq
-     - —
-     - indistinguishable
-     - expb_pow
-     - 1.09
-     - -0.19
-     - 0.613
-     - 
-   * - a_ph
-     - 443
-     - unknown
-     - chisq
-     - —
-     - indistinguishable
-     - gsm
-     - 36
-     - -0.973
-     - 0.429
-     - 
-   * - a_ph
-     - 443
-     - unknown
-     - chisq
-     - —
-     - indistinguishable
-     - giop
-     - 0.516
-     - 0.0705
-     - 0.4
+     - 1.18
+     - -0.445
+     - 0.385
      - 
 
-(25 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(115 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Retrieval success
 -----------------
@@ -794,6 +794,22 @@ By water type
      - 440
      - gsm
      - 2
+     - 0.392
+     - 0.717
+     - 0.247
+   * - eutrophic
+     - a_dg
+     - 440
+     - expb_pow
+     - 3
+     - 1.93
+     - 0.578
+     - 0.365
+   * - eutrophic
+     - a_dg
+     - 440
+     - gsm
+     - 4
      - 0.209
      - 0.5
      - 0.00305
@@ -801,7 +817,15 @@ By water type
      - a_dg
      - 440
      - giop
-     - 3
+     - 5
+     - 7.21
+     - 0.248
+     - 0.453
+   * - eutrophic
+     - a_dg
+     - 440
+     - giop
+     - 6
      - 6.11
      - 0.207
      - 0.25
@@ -818,6 +842,22 @@ By water type
      - 443
      - gsm
      - 2
+     - 0.392
+     - 0.717
+     - 0.247
+   * - eutrophic
+     - a_dg
+     - 443
+     - expb_pow
+     - 3
+     - 1.93
+     - 0.578
+     - 0.365
+   * - eutrophic
+     - a_dg
+     - 443
+     - gsm
+     - 4
      - 0.209
      - 0.5
      - 0.00305
@@ -825,7 +865,15 @@ By water type
      - a_dg
      - 443
      - giop
-     - 3
+     - 5
+     - 7.21
+     - 0.248
+     - 0.453
+   * - eutrophic
+     - a_dg
+     - 443
+     - giop
+     - 6
      - 6.11
      - 0.207
      - 0.25
@@ -837,6 +885,30 @@ By water type
      - 0.669
      - 0.66
      - 0.25
+   * - eutrophic
+     - a_ph
+     - 440
+     - gsm
+     - —
+     - 0.773
+     - 0.55
+     - 0.247
+   * - eutrophic
+     - a_ph
+     - 440
+     - giop
+     - —
+     - 0.859
+     - 0.516
+     - 0.453
+   * - eutrophic
+     - a_ph
+     - 440
+     - expb_pow
+     - —
+     - 0.914
+     - 0.441
+     - 0.365
    * - eutrophic
      - a_ph
      - 440
@@ -861,6 +933,30 @@ By water type
      - 0.669
      - 0.66
      - 0.25
+   * - eutrophic
+     - a_ph
+     - 443
+     - gsm
+     - —
+     - 0.773
+     - 0.55
+     - 0.247
+   * - eutrophic
+     - a_ph
+     - 443
+     - giop
+     - —
+     - 0.859
+     - 0.516
+     - 0.453
+   * - eutrophic
+     - a_ph
+     - 443
+     - expb_pow
+     - —
+     - 0.914
+     - 0.441
+     - 0.365
    * - eutrophic
      - a_ph
      - 443
@@ -888,8 +984,32 @@ By water type
    * - eutrophic
      - bb_p
      - 555
-     - expb_pow
+     - gsm
      - 2
+     - 0.229
+     - 0.762
+     - 0.247
+   * - eutrophic
+     - bb_p
+     - 555
+     - giop
+     - 3
+     - 0.856
+     - 0.583
+     - 0.453
+   * - eutrophic
+     - bb_p
+     - 555
+     - expb_pow
+     - 4
+     - 1.02
+     - 0.187
+     - 0.365
+   * - eutrophic
+     - bb_p
+     - 555
+     - expb_pow
+     - 5
      - 0.635
      - 0.152
      - 0.174
@@ -901,6 +1021,30 @@ By water type
      - 0.168
      - 1
      - 0.25
+   * - eutrophic
+     - bb_p
+     - 670
+     - giop
+     - 2
+     - 1.35
+     - 0.824
+     - 0.453
+   * - eutrophic
+     - bb_p
+     - 670
+     - gsm
+     - 3
+     - 0.261
+     - 0.6
+     - 0.247
+   * - eutrophic
+     - bb_p
+     - 670
+     - expb_pow
+     - 4
+     - 3.71
+     - 0.118
+     - 0.365
    * - eutrophic
      - bb_p
      - 670
@@ -920,16 +1064,40 @@ By water type
    * - mesotrophic
      - a_dg
      - 440
-     - giop
+     - gsm
      - 2
+     - 0.427
+     - 0.641
+     - 0.541
+   * - mesotrophic
+     - a_dg
+     - 440
+     - giop
+     - 3
      - 0.514
      - 0.582
      - 0.292
    * - mesotrophic
      - a_dg
      - 440
+     - giop
+     - 4
+     - 0.536
+     - 0.481
+     - 0.629
+   * - mesotrophic
+     - a_dg
+     - 440
      - expb_pow
-     - 3
+     - 5
+     - 0.574
+     - 0.377
+     - 0.518
+   * - mesotrophic
+     - a_dg
+     - 440
+     - expb_pow
+     - 6
      - 0.546
      - 0.303
      - 0.222
@@ -944,16 +1112,40 @@ By water type
    * - mesotrophic
      - a_dg
      - 443
-     - giop
+     - gsm
      - 2
+     - 0.427
+     - 0.641
+     - 0.541
+   * - mesotrophic
+     - a_dg
+     - 443
+     - giop
+     - 3
      - 0.514
      - 0.582
      - 0.292
    * - mesotrophic
      - a_dg
      - 443
+     - giop
+     - 4
+     - 0.536
+     - 0.481
+     - 0.629
+   * - mesotrophic
+     - a_dg
+     - 443
      - expb_pow
-     - 3
+     - 5
+     - 0.574
+     - 0.377
+     - 0.518
+   * - mesotrophic
+     - a_dg
+     - 443
+     - expb_pow
+     - 6
      - 0.546
      - 0.303
      - 0.222
@@ -962,6 +1154,14 @@ By water type
      - 440
      - expb_pow
      - 1
+     - 0.85
+     - 0.704
+     - 0.518
+   * - mesotrophic
+     - a_ph
+     - 440
+     - expb_pow
+     - 2
      - 0.826
      - 0.565
      - 0.222
@@ -969,15 +1169,31 @@ By water type
      - a_ph
      - 440
      - giop
-     - 2
+     - 3
      - 0.494
      - 0.558
      - 0.292
    * - mesotrophic
      - a_ph
      - 440
+     - giop
+     - 4
+     - 1.06
+     - 0.53
+     - 0.629
+   * - mesotrophic
+     - a_ph
+     - 440
      - gsm
-     - 3
+     - 5
+     - 1.35
+     - 0.271
+     - 0.541
+   * - mesotrophic
+     - a_ph
+     - 440
+     - gsm
+     - 6
      - 0.611
      - 0.264
      - 0.0651
@@ -986,6 +1202,14 @@ By water type
      - 443
      - expb_pow
      - 1
+     - 0.85
+     - 0.704
+     - 0.518
+   * - mesotrophic
+     - a_ph
+     - 443
+     - expb_pow
+     - 2
      - 0.826
      - 0.565
      - 0.222
@@ -993,15 +1217,31 @@ By water type
      - a_ph
      - 443
      - giop
-     - 2
+     - 3
      - 0.494
      - 0.558
      - 0.292
    * - mesotrophic
      - a_ph
      - 443
+     - giop
+     - 4
+     - 1.06
+     - 0.53
+     - 0.629
+   * - mesotrophic
+     - a_ph
+     - 443
      - gsm
-     - 3
+     - 5
+     - 1.35
+     - 0.271
+     - 0.541
+   * - mesotrophic
+     - a_ph
+     - 443
+     - gsm
+     - 6
      - 0.611
      - 0.264
      - 0.0651
@@ -1018,251 +1258,11 @@ By water type
      - 555
      - gsm
      - 2
-     - 0.3
-     - 0.556
-     - 0.0651
-   * - mesotrophic
-     - bb_p
-     - 555
-     - expb_pow
-     - 3
-     - 0.617
-     - 0.27
-     - 0.222
-   * - mesotrophic
-     - bb_p
-     - 670
-     - giop
-     - 1
-     - 1.29
-     - 1
-     - 0.292
-   * - mesotrophic
-     - bb_p
-     - 670
-     - expb_pow
-     - 2
-     - 1.41
-     - 0
-     - 0.222
-   * - oligotrophic
-     - a_dg
-     - 440
-     - gsm
-     - 1
-     - 1.18
-     - 0.7
-     - 0.123
-   * - oligotrophic
-     - a_dg
-     - 440
-     - giop
-     - 2
-     - 1.02
-     - 0.6
-     - 0.356
-   * - oligotrophic
-     - a_dg
-     - 440
-     - expb_pow
-     - 3
-     - 1.46
-     - 0.2
-     - 0.123
-   * - oligotrophic
-     - a_dg
-     - 443
-     - gsm
-     - 1
-     - 1.18
-     - 0.7
-     - 0.123
-   * - oligotrophic
-     - a_dg
-     - 443
-     - giop
-     - 2
-     - 1.02
-     - 0.6
-     - 0.356
-   * - oligotrophic
-     - a_dg
-     - 443
-     - expb_pow
-     - 3
-     - 1.46
-     - 0.2
-     - 0.123
-   * - oligotrophic
-     - a_ph
-     - 440
-     - expb_pow
-     - 1
-     - 0.288
-     - 0.818
-     - 0.123
-   * - oligotrophic
-     - a_ph
-     - 440
-     - giop
-     - 2
-     - 0.716
-     - 0.615
-     - 0.356
-   * - oligotrophic
-     - a_ph
-     - 440
-     - gsm
-     - 3
-     - 0.668
-     - 0.0833
-     - 0.123
-   * - oligotrophic
-     - a_ph
-     - 443
-     - expb_pow
-     - 1
-     - 0.288
-     - 0.818
-     - 0.123
-   * - oligotrophic
-     - a_ph
-     - 443
-     - giop
-     - 2
-     - 0.716
-     - 0.615
-     - 0.356
-   * - oligotrophic
-     - a_ph
-     - 443
-     - gsm
-     - 3
-     - 0.668
-     - 0.0833
-     - 0.123
-   * - oligotrophic
-     - bb_p
-     - 555
-     - gsm
-     - —
-     - 0.501
-     - 1
-     - 0.123
-   * - oligotrophic
-     - bb_p
-     - 555
-     - expb_pow
-     - —
-     - 0.818
-     - 0.6
-     - 0.123
-   * - oligotrophic
-     - bb_p
-     - 555
-     - giop
-     - —
-     - 0.857
-     - 0
-     - 0.356
-   * - oligotrophic
-     - bb_p
-     - 670
-     - giop
-     - —
-     - 0.461
-     - 1
-     - 0.356
-   * - oligotrophic
-     - bb_p
-     - 670
-     - expb_pow
-     - —
-     - 0.481
-     - 0.4
-     - 0.123
-   * - oligotrophic
-     - bb_p
-     - 670
-     - gsm
-     - —
-     - 0.431
-     - 0
-     - 0.123
-   * - unknown
-     - a_dg
-     - 440
-     - gsm
-     - 1
-     - 0.514
-     - 0.857
-     - 0.015
-   * - unknown
-     - a_dg
-     - 440
-     - expb_pow
-     - 2
-     - 0.777
-     - 0.458
-     - 0.207
-   * - unknown
-     - a_dg
-     - 440
-     - giop
-     - 3
-     - 1.78
-     - 0.435
-     - 0.218
-   * - unknown
-     - a_dg
-     - 443
-     - gsm
-     - 1
-     - 0.514
-     - 0.857
-     - 0.015
-   * - unknown
-     - a_dg
-     - 443
-     - expb_pow
-     - 2
-     - 0.777
-     - 0.458
-     - 0.207
-   * - unknown
-     - a_dg
-     - 443
-     - giop
-     - 3
-     - 1.78
-     - 0.435
-     - 0.218
-   * - unknown
-     - a_ph
-     - 440
-     - expb_pow
-     - —
-     - 1.09
-     - 0.613
-     - 0.207
-   * - unknown
-     - a_ph
-     - 440
-     - gsm
-     - —
-     - 36
-     - 0.429
-     - 0.015
-   * - unknown
-     - a_ph
-     - 440
-     - giop
-     - —
-     - 0.516
-     - 0.4
-     - 0.218
+     - 0.54
+     - 0.702
+     - 0.541
 
-(7 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(79 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head
 ------------
@@ -1821,7 +1821,7 @@ Head-to-head
      - 0.244
      - underpowered
 
-(20 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(110 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 See also
 --------

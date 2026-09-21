@@ -192,3 +192,65 @@ def test_page_renders_under_sphinx(tmp_path):
         capture_output=True, text=True)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert (src / '_build' / 'reports' / _SID / 'rt_ladder.html').is_file()
+
+
+# --------------------------------------------------------------------
+# PAB run1k consistency check (rt_tests task 13) and its page section
+# --------------------------------------------------------------------
+def _load_pab_consistency():
+    import importlib.util
+    from pathlib import Path
+    path = (Path(__file__).resolve().parents[1] / 'runs' / 'prototypes' / 'rt_tests'
+            / 'pab_consistency.py')
+    spec = importlib.util.spec_from_file_location('pab_consistency', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _fake_chains(rng, medians, names, nstep=200, nwalk=4):
+    cols = [rng.normal(medians[n], 0.01, size=(nstep, nwalk)) for n in names]
+    return np.stack(cols, axis=-1)
+
+
+def test_pab_consistency_compare_and_summarise():
+    pc = _load_pab_consistency()
+    rng = np.random.default_rng(0)
+    wave = np.linspace(400, 700, 136)
+    rrs = 0.005 + 0.001 * np.sin(wave / 40.0)
+    rows = []
+    for i in range(6):
+        pab_med = {'Adg': -1.5 + 0.1 * i, 'Sdg': 0.015, 'Aph': -1.2 + 0.05 * i,
+                   'Bnw': -2.3, 'beta': 1.0}
+        ours_med = dict(pab_med)
+        ours_med['Aph'] += 0.02          # a small systematic offset
+        ours_med['B_p'] = 0.02
+        ours = {'chains': _fake_chains(rng, ours_med, pc.SHARED + ('B_p',)),
+                'pnames': np.array(pc.SHARED + ('B_p',)), 'wave': wave,
+                'obs_Rrs': rrs, 'varRrs': (0.02 * rrs) ** 2}
+        theirs = {'chains': _fake_chains(rng, pab_med, pc.SHARED),
+                  'param_names': np.array(pc.SHARED), 'wave': wave,
+                  'Rrs': rrs, 'varRrs': (0.02 * rrs) ** 2}
+        rows.append(pc.compare_pixel(ours, theirs))
+    df = pd.DataFrame(rows)
+    assert (df['n_bands_common'] == 136).all()
+    assert df['max_abs_dRrs'].max() == 0.0 and df['max_abs_dvarRrs'].max() == 0.0
+    summ = pc.summarise(df)
+    aph = summ[summ.quantity == 'Aph'].iloc[0]
+    assert abs(aph['median_diff'] - 0.02) < 0.01 and aph['correlation'] > 0.99
+    chl = summ[summ.quantity.str.startswith('Chl')].iloc[0]
+    assert abs(chl['median_diff'] - 10 ** 0.02) < 0.02     # ratio = 10**dAph
+    assert set(summ['quantity']) >= set(pc.SHARED)
+
+
+def test_page_carries_the_pab_consistency_section_when_the_table_exists(tmp_path):
+    sw = _build_sweep(tmp_path)
+    tables = figures.subdir(sw, 'tables')
+    pd.DataFrame([{'quantity': 'Aph', 'scale': 'log10', 'n': 99, 'correlation': 0.97,
+                   'median_diff': 0.01, 'p16_diff': -0.05, 'p84_diff': 0.08,
+                   'median_abs_diff': 0.03}]).to_csv(
+        tables / 'pab_consistency_summary.csv', index=False)
+    out = rt_ladder.build(_SID, root=tmp_path, docs_root=tmp_path / 'docs')
+    text = out.read_text(encoding='utf-8')
+    assert 'Consistency with PAB' in text
+    assert (out.parent / 'pab_consistency_summary.csv').is_file()

@@ -4,7 +4,7 @@ L23,giop,a,440,440,,2488,0.1905,0.1905,0.1905,0.0795,1.1862,0.0,0.0012,2488,3,3,
 L23,gsm,a,440,440,,2488,0.0869,0.0869,0.0902,0.049,1.07,0.1379,0.2653,2488,2,2,2,over-confident,over-confident,0.5703,ranked
 L23,expb_pow,a,443,445,,2495,0.0032,0.0032,0.037,0.0239,0.995,0.5995,0.8562,2482,1,1,1,over-confident,over-confident,0.9116,ranked
 L23,giop,a,443,445,,2488,0.1868,0.1868,0.1868,0.0781,1.1828,0.0,0.0012,2488,3,3,3,over-confident,over-confident,0.0664,ranked
-L23,gsm,a,443,445,,2488,0.1035,0.1035,0.1057,0.0557,1.0828,0.1053,0.2142,2488,2,2,2,over-confident,over-confident,0.5216,ranked
+L23,gsm,a,443,445,,2488,0.1035,0.1035,0.1057,0.0557,1.0828,0.1053,0.2138,2488,2,2,2,over-confident,over-confident,0.5216,ranked
 L23,expb_pow,a_dg,440,440,,2495,0.0237,0.0237,0.2042,0.1013,1.0284,0.7483,0.9134,2495,,,,conservative,over-confident,0.3967,indistinguishable
 L23,giop,a_dg,440,440,,2488,-0.0184,0.0184,0.1632,0.0838,0.9845,0.3569,0.6419,2488,,,,over-confident,over-confident,0.5146,indistinguishable
 L23,gsm,a_dg,440,440,,2488,0.0688,0.0688,0.1457,0.0801,1.0462,0.1921,0.3682,2488,,,,over-confident,over-confident,0.5888,indistinguishable

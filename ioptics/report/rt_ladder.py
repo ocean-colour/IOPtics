@@ -387,6 +387,28 @@ def build(sweep_id, *, root=None, docs_root=None, pair=None,
             f'the fractional-change headline — the configured contest '
             f'``{pair[0]}`` vs ``{pair[1]}`` is not fully present in this sweep.')
 
+    # ---- consistency with PAB's Gordon-elastic fits (PACE arm; task 13) --------
+    pab_csv = tables_dir / 'pab_consistency_summary.csv'
+    if pab_csv.is_file():
+        blocks.append(_table_section(
+            sweep, report_dir, 'Consistency with PAB\'s fits of the same pixels',
+            pab_csv, 'Elastic hybrid rung vs PAB run1k ExpBPow (Gordon), per shared parameter.',
+            desc=('These spectra are the pixels PAB fitted in its ``run1k`` run with '
+                  'BING\'s ``ExpBPow`` under the **Gordon** elastic forward model. The '
+                  'elastic hybrid rung refits them under ``robust_hybrid`` with one '
+                  'extra free parameter (``B_p``). Rows: Pearson correlation of the '
+                  'posterior medians across pixels, the median and 16–84 % span of '
+                  '(ours − PAB) in the parameter\'s own scale (``Adg``, ``Aph``, '
+                  '``Bnw`` are log10 amplitudes), the derived-chlorophyll ratio, and '
+                  'the largest difference between the observed spectra and variances '
+                  'the two fitters were handed (a non-zero value there would mean the '
+                  'pipelines did not see the same data). This is a gate, not a result: '
+                  'agreement to within the elastic-model swap (``robust_hybrid`` sits '
+                  '1.4–3.7 % above Gordon in Rrs on L23) plus the free ``B_p`` says the '
+                  'PACE arm stands on the data PAB published from. Produced by '
+                  '``ioptics/runs/prototypes/rt_tests/pab_consistency.py``.'),
+            published=published))
+
     # ---- the ladder table -----------------------------------------------------
     for fm in (PRIMARY, SECONDARY):
         if fm not in f['methods']:

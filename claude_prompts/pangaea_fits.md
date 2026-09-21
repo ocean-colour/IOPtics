@@ -332,6 +332,46 @@ none is implemented):
 
 ### Logs
 
+### 2026-09-18 (D1 resolved from the thesis side: `pangaea_fits_v2` published as its own page; leaderboard re-folded)
+
+D1 ("how should the committed mixed sweep be regenerated") was never answered
+here; prompt 8 of `claudes-phd-thesis/claude_prompts/qual_exam_prompts.md`
+answered it by asking for the corrected PANGAEA page. Done as the Task-4
+recommendation said: **`pangaea_fits_v2` sits beside `multi_L23_PANGAEA_v2`**,
+not in its place. New driver `ioptics/runs/prototypes/pangaea_fits/build_v1.py`
+(stage 2 metrics, stage 3 exemplars + cross-algorithm page + fold + landing)
+gives the sweep the same treatment every published sweep has. Page:
+`docs/source/reports/pangaea_fits_v2/{cross_algorithm,exemplar_fits}.rst`;
+QC headline **ok 43.2 / 52.6 / 37.6 %** (expb_pow / giop / gsm) over 1,593
+attempted, `insitu` noise, red-peaked declined pre-fit — the Round-2 numbers
+exactly.
+
+Two consolidation actions at the same time, both because the Mac transfer
+landed on `profx` this morning: `multi_L23_PANGAEA_v2`'s page was regenerated
+from the `profx` copy of the sweep (created 2026-08-10, ioptics 4ea86db) so
+page and canonical runs tree agree — the committed page had been built from
+the Mac copy (2026-08-08, e0e6729); the two differ by ≤3e-3 in χ² on 540 rows,
+4 statuses, and `a_cdom440` on 2,530 rows (the point-estimate central-value
+fix between the two code versions). And the leaderboard was re-folded over the
+whole tree: **5 sweeps, 788 rows** — `expb_giop_L23_test20` and
+`gloria_turbid_v3` are back (their trees were Mac-only at the 08-19 fold, so
+their rows and landing cards had been dropped), `pangaea_fits_v2` is new, the
+RT-test sweeps stay out by flag.
+
+One rule added on the way: `report.profiles._sweep_dirs` now follows the
+board's `leaderboard: false` flag. Rebuilding the landing had produced
+algorithm/dataset profile pages for the five RT rungs reading "not in the
+registry" and "no scoreable result" beside a coverage row saying
+`scored (n=3308)`; those pages are gone and the RT ladder is their page.
+`datasets/PACE.rst` is new and correct by design (a registered adapter with
+no board result gets a page that says so). Test added in `test_profiles.py`.
+
+Verified: suite without `$OS_COLOR` **516 passed, 61 skipped**;
+`sphinx-build -W` on the full tree **exit 0**. Nothing committed — JXP runs
+git. Records of the consolidation and of every citation's location are in the
+thesis repository (`reports/runs_consolidation.md`,
+`reports/citation_manifest.md`).
+
 ### 2026-08-14 (PR task 2: address the PR #11 review comments)
 
 **One review finding (Cursor Bugbot, medium) — confirmed real, fixed, and

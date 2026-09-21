@@ -1,0 +1,4 @@
+dataset,algorithm,frac_not_ok,n_attempted,n_scored,chi2_nu_median,rel_misfit_median,rel_misfit_median_all,frac_good,frac_overfit,frac_underfit,frac_qc_fail,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed
+PANGAEA,expb_pow,0.6351,655,239,1.4024,0.0319,0.0596,0.8536,0.0,0.1464,0.3618,0.3649,0.3618,0.2473,0.026
+PANGAEA,giop,0.5466,655,297,1.1302,0.0511,0.08,0.7407,0.0,0.2593,0.2992,0.4534,0.2992,0.2473,0.0
+PANGAEA,gsm,0.7527,655,162,3.4035,0.0901,0.1227,0.1296,0.0,0.8704,0.5053,0.2473,0.5053,0.2473,0.0

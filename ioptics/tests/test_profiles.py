@@ -174,3 +174,23 @@ def test_landing_page_carries_the_matrix_and_links_the_profiles(tmp_path):
     assert 'algorithms/*' in txt and 'datasets/*' in txt and 'glossary' in txt
     assert (docs / 'reports' / profiles.ALGORITHM_DIR / 'expb_pow.rst').is_file()
     assert (docs / 'reports' / profiles.DATASET_DIR / 'L23.rst').is_file()
+
+
+def test_profiles_follow_the_board_exclusion_flag(tmp_path):
+    """A ``leaderboard: false`` sweep gets no coverage row and no profile page.
+
+    The RT-test sweeps are five rungs of one algorithm kept off the board on
+    purpose; before this rule they produced algorithm and dataset profile pages
+    reading "not in the registry" beside a coverage row saying "scored".
+    """
+    import yaml
+    from ioptics.report import profiles
+
+    _sweep(tmp_path, 'on_board', algos=('expb_pow', 'giop'))
+    _sweep(tmp_path, 'off_board', dataset='PANGAEA', algos=('expb_pow', 'gsm'))
+    (tmp_path / 'off_board' / 'provenance.yaml').write_text(
+        yaml.safe_dump({'sweep_id': 'off_board', 'leaderboard': False}))
+    matrix = profiles.coverage_matrix(tmp_path)
+    assert set(matrix['dataset']) == {'L23'}
+    assert 'gsm' not in set(matrix['algorithm'])
+    assert [p.name for p in profiles._sweep_dirs(tmp_path)] == ['on_board']

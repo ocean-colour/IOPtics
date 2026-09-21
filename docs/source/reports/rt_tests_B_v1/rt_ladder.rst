@@ -53,6 +53,16 @@ This is the **headline figure for this arm**: for every spectrum both rungs retr
 
    Fractional change in retrieved a_ph, a_dg and bb_p at 442 nm from ``expb_pow_hyb_el`` to ``expb_pow_hyb_ramflcdom``, MCMC medians, one histogram per component (a_ph: n = 99, a_dg: n = 99, bb_p: n = 99).
 
+Consistency with PAB's fits of the same pixels
+----------------------------------------------
+
+These spectra are the pixels PAB fitted in its ``run1k`` run with BING's ``ExpBPow`` under the **Gordon** elastic forward model. The elastic hybrid rung refits them under ``robust_hybrid`` with one extra free parameter (``B_p``). Rows: Pearson correlation of the posterior medians across pixels, the median and 16–84 % span of (ours − PAB) in the parameter's own scale (``Adg``, ``Aph``, ``Bnw`` are log10 amplitudes), the derived-chlorophyll ratio, and the largest difference between the observed spectra and variances the two fitters were handed (a non-zero value there would mean the pipelines did not see the same data). This is a gate, not a result: agreement to within the elastic-model swap (``robust_hybrid`` sits 1.4–3.7 % above Gordon in Rrs on L23) plus the free ``B_p`` says the PACE arm stands on the data PAB published from. Produced by ``ioptics/runs/prototypes/rt_tests/pab_consistency.py``.
+
+.. csv-table:: Elastic hybrid rung vs PAB run1k ExpBPow (Gordon), per shared parameter.
+   :file: pab_consistency_summary.csv
+   :header-rows: 1
+   :widths: auto
+
 The ladder — mcmc
 -----------------
 

@@ -44,12 +44,23 @@ SCORED = 'scored'
 
 
 def _sweep_dirs(runs_root):
-    """Every sweep directory that carries a results table (not just metrics)."""
+    """Every *publishable* sweep directory that carries a results table.
+
+    Follows the board: a sweep whose provenance says ``leaderboard: false``
+    (:func:`ioptics.report.leaderboard._leaderboard_enabled`) is left out here
+    too. The RT-test sweeps are the case that forced this — five rungs of one
+    algorithm, deliberately kept off the board, were getting algorithm and
+    dataset profile pages that said "not in the registry" and "no scoreable
+    result" beside a coverage row saying ``scored (n=3308)``, because the
+    variants are opt-in and the sweeps are excluded from the standings the
+    prose is written from. Their page is the RT ladder, not a profile.
+    """
     runs_root = Path(runs_root)
     if not runs_root.is_dir():
         return []
     return sorted(p for p in runs_root.iterdir()
-                  if (p / io.SCALAR_FILE).is_file())
+                  if (p / io.SCALAR_FILE).is_file()
+                  and leaderboard._leaderboard_enabled(p))
 
 
 def coverage_matrix(runs_root=None, *, root=None):

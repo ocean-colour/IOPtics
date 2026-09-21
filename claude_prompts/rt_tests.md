@@ -791,6 +791,46 @@ surfaced real design decisions that should be settled **before RT-A runs
 
 ## Logs
 
+### 2026-09-18 — Task 13 consistency check made reproducible; RT-B page carries it (Fable)
+
+Thesis prompt 7 ("Run RT-B") found RT-B already run and closed (task 13,
+2026-09-17) and the PACE ladder page already built (task 14, this morning).
+The one part of task 13 that existed only as prose in this log — the PAB
+run1k consistency check — is now code:
+`ioptics/runs/prototypes/rt_tests/pab_consistency.py`. It matches every
+`expb_pow_hyb_el_PACE_<stem>.npz` chain in `rt_tests_B_v1` to
+`$OS_COLOR/PAB/run1k/fit_chains/<stem>.npz`, compares the observed `Rrs` and
+`varRrs` handed to the two fitters band by band, the posterior medians of
+the five shared parameters (post-burn chains on both sides; `Adg`, `Aph`,
+`Bnw` log10, `Sdg`, `beta` linear) and the derived `Chl = 10**Aph/0.05582`,
+and writes `tables/pab_consistency.csv` (per pixel) and
+`tables/pab_consistency_summary.csv` under the sweep. `rt_ladder.build`
+adds a "Consistency with PAB's fits of the same pixels" section whenever
+that summary exists, so only the PACE page carries it.
+
+**Result (99 of 99 pixels matched, 0 without a PAB chain):** the spectra are
+identical — max |ΔRrs| = 0 and max |ΔvarRrs| = 0 on all 136 bands — so the
+two pipelines fitted the same data. Posterior-median correlations Adg 0.987,
+Sdg 0.939, Aph 0.965, Bnw 0.998, beta 0.935; median (ours − PAB) −0.010 /
+−0.0007 / +0.022 / +0.048 / −0.078 with 16–84 % spans of ±0.04 (Adg),
+[−0.03, +0.13] (Aph), [+0.03, +0.06] (Bnw), [−0.37, +0.01] (beta); derived
+Chl ratio median 1.053, 16–84 % [0.94, 1.36], log-correlation 0.965.
+Identical to the numbers logged on 09-17 to the third decimal, now with an
+artefact behind them. The systematic +0.05 dex in `Bnw` is the imprint of
+the elastic-model swap (`robust_hybrid` sits above Gordon in Rrs) plus the
+free `B_p`; nothing else moved. **PASS**, as before.
+
+**Verification.** Two tests added to `test_report_rt_ladder.py` (the
+comparison and summary on synthetic chains with a planted +0.02 dex Aph
+offset; the page section appearing when the table exists). Full suite
+without `$OS_COLOR`: **515 passed, 61 skipped**. `sphinx-build -W` on the
+full tree: **exit 0**. Stage 5 re-run; the L23 and PANGAEA pages are
+unchanged in content.
+
+Nothing committed — JXP runs git: new `pab_consistency.py`; modified
+`report/rt_ladder.py`, `tests/test_report_rt_ladder.py`,
+`docs/source/reports/rt_tests_B_v1/` (page + new CSV), this file.
+
 ### 2026-09-18 — Execution task 14 COMPLETE: the RT-ladder page type built and run for all three arms (Fable)
 
 **What was built.** Stage 5 of `build_v1.py` was a stub that raised; it is now
