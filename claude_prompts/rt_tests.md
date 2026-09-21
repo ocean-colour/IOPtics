@@ -162,6 +162,11 @@ Use Fable.  Log your work.
     leaderboard untouched by these sweeps. `sphinx-build -W` green;
     full `pytest -q` without `$OS_COLOR`. Final summary in Logs. Q&A, Log.
 
+15. **Cleaning up.** I have answered Q54 and Q55.  Please see those and act accordingly.
+    Then let me know how best to view all of the new results.  In fact, create a doc 
+    named `reports/rt_tests_debrief.md` and put all of the relevant information there
+    including a summary of the results and links to the relevant pages.  Log your work.
+
 ## Q&A
 
 Questions for JXP after exploring BING's `rt` package, the RoB `robust.rt` code,
@@ -781,6 +786,8 @@ surfaced real design decisions that should be settled **before RT-A runs
     `claudes-phd-thesis/claude_prompts/qual_exam_prompts.md`; nothing was merged
     today.
 
+>A. Yes, use your recommendation
+
 55. **The PACE headline went in now, not in prompt 7.** Task 14 asked for the
     PACE fractional-change figure and RT-B had already run (task 13 closed
     2026-09-17), so the page type was built for all three arms and the
@@ -789,7 +796,80 @@ surfaced real design decisions that should be settled **before RT-A runs
     Prompt 7 therefore reduces to reviewing that page. Object if you would rather
     the PACE page wait.
 
+>A. That's all fine
+
+---
+
+### Round 11 (2026-09-21) — after Execution task 15 (cleanup + debrief)
+
+Task 15 is done (see Log). Three housekeeping decisions, all yours, none
+blocking:
+
+56. **Delete `$OS_COLOR/IOPtics/transfer_2026-09-17/`?** 202 MB, nothing
+    depends on it anymore (the Mac's multi_v2 assets proved redundant — see
+    Log), and its README records the resolution. Left in place for you.
+
+57. **Publish the RT pages:** the three `rt_tests_*` report pages and the
+    debrief's readthedocs URLs are dead until `rt-tests` merges to
+    `develop` (local branch is 8 commits ahead). Merge when ready; the
+    debrief notes the local-build alternative meanwhile.
+
+58. **`reports/rt_tests_debrief.md` is untracked** — commit it when you're
+    happy with it (JXP runs git).
+
 ## Logs
+
+### 2026-09-21 — Execution task 15: Q54/Q55 acted on; consolidation verified; debrief written (Opus 5, orchestrated by Fable)
+
+Round-10 answers recorded: Q54 = use the recommendation; Q55 = fine as-is
+(no action). Delegated to Opus 5.
+
+**Q54 consolidation — outcome: the Mac assets are redundant.**
+- Pre-existing state the question didn't anticipate: IOPtics HEAD `3a7d6cb`
+  (2026-09-21, JXP) had already rebuilt the committed
+  `multi_L23_PANGAEA_v2` page from profx's 2026-08-10 parquets — so the
+  "which run is the page from" question was effectively settled in favor
+  of profx by that commit.
+- Stage-3 regeneration test (build_exemplars + cross_algorithm build
+  against profx's parquets, docs snapshotted first): **byte-identical** —
+  all 15 PNGs, all 9 CSVs, exemplar_fits.rst identical; the single
+  changed file (`cross_algorithm.rst`) differed only in random Bokeh embed
+  UUIDs and was restored from the snapshot. `git status docs/` is clean.
+- The Mac copy is confirmed to be a *different* (older) run — 7/9 tables
+  differ numerically (e.g. n_scored 3314→3315) — but nothing was copied:
+  the committed page doesn't derive from it. Left staged;
+  `transfer_2026-09-17/README.md` written recording the resolution (Q56).
+- Leaderboard: `update()` was a byte-identical no-op — the transferred
+  `expb_giop_L23_test20` (90 rows) and `gloria_turbid_v3` (160 rows) were
+  already folded; 788 rows total; **zero rt_tests rows** (leaderboard:
+  false honored). `build_landing()` not needed, not run.
+
+**Debrief written:** `reports/rt_tests_debrief.md` (~330 lines): the
+five-rung ladder and three-sweep design, headline results, nine caveats,
+viewing instructions, codebase-change summary, Q54 housekeeping. Every
+headline number **re-verified against the parquets** (ΔBIC medians
+computed two independent ways): L23 **+2.140 / 70.64% favor full stack /
+16.52% strong**; PANGAEA **−1.0845 (elastic favored, 0% strong)**; PACE
+**+1.207 / 30.30% strong (bimodal)**; all 15 χ²ᵥ and fractional-change
+medians; statuses/counts/timings; PAB check.
+
+**Log corrections found during re-verification** (recorded here so the
+09-17 entries aren't cited blind):
+- RT-B B_p posterior medians are **0.0163–0.0242** over the full 99
+  pixels (parquet), not the logged 0.020–0.028 from 15 sampled chains;
+  the low end is the ztt rung. Conclusion unchanged (hybrid rungs sit
+  above the emulator span).
+- DomainWarning line count: 27,232 by direct grep vs the logged 40,321
+  (different counting convention); ESS re-sample with stricter
+  max-over-params τ gives 666–1,445 vs logged 840–1,730 (same health
+  verdict). PANGAEA headline n=72 is the metrics pair-overlap convention
+  (all-five-rungs-ok gives n=67, median −1.264).
+
+**Verification:** CI-equivalent suite **516 passed, 61 skipped, 0 failed**;
+sphinx `-W` build succeeded; docs tree byte-identical to HEAD; only
+repo changes are the untracked debrief (Q58) and this file. Nothing
+committed — JXP runs git. Q56–Q58 posed above; the RT-tests execution
+phase (prompts 6–15) is complete.
 
 ### 2026-09-18 — Task 13 consistency check made reproducible; RT-B page carries it (Fable)
 
