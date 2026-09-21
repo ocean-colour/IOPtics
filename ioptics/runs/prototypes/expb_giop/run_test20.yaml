@@ -1,0 +1,27 @@
+# The L23 smoke sweep — 20 spectra, expb_pow vs giop.
+#
+# This is the sweep behind ``docs/source/reports/expb_giop_L23_test20/``. It exists
+# as a committed config (rather than as a sweep_id someone typed once) because the
+# published page had gone stale with no reproducible way to regenerate it: the
+# artifacts were not on this laptop and no config named that sweep.
+#
+# It is deliberately small and deliberately **not** a scientific result — 20 of L23's
+# 3320 spectra. Its jobs are (a) to keep a second dataset's rows on the leaderboard
+# and (b) to be the only sweep that fits the *same* spectra both ways, so the
+# chi-squared-vs-MCMC comparison and the posterior corner plots have anything to
+# render at all. For real L23 coverage see ``multi_v2``.
+sweep_id: expb_giop_L23_test20
+datasets: [L23]
+noise_model: pace
+algorithms:
+  - name: expb_pow       # standard 5-param BING — also MCMC-fit on the subset
+    fit_method: mcmc
+  - giop                 # chi-squared only
+fit_method: chisq        # sweep default (applies to giop)
+mcmc_subset: 8           # spectra expb_pow ALSO fits with MCMC.
+                         #   ~140 s per chain at the default 40 000 steps, serial,
+                         #   so 8 is ~19 min — enough for a coverage comparison and
+                         #   a corner plot, and small enough to re-run on a laptop.
+seed: 1234
+wv_min: 400
+wv_max: 750

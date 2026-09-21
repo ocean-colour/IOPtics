@@ -29,6 +29,38 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+#: Allowed :class:`RetrievalResult` status values.
+#:
+#: - ``'ok'`` -- the fit converged and is an acceptable solution.
+#: - ``'poor_fit'`` -- the optimiser returned, but the solution is not
+#:   acceptable: reduced chi-squared above :data:`CHI2NU_POOR_FIT`. The
+#:   parameters are recorded, so the row can be inspected, but it should
+#:   not be scored as a success.
+#: - ``'out_of_scope'`` -- the spectrum sits outside what the model family
+#:   is built for (see :data:`RED_PEAK_NM`). Since 2026-08-10 this is
+#:   assigned **before** fitting: :func:`ioptics.run.run_algorithm` declines
+#:   a red-peaked record up front (unless the spec sets ``fits_turbid``), so
+#:   the row means "we declined to fit this". A force-fit that still went
+#:   poorly on a red-peaked spectrum earns the same label post-hoc.
+#:   Distinguishing this from ``'poor_fit'`` is the difference between
+#:   "this model did badly here" and "no algorithm in this family should be
+#:   expected to work here".
+#: - ``'fit_failed'`` -- no usable parameters (the optimiser raised, or
+#:   produced non-finite values).
+STATUSES = ('ok', 'poor_fit', 'out_of_scope', 'fit_failed')
+
+#: Reduced chi-squared above which a converged fit is not a solution.
+#: Shared with :data:`ioptics.metrics.CHI2NU_QC_MAX` so the per-row status
+#: and the aggregate ``frac_qc_fail`` metric cannot drift apart.
+CHI2NU_POOR_FIT = 5.0
+
+#: Rrs peak wavelength (nm) above which a spectrum is treated as turbid,
+#: i.e. outside the open-ocean model family's regime. From the GLORIA
+#: investigation: clear spectra peak near 400-505 nm and fit well, while
+#: the turbid ones peak at 560-750 nm and are missed by 80-91%
+#: (``reports/gloria_fits_report.md``).
+RED_PEAK_NM = 560.0
+
 
 @dataclass
 class PreparedRecord:
@@ -84,6 +116,16 @@ class PreparedRecord:
     meta : dict, optional
         Free-form metadata (lat/lon/date/source/sensor; L23 ``X``/``Y``; water
         type / trophic bin). Defaults to an empty dict.
+    qwip_score : float, optional
+        Spectral-shape quality **annotation** (never an exclusion): the QWIP
+        score of Dierssen et al. (2022, doi:10.3389/frsen.2022.869611) —
+        measured NDI(492,665) minus the value the QWIP polynomial predicts
+        from the spectrum's Apparent Visible Wavelength. ``|score|`` ≲ 0.2 is the
+        paper's field-data screening threshold; large values flag suspect
+        spectral shapes (e.g. residual sky glint, optically shallow water).
+        NaN when the spectrum cannot support it (no coverage of 492/665 nm).
+        See :func:`ioptics.prep.qwip_score`; added 2026-08-12 (PANGAEA
+        investigation Task-4 B1, approved by JXP).
     """
 
     dataset:      str
@@ -98,6 +140,7 @@ class PreparedRecord:
     noise_model:  str
     noise_seed:   int | None
     meta:         dict = field(default_factory=dict)
+    qwip_score:   float = np.nan
 
 
 @dataclass
@@ -161,8 +204,9 @@ class RetrievalResult:
         Fit-quality / model-selection statistics: ``chi2``, ``chi2_nu``,
         ``AIC``, ``BIC``, ``n_bands``, ``k``. Defaults to an empty dict.
     status : str
-        ``'ok'`` | ``'fit_failed'`` | a QC flag (e.g. ``'Rrs_MAE>0.25'``).
-        Defaults to ``'ok'``.
+        One of :data:`STATUSES`: ``'ok'`` | ``'poor_fit'`` |
+        ``'out_of_scope'`` | ``'fit_failed'``. Defaults to ``'ok'``.
+        See :data:`STATUSES` for what separates the middle two.
     provenance_id : str
         Link into the sweep's ``provenance.yaml`` (provenance record +
         algorithm block). Defaults to an empty string.

@@ -1,0 +1,11 @@
+dataset,component,ref_wave,model_a,model_b,n_paired,win_frac_a,mae_a,mae_b,delta_mae,d_lo,d_hi,verdict
+L23,a,440,expb_pow,giop,3271,0.5754,0.0991,0.0958,0.0034,0.0002,0.007,indistinguishable
+L23,a,443,expb_pow,giop,3271,0.5851,0.0953,0.0927,0.0026,-0.0005,0.0058,indistinguishable
+L23,a_dg,440,expb_pow,giop,3271,0.306,0.3201,0.1899,0.1302,0.1205,0.1402,giop
+L23,a_dg,443,expb_pow,giop,3271,0.3017,0.338,0.2004,0.1377,0.127,0.1486,giop
+L23,a_ph,440,expb_pow,giop,3271,0.4546,1.0785,0.3693,0.7092,0.5891,0.8364,giop
+L23,a_ph,443,expb_pow,giop,3271,0.4843,1.0421,0.3864,0.6556,0.5453,0.7882,giop
+L23,bb,555,expb_pow,giop,3271,0.4965,0.0551,0.0521,0.003,0.0016,0.0046,indistinguishable
+L23,bb,670,expb_pow,giop,3271,0.7282,0.0862,0.1275,-0.0413,-0.045,-0.0379,indistinguishable
+L23,bb_p,555,expb_pow,giop,3271,0.498,0.108,0.1054,0.0026,-0.0004,0.0054,indistinguishable
+L23,bb_p,670,expb_pow,giop,3271,0.7362,0.1444,0.2098,-0.0654,-0.0712,-0.0591,indistinguishable

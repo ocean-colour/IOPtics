@@ -1,0 +1,2277 @@
+=====================
+Dataset profile — L23
+=====================
+
+In one paragraph
+----------------
+
+**L23** has been fitted by 3 algorithm(s): ``expb_pow``, ``giop``, ``gsm``. It scores a, a_dg, a_ph, bb, bb_p at the reference bands. The leading entry is ``expb_pow`` on a(440).
+
+What this dataset can score
+---------------------------
+
+A dataset can only score what it carries truth for; a component with no truth here is absent rather than failing.
+
+.. list-table:: What this dataset can score
+   :header-rows: 1
+   :widths: auto
+
+   * - algorithm
+     - state
+     - attempted
+     - fits ok
+     - scored pairs
+   * - ``expb_pow``
+     - scored
+     - 9960
+     - 9923
+     - 6619
+   * - ``giop``
+     - scored
+     - 6640
+     - 6556
+     - 6556
+   * - ``gsm``
+     - scored
+     - 3320
+     - 3286
+     - 3286
+
+Ranked contests
+---------------
+
+Where no pair of algorithms separated, the ``ranking`` column says *indistinguishable* instead of printing an order the data do not support.
+
+.. list-table:: L23 — who leads where
+   :header-rows: 1
+   :widths: auto
+
+   * - component
+     - ref_wave
+     - stratum
+     - fit_method
+     - rank
+     - ranking
+     - algorithm
+     - mae
+     - bias
+     - win_frac
+     - caveat
+   * - a
+     - 440
+     - all
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.0548
+     - 0.0227
+     - 0.846
+     - 
+   * - a
+     - 440
+     - eutrophic
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.276
+     - 0.276
+     - 0.843
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.0381
+     - 0.00207
+     - 0.885
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.0248
+     - 0.00243
+     - 0.804
+     - 
+   * - a
+     - 440
+     - all
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.0958
+     - 0.0913
+     - 0.578
+     - 
+   * - a
+     - 440
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.338
+     - 0.335
+     - 0.72
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - gsm
+     - 0.0902
+     - 0.0869
+     - 0.57
+     - 
+   * - a
+     - 440
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.482
+     - 0.481
+     - 0.41
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.035
+     - 0.0253
+     - 0.682
+     - 
+   * - a
+     - 440
+     - eutrophic
+     - chisq
+     - 4
+     - ranked
+     - expb_pow
+     - 0.541
+     - 0.535
+     - 0.28
+     - 
+   * - a
+     - 440
+     - all
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.183
+     - 0.183
+     - 0.0744
+     - 
+   * - a
+     - 440
+     - eutrophic
+     - chisq
+     - 5
+     - ranked
+     - gsm
+     - 0.528
+     - 0.528
+     - 0.241
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.191
+     - 0.191
+     - 0.0447
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.133
+     - 0.133
+     - 0.00942
+     - 
+   * - a
+     - 440
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0987
+     - 0.0411
+     - 0.575
+     - 
+   * - a
+     - 440
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.0958
+     - 0.0901
+     - 0.425
+     - 
+   * - a
+     - 440
+     - all
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.0681
+     - 0.0178
+     - —
+     - 
+   * - a
+     - 440
+     - eutrophic
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.458
+     - 0.458
+     - —
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0865
+     - 0.0191
+     - 0.555
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.0886
+     - 0.0824
+     - 0.445
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.055
+     - -0.000367
+     - —
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0547
+     - 0.0264
+     - 0.737
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.068
+     - 0.0641
+     - 0.263
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.037
+     - -0.00209
+     - —
+     - 
+   * - a
+     - 443
+     - all
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.0528
+     - 0.0229
+     - 0.874
+     - 
+   * - a
+     - 443
+     - eutrophic
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.249
+     - 0.249
+     - 0.837
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.037
+     - 0.00315
+     - 0.912
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.0243
+     - 0.0047
+     - 0.825
+     - 
+   * - a
+     - 443
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.31
+     - 0.307
+     - 0.72
+     - 
+   * - a
+     - 443
+     - all
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.11
+     - 0.107
+     - 0.535
+     - 
+   * - a
+     - 443
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.453
+     - 0.452
+     - 0.465
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.106
+     - 0.104
+     - 0.522
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.0389
+     - 0.0322
+     - 0.662
+     - 
+   * - a
+     - 443
+     - eutrophic
+     - chisq
+     - 4
+     - ranked
+     - expb_pow
+     - 0.505
+     - 0.497
+     - 0.28
+     - 
+   * - a
+     - 443
+     - all
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.179
+     - 0.179
+     - 0.0905
+     - 
+   * - a
+     - 443
+     - eutrophic
+     - chisq
+     - 5
+     - ranked
+     - gsm
+     - 0.576
+     - 0.576
+     - 0.19
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.187
+     - 0.187
+     - 0.0664
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.132
+     - 0.132
+     - 0.00863
+     - 
+   * - a
+     - 443
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0949
+     - 0.0401
+     - 0.585
+     - 
+   * - a
+     - 443
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.0927
+     - 0.0871
+     - 0.415
+     - 
+   * - a
+     - 443
+     - all
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.0655
+     - 0.0175
+     - —
+     - 
+   * - a
+     - 443
+     - eutrophic
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.424
+     - 0.424
+     - —
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0837
+     - 0.0192
+     - 0.559
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.086
+     - 0.0798
+     - 0.441
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.0533
+     - 7.8e-05
+     - —
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0527
+     - 0.0271
+     - 0.771
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.0682
+     - 0.0648
+     - 0.229
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - mcmc
+     - —
+     - sole competitor
+     - expb_pow
+     - 0.0362
+     - 0.000129
+     - —
+     - 
+   * - a_dg
+     - 440
+     - all
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.19
+     - -0.0282
+     - 0.694
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.283
+     - -0.103
+     - 0.727
+     - 
+   * - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.181
+     - -0.0294
+     - 0.694
+     - 
+   * - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - 1
+     - ranked
+     - giop
+     - 0.146
+     - -0.0222
+     - 0.706
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.556
+     - -0.0329
+     - 0.646
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - gsm
+     - 0.46
+     - 0.458
+     - 0.424
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 4
+     - ranked
+     - expb_pow
+     - 0.826
+     - 0.415
+     - 0.354
+     - 
+   * - a_dg
+     - 440
+     - all
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.32
+     - 0.052
+     - 0.306
+     - 
+   * - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.604
+     - 0.386
+     - 0.352
+     - 
+   * - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.31
+     - 0.045
+     - 0.306
+     - 
+   * - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.255
+     - 0.00261
+     - 0.294
+     - 
+   * - a_dg
+     - 440
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - gsm
+     - 0.156
+     - 0.0759
+     - 0.586
+     - 
+
+(180 further rows are on the :doc:`/reports/leaderboard_full` page.)
+
+Retrieval success
+-----------------
+
+The gap between spectra attempted and spectra scored is a statement about the **models**, not about the data or the software: ``frac_out_of_scope`` means the spectrum sits outside the model family's regime.
+
+.. list-table:: L23 — why rows were or were not scored
+   :header-rows: 1
+   :widths: auto
+
+   * - algorithm
+     - fit_method
+     - n_attempted
+     - frac_ok
+     - frac_poor_fit
+     - frac_out_of_scope
+     - frac_fit_failed
+     - chi2_nu_median
+     - rel_misfit_median_all
+   * - expb_pow
+     - chisq
+     - 3.32e+03
+     - 0.998
+     - 0.000602
+     - 0.000301
+     - 0.000602
+     - 1.04
+     - 0.0333
+   * - gsm
+     - chisq
+     - 3.32e+03
+     - 0.99
+     - 0.00843
+     - 0.00181
+     - 0
+     - 1.45
+     - 0.0394
+   * - giop
+     - chisq
+     - 3.32e+03
+     - 0.985
+     - 0
+     - 0.00482
+     - 0.00994
+     - 1.03
+     - 0.113
+   * - expb_pow
+     - mcmc
+     - 3.32e+03
+     - 0.995
+     - 0
+     - 0.00482
+     - 0
+     - 1.05
+     - 0.109
+
+By water type
+-------------
+
+.. list-table:: L23 — per trophic stratum
+   :header-rows: 1
+   :widths: auto
+
+   * - stratum
+     - component
+     - ref_wave
+     - algorithm
+     - rank
+     - mae
+     - win_frac
+     - frac_ok
+   * - eutrophic
+     - a
+     - 440
+     - giop
+     - 1
+     - 0.276
+     - 0.843
+     - 0.904
+   * - eutrophic
+     - a
+     - 440
+     - giop
+     - 2
+     - 0.338
+     - 0.72
+     - 0.91
+   * - eutrophic
+     - a
+     - 440
+     - expb_pow
+     - 3
+     - 0.482
+     - 0.41
+     - 0.972
+   * - eutrophic
+     - a
+     - 440
+     - expb_pow
+     - 4
+     - 0.541
+     - 0.28
+     - 0.91
+   * - eutrophic
+     - a
+     - 440
+     - gsm
+     - 5
+     - 0.528
+     - 0.241
+     - 0.847
+   * - eutrophic
+     - a
+     - 440
+     - expb_pow
+     - —
+     - 0.458
+     - —
+     - 0.91
+   * - eutrophic
+     - a
+     - 443
+     - giop
+     - 1
+     - 0.249
+     - 0.837
+     - 0.904
+   * - eutrophic
+     - a
+     - 443
+     - giop
+     - 2
+     - 0.31
+     - 0.72
+     - 0.91
+   * - eutrophic
+     - a
+     - 443
+     - expb_pow
+     - 3
+     - 0.453
+     - 0.465
+     - 0.972
+   * - eutrophic
+     - a
+     - 443
+     - expb_pow
+     - 4
+     - 0.505
+     - 0.28
+     - 0.91
+   * - eutrophic
+     - a
+     - 443
+     - gsm
+     - 5
+     - 0.576
+     - 0.19
+     - 0.847
+   * - eutrophic
+     - a
+     - 443
+     - expb_pow
+     - —
+     - 0.424
+     - —
+     - 0.91
+   * - eutrophic
+     - a_dg
+     - 440
+     - giop
+     - 1
+     - 0.283
+     - 0.727
+     - 0.904
+   * - eutrophic
+     - a_dg
+     - 440
+     - giop
+     - 2
+     - 0.556
+     - 0.646
+     - 0.91
+   * - eutrophic
+     - a_dg
+     - 440
+     - gsm
+     - 3
+     - 0.46
+     - 0.424
+     - 0.847
+   * - eutrophic
+     - a_dg
+     - 440
+     - expb_pow
+     - 4
+     - 0.826
+     - 0.354
+     - 0.91
+   * - eutrophic
+     - a_dg
+     - 440
+     - expb_pow
+     - 5
+     - 0.604
+     - 0.352
+     - 0.972
+   * - eutrophic
+     - a_dg
+     - 440
+     - expb_pow
+     - —
+     - 1.21
+     - —
+     - 0.91
+   * - eutrophic
+     - a_dg
+     - 443
+     - giop
+     - 1
+     - 0.301
+     - 0.693
+     - 0.904
+   * - eutrophic
+     - a_dg
+     - 443
+     - giop
+     - 2
+     - 0.564
+     - 0.627
+     - 0.91
+   * - eutrophic
+     - a_dg
+     - 443
+     - gsm
+     - 3
+     - 0.409
+     - 0.479
+     - 0.847
+   * - eutrophic
+     - a_dg
+     - 443
+     - expb_pow
+     - 4
+     - 0.817
+     - 0.373
+     - 0.91
+   * - eutrophic
+     - a_dg
+     - 443
+     - expb_pow
+     - 5
+     - 0.6
+     - 0.332
+     - 0.972
+   * - eutrophic
+     - a_dg
+     - 443
+     - expb_pow
+     - —
+     - 1.2
+     - —
+     - 0.91
+   * - eutrophic
+     - a_ph
+     - 440
+     - expb_pow
+     - 1
+     - 0.518
+     - 0.581
+     - 0.972
+   * - eutrophic
+     - a_ph
+     - 440
+     - giop
+     - —
+     - 1.29
+     - 0.516
+     - 0.91
+   * - eutrophic
+     - a_ph
+     - 440
+     - expb_pow
+     - —
+     - 0.878
+     - 0.484
+     - 0.91
+   * - eutrophic
+     - a_ph
+     - 440
+     - giop
+     - 4
+     - 0.664
+     - 0.46
+     - 0.904
+   * - eutrophic
+     - a_ph
+     - 440
+     - gsm
+     - 5
+     - 0.687
+     - 0.455
+     - 0.847
+   * - eutrophic
+     - a_ph
+     - 440
+     - expb_pow
+     - —
+     - 1.45
+     - —
+     - 0.91
+   * - eutrophic
+     - a_ph
+     - 443
+     - expb_pow
+     - 1
+     - 0.483
+     - 0.668
+     - 0.972
+   * - eutrophic
+     - a_ph
+     - 443
+     - giop
+     - 2
+     - 0.625
+     - 0.62
+     - 0.904
+   * - eutrophic
+     - a_ph
+     - 443
+     - giop
+     - —
+     - 1.26
+     - 0.503
+     - 0.91
+   * - eutrophic
+     - a_ph
+     - 443
+     - expb_pow
+     - —
+     - 0.837
+     - 0.497
+     - 0.91
+   * - eutrophic
+     - a_ph
+     - 443
+     - gsm
+     - 5
+     - 0.849
+     - 0.197
+     - 0.847
+   * - eutrophic
+     - a_ph
+     - 443
+     - expb_pow
+     - —
+     - 1.39
+     - —
+     - 0.91
+   * - eutrophic
+     - bb
+     - 555
+     - gsm
+     - 1
+     - 0.0562
+     - 0.769
+     - 0.847
+   * - eutrophic
+     - bb
+     - 555
+     - giop
+     - —
+     - 0.127
+     - 0.72
+     - 0.91
+   * - eutrophic
+     - bb
+     - 555
+     - giop
+     - 3
+     - 0.0614
+     - 0.593
+     - 0.904
+   * - eutrophic
+     - bb
+     - 555
+     - expb_pow
+     - —
+     - 0.212
+     - 0.28
+     - 0.91
+   * - eutrophic
+     - bb
+     - 555
+     - expb_pow
+     - 5
+     - 0.175
+     - 0.158
+     - 0.972
+   * - eutrophic
+     - bb
+     - 555
+     - expb_pow
+     - —
+     - 0.169
+     - —
+     - 0.91
+   * - eutrophic
+     - bb
+     - 670
+     - gsm
+     - —
+     - 0.0355
+     - 0.897
+     - 0.847
+   * - eutrophic
+     - bb
+     - 670
+     - expb_pow
+     - —
+     - 0.135
+     - 0.609
+     - 0.91
+   * - eutrophic
+     - bb
+     - 670
+     - giop
+     - —
+     - 0.0859
+     - 0.47
+     - 0.904
+   * - eutrophic
+     - bb
+     - 670
+     - giop
+     - —
+     - 0.143
+     - 0.391
+     - 0.91
+   * - eutrophic
+     - bb
+     - 670
+     - expb_pow
+     - —
+     - 0.108
+     - 0.158
+     - 0.972
+   * - eutrophic
+     - bb
+     - 670
+     - expb_pow
+     - —
+     - 0.132
+     - —
+     - 0.91
+   * - eutrophic
+     - bb_p
+     - 555
+     - gsm
+     - 1
+     - 0.066
+     - 0.769
+     - 0.847
+   * - eutrophic
+     - bb_p
+     - 555
+     - giop
+     - —
+     - 0.153
+     - 0.72
+     - 0.91
+   * - eutrophic
+     - bb_p
+     - 555
+     - giop
+     - 3
+     - 0.0741
+     - 0.593
+     - 0.904
+   * - eutrophic
+     - bb_p
+     - 555
+     - expb_pow
+     - —
+     - 0.253
+     - 0.28
+     - 0.91
+   * - eutrophic
+     - bb_p
+     - 555
+     - expb_pow
+     - 5
+     - 0.205
+     - 0.158
+     - 0.972
+   * - eutrophic
+     - bb_p
+     - 555
+     - expb_pow
+     - —
+     - 0.2
+     - —
+     - 0.91
+   * - eutrophic
+     - bb_p
+     - 670
+     - gsm
+     - —
+     - 0.0389
+     - 0.893
+     - 0.847
+   * - eutrophic
+     - bb_p
+     - 670
+     - expb_pow
+     - —
+     - 0.151
+     - 0.609
+     - 0.91
+   * - eutrophic
+     - bb_p
+     - 670
+     - giop
+     - —
+     - 0.0971
+     - 0.473
+     - 0.904
+   * - eutrophic
+     - bb_p
+     - 670
+     - giop
+     - —
+     - 0.159
+     - 0.391
+     - 0.91
+   * - eutrophic
+     - bb_p
+     - 670
+     - expb_pow
+     - —
+     - 0.121
+     - 0.158
+     - 0.972
+   * - eutrophic
+     - bb_p
+     - 670
+     - expb_pow
+     - —
+     - 0.148
+     - —
+     - 0.91
+
+(120 further rows are on the :doc:`/reports/leaderboard_full` page.)
+
+Least-squares vs MCMC
+---------------------
+
+Both fit methods scored here (chisq, mcmc). They are ranked as separate contests — a win fraction from one pool cannot be compared with one from the other.
+
+.. list-table:: L23 — by fit method
+   :header-rows: 1
+   :widths: auto
+
+   * - fit_method
+     - component
+     - ref_wave
+     - algorithm
+     - mae
+     - coverage68
+     - frac_ok
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0548
+     - 0.557
+     - 0.998
+   * - chisq
+     - a
+     - 440
+     - gsm
+     - 0.0958
+     - 0.166
+     - 0.99
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0987
+     - 0.455
+     - 0.995
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.0958
+     - 0.215
+     - 0.985
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.183
+     - 0.000609
+     - 0.989
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.276
+     - 0
+     - 0.904
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.338
+     - 0.0318
+     - 0.91
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.482
+     - 0.0349
+     - 0.972
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.541
+     - 0.138
+     - 0.91
+   * - chisq
+     - a
+     - 440
+     - gsm
+     - 0.528
+     - 0
+     - 0.847
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0381
+     - 0.616
+     - 1
+   * - chisq
+     - a
+     - 440
+     - gsm
+     - 0.0902
+     - 0.138
+     - 0.997
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0865
+     - 0.51
+     - 1
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.0886
+     - 0.227
+     - 1
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.191
+     - 0
+     - 0.997
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0248
+     - 0.471
+     - 1
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0547
+     - 0.325
+     - 1
+   * - chisq
+     - a
+     - 440
+     - gsm
+     - 0.035
+     - 0.315
+     - 1
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.068
+     - 0.211
+     - 0.951
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.133
+     - 0.00314
+     - 0.983
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0528
+     - 0.538
+     - 0.998
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0949
+     - 0.442
+     - 0.995
+   * - chisq
+     - a
+     - 443
+     - gsm
+     - 0.11
+     - 0.137
+     - 0.99
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.0927
+     - 0.214
+     - 0.985
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.179
+     - 0.000609
+     - 0.989
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.249
+     - 0
+     - 0.904
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.31
+     - 0.051
+     - 0.91
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.453
+     - 0.0349
+     - 0.972
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.505
+     - 0.145
+     - 0.91
+   * - chisq
+     - a
+     - 443
+     - gsm
+     - 0.576
+     - 0
+     - 0.847
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.037
+     - 0.6
+     - 1
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0837
+     - 0.498
+     - 1
+   * - chisq
+     - a
+     - 443
+     - gsm
+     - 0.106
+     - 0.105
+     - 0.997
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.086
+     - 0.227
+     - 1
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.187
+     - 0
+     - 0.997
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0243
+     - 0.437
+     - 1
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0527
+     - 0.302
+     - 1
+   * - chisq
+     - a
+     - 443
+     - gsm
+     - 0.0389
+     - 0.292
+     - 1
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.0682
+     - 0.203
+     - 0.951
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.132
+     - 0.00314
+     - 0.983
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.19
+     - 0.361
+     - 0.985
+   * - chisq
+     - a_dg
+     - 440
+     - gsm
+     - 0.156
+     - 0.194
+     - 0.99
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.166
+     - 0.356
+     - 0.989
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.222
+     - 0.758
+     - 0.998
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.32
+     - 0.936
+     - 0.995
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.283
+     - 0.237
+     - 0.904
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.556
+     - 0.565
+     - 0.91
+   * - chisq
+     - a_dg
+     - 440
+     - gsm
+     - 0.46
+     - 0.0267
+     - 0.847
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.826
+     - 0.745
+     - 0.91
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.604
+     - 0.372
+     - 0.972
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.181
+     - 0.367
+     - 1
+   * - chisq
+     - a_dg
+     - 440
+     - gsm
+     - 0.146
+     - 0.192
+     - 0.997
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.163
+     - 0.357
+     - 0.997
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.204
+     - 0.748
+     - 1
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.31
+     - 0.938
+     - 1
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.146
+     - 0.284
+     - 0.951
+   * - chisq
+     - a_dg
+     - 440
+     - gsm
+     - 0.132
+     - 0.239
+     - 1
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.149
+     - 0.38
+     - 0.983
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.205
+     - 0.897
+     - 1
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
+     - 0.255
+     - 0.977
+     - 1
+
+(180 further rows are on the :doc:`/reports/leaderboard_full` page.)
+
+Head-to-head
+------------
+
+.. list-table:: L23 — pairwise verdicts
+   :header-rows: 1
+   :widths: auto
+
+   * - component
+     - ref_wave
+     - model_a
+     - model_b
+     - n_paired
+     - delta_mae
+     - d_lo
+     - d_hi
+     - verdict
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.00335
+     - 0.000236
+     - 0.00696
+     - indistinguishable
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 616
+     - -0.0137
+     - -0.0169
+     - -0.0104
+     - indistinguishable
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.00213
+     - -0.00502
+     - 0.00075
+     - indistinguishable
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 161
+     - 0.203
+     - 0.151
+     - 0.258
+     - giop
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.00261
+     - -0.000508
+     - 0.00583
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 616
+     - -0.0158
+     - -0.0188
+     - -0.0126
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.00232
+     - -0.00512
+     - 0.000802
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 161
+     - 0.195
+     - 0.151
+     - 0.246
+     - giop
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.00302
+     - 0.00158
+     - 0.00461
+     - indistinguishable
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 616
+     - 0.00551
+     - 0.00361
+     - 0.00729
+     - indistinguishable
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.00236
+     - -0.00385
+     - -0.000616
+     - indistinguishable
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 161
+     - 0.0851
+     - 0.0682
+     - 0.103
+     - underpowered
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - -0.0413
+     - -0.045
+     - -0.0379
+     - indistinguishable
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 616
+     - 0.0116
+     - 0.00485
+     - 0.019
+     - indistinguishable
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.0568
+     - -0.0609
+     - -0.0529
+     - indistinguishable
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 161
+     - -0.00822
+     - -0.0174
+     - 0.00192
+     - indistinguishable
+   * - a_ph
+     - 440
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.709
+     - 0.589
+     - 0.836
+     - giop
+   * - a_ph
+     - 440
+     - expb_pow
+     - giop
+     - 616
+     - 0.478
+     - 0.288
+     - 0.697
+     - giop
+   * - a_ph
+     - 440
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - 0.83
+     - 0.677
+     - 0.974
+     - giop
+   * - a_ph
+     - 440
+     - expb_pow
+     - giop
+     - 161
+     - -0.413
+     - -1.22
+     - 0.0446
+     - underpowered
+   * - a_ph
+     - 443
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.656
+     - 0.545
+     - 0.788
+     - giop
+   * - a_ph
+     - 443
+     - expb_pow
+     - giop
+     - 616
+     - 0.428
+     - 0.256
+     - 0.627
+     - giop
+   * - a_ph
+     - 443
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - 0.773
+     - 0.642
+     - 0.918
+     - giop
+   * - a_ph
+     - 443
+     - expb_pow
+     - giop
+     - 161
+     - -0.426
+     - -1.08
+     - 0.0351
+     - underpowered
+   * - a_dg
+     - 440
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.13
+     - 0.121
+     - 0.14
+     - giop
+   * - a_dg
+     - 440
+     - expb_pow
+     - giop
+     - 616
+     - 0.107
+     - 0.0915
+     - 0.121
+     - giop
+   * - a_dg
+     - 440
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - 0.129
+     - 0.119
+     - 0.14
+     - giop
+   * - a_dg
+     - 440
+     - expb_pow
+     - giop
+     - 161
+     - 0.27
+     - 0.15
+     - 0.404
+     - giop
+   * - a_dg
+     - 443
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.138
+     - 0.127
+     - 0.149
+     - giop
+   * - a_dg
+     - 443
+     - expb_pow
+     - giop
+     - 616
+     - 0.116
+     - 0.1
+     - 0.133
+     - giop
+   * - a_dg
+     - 443
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - 0.137
+     - 0.125
+     - 0.15
+     - giop
+   * - a_dg
+     - 443
+     - expb_pow
+     - giop
+     - 161
+     - 0.253
+     - 0.134
+     - 0.38
+     - giop
+   * - bb_p
+     - 555
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - 0.00262
+     - -0.00041
+     - 0.00543
+     - indistinguishable
+   * - bb_p
+     - 555
+     - expb_pow
+     - giop
+     - 616
+     - 0.0174
+     - 0.012
+     - 0.0228
+     - indistinguishable
+   * - bb_p
+     - 555
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.00669
+     - -0.00979
+     - -0.00365
+     - indistinguishable
+   * - bb_p
+     - 555
+     - expb_pow
+     - giop
+     - 161
+     - 0.0999
+     - 0.0798
+     - 0.122
+     - underpowered
+   * - bb_p
+     - 670
+     - expb_pow
+     - giop
+     - 3.27e+03
+     - -0.0654
+     - -0.0712
+     - -0.0591
+     - indistinguishable
+   * - bb_p
+     - 670
+     - expb_pow
+     - giop
+     - 616
+     - 0.0287
+     - 0.0127
+     - 0.0446
+     - indistinguishable
+   * - bb_p
+     - 670
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.0923
+     - -0.0995
+     - -0.0852
+     - indistinguishable
+   * - bb_p
+     - 670
+     - expb_pow
+     - giop
+     - 161
+     - -0.00863
+     - -0.0203
+     - 0.00251
+     - indistinguishable
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 3.28e+03
+     - -0.131
+     - -0.135
+     - -0.128
+     - expb_pow
+   * - a
+     - 440
+     - expb_pow
+     - gsm
+     - 3.29e+03
+     - -0.0425
+     - -0.0452
+     - -0.0402
+     - indistinguishable
+   * - a
+     - 440
+     - giop
+     - gsm
+     - 3.26e+03
+     - 0.088
+     - 0.0852
+     - 0.0907
+     - indistinguishable
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 637
+     - -0.108
+     - -0.112
+     - -0.105
+     - expb_pow
+   * - a
+     - 440
+     - expb_pow
+     - gsm
+     - 648
+     - -0.0103
+     - -0.0126
+     - -0.00786
+     - indistinguishable
+   * - a
+     - 440
+     - giop
+     - gsm
+     - 637
+     - 0.098
+     - 0.0949
+     - 0.101
+     - underpowered
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.153
+     - -0.155
+     - -0.15
+     - expb_pow
+   * - a
+     - 440
+     - expb_pow
+     - gsm
+     - 2.49e+03
+     - -0.0522
+     - -0.0552
+     - -0.0495
+     - indistinguishable
+   * - a
+     - 440
+     - giop
+     - gsm
+     - 2.48e+03
+     - 0.1
+     - 0.0981
+     - 0.103
+     - gsm
+   * - a
+     - 440
+     - expb_pow
+     - giop
+     - 160
+     - 0.164
+     - 0.122
+     - 0.207
+     - giop
+   * - a
+     - 440
+     - expb_pow
+     - gsm
+     - 150
+     - -0.013
+     - -0.0515
+     - 0.0271
+     - indistinguishable
+   * - a
+     - 440
+     - giop
+     - gsm
+     - 140
+     - -0.24
+     - -0.256
+     - -0.224
+     - giop
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 3.28e+03
+     - -0.129
+     - -0.132
+     - -0.125
+     - expb_pow
+   * - a
+     - 443
+     - expb_pow
+     - gsm
+     - 3.29e+03
+     - -0.0586
+     - -0.0615
+     - -0.0559
+     - indistinguishable
+   * - a
+     - 443
+     - giop
+     - gsm
+     - 3.26e+03
+     - 0.0699
+     - 0.0668
+     - 0.073
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 637
+     - -0.108
+     - -0.112
+     - -0.105
+     - expb_pow
+   * - a
+     - 443
+     - expb_pow
+     - gsm
+     - 648
+     - -0.0146
+     - -0.017
+     - -0.0123
+     - indistinguishable
+   * - a
+     - 443
+     - giop
+     - gsm
+     - 637
+     - 0.0933
+     - 0.0904
+     - 0.0959
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 2.49e+03
+     - -0.15
+     - -0.153
+     - -0.147
+     - expb_pow
+   * - a
+     - 443
+     - expb_pow
+     - gsm
+     - 2.49e+03
+     - -0.0688
+     - -0.0718
+     - -0.0657
+     - indistinguishable
+
+(100 further rows are on the :doc:`/reports/leaderboard_full` page.)
+
+See also
+--------
+
+Every column on this page is defined on the :doc:`/reports/glossary` page — including which value counts as *perfect* for each metric, the three different ``n`` denominators, and what the tie and calibration verdicts do and do not claim. For what the models are (rather than how they scored) see :doc:`/models`; for the data and its truth see :doc:`/datasets`.

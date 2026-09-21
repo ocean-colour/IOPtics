@@ -111,6 +111,13 @@ class SweepConfig:
         Number of spectra to additionally run with MCMC. ``None`` if unset.
     seed : int or None
         Master RNG seed for reproducible noise draws. ``None`` if unset.
+    wv_min, wv_max : float or None
+        Sweep-level wavelength trim ``[wv_min, wv_max]`` applied to every record
+        (forwarded to ``prep_dataset``). ``None`` = the dataset's native grid.
+        Needed to keep a fit inside the model's valid range: L23 X=4 inelastic
+        (Raman) wants ``[400, 700]``, and datasets whose native grid runs past
+        the Gordon-coefficient table (e.g. GLORIA to 900 nm) need ``wv_max`` at
+        or below the table's max (~750 nm).
     results_root : str or None
         Output root override; ``None`` defers to ``$OS_COLOR/IOPtics/runs/``.
     extra : dict
@@ -124,6 +131,8 @@ class SweepConfig:
     fit_method:   str = 'chisq'
     mcmc_subset:  int | None = None
     seed:         int | None = None
+    wv_min:       float | None = None
+    wv_max:       float | None = None
     results_root: str | None = None
     extra:        dict = field(default_factory=dict)
     # Where it was loaded from; not part of identity / round-trip.
@@ -143,6 +152,10 @@ class SweepConfig:
             out['mcmc_subset'] = self.mcmc_subset
         if self.seed is not None:
             out['seed'] = self.seed
+        if self.wv_min is not None:
+            out['wv_min'] = self.wv_min
+        if self.wv_max is not None:
+            out['wv_max'] = self.wv_max
         if self.results_root is not None:
             out['results_root'] = self.results_root
         out.update(self.extra)
@@ -178,6 +191,17 @@ def _coerce_algorithm(entry, idx):
             raise ConfigError(
                 f"algorithms[{idx}] ('{name}'): fit_method must be one of "
                 f"{ALLOWED_FIT_METHODS}, got {fit_method!r}")
+        # Validate override *keys* at load time. The alternative is discovering a
+        # typo after a multi-hour sweep has run at the default — or worse, not
+        # discovering it, which is what happened while overrides were ignored
+        # entirely. The registry is not consulted here (config stays a neutral
+        # carrier, resolvable without the algorithm layer); only the field names are.
+        from ioptics.algorithms.spec import OVERRIDABLE_FIELDS
+        unknown = [k for k in d if k not in OVERRIDABLE_FIELDS]
+        if unknown:
+            raise ConfigError(
+                f"algorithms[{idx}] ('{name}'): cannot override {sorted(unknown)} — "
+                f"overridable fields are {sorted(OVERRIDABLE_FIELDS)}")
         return AlgorithmConfig(name=name, fit_method=fit_method, overrides=d)
 
     raise ConfigError(
@@ -233,6 +257,19 @@ def from_dict(mapping, *, source_path=None):
     if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
         raise ConfigError("'seed' must be an integer")
 
+    def _opt_wave(key):
+        v = d.pop(key, None)
+        if v is None:
+            return None
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise ConfigError(f"'{key}' must be a number (nm)")
+        return float(v)
+
+    wv_min = _opt_wave('wv_min')
+    wv_max = _opt_wave('wv_max')
+    if wv_min is not None and wv_max is not None and wv_min >= wv_max:
+        raise ConfigError(f"'wv_min' ({wv_min}) must be < 'wv_max' ({wv_max})")
+
     results_root = d.pop('results_root', None)
     if results_root is not None and not isinstance(results_root, str):
         raise ConfigError("'results_root' must be a string path")
@@ -245,6 +282,8 @@ def from_dict(mapping, *, source_path=None):
         fit_method=fit_method,
         mcmc_subset=mcmc_subset,
         seed=seed,
+        wv_min=wv_min,
+        wv_max=wv_max,
         results_root=results_root,
         extra=d,                       # any remaining keys, preserved
         source_path=source_path,

@@ -2,9 +2,9 @@ sweep_id: expb_giop_L23_v1
 datasets: [L23]
 noise_model: pace
 algorithms:
-  - expb_pow            # chisq only (sweep default)
-  - name: giop
-    fit_method: mcmc    # giop opts into MCMC on the subset (per-algorithm)
-fit_method: chisq
-mcmc_subset: 200        # # spectra giop also fits with MCMC
+  - name: expb_pow       # standard 5-param BING — MCMC on the subset (1d)
+    fit_method: mcmc     #   (still χ²-fit over all records, like every algo)
+  - giop                 # LM/χ² only — not MCMC-fit (1b)
+fit_method: chisq        # sweep default (applies to giop)
+mcmc_subset: 200         # spectra expb_pow also fits with MCMC (D4)
 seed: 1234

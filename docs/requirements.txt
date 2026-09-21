@@ -7,4 +7,4 @@
 # are mocked in conf.py, so they are not required to build the docs.
 
 sphinx>=7.0
-sphinx-rtd-theme>=2.0
+furo>=2024.1               # modern light/dark HTML theme (see conf.py)

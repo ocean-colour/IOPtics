@@ -24,9 +24,41 @@ Stage 3. Two invariants:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import numpy as np
 
-from ioptics.records import RetrievalResult
+from ioptics.records import RED_PEAK_NM, RetrievalResult
+
+#: Anchor wavelength (nm) for the QAA-style band inversion in
+#: :func:`initial_guess` — the red band where the water's own absorption
+#: dominates, so ``u`` can be turned into an absolute ``bb``.
+ANCHOR_NM = 670.0
+
+#: Observed ``Rrs`` at :data:`ANCHOR_NM` (sr^-1) at or above which a spectrum
+#: is treated as **turbid** by :func:`is_turbid`. This is QAA_v6's own
+#: reference-wavelength switch (Lee et al. 2002, doi:10.1364/AO.41.005755;
+#: QAA_v6 update, ioccg.org/groups/software.html): below it the red band
+#: carries too little signal for the turbid branch, above it the red anchor's
+#: *non-water* absorption can no longer be neglected.
+TURBID_RRS_ANCHOR = 0.0015
+
+#: QAA_v6 Step 2 (turbid branch) coefficients for the non-water absorption at
+#: the red anchor, ``a_nw(670) = C * [Rrs(670) / (Rrs(443) + Rrs(490))] ** E``.
+#: Note SeaDAS ships different values for this step (0.07 with a
+#: ``Rrs(670)/Rrs(440)`` ratio); these are the coefficients in the IOCCG
+#: QAA_v6 document.
+QAA_ANW_ANCHOR = (0.39, 1.14)
+
+#: Bands (nm) forming the blue-green denominator of that ratio.
+QAA_BLUE_NM = (443.0, 490.0)
+
+#: Fraction of each prior's range by which the seed is held **off** its
+#: bounds. A parameter seeded exactly on a bound gives the bounded
+#: least-squares solver a zero-width search direction, which is a real
+#: failure mode for turbid fits (the amplitudes and the backscattering
+#: exponent are the ones that clip).
+BOUND_INSET = 1e-3
 
 
 def _prior_bounds(models):
@@ -48,7 +80,93 @@ def _log_mask(models):
     return np.array(mask, dtype=bool)
 
 
-def initial_guess(models, record):
+def is_turbid(record, *, threshold=TURBID_RRS_ANCHOR):
+    """Whether the *observed* spectrum is turbid, by QAA_v6's own test.
+
+    ``Rrs`` at the nearest band to :data:`ANCHOR_NM` at or above ``threshold``
+    (:data:`TURBID_RRS_ANCHOR`). This is the switch QAA_v6 uses to move its
+    reference wavelength into the red, and it is what :func:`initial_guess`
+    keys its turbid branch on. Truth-free: it reads ``record.Rrs`` only.
+
+    Parameters
+    ----------
+    record : PreparedRecord
+        The record whose observed ``Rrs`` is tested.
+    threshold : float, optional
+        Rrs threshold (sr^-1) at the anchor band.
+
+    Returns
+    -------
+    bool
+        ``True`` for a turbid spectrum. A non-finite anchor ``Rrs`` gives
+        ``False`` (the conservative, open-ocean branch).
+    """
+    wave = np.asarray(record.wave, dtype=float)
+    Rrs = np.asarray(record.Rrs, dtype=float)
+    iref = int(np.argmin(np.abs(wave - ANCHOR_NM)))
+    return bool(np.isfinite(Rrs[iref]) and Rrs[iref] >= threshold)
+
+
+def _anw_anchor(wave, Rrs, turbid):
+    """Non-water absorption (m^-1) at the red anchor, QAA_v6 Step 2.
+
+    Zero on the open-ocean branch — that is the ``a(670) ~ a_w(670)``
+    approximation, valid where the red band is absorption-dominated by water
+    itself. On the turbid branch it is QAA_v6's empirical term,
+    ``C * [Rrs(670) / (Rrs(443) + Rrs(490))] ** E``
+    (:data:`QAA_ANW_ANCHOR`), which is exactly the quantity that
+    approximation throws away: in mineral-rich water ``a_nw(670)`` is
+    comparable to (or larger than) ``a_w(670)``, so neglecting it
+    under-estimates the anchor ``bb`` — and with it every amplitude seeded
+    from it — by that same factor.
+
+    Returns ``0.0`` if the blue bands are unusable (non-finite or a
+    non-positive sum), so a bad spectrum degrades to the open-ocean branch
+    rather than producing a garbage anchor.
+    """
+    if not turbid:
+        return 0.0
+    iref = int(np.argmin(np.abs(wave - ANCHOR_NM)))
+    blue = sum(float(Rrs[int(np.argmin(np.abs(wave - nm)))])
+               for nm in QAA_BLUE_NM)
+    if not np.isfinite(blue) or blue <= 0.0:
+        return 0.0
+    coeff, expo = QAA_ANW_ANCHOR
+    return float(coeff * (Rrs[iref] / blue) ** expo)
+
+
+def _seed_bb_exponent(model, p0_b, Y, log_mask_b):
+    """Seed a *single*-power-law backscattering exponent from the QAA ``Y``.
+
+    ``bbNWPow.init_guess`` returns a fixed ``beta = 1`` — an open-ocean
+    particle slope — no matter what the spectrum looks like. For turbid water
+    the shape wanted is flat or rising (``beta <= 0``), so the fixed seed
+    starts the optimizer on the wrong side of the answer, and for
+    ``expb_pow`` (whose ``beta`` prior floors at 0) it starts it hard against
+    a bound. ``record.init['Y']`` already holds the Lee/QAA estimate of that
+    exponent from the observed blue-to-green ratio, so use it.
+
+    Applied **only** to the one-component power law (``Pow``, i.e.
+    ``expb_pow`` / ``expb_powflex``), where the exponent *is* the whole
+    spectral shape and ``Y`` estimates precisely that. ``Pow2`` / ``Pow2Flat``
+    are left alone: their exponents are per-component (a bulk slope is not an
+    estimate of either), and bing seeds them deliberately — the mineral one
+    just off zero so MCMC's multiplicative walker spread can move it.
+
+    Returns a copy of ``p0_b``; ``log_mask_b`` marks the log-flavored
+    (amplitude) slots, so the exponent is the remaining one.
+    """
+    if getattr(model, 'name', '') != 'Pow' or not np.isfinite(Y):
+        return p0_b
+    slots = np.flatnonzero(~np.asarray(log_mask_b, dtype=bool))
+    if slots.size != 1:
+        return p0_b
+    out = np.array(p0_b, dtype=float)
+    out[slots[0]] = float(Y)
+    return out
+
+
+def initial_guess(models, record, *, turbid=None):
     """A **truth-free** least-squares starting point from the observed ``Rrs``.
 
     Performs a QAA-style band inversion of ``record.Rrs`` using BING's Gordon
@@ -56,6 +174,38 @@ def initial_guess(models, record):
     ``bb_w`` on the bb-model) to estimate ``a_nw``/``bb_nw``, then seeds each
     model's parameters via its ``init_guess`` (amplitudes log10'd to match the
     log-uniform priors). Never touches ``record.truth``.
+
+    The inversion is anchored at :data:`ANCHOR_NM`, and how that anchor is
+    read depends on the water:
+
+    - **open ocean** — ``a(670) ~ a_w(670)``; non-water absorption in the red
+      is neglected.
+    - **turbid** — ``a(670) = a_w(670) + a_nw(670)`` with QAA_v6's empirical
+      red-band term (:func:`_anw_anchor`), and the backscattering exponent of
+      a one-component power law seeded from the QAA ``Y`` rather than from
+      bing's fixed ``beta = 1`` (:func:`_seed_bb_exponent`).
+
+    Which branch is taken is decided per spectrum by :func:`is_turbid`. On the
+    open-ocean branch the returned seed is **identical** to the pre-turbid
+    one, save for being held :data:`BOUND_INSET` off the prior bounds instead
+    of clipped onto them.
+
+    Parameters
+    ----------
+    models : list
+        ``[a_model, bb_model]`` as built by ``AlgorithmSpec.build_models``.
+    record : PreparedRecord
+        Supplies ``wave``, the observed ``Rrs``, and ``init`` (``Chl``/``Y``).
+    turbid : bool or None, optional
+        Force the branch. ``None`` (default) auto-detects with
+        :func:`is_turbid`; pass ``False`` to reproduce the open-ocean seed on
+        any spectrum (which is how the two are compared).
+
+    Returns
+    -------
+    numpy.ndarray
+        The concatenated ``[a-params, bb-params]`` seed, strictly inside the
+        prior bounds.
     """
     from bing.rt import rrs as bing_rrs
 
@@ -63,6 +213,8 @@ def initial_guess(models, record):
     Rrs = np.asarray(record.Rrs, dtype=float)
     a_w = np.asarray(models[0].a_w, dtype=float)
     bb_w = np.asarray(models[1].bb_w, dtype=float)
+    if turbid is None:
+        turbid = is_turbid(record)
 
     # Gordon: rrs = G1 u + G2 u^2, u = bb / (a + bb)  ->  solve for u.
     rrs = Rrs / (bing_rrs.A_Rrs + bing_rrs.B_Rrs * Rrs)
@@ -70,9 +222,10 @@ def initial_guess(models, record):
     disc = np.clip(G1 * G1 + 4.0 * G2 * rrs, 0.0, None)
     u = np.clip((-G1 + np.sqrt(disc)) / (2.0 * G2), 1e-3, 1.0 - 1e-3)
 
-    # Red anchor (~670 nm): a ~ a_w there (non-water absorption is small).
-    iref = int(np.argmin(np.abs(wave - 670.0)))
-    a_ref = a_w[iref]
+    # Red anchor (~670 nm): total a there is a_w plus, in turbid water, a
+    # non-negligible non-water part.
+    iref = int(np.argmin(np.abs(wave - ANCHOR_NM)))
+    a_ref = a_w[iref] + _anw_anchor(wave, Rrs, turbid)
     bb_ref = u[iref] * a_ref / (1.0 - u[iref])
     bbnw_ref = max(bb_ref - bb_w[iref], 1e-4)
 
@@ -83,17 +236,22 @@ def initial_guess(models, record):
     a_nw = np.clip(a_tot - a_w, 1e-4, None)
     bb_nw = np.clip(bb_nw, 1e-5, None)
 
+    log_mask = _log_mask(models)
     p0_a = np.atleast_1d(models[0].init_guess(a_nw)).astype(float)
     p0_b = np.atleast_1d(models[1].init_guess(bb_nw)).astype(float)
+    if turbid:
+        p0_b = _seed_bb_exponent(models[1], p0_b, Y, log_mask[p0_a.size:])
     p0 = np.concatenate([p0_a, p0_b])
 
     # log10 the log-flavored amplitudes (mirrors bing.fitting.l23.prep_one_l23).
-    log_mask = _log_mask(models)
     p0[log_mask] = np.log10(np.clip(p0[log_mask], 1e-10, None))
 
-    # Keep the guess feasible w.r.t. the prior bounds.
+    # Keep the guess feasible w.r.t. the prior bounds — and strictly *inside*
+    # them, since a bounded least-squares solver cannot search outward from a
+    # parameter pinned to its bound.
     lo, hi = _prior_bounds(models)
-    return np.clip(p0, lo, hi)
+    inset = BOUND_INSET * (hi - lo)
+    return np.clip(p0, lo + inset, hi - inset)
 
 
 def _prepare(spec, record):
@@ -110,6 +268,20 @@ def _prepare(spec, record):
         models[0].init_var_gordon(
             include_G0=spec.rt.variable_Gordon_G0,
             include_Gb=spec.rt.variable_Gordon_bbp)
+    # Inelastic RT setup (L23 X=4). Raman needs no extra wiring here: both
+    # models call ``init_raman()`` in their constructors, so ``wave_ex``/``bb_R``
+    # are always set and the forward model's ``eval_a_ex``/``eval_bb_ex`` work.
+    # (Raman is numerically unstable blueward of ~400 nm, where the excitation
+    # wavelengths fall off the water/Gordon tables — trim the record to
+    # ``[400, 700]`` for inelastic fits, as bing's own X=4 path does.)
+    # Chl fluorescence, however, needs the downwelling irradiance ``Ed`` seeded
+    # on the a-model — mirror ``bing.fitting.l23``.
+    if spec.rt.include_Chl_fl:
+        from correct_atmosphere import downwelling
+        from bing.rt import chl_fl
+        Ed = downwelling.downwelling_irradiance(models[0].wave, 0.)
+        Ed_em = downwelling.downwelling_irradiance(chl_fl.LAMBDA_FL_PRIMARY, 0.)
+        models[0].init_Chl_fluorescence(Ed=Ed, Ed_em=Ed_em)
     rt_dict = rt_defs.rt_dict_from_p(p)
     # Truth-free model internals (Bricaud a_ph from Chl, Lee bb_p slope from Y),
     # from record.init (derived from the observed Rrs), never from truth.
@@ -122,21 +294,73 @@ def _prepare(spec, record):
     return p, models, rt_dict
 
 
+def is_red_peaked(record):
+    """True when the observed Rrs peaks redward of :data:`RED_PEAK_NM`.
+
+    The spectrum-only predicate behind the **pre-fit** ``out_of_scope``
+    assignment: turbid, red-peaked water is outside what the open-ocean
+    model family is built for, and as of 2026-08-10 (JXP's Task-1 answers,
+    ``claude_prompts/pangaea_fits.md``) the pipeline *declines* such a record
+    up front — separating "we declined to fit this" from "we fitted it and it
+    failed" — unless the algorithm claims turbid water in scope
+    (``AlgorithmSpec.fits_turbid``). The same predicate previously ran only
+    post-hoc, inside :func:`ioptics.evaluate._fit_status`, on fits that had
+    already gone poorly.
+    """
+    Rrs = np.asarray(record.Rrs, dtype=float)
+    if not np.any(np.isfinite(Rrs)):
+        return False
+    peak = float(np.asarray(record.wave, dtype=float)[int(np.nanargmax(Rrs))])
+    return peak > RED_PEAK_NM
+
+
+class UnderdeterminedFitError(ValueError):
+    """A spectrum with ``n_bands <= k`` cannot constrain the model.
+
+    Raised by :func:`fit_chisq` / :func:`fit_mcmc` **before** any optimizer
+    runs, and converted by :func:`run_algorithm` into a ``fit_failed``
+    :class:`~ioptics.records.RetrievalResult` whose stats carry the true
+    ``n_bands`` and ``k`` — so the refusal is a status we chose, identifiable
+    downstream as ``status == 'fit_failed' and n_bands <= k``, rather than a
+    ``LinAlgError: SVD did not converge`` surfacing from deep inside scipy
+    (which is how all 315 five-band PANGAEA spectra died under ``expb_pow``,
+    k = 5; see ``claude_prompts/pangaea_fits.md``).
+    """
+
+
+def _refuse_underdetermined(models, record):
+    """Raise :class:`UnderdeterminedFitError` when ``n_bands <= k``."""
+    k = int(models[0].nparam + models[1].nparam)
+    n_bands = int(np.asarray(record.wave).size)
+    if n_bands <= k:
+        raise UnderdeterminedFitError(
+            f'{record.dataset}/{record.obs_id}: n_bands={n_bands} <= k={k} '
+            '-- the fit is underdetermined by construction')
+
+
 def fit_chisq(spec, record):
     """Least-squares fit of one record; returns ``(models, rt_dict, ans, cov)``.
 
     The Stage-2 fitting core (used by :func:`run_algorithm` and exercised
     directly by tests). Builds models, seeds a truth-free initial guess, and
-    calls ``bing.fitting.chisq_fit.fit`` with prior-derived bounds.
+    calls ``bing.fitting.chisq_fit.fit`` with prior-derived bounds and the
+    spec's ``maxfev`` evaluation budget. Refuses an underdetermined record
+    (``n_bands <= k``) up front with :class:`UnderdeterminedFitError` instead
+    of letting scipy fail with a ``LinAlgError``.
     """
     from bing.fitting import chisq_fit
 
     _, models, rt_dict = _prepare(spec, record)
+    _refuse_underdetermined(models, record)
     p0 = initial_guess(models, record)
     bounds = _prior_bounds(models)
     items = (np.asarray(record.Rrs, dtype=float),
              np.asarray(record.varRrs, dtype=float), p0, record.obs_id)
-    ans, cov, _ = chisq_fit.fit(items, models, rt_dict, bounds=bounds)
+    # spec.maxfev is None for the open-ocean algorithms, which leaves
+    # scipy's default budget alone; the turbid models raise it because they
+    # otherwise run out of evaluations before converging.
+    ans, cov, _ = chisq_fit.fit(items, models, rt_dict, bounds=bounds,
+                                maxfev=getattr(spec, 'maxfev', None))
     return models, rt_dict, ans, cov
 
 
@@ -152,15 +376,18 @@ def fit_mcmc(spec, record):
     from bing.fitting import inference as bing_inf
 
     _, models, rt_dict = _prepare(spec, record)
+    _refuse_underdetermined(models, record)
     p0 = initial_guess(models, record)
 
     pdict = bing_inf.init_mcmc(models, nsteps=spec.mcmc.nsteps,
                                nburn=spec.mcmc.nburn)
-    idx = int(record.obs_id)                       # BING idx-keyed Chl/Y lookup
-    pdict['Chl'] = np.zeros(idx + 1)
-    pdict['Chl'][idx] = float(record.init.get('Chl', 0.0))
-    pdict['Y'] = np.zeros(idx + 1)
-    pdict['Y'][idx] = float(record.init.get('Y', 0.0))
+    # A single record is fit in isolation, so synthesize a positional index of 0
+    # with size-1 Chl/Y arrays (BING keys Chl/Y by this idx). This replaces
+    # ``int(record.obs_id)``, which fails on non-integer ids (e.g. GLORIA's
+    # 'GID_1'); the real obs id still rides on the result via ``record.obs_id``.
+    idx = 0
+    pdict['Chl'] = np.array([float(record.init.get('Chl', 0.0))])
+    pdict['Y'] = np.array([float(record.init.get('Y', 0.0))])
 
     items = (np.asarray(record.Rrs, dtype=float),
              np.asarray(record.varRrs, dtype=float), p0, idx)
@@ -176,26 +403,82 @@ def run_algorithm(spec, record, *, fit_method=None,
     Dispatches on ``fit_method`` (or ``spec.fit_method``): ``'chisq'``
     (least-squares, default) or ``'mcmc'`` (emcee). Both paths reconstruct the
     same components with 68/95 bands via :mod:`ioptics.evaluate`.
+
+    Two kinds of record are **declined up front**, in both strict modes,
+    rather than fitted:
+
+    - a red-peaked (turbid) record when the algorithm does not claim turbid
+      water in scope (``spec.fits_turbid`` is False) — returned as
+      ``out_of_scope``, per the pre-fit assignment decision
+      (``claude_prompts/pangaea_fits.md`` Q&A, 2026-08-10);
+    - an underdetermined record (``n_bands <= k``) — returned as
+      ``fit_failed`` rather than crashing the batch (strict) or masquerading
+      as an optimizer failure (robust).
+
+    Both results carry the true ``n_bands``/``k`` in their stats.
     """
     from ioptics import evaluate
 
     method = fit_method or spec.fit_method
-    if method == 'chisq':
-        models, rt_dict, ans, cov = fit_chisq(spec, record)
-        return evaluate.from_chisq(spec, record, models, rt_dict, ans, cov,
-                                   perc=perc)
-    if method == 'mcmc':
-        models, rt_dict, chains = fit_mcmc(spec, record)
-        return evaluate.from_chains(spec, record, models, rt_dict, chains,
-                                    perc=perc)
+    declined = _prefit_decline(spec, record, method)
+    if declined is not None:
+        return declined
+    try:
+        if method == 'chisq':
+            models, rt_dict, ans, cov = fit_chisq(spec, record)
+            return evaluate.from_chisq(spec, record, models, rt_dict, ans, cov,
+                                       perc=perc)
+        if method == 'mcmc':
+            models, rt_dict, chains = fit_mcmc(spec, record)
+            return evaluate.from_chains(spec, record, models, rt_dict, chains,
+                                        perc=perc)
+    except UnderdeterminedFitError:
+        return _failed_result(spec, record, method)
     raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
+
+
+def _prefit_decline(spec, record, fit_method):
+    """The pre-fit scope decision, shared by every fitting entry point.
+
+    Returns an ``out_of_scope`` :class:`~ioptics.records.RetrievalResult`
+    when the record is red-peaked and the spec does not claim turbid water
+    in scope, else ``None`` (proceed to fit). Lives in one function so the
+    χ² pass (:func:`run_algorithm`) and the MCMC subset
+    (:func:`_mcmc_subset`) cannot drift apart — they must agree on which
+    records a sweep declines (PR #11 review: the subset originally bypassed
+    the guard and could MCMC-fit spectra its own χ² pass had declined).
+    """
+    if not getattr(spec, 'fits_turbid', False) and is_red_peaked(record):
+        return _unfit_result(spec, record, fit_method, 'out_of_scope')
+    return None
+
+
+def _unfit_result(spec, record, fit_method, status):
+    """A minimal result for a record that was never fitted.
+
+    Shared by the failure path (``status='fit_failed'``) and the pre-fit
+    scope refusal (``status='out_of_scope'``). The stats dict carries the
+    observation's true ``n_bands`` (and the spec's ``k`` when the models can
+    be built) even though no fit ran. Before this, an empty stats dict made
+    :func:`ioptics.io._scalar_row` fill ``n_bands`` with 0 on exactly the
+    rows a reader most wants to diagnose — the true band count was only
+    recoverable by counting ``Rrs_obs`` rows in the spectral table.
+    """
+    stats = {'n_bands': int(np.asarray(record.wave).size)}
+    try:
+        models = spec.build_models(record.wave)
+        stats['k'] = int(models[0].nparam + models[1].nparam)
+    except Exception:
+        pass                    # model construction itself failed; omit k
+    return RetrievalResult(
+        dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
+        fit_method=fit_method or spec.fit_method, stats=stats,
+        status=status)
 
 
 def _failed_result(spec, record, fit_method):
     """A minimal ``fit_failed`` result so one bad fit doesn't kill a batch."""
-    return RetrievalResult(
-        dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
-        fit_method=fit_method or spec.fit_method, status='fit_failed')
+    return _unfit_result(spec, record, fit_method, 'fit_failed')
 
 
 def _run_one_safe(spec, record, fit_method, perc):
@@ -266,31 +549,166 @@ def _tag_pairs(results, records, sweep_id, algorithm):
     return pairs
 
 
-def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
-                 perc=((16, 84), (2.5, 97.5))):
-    """MCMC-fit a subset serially, **saving each posterior chain** to the
-    sweep's ``chains/`` dir and stamping the result's ``chain_file`` +
-    ``provenance_id``. Returns ``[(result, record), ...]``.
+#: Checkpoint cadence for the MCMC pass: ``run_sweep`` rewrites the results
+#: tables after every this-many MCMC fits, so an interrupted multi-hour pass
+#: keeps everything completed so far (the chains are already on disk — this
+#: keeps the rows that reference them). ~200 fits ≈ 20-40 min of pooled work
+#: between checkpoints at full-L23 scale, against a few seconds per rewrite.
+MCMC_CHECKPOINT_EVERY = 200
 
-    Serial (not pooled): the subset is small and the raw chains are large, so
-    persisting them here avoids shipping chains back across a process pool.
+
+def _record_seed(seed, algorithm, record):
+    """Deterministic per-record seed for the legacy global ``np.random``.
+
+    emcee 3 snapshots the global ``np.random`` state into the sampler at
+    construction, and BING's walker init draws from the same global stream —
+    so seeding it *per record* (from the sweep seed, the algorithm, and the
+    record's identity, never from the worker process) makes each chain
+    reproducible regardless of how records are distributed over a process
+    pool, and identical between a serial and a pooled run. The algorithm is
+    part of the key so two MCMC algorithms in one sweep do not share a
+    walker-init stream for the same record. CRC32 rather than ``hash()``
+    because the latter is salted per interpreter.
     """
-    from ioptics import evaluate, io, provenance
+    import zlib
+    key = f'{seed}|{algorithm}|{record.dataset}|{record.obs_id}'.encode()
+    return zlib.crc32(key)          # 0..2**32-1: valid for np.random.seed
 
-    pid = provenance.provenance_id(sweep_id, spec.name)
-    pairs = []
-    for record in records:
-        try:
-            models, rt_dict, chains = fit_mcmc(spec, record)
+
+def _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed):
+    """MCMC-fit one record and persist its chain; the pool worker.
+
+    Top-level (picklable) so :func:`_mcmc_subset` can run it under a
+    ``ProcessPoolExecutor``. Python 3.14's default start method on Linux is
+    ``forkserver``, so callers must be import-safe (guard scripts with
+    ``if __name__ == '__main__'``). Seeds the global RNG per record
+    (:func:`_record_seed`, restored afterwards so serial callers are not
+    left on a fit's stream), fits, evaluates, and saves the chain **from
+    inside the worker** — burned per :func:`ioptics.evaluate.chain_burn` and
+    thinned by :data:`ioptics.io.CHAIN_THIN` — so the raw 40 000-step chain
+    never crosses the pool.
+
+    Console handling: emcee's per-fit output (two tqdm bars + prints per
+    record) is redirected to ``/dev/null`` — interleaved across a pool it is
+    unreadable, and at full-L23 scale it is ~1 GB of log. Warnings are
+    **not** lost to that redirect: they are captured and summarized to one
+    ``[mcmc warn]`` line per fit, because on an unattended multi-hour robust
+    run a numerical warning (overflow in a model power law, NaN percentiles)
+    is the only early sign of a degenerate fit.
+
+    A failure while *persisting* the chain is a storage problem, not a
+    science result: under ``strict=False`` the evaluated fit is kept with
+    ``chain_file=None`` rather than demoted to ``fit_failed``.
+    """
+    import contextlib
+    import os
+    import warnings as _warnings
+    from collections import Counter
+
+    from ioptics import evaluate, io
+
+    declined = _prefit_decline(spec, record, 'mcmc')
+    if declined is not None:
+        declined.provenance_id = pid
+        return declined
+    rng_state = np.random.get_state()
+    np.random.seed(_record_seed(seed, spec.name, record))
+    res, chains = None, None
+    caught = []
+    try:
+        with _warnings.catch_warnings(record=True) as caught:
+            _warnings.simplefilter('always')
+            with open(os.devnull, 'w') as devnull, \
+                    contextlib.redirect_stdout(devnull), \
+                    contextlib.redirect_stderr(devnull):
+                models, rt_dict, chains = fit_mcmc(spec, record)
             res = evaluate.from_chains(spec, record, models, rt_dict, chains,
                                        perc=perc)
-            res.chain_file = str(io.save_chain(sweep_id, spec.name, record,
-                                               chains, root=root))
+    except UnderdeterminedFitError:
+        # a chosen status in BOTH strict modes, like run_algorithm
+        res = _failed_result(spec, record, 'mcmc')
+    except Exception:
+        if strict:
+            raise
+        res = _failed_result(spec, record, 'mcmc')
+    finally:
+        np.random.set_state(rng_state)
+
+    if chains is not None and res is not None and res.components:
+        try:
+            res.chain_file = str(io.save_chain(
+                sweep_id, spec.name, record, chains, root=root,
+                pnames=list(res.params),
+                burn=evaluate.chain_burn(spec, chains), thin=io.CHAIN_THIN,
+                nburn_sampler=spec.mcmc.nburn))
         except Exception:
             if strict:
                 raise
-            res = _failed_result(spec, record, 'mcmc')
-        res.provenance_id = pid
+            print(f'[mcmc warn] {record.dataset}:{record.obs_id} chain save '
+                  f'failed; fit kept without a chain file', flush=True)
+    if caught:
+        top = Counter(f'{w.category.__name__}: {w.message}'
+                      for w in caught).most_common(3)
+        gist = '; '.join(f'{msg} (x{n})' for msg, n in top)
+        print(f'[mcmc warn] {record.dataset}:{record.obs_id} '
+              f'{len(caught)} warnings: {gist}', flush=True)
+    res.provenance_id = pid
+    return res
+
+
+def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
+                 perc=((16, 84), (2.5, 97.5)), n_cores=1, seed=None,
+                 progress_from=0, progress_total=None):
+    """MCMC-fit a subset, **saving each posterior chain** to the sweep's
+    ``chains/`` dir and stamping the result's ``chain_file`` +
+    ``provenance_id``. Returns ``[(result, record), ...]``.
+
+    Pooled over ``n_cores`` (Stage 7, Task 13). This was deliberately serial
+    when the subset was small ("the subset is small and the raw chains are
+    large"); at the full-L23 scale of 3 320 records × ~140 s that premise
+    fails (~5.4 days serial). Each worker persists its own chain — burned +
+    thinned, see :func:`_mcmc_one` — so nothing large returns across the
+    pool, and the RNG is seeded per **record**, not per process
+    (:func:`_record_seed`), so the chains do not depend on the pool layout.
+
+    Applies the same pre-fit decisions as :func:`run_algorithm`, in both
+    strict modes: a red-peaked record is declined ``out_of_scope`` (unless
+    ``spec.fits_turbid``) and an underdetermined one becomes ``fit_failed``
+    — the MCMC subset must agree with its own sweep's χ² pass on which
+    records are fit at all (PR #11 review finding).
+
+    ``progress_from``/``progress_total`` only relabel the per-fit progress
+    lines, for callers (``run_sweep``) that feed the subset in checkpointed
+    chunks but want one running count.
+    """
+    from ioptics import provenance
+
+    records = list(records)
+    pid = provenance.provenance_id(sweep_id, spec.name)
+    n = len(records)
+    total = progress_total if progress_total is not None else n
+
+    def _progress(i, record, res):
+        print(f'[mcmc {progress_from + i + 1}/{total}] '
+              f'{record.dataset}:{record.obs_id} {res.status}', flush=True)
+
+    if n_cores and n_cores > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        from functools import partial
+        fn = partial(_mcmc_one, spec=spec, sweep_id=sweep_id, pid=pid,
+                     root=root, strict=strict, perc=perc, seed=seed)
+        pairs = []
+        with ProcessPoolExecutor(max_workers=n_cores) as ex:
+            for i, (res, record) in enumerate(zip(ex.map(fn, records),
+                                                  records)):
+                _progress(i, record, res)
+                pairs.append((res, record))
+        return pairs
+
+    pairs = []
+    for i, record in enumerate(records):
+        res = _mcmc_one(record, spec, sweep_id, pid, root, strict, perc, seed)
+        _progress(i, record, res)
         pairs.append((res, record))
     return pairs
 
@@ -309,9 +727,16 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     cfg : SweepConfig
         The sweep config (``sweep_id``, ``datasets``, ``algorithms``,
         ``noise_model``, ``mcmc_subset``, ``seed``, ``results_root``).
-    obs_ids : iterable or None, optional
-        Restrict the prep to these observation ids (default: all). Handy for
-        tests / partial sweeps.
+    obs_ids : iterable, mapping or None, optional
+        Restrict the prep to these observation ids (default: all). An iterable
+        applies to **every** dataset; a **mapping** ``{dataset: ids}`` bounds each
+        one separately, with a dataset absent from the mapping running in full.
+
+        The mapping form is what makes a mixed-dataset sweep tractable. PANGAEA
+        enumerates 64 071 observations of which only ~4 000 carry any truth to score
+        against, so an unbounded ``{L23, PANGAEA}`` sweep spends ~95% of its fits
+        producing rows no metric can use. Bounding PANGAEA while leaving L23 whole
+        is not expressible with a single id list.
     n_cores : int, optional
         Parallel workers for prep and fitting.
     strict : bool, optional
@@ -330,32 +755,72 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     out_root = root if root is not None else cfg.results_root
 
     # Prep records per dataset (native grid, sweep-level noise model + seed).
+    is_map = isinstance(obs_ids, Mapping)
     records, datasets_info = [], {}
     for dataset in cfg.datasets:
-        recs = prep.prep_dataset(dataset, obs_ids=obs_ids,
+        ids = obs_ids.get(dataset) if is_map else obs_ids
+        recs = prep.prep_dataset(dataset, obs_ids=ids,
                                  noise=cfg.noise_model, seed=cfg.seed,
+                                 wv_min=cfg.wv_min, wv_max=cfg.wv_max,
                                  n_cores=n_cores)
         records.extend(recs)
-        datasets_info[dataset] = {'n_obs': len(recs)}
+        # Record the bound in provenance: "PANGAEA n_obs=3896" is a different claim
+        # from "PANGAEA n_obs=3896 out of 64071 because the rest carry no truth",
+        # and only the second is reproducible.
+        info = {'n_obs': len(recs)}
+        if ids is not None:
+            info['n_requested'] = len(list(ids))
+            info['bounded'] = True
+        datasets_info[dataset] = info
 
-    specs = [registry.get(ac.name) for ac in cfg.algorithms]
+    # Per-algorithm overrides are **applied** here, not ignored: a config asking for
+    # `maxfev: 40000` used to run at the registry default while the provenance file
+    # recorded the default too, so nothing revealed that the request had no effect.
+    # An unknown key raises (see AlgorithmSpec.with_overrides), and the provenance
+    # digest is taken from the overridden spec, so an overridden sweep cannot pool
+    # with a default one as "the same algorithm".
+    specs = [registry.get(ac.name).with_overrides(ac.overrides)
+             for ac in cfg.algorithms]
 
     pairs = []
+    any_mcmc = False
     for ac, spec in zip(cfg.algorithms, specs):
         # χ² over all records (the sweep's fast first pass; every algorithm).
         chisq = run_batch(spec, records, fit_method='chisq', n_cores=n_cores,
                           strict=strict)
         pairs.extend(_tag_pairs(chisq, records, cfg.sweep_id, spec.name))
+        # Checkpoint: a multi-hour sweep must not hold hours of results only
+        # in memory — a worker crash late in the MCMC pass used to discard
+        # the completed χ² pass and orphan every chain already on disk
+        # (Task-13 review finding). ``write_results`` rewrites the tables
+        # whole, so each checkpoint leaves a consistent pair on disk.
+        io.write_results(cfg.sweep_id, pairs, root=out_root)
         # MCMC over the subset — only for algorithms that opt in (effective
         # fit_method == 'mcmc'); not every method uses MCMC.
         uses_mcmc = (ac.fit_method or cfg.fit_method) == 'mcmc'
         if uses_mcmc and cfg.mcmc_subset:
+            any_mcmc = True
             subset = records[:int(cfg.mcmc_subset)]
-            pairs.extend(_mcmc_subset(spec, subset, cfg.sweep_id,
-                                      root=out_root, strict=strict))
+            for lo in range(0, len(subset), MCMC_CHECKPOINT_EVERY):
+                chunk = subset[lo:lo + MCMC_CHECKPOINT_EVERY]
+                pairs.extend(_mcmc_subset(spec, chunk, cfg.sweep_id,
+                                          root=out_root, strict=strict,
+                                          n_cores=n_cores, seed=cfg.seed,
+                                          progress_from=lo,
+                                          progress_total=len(subset)))
+                io.write_results(cfg.sweep_id, pairs, root=out_root)
 
     paths = io.write_results(cfg.sweep_id, pairs, root=out_root)
     prov = provenance.build(cfg.sweep_id, cfg, specs, datasets=datasets_info)
+    if any_mcmc:
+        # The chain-persistence policy is sweep-level provenance: it changes
+        # what is on disk, not what the fit did, so it is recorded here and
+        # deliberately kept out of the per-algorithm digest.
+        prov['chains'] = {
+            'thin': int(io.CHAIN_THIN),
+            'burn': 'spec.mcmc.nburn, capped at half the chain '
+                    '(evaluate.chain_burn)',
+        }
     ppath = provenance.write(cfg.sweep_id, prov, root=out_root)
 
     return {'sweep_id': cfg.sweep_id, 'n_results': len(pairs),

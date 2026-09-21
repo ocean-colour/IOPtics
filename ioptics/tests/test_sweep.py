@@ -36,6 +36,51 @@ def test_build_v1_config_and_flag_dispatch():
     mod.main(0)
 
 
+def test_build_v1_stage_dispatch(monkeypatch):
+    """Each stage number wires the right stage (1 run / 2 metrics / 3 report)."""
+    from ioptics import metrics, run
+    from ioptics.report import leaderboard, rst, standard
+
+    calls = []
+    run_kw = {}
+
+    def _run(cfg, **k):
+        calls.append('run')
+        run_kw.update(k)
+    monkeypatch.setattr(run, 'run_sweep', _run)
+    monkeypatch.setattr(metrics, 'compute', lambda sid, **k: calls.append('metrics'))
+    monkeypatch.setattr(standard, 'build', lambda sid, **k: calls.append('report'))
+    monkeypatch.setattr(standard, 'build_exemplars',
+                        lambda sid, **k: calls.append('exemplars'))
+    monkeypatch.setattr(leaderboard, 'update', lambda **k: calls.append('lb') or None)
+    # stage 3 delegates the whole landing page (headline board + sweep cards +
+    # interactive widget + full-grid drill-down) to standard.build_landing
+    monkeypatch.setattr(standard, 'build_landing',
+                        lambda **k: calls.append('landing') or (None, None))
+
+    mod = _load_build_module()
+    mod.main(0)
+    assert calls == []                          # no-op
+    mod.main(1)
+    assert calls == ['run']
+    calls.clear()
+    mod.main(2)
+    assert calls == ['metrics']
+    calls.clear()
+    mod.main(3)
+    # the fold now happens inside standard.build_landing, so stage 3 is
+    # three calls: the exemplar page first (the cross-algorithm page only
+    # links it when the file exists), the sweep's own page, then the landing
+    assert calls == ['exemplars', 'report', 'landing']
+
+    # stage-1 run knobs thread through to run_sweep
+    calls.clear()
+    mod.main(1, n_cores=10, strict=False, obs_ids=range(20))
+    assert calls == ['run']
+    assert run_kw['n_cores'] == 10 and run_kw['strict'] is False
+    assert list(run_kw['obs_ids']) == list(range(20))
+
+
 # --------------------------------------------------------------------
 # Tier 2 — a small real sweep
 # --------------------------------------------------------------------
@@ -61,7 +106,8 @@ def test_run_sweep_small_chisq(tmp_path):
     spectral, scalar = io.read_results('sweep_smoke', root=tmp_path)
     assert sorted(scalar['algorithm'].unique()) == ['expb_pow', 'giop']
     assert len(scalar) == 6
-    assert len(spectral) == 6 * 6 * spectral['wavelength'].nunique()
+    # 6 results x 7 components (6 model + Rrs_obs) x nwave
+    assert len(spectral) == 6 * 7 * spectral['wavelength'].nunique()
     # provenance_id stamped through to the table
     assert set(scalar['provenance_id']) == {'sweep_smoke#expb_pow',
                                             'sweep_smoke#giop'}
@@ -102,9 +148,9 @@ def test_run_sweep_with_mcmc_subset_saves_chains(tmp_path):
     # (2 records x 6 components x nwave)
     giop_mcmc = spectral[(spectral.algorithm == 'giop')
                          & (spectral.fit_method == 'mcmc')]
-    assert len(giop_mcmc) == 2 * 6 * spectral['wavelength'].nunique()
+    assert len(giop_mcmc) == 2 * 7 * spectral['wavelength'].nunique()
     assert set(giop_mcmc['component']) == {'a', 'bb', 'a_ph', 'a_dg', 'bb_p',
-                                           'Rrs_model'}
+                                           'Rrs_model', 'Rrs_obs'}
 
     # the 2 MCMC rows carry a saved chain file; χ² rows do not
     mcmc_rows = scalar[scalar.fit_method == 'mcmc']
@@ -113,4 +159,6 @@ def test_run_sweep_with_mcmc_subset_saves_chains(tmp_path):
         assert (tmp_path / 'sweep_mcmc' / 'chains').as_posix() in cf
         chain = io.load_chain(cf)
         assert chain['chains'].ndim == 3          # (nsteps, nwalkers, nparam)
+        # parameter names persisted, one per chain column (for corner labels)
+        assert chain['pnames'].size == chain['chains'].shape[-1]
     assert scalar[scalar.fit_method == 'chisq']['chain_file'].isna().all()

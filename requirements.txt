@@ -1,10 +1,12 @@
 numpy
 scipy
 pandas
+pyarrow
 matplotlib
 seaborn
 xarray
 h5netcdf
+h5py
 cftime
 scikit-learn
 tqdm
@@ -17,3 +19,5 @@ bokeh
 # Sibling packages (not on PyPI) — installed from source/GitHub
 git+https://github.com/ocean-colour/ocpy
 git+https://github.com/ocean-colour/bing.git
+# Downwelling irradiance (Ed) for L23 X=4 Chl-fluorescence RT; not on PyPI
+git+https://github.com/ocean-colour/correct-atmosphere.git
