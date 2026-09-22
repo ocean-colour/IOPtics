@@ -3,10 +3,10 @@ Exemplar fits — multi_L23_PANGAEA_v2
 ====================================
 
 :Sweep: multi_L23_PANGAEA_v2
-:Generated: 2026-08-08T10:18:43Z
-:ioptics: 0.0.dev0@e0e6729
-:bing: 0.0.dev0@f242b0e
-:ocpy: 0.1.0@3aed28a
+:Generated: 2026-08-10T15:02:31Z
+:ioptics: 0.0.dev0@4ea86db
+:bing: 0.0.dev0@
+:ocpy: @da6dff9
 :design_doc: 0.16
 :implementation_doc: 0.23
 
@@ -58,25 +58,25 @@ The exemplars
      - 4%
      - 400
    * - L23
-     - ``1122``
-     - median
-     - 1.66
-     - 4%
-     - 400
-   * - L23
      - ``1904``
      - median
      - 1.66
      - 4%
      - 400
    * - L23
-     - ``2429``
+     - ``1122``
+     - median
+     - 1.66
+     - 4%
+     - 400
+   * - L23
+     - ``1553``
      - median
      - 1.66
      - 4%
      - 405
    * - L23
-     - ``1553``
+     - ``2429``
      - median
      - 1.66
      - 4%

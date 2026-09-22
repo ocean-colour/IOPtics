@@ -23,14 +23,14 @@ A dataset can only score what it carries truth for; a component with no truth he
      - scored pairs
    * - ``expb_pow``
      - scored
-     - 9960
-     - 9923
-     - 6619
+     - 9988
+     - 9951
+     - 6639
    * - ``giop``
      - scored
-     - 6640
-     - 6556
-     - 6556
+     - 6660
+     - 6576
+     - 6576
    * - ``gsm``
      - scored
      - 3320
@@ -70,6 +70,17 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 440
+     - all
+     - mcmc
+     - 1
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0681
+     - 0.0178
+     - —
+     - 
+   * - a
+     - 440
      - eutrophic
      - chisq
      - 1
@@ -92,25 +103,36 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 440
-     - oligotrophic
-     - chisq
+     - mesotrophic
+     - mcmc
      - 1
-     - ranked
+     - ranked (no head-to-head)
      - expb_pow
-     - 0.0248
-     - 0.00243
-     - 0.804
+     - 0.055
+     - -0.000367
+     - —
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - mcmc
+     - 1
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.037
+     - -0.00209
+     - —
      - 
    * - a
      - 440
      - all
-     - chisq
+     - mcmc
      - 2
-     - ranked
-     - gsm
-     - 0.0958
-     - 0.0913
-     - 0.578
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.042
+     - -0.0318
+     - —
      - 
    * - a
      - 440
@@ -126,13 +148,46 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
    * - a
      - 440
      - mesotrophic
+     - mcmc
+     - 2
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0609
+     - -0.0574
+     - —
+     - 
+   * - a
+     - 440
+     - oligotrophic
      - chisq
      - 2
      - ranked
+     - expb_pow
+     - 0.0248
+     - 0.00243
+     - 0.804
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - mcmc
+     - 2
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0234
+     - -0.00558
+     - —
+     - 
+   * - a
+     - 440
+     - all
+     - chisq
+     - 3
+     - ranked
      - gsm
-     - 0.0902
-     - 0.0869
-     - 0.57
+     - 0.0958
+     - 0.0913
+     - 0.578
      - 
    * - a
      - 440
@@ -147,14 +202,14 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 440
-     - oligotrophic
+     - mesotrophic
      - chisq
      - 3
      - ranked
      - gsm
-     - 0.035
-     - 0.0253
-     - 0.682
+     - 0.0902
+     - 0.0869
+     - 0.57
      - 
    * - a
      - 440
@@ -169,14 +224,14 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 440
-     - all
+     - oligotrophic
      - chisq
-     - 5
+     - 4
      - ranked
-     - giop
-     - 0.183
-     - 0.183
-     - 0.0744
+     - gsm
+     - 0.035
+     - 0.0253
+     - 0.682
      - 
    * - a
      - 440
@@ -191,9 +246,20 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 440
+     - all
+     - chisq
+     - 7
+     - ranked
+     - giop
+     - 0.183
+     - 0.183
+     - 0.0744
+     - 
+   * - a
+     - 440
      - mesotrophic
      - chisq
-     - 5
+     - 7
      - ranked
      - giop
      - 0.191
@@ -204,12 +270,23 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 440
      - oligotrophic
      - chisq
-     - 5
+     - 7
      - ranked
      - giop
      - 0.133
      - 0.133
      - 0.00942
+     - 
+   * - a
+     - 440
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0624
+     - 0.00518
+     - 0.7
      - 
    * - a
      - 440
@@ -236,13 +313,13 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
    * - a
      - 440
      - all
-     - mcmc
+     - chisq
      - —
-     - sole competitor
-     - expb_pow
-     - 0.0681
-     - 0.0178
-     - —
+     - indistinguishable
+     - giop
+     - 0.0725
+     - 0.0693
+     - 0.3
      - 
    * - a
      - 440
@@ -254,6 +331,17 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 0.458
      - 0.458
      - —
+     - 
+   * - a
+     - 440
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0641
+     - -0.0209
+     - 0.615
      - 
    * - a
      - 440
@@ -280,13 +368,24 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
    * - a
      - 440
      - mesotrophic
-     - mcmc
+     - chisq
      - —
-     - sole competitor
+     - indistinguishable
+     - giop
+     - 0.0737
+     - 0.0686
+     - 0.385
+     - 
+   * - a
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
      - expb_pow
-     - 0.055
-     - -0.000367
-     - —
+     - 0.0591
+     - 0.0554
+     - 0.857
      - 
    * - a
      - 440
@@ -313,13 +412,13 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
    * - a
      - 440
      - oligotrophic
-     - mcmc
+     - chisq
      - —
-     - sole competitor
-     - expb_pow
-     - 0.037
-     - -0.00209
-     - —
+     - indistinguishable
+     - giop
+     - 0.0705
+     - 0.0705
+     - 0.143
      - 
    * - a
      - 443
@@ -331,6 +430,17 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 0.0528
      - 0.0229
      - 0.874
+     - 
+   * - a
+     - 443
+     - all
+     - mcmc
+     - 1
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0655
+     - 0.0175
+     - —
      - 
    * - a
      - 443
@@ -356,14 +466,36 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 443
-     - oligotrophic
-     - chisq
+     - mesotrophic
+     - mcmc
      - 1
-     - ranked
+     - ranked (no head-to-head)
      - expb_pow
-     - 0.0243
-     - 0.0047
-     - 0.825
+     - 0.0533
+     - 7.8e-05
+     - —
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - mcmc
+     - 1
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0362
+     - 0.000129
+     - —
+     - 
+   * - a
+     - 443
+     - all
+     - mcmc
+     - 2
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0417
+     - -0.0257
+     - —
      - 
    * - a
      - 443
@@ -378,14 +510,36 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 443
-     - all
+     - mesotrophic
+     - mcmc
+     - 2
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0564
+     - -0.0534
+     - —
+     - 
+   * - a
+     - 443
+     - oligotrophic
      - chisq
-     - 3
+     - 2
      - ranked
-     - gsm
-     - 0.11
-     - 0.107
-     - 0.535
+     - expb_pow
+     - 0.0243
+     - 0.0047
+     - 0.825
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - mcmc
+     - 2
+     - ranked (no head-to-head)
+     - expb_pow
+     - 0.0272
+     - 0.00278
+     - —
      - 
    * - a
      - 443
@@ -400,25 +554,14 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 443
-     - mesotrophic
+     - all
      - chisq
-     - 3
+     - 4
      - ranked
      - gsm
-     - 0.106
-     - 0.104
-     - 0.522
-     - 
-   * - a
-     - 443
-     - oligotrophic
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 0.0389
-     - 0.0322
-     - 0.662
+     - 0.11
+     - 0.107
+     - 0.535
      - 
    * - a
      - 443
@@ -433,14 +576,25 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 443
-     - all
+     - mesotrophic
      - chisq
-     - 5
+     - 4
      - ranked
-     - giop
-     - 0.179
-     - 0.179
-     - 0.0905
+     - gsm
+     - 0.106
+     - 0.104
+     - 0.522
+     - 
+   * - a
+     - 443
+     - oligotrophic
+     - chisq
+     - 4
+     - ranked
+     - gsm
+     - 0.0389
+     - 0.0322
+     - 0.662
      - 
    * - a
      - 443
@@ -455,9 +609,20 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 
    * - a
      - 443
+     - all
+     - chisq
+     - 7
+     - ranked
+     - giop
+     - 0.179
+     - 0.179
+     - 0.0905
+     - 
+   * - a
+     - 443
      - mesotrophic
      - chisq
-     - 5
+     - 7
      - ranked
      - giop
      - 0.187
@@ -468,12 +633,23 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 443
      - oligotrophic
      - chisq
-     - 5
+     - 7
      - ranked
      - giop
      - 0.132
      - 0.132
      - 0.00863
+     - 
+   * - a
+     - 443
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0595
+     - 0.00797
+     - 0.7
      - 
    * - a
      - 443
@@ -500,13 +676,13 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
    * - a
      - 443
      - all
-     - mcmc
+     - chisq
      - —
-     - sole competitor
-     - expb_pow
-     - 0.0655
-     - 0.0175
-     - —
+     - indistinguishable
+     - giop
+     - 0.0719
+     - 0.0699
+     - 0.3
      - 
    * - a
      - 443
@@ -518,6 +694,17 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 0.424
      - 0.424
      - —
+     - 
+   * - a
+     - 443
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.0592
+     - -0.0178
+     - 0.615
      - 
    * - a
      - 443
@@ -530,195 +717,8 @@ Where no pair of algorithms separated, the ``ranking`` column says *indistinguis
      - 0.0192
      - 0.559
      - 
-   * - a
-     - 443
-     - mesotrophic
-     - chisq
-     - —
-     - indistinguishable
-     - giop
-     - 0.086
-     - 0.0798
-     - 0.441
-     - 
-   * - a
-     - 443
-     - mesotrophic
-     - mcmc
-     - —
-     - sole competitor
-     - expb_pow
-     - 0.0533
-     - 7.8e-05
-     - —
-     - 
-   * - a
-     - 443
-     - oligotrophic
-     - chisq
-     - —
-     - indistinguishable
-     - expb_pow
-     - 0.0527
-     - 0.0271
-     - 0.771
-     - 
-   * - a
-     - 443
-     - oligotrophic
-     - chisq
-     - —
-     - indistinguishable
-     - giop
-     - 0.0682
-     - 0.0648
-     - 0.229
-     - 
-   * - a
-     - 443
-     - oligotrophic
-     - mcmc
-     - —
-     - sole competitor
-     - expb_pow
-     - 0.0362
-     - 0.000129
-     - —
-     - 
-   * - a_dg
-     - 440
-     - all
-     - chisq
-     - 1
-     - ranked
-     - giop
-     - 0.19
-     - -0.0282
-     - 0.694
-     - 
-   * - a_dg
-     - 440
-     - eutrophic
-     - chisq
-     - 1
-     - ranked
-     - giop
-     - 0.283
-     - -0.103
-     - 0.727
-     - 
-   * - a_dg
-     - 440
-     - mesotrophic
-     - chisq
-     - 1
-     - ranked
-     - giop
-     - 0.181
-     - -0.0294
-     - 0.694
-     - 
-   * - a_dg
-     - 440
-     - oligotrophic
-     - chisq
-     - 1
-     - ranked
-     - giop
-     - 0.146
-     - -0.0222
-     - 0.706
-     - 
-   * - a_dg
-     - 440
-     - eutrophic
-     - chisq
-     - 2
-     - ranked
-     - giop
-     - 0.556
-     - -0.0329
-     - 0.646
-     - 
-   * - a_dg
-     - 440
-     - eutrophic
-     - chisq
-     - 3
-     - ranked
-     - gsm
-     - 0.46
-     - 0.458
-     - 0.424
-     - 
-   * - a_dg
-     - 440
-     - eutrophic
-     - chisq
-     - 4
-     - ranked
-     - expb_pow
-     - 0.826
-     - 0.415
-     - 0.354
-     - 
-   * - a_dg
-     - 440
-     - all
-     - chisq
-     - 5
-     - ranked
-     - expb_pow
-     - 0.32
-     - 0.052
-     - 0.306
-     - 
-   * - a_dg
-     - 440
-     - eutrophic
-     - chisq
-     - 5
-     - ranked
-     - expb_pow
-     - 0.604
-     - 0.386
-     - 0.352
-     - 
-   * - a_dg
-     - 440
-     - mesotrophic
-     - chisq
-     - 5
-     - ranked
-     - expb_pow
-     - 0.31
-     - 0.045
-     - 0.306
-     - 
-   * - a_dg
-     - 440
-     - oligotrophic
-     - chisq
-     - 5
-     - ranked
-     - expb_pow
-     - 0.255
-     - 0.00261
-     - 0.294
-     - 
-   * - a_dg
-     - 440
-     - all
-     - chisq
-     - —
-     - indistinguishable
-     - gsm
-     - 0.156
-     - 0.0759
-     - 0.586
-     - 
 
-(180 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(270 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Retrieval success
 -----------------
@@ -1271,7 +1271,7 @@ By water type
      - —
      - 0.91
 
-(120 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(180 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Least-squares vs MCMC
 ---------------------
@@ -1299,6 +1299,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
    * - chisq
      - a
      - 440
+     - expb_pow
+     - 0.0624
+     - 0.421
+     - 1
+   * - chisq
+     - a
+     - 440
      - gsm
      - 0.0958
      - 0.166
@@ -1317,6 +1324,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - 0.0958
      - 0.215
      - 0.985
+   * - chisq
+     - a
+     - 440
+     - giop
+     - 0.0725
+     - 0.2
+     - 1
    * - chisq
      - a
      - 440
@@ -1369,6 +1383,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
    * - chisq
      - a
      - 440
+     - expb_pow
+     - 0.0641
+     - 0.5
+     - 1
+   * - chisq
+     - a
+     - 440
      - gsm
      - 0.0902
      - 0.138
@@ -1391,9 +1412,23 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - a
      - 440
      - giop
+     - 0.0737
+     - 0.154
+     - 1
+   * - chisq
+     - a
+     - 440
+     - giop
      - 0.191
      - 0
      - 0.997
+   * - chisq
+     - a
+     - 440
+     - expb_pow
+     - 0.0591
+     - 0.286
+     - 1
    * - chisq
      - a
      - 440
@@ -1426,6 +1461,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - a
      - 440
      - giop
+     - 0.0705
+     - 0.286
+     - 1
+   * - chisq
+     - a
+     - 440
+     - giop
      - 0.133
      - 0.00314
      - 0.983
@@ -1436,6 +1478,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - 0.0528
      - 0.538
      - 0.998
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0595
+     - 0.368
+     - 1
    * - chisq
      - a
      - 443
@@ -1457,6 +1506,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - 0.0927
      - 0.214
      - 0.985
+   * - chisq
+     - a
+     - 443
+     - giop
+     - 0.0719
+     - 0.2
+     - 1
    * - chisq
      - a
      - 443
@@ -1510,6 +1566,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - a
      - 443
      - expb_pow
+     - 0.0592
+     - 0.5
+     - 1
+   * - chisq
+     - a
+     - 443
+     - expb_pow
      - 0.0837
      - 0.498
      - 1
@@ -1531,9 +1594,23 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - a
      - 443
      - giop
+     - 0.071
+     - 0.231
+     - 1
+   * - chisq
+     - a
+     - 443
+     - giop
      - 0.187
      - 0
      - 0.997
+   * - chisq
+     - a
+     - 443
+     - expb_pow
+     - 0.0601
+     - 0.143
+     - 1
    * - chisq
      - a
      - 443
@@ -1566,6 +1643,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - a
      - 443
      - giop
+     - 0.0735
+     - 0.143
+     - 1
+   * - chisq
+     - a
+     - 443
+     - giop
      - 0.132
      - 0.00314
      - 0.983
@@ -1576,6 +1660,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - 0.19
      - 0.361
      - 0.985
+   * - chisq
+     - a_dg
+     - 440
+     - giop
+     - 0.126
+     - 0.35
+     - 1
    * - chisq
      - a_dg
      - 440
@@ -1601,6 +1692,13 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - a_dg
      - 440
      - expb_pow
+     - 0.184
+     - 1
+     - 1
+   * - chisq
+     - a_dg
+     - 440
+     - expb_pow
      - 0.32
      - 0.936
      - 0.995
@@ -1611,106 +1709,8 @@ Both fit methods scored here (chisq, mcmc). They are ranked as separate contests
      - 0.283
      - 0.237
      - 0.904
-   * - chisq
-     - a_dg
-     - 440
-     - giop
-     - 0.556
-     - 0.565
-     - 0.91
-   * - chisq
-     - a_dg
-     - 440
-     - gsm
-     - 0.46
-     - 0.0267
-     - 0.847
-   * - chisq
-     - a_dg
-     - 440
-     - expb_pow
-     - 0.826
-     - 0.745
-     - 0.91
-   * - chisq
-     - a_dg
-     - 440
-     - expb_pow
-     - 0.604
-     - 0.372
-     - 0.972
-   * - chisq
-     - a_dg
-     - 440
-     - giop
-     - 0.181
-     - 0.367
-     - 1
-   * - chisq
-     - a_dg
-     - 440
-     - gsm
-     - 0.146
-     - 0.192
-     - 0.997
-   * - chisq
-     - a_dg
-     - 440
-     - giop
-     - 0.163
-     - 0.357
-     - 0.997
-   * - chisq
-     - a_dg
-     - 440
-     - expb_pow
-     - 0.204
-     - 0.748
-     - 1
-   * - chisq
-     - a_dg
-     - 440
-     - expb_pow
-     - 0.31
-     - 0.938
-     - 1
-   * - chisq
-     - a_dg
-     - 440
-     - giop
-     - 0.146
-     - 0.284
-     - 0.951
-   * - chisq
-     - a_dg
-     - 440
-     - gsm
-     - 0.132
-     - 0.239
-     - 1
-   * - chisq
-     - a_dg
-     - 440
-     - giop
-     - 0.149
-     - 0.38
-     - 0.983
-   * - chisq
-     - a_dg
-     - 440
-     - expb_pow
-     - 0.205
-     - 0.897
-     - 1
-   * - chisq
-     - a_dg
-     - 440
-     - expb_pow
-     - 0.255
-     - 0.977
-     - 1
 
-(180 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(270 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head
 ------------
@@ -2092,184 +2092,184 @@ Head-to-head
      - 440
      - expb_pow
      - giop
-     - 3.28e+03
-     - -0.131
-     - -0.135
-     - -0.128
-     - expb_pow
-   * - a
-     - 440
-     - expb_pow
-     - gsm
-     - 3.29e+03
-     - -0.0425
-     - -0.0452
-     - -0.0402
-     - indistinguishable
-   * - a
-     - 440
-     - giop
-     - gsm
-     - 3.26e+03
-     - 0.088
-     - 0.0852
-     - 0.0907
+     - 20
+     - -0.0102
+     - -0.0341
+     - 0.0103
      - indistinguishable
    * - a
      - 440
      - expb_pow
      - giop
-     - 637
-     - -0.108
-     - -0.112
-     - -0.105
-     - expb_pow
-   * - a
-     - 440
-     - expb_pow
-     - gsm
-     - 648
-     - -0.0103
-     - -0.0126
-     - -0.00786
+     - 7
+     - -0.0113
+     - -0.0181
+     - -0.00322
      - indistinguishable
    * - a
      - 440
+     - expb_pow
      - giop
-     - gsm
-     - 637
-     - 0.098
-     - 0.0949
-     - 0.101
+     - 13
+     - -0.00956
+     - -0.0442
+     - 0.02
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 20
+     - -0.0124
+     - -0.0337
+     - 0.00722
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 7
+     - -0.0133
+     - -0.0193
+     - -0.00662
+     - indistinguishable
+   * - a
+     - 443
+     - expb_pow
+     - giop
+     - 13
+     - -0.0119
+     - -0.0426
+     - 0.0183
+     - indistinguishable
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 20
+     - 0.00292
+     - -0.00944
+     - 0.0186
+     - indistinguishable
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 7
+     - 0.00271
+     - -0.00128
+     - 0.0074
+     - indistinguishable
+   * - bb
+     - 555
+     - expb_pow
+     - giop
+     - 13
+     - 0.00303
+     - -0.0177
+     - 0.0262
+     - indistinguishable
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 20
+     - -0.0345
+     - -0.0739
+     - 0.0101
+     - indistinguishable
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 7
+     - -0.0272
+     - -0.0431
+     - -0.00931
+     - indistinguishable
+   * - bb
+     - 670
+     - expb_pow
+     - giop
+     - 13
+     - -0.0385
+     - -0.0946
+     - 0.0304
+     - indistinguishable
+   * - a_ph
+     - 440
+     - expb_pow
+     - giop
+     - 20
+     - 0.845
+     - -0.0951
+     - 4.31
      - underpowered
-   * - a
+   * - a_ph
      - 440
      - expb_pow
      - giop
-     - 2.49e+03
-     - -0.153
-     - -0.155
-     - -0.15
-     - expb_pow
-   * - a
-     - 440
-     - expb_pow
-     - gsm
-     - 2.49e+03
-     - -0.0522
-     - -0.0552
-     - -0.0495
-     - indistinguishable
-   * - a
-     - 440
+     - 7
+     - 0.194
+     - 0.0392
+     - 0.359
      - giop
-     - gsm
-     - 2.48e+03
-     - 0.1
-     - 0.0981
-     - 0.103
-     - gsm
-   * - a
+   * - a_ph
      - 440
      - expb_pow
      - giop
-     - 160
-     - 0.164
-     - 0.122
-     - 0.207
+     - 13
+     - 1.3
+     - -0.255
+     - 9.25
+     - underpowered
+   * - a_ph
+     - 443
+     - expb_pow
      - giop
-   * - a
+     - 20
+     - 0.795
+     - -0.142
+     - 4.08
+     - underpowered
+   * - a_ph
+     - 443
+     - expb_pow
+     - giop
+     - 7
+     - 0.136
+     - 0.0146
+     - 0.245
+     - giop
+   * - a_ph
+     - 443
+     - expb_pow
+     - giop
+     - 13
+     - 1.24
+     - -0.268
+     - 9.75
+     - underpowered
+   * - a_dg
      - 440
      - expb_pow
-     - gsm
-     - 150
-     - -0.013
-     - -0.0515
-     - 0.0271
-     - indistinguishable
-   * - a
+     - giop
+     - 20
+     - 0.0588
+     - -0.0229
+     - 0.146
+     - underpowered
+   * - a_dg
      - 440
-     - giop
-     - gsm
-     - 140
-     - -0.24
-     - -0.256
-     - -0.224
-     - giop
-   * - a
-     - 443
      - expb_pow
      - giop
-     - 3.28e+03
-     - -0.129
-     - -0.132
-     - -0.125
-     - expb_pow
-   * - a
-     - 443
-     - expb_pow
-     - gsm
-     - 3.29e+03
-     - -0.0586
-     - -0.0615
-     - -0.0559
-     - indistinguishable
-   * - a
-     - 443
-     - giop
-     - gsm
-     - 3.26e+03
-     - 0.0699
-     - 0.0668
-     - 0.073
-     - indistinguishable
-   * - a
-     - 443
-     - expb_pow
-     - giop
-     - 637
-     - -0.108
-     - -0.112
-     - -0.105
-     - expb_pow
-   * - a
-     - 443
-     - expb_pow
-     - gsm
-     - 648
-     - -0.0146
-     - -0.017
-     - -0.0123
-     - indistinguishable
-   * - a
-     - 443
-     - giop
-     - gsm
-     - 637
-     - 0.0933
-     - 0.0904
-     - 0.0959
-     - indistinguishable
-   * - a
-     - 443
-     - expb_pow
-     - giop
-     - 2.49e+03
-     - -0.15
-     - -0.153
-     - -0.147
-     - expb_pow
-   * - a
-     - 443
-     - expb_pow
-     - gsm
-     - 2.49e+03
-     - -0.0688
-     - -0.0718
-     - -0.0657
-     - indistinguishable
+     - 7
+     - 0.0738
+     - -0.0384
+     - 0.206
+     - underpowered
 
-(100 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(130 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 See also
 --------

@@ -1,0 +1,11 @@
+model_a,model_b,n,frac_favor_a,frac_favor_b,median_dbic,configured
+expb_pow_hyb_el,expb_pow_ztt_el,3300.0,0.3864,0.6136,0.4071,False
+expb_pow_hyb_el,expb_pow_hyb_ram,3300.0,0.5661,0.4339,-0.3034,False
+expb_pow_hyb_el,expb_pow_hyb_ramfl,3300.0,0.2521,0.7479,2.5361,False
+expb_pow_hyb_el,expb_pow_hyb_ramflcdom,3300.0,0.2936,0.7064,2.1403,True
+expb_pow_hyb_ram,expb_pow_ztt_el,3300.0,0.3815,0.6185,0.8759,False
+expb_pow_hyb_ram,expb_pow_hyb_ramfl,3300.0,0.1876,0.8124,1.889,False
+expb_pow_hyb_ram,expb_pow_hyb_ramflcdom,3300.0,0.2561,0.7439,1.4863,False
+expb_pow_hyb_ramfl,expb_pow_ztt_el,3300.0,0.7,0.3,-2.0518,False
+expb_pow_hyb_ramfl,expb_pow_hyb_ramflcdom,3309.0,0.693,0.307,-0.4058,False
+expb_pow_hyb_ramflcdom,expb_pow_ztt_el,3300.0,0.6527,0.3473,-1.6759,False

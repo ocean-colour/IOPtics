@@ -1,0 +1,6 @@
+dataset,algorithm,frac_not_ok,n_attempted,n_scored,chi2_nu_median,rel_misfit_median,rel_misfit_median_all,frac_good,frac_overfit,frac_underfit,frac_qc_fail,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed
+PACE,expb_pow_hyb_el,0.01,100,99,0.5577,0.056,0.056,0.2727,0.697,0.0303,0.0,0.99,0.0,0.01,0.0
+PACE,expb_pow_hyb_ram,0.01,100,99,0.5949,0.0564,0.0564,0.2929,0.6566,0.0505,0.0,0.99,0.0,0.01,0.0
+PACE,expb_pow_hyb_ramfl,0.01,100,99,0.5015,0.0524,0.0524,0.2121,0.7475,0.0404,0.0,0.99,0.0,0.01,0.0
+PACE,expb_pow_hyb_ramflcdom,0.01,100,99,0.5365,0.0545,0.0545,0.2323,0.7172,0.0505,0.0,0.99,0.0,0.01,0.0
+PACE,expb_pow_ztt_el,0.01,100,99,0.4229,0.0491,0.0491,0.1313,0.8485,0.0202,0.0,0.99,0.0,0.01,0.0

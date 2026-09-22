@@ -5,7 +5,7 @@ Algorithm profile — gsm
 In one paragraph
 ----------------
 
-``gsm`` has scoreable results on **L23, PANGAEA** across 1 sweep(s). Its best contest is bb(555) on L23, at mae 0.0255 (2.6% multiplicative error); its worst is a_ph(440) on PANGAEA at 36. It produced a usable fit for 0%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
+``gsm`` has scoreable results on **L23, PANGAEA** across 2 sweep(s). Its best contest is bb(555) on L23, at mae 0.0255 (2.6% multiplicative error); its worst is a_ph(440) on PANGAEA at 36. It produced a usable fit for 0%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
 
 What it parameterizes
 ---------------------
@@ -27,7 +27,7 @@ Read from the registry entry that sweeps actually run, so it cannot drift from t
    * - maxfev
      - 40000
    * - RT toggles
-     - ``double_gaussian``, ``phi_C``, ``variable_Gordon``
+     - ``Bp_value``, ``cdom_fraction``, ``double_gaussian``, ``phi_C``, ``rt_backend``, ``variable_Gordon``
 
 Where it has been evaluated
 ---------------------------
@@ -42,7 +42,7 @@ Where it has been evaluated
      - PANGAEA
    * - ``gsm``
      - scored (n=3286)
-     - scored (n=50)
+     - scored (n=565)
 
 Accuracy, by dataset and contest
 --------------------------------
@@ -550,8 +550,8 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 440
      - all
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
      - 0.431
      - -0.175
      - 0.728
@@ -560,10 +560,34 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - PANGAEA
      - a_dg
      - 440
+     - all
+     - chisq
+     - 2
+     - ranked
+     - 0.453
+     - -0.0991
+     - 0.656
+     - 0.376
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
      - eutrophic
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
+     - 0.392
+     - 0.0984
+     - 0.717
+     - 0.247
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
      - 0.209
      - 0.209
      - 0.5
@@ -574,8 +598,8 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 440
      - mesotrophic
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
      - 0.338
      - -0.143
      - 0.726
@@ -584,10 +608,22 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - PANGAEA
      - a_dg
      - 440
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - 0.427
+     - -0.178
+     - 0.641
+     - 0.541
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
      - oligotrophic
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
      - 1.18
      - -0.448
      - 0.7
@@ -596,10 +632,22 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - PANGAEA
      - a_dg
      - 440
-     - unknown
+     - oligotrophic
      - chisq
      - —
-     - sole competitor
+     - indistinguishable
+     - 1.18
+     - -0.445
+     - 0.385
+     - 0.521
+     - 
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 1
+     - ranked
      - 0.514
      - -0.0883
      - 0.857
@@ -607,11 +655,23 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 
    * - PANGAEA
      - a_dg
+     - 440
+     - unknown
+     - chisq
+     - 2
+     - ranked
+     - 0.609
+     - -0.0396
+     - 0.639
+     - 0.282
+     - 
+   * - PANGAEA
+     - a_dg
      - 443
      - all
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
      - 0.431
      - -0.175
      - 0.728
@@ -620,10 +680,34 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - PANGAEA
      - a_dg
      - 443
+     - all
+     - chisq
+     - 2
+     - ranked
+     - 0.453
+     - -0.0991
+     - 0.656
+     - 0.376
+     - 
+   * - PANGAEA
+     - a_dg
+     - 443
      - eutrophic
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
+     - 0.392
+     - 0.0984
+     - 0.717
+     - 0.247
+     - 
+   * - PANGAEA
+     - a_dg
+     - 443
+     - eutrophic
+     - chisq
+     - 2
+     - ranked
      - 0.209
      - 0.209
      - 0.5
@@ -634,8 +718,8 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 443
      - mesotrophic
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
      - 0.338
      - -0.143
      - 0.726
@@ -644,10 +728,22 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - PANGAEA
      - a_dg
      - 443
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - 0.427
+     - -0.178
+     - 0.641
+     - 0.541
+     - 
+   * - PANGAEA
+     - a_dg
+     - 443
      - oligotrophic
      - chisq
-     - —
-     - sole competitor
+     - 1
+     - ranked
      - 1.18
      - -0.448
      - 0.7
@@ -656,137 +752,41 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - PANGAEA
      - a_dg
      - 443
-     - unknown
+     - oligotrophic
      - chisq
      - —
-     - sole competitor
+     - indistinguishable
+     - 1.18
+     - -0.445
+     - 0.385
+     - 0.521
+     - 
+   * - PANGAEA
+     - a_dg
+     - 443
+     - unknown
+     - chisq
+     - 1
+     - ranked
      - 0.514
      - -0.0883
      - 0.857
      - 0.015
      - 
    * - PANGAEA
-     - a_ph
-     - 440
-     - all
-     - chisq
-     - —
-     - sole competitor
-     - 1.06
-     - -0.453
-     - 0.253
-     - 0.0339
-     - 
-   * - PANGAEA
-     - a_ph
-     - 440
-     - eutrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.199
-     - -0.166
-     - 0.25
-     - 0.00305
-     - 
-   * - PANGAEA
-     - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.611
-     - -0.272
-     - 0.264
-     - 0.0651
-     - 
-   * - PANGAEA
-     - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.668
-     - -0.4
-     - 0.0833
-     - 0.123
-     - 
-   * - PANGAEA
-     - a_ph
-     - 440
-     - unknown
-     - chisq
-     - —
-     - sole competitor
-     - 36
-     - -0.973
-     - 0.429
-     - 0.015
-     - 
-   * - PANGAEA
-     - a_ph
-     - 443
-     - all
-     - chisq
-     - —
-     - sole competitor
-     - 1.06
-     - -0.453
-     - 0.253
-     - 0.0339
-     - 
-   * - PANGAEA
-     - a_ph
-     - 443
-     - eutrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.199
-     - -0.166
-     - 0.25
-     - 0.00305
-     - 
-   * - PANGAEA
-     - a_ph
-     - 443
-     - mesotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.611
-     - -0.272
-     - 0.264
-     - 0.0651
-     - 
-   * - PANGAEA
-     - a_ph
-     - 443
-     - oligotrophic
-     - chisq
-     - —
-     - sole competitor
-     - 0.668
-     - -0.4
-     - 0.0833
-     - 0.123
-     - 
-   * - PANGAEA
-     - a_ph
+     - a_dg
      - 443
      - unknown
      - chisq
-     - —
-     - sole competitor
-     - 36
-     - -0.973
-     - 0.429
-     - 0.015
+     - 2
+     - ranked
+     - 0.609
+     - -0.0396
+     - 0.639
+     - 0.282
      - 
 
-(5 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(35 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Are its uncertainties honest?
 -----------------------------
@@ -1094,6 +1094,20 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - PANGAEA
      - a_dg
      - 440
+     - all
+     - 0.413
+     - 0.665
+     - 433
+   * - PANGAEA
+     - a_dg
+     - 440
+     - eutrophic
+     - 0.534
+     - 0.774
+     - 133
+   * - PANGAEA
+     - a_dg
+     - 440
      - eutrophic
      - 0
      - 1
@@ -1108,6 +1122,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - PANGAEA
      - a_dg
      - 440
+     - mesotrophic
+     - 0.383
+     - 0.667
+     - 243
+   * - PANGAEA
+     - a_dg
+     - 440
      - oligotrophic
      - 0
      - 0
@@ -1115,10 +1136,24 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - PANGAEA
      - a_dg
      - 440
+     - oligotrophic
+     - 0
+     - 0.143
+     - 14
+   * - PANGAEA
+     - a_dg
+     - 440
      - unknown
      - 0.25
      - 0.25
      - 4
+   * - PANGAEA
+     - a_dg
+     - 440
+     - unknown
+     - 0.349
+     - 0.488
+     - 43
    * - PANGAEA
      - a_dg
      - 443
@@ -1129,6 +1164,20 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - PANGAEA
      - a_dg
      - 443
+     - all
+     - 0.413
+     - 0.665
+     - 433
+   * - PANGAEA
+     - a_dg
+     - 443
+     - eutrophic
+     - 0.534
+     - 0.774
+     - 133
+   * - PANGAEA
+     - a_dg
+     - 443
      - eutrophic
      - 0
      - 1
@@ -1143,10 +1192,24 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - PANGAEA
      - a_dg
      - 443
+     - mesotrophic
+     - 0.383
+     - 0.667
+     - 243
+   * - PANGAEA
+     - a_dg
+     - 443
      - oligotrophic
      - 0
      - 0
      - 5
+   * - PANGAEA
+     - a_dg
+     - 443
+     - oligotrophic
+     - 0
+     - 0.143
+     - 14
    * - PANGAEA
      - a_dg
      - 443
@@ -1155,77 +1218,14 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 0.25
      - 4
    * - PANGAEA
-     - a_ph
-     - 440
-     - all
-     - 0.347
-     - 0.816
-     - 49
-   * - PANGAEA
-     - a_ph
-     - 440
-     - eutrophic
-     - 1
-     - 1
-     - 2
-   * - PANGAEA
-     - a_ph
-     - 440
-     - mesotrophic
-     - 0.324
-     - 0.811
-     - 37
-   * - PANGAEA
-     - a_ph
-     - 440
-     - oligotrophic
-     - 0.429
-     - 0.857
-     - 7
-   * - PANGAEA
-     - a_ph
-     - 440
-     - unknown
-     - 0
-     - 0.667
-     - 3
-   * - PANGAEA
-     - a_ph
-     - 443
-     - all
-     - 0.347
-     - 0.816
-     - 49
-   * - PANGAEA
-     - a_ph
-     - 443
-     - eutrophic
-     - 1
-     - 1
-     - 2
-   * - PANGAEA
-     - a_ph
-     - 443
-     - mesotrophic
-     - 0.324
-     - 0.811
-     - 37
-   * - PANGAEA
-     - a_ph
-     - 443
-     - oligotrophic
-     - 0.429
-     - 0.857
-     - 7
-   * - PANGAEA
-     - a_ph
+     - a_dg
      - 443
      - unknown
-     - 0
-     - 0.667
-     - 3
+     - 0.349
+     - 0.488
+     - 43
 
-(5 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(35 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head against the others
 -------------------------------
@@ -1906,7 +1906,43 @@ Head-to-head against the others
      - 0.0315
      - indistinguishable
 
-(70 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(130 further rows are on the :doc:`/reports/leaderboard_full` page.)
+
+What varied between sweeps
+--------------------------
+
+This profile pools every sweep that ran ``gsm``. The runs were **not**
+identically configured — each row below is one distinct persisted
+algorithm block (``algo_digest``), so numbers from different rows are
+not strictly like-for-like:
+
+.. list-table:: Configurations pooled here
+   :header-rows: 1
+   :widths: auto
+
+   * - sweep_id
+     - algo_digest
+     - prov_schema
+     - versions
+     - bing
+     - ocpy
+   * - multi_L23_PANGAEA_v2
+     - 5d922de2c371
+     - 2
+     - 0.0.dev0@4ea86db
+     - 0.0.dev0
+     - da6dff9
+   * - pangaea_fits_v2
+     - ce893fa1b68f
+     - 3
+     - 0.0.dev0@039c2b2
+     - 0.0.dev0@f242b0e
+     - da6dff9
+
+
+.. note::
+
+   These sweeps were recorded under **different provenance schemas** (2, 3; current is 4). A block written under an earlier schema could not record ``maxfev`` or the MCMC settings, so a digest difference here may reflect what was *written down* rather than what was configured — and, in the other direction, two blocks can agree while one of them silently ran a raised iteration budget.
 
 Per-spectrum behaviour
 ----------------------

@@ -603,3 +603,61 @@ def dbic_cdf_data(scalar, a, b, *, by=None, fit_method='chisq'):
     per-sensor CDFs.
     """
     return metrics.dbic_cdf(scalar, a, b, by=by, fit_method=fit_method)
+
+
+# --------------------------------------------------------------------------- #
+# RT ladder: how far a change of forward model moves the retrieval itself
+# --------------------------------------------------------------------------- #
+
+def fractional_change_data(spectral, model_a, model_b, *, ref=443.0,
+                           components=('a_ph', 'a_dg', 'bb_p'),
+                           fit_method='mcmc', keys=('dataset', 'obs_id'),
+                           tol=3.0):
+    """Per-spectrum fractional change of a retrieved IOP between two RT rungs.
+
+    For every observation both ``model_a`` and ``model_b`` retrieved, returns
+    ``value_b / value_a - 1`` at the native band nearest ``ref`` (within ``tol``
+    nm), one array per component.  This needs **no truth**, which is the point:
+    on the PACE arm of the RT tests there is none, and the question is not
+    "which physics is right" but "how much does the physics move a real
+    retrieval".  ``model_a`` is the reference rung (the elastic hybrid), so a
+    positive value means the fuller physics retrieves *more* of that IOP.
+
+    Returns ``dict(ref, band, model_a, model_b, fit_method, n, changes)`` where
+    ``changes`` maps component → 1-D float array (finite values only) and ``n``
+    is the number of matched spectra per component.  ``band`` is the native
+    wavelength actually used.  An empty ``changes`` entry means the component
+    was not retrieved by both rungs at any band near ``ref``.
+    """
+    out = {'ref': float(ref), 'band': None, 'model_a': model_a,
+           'model_b': model_b, 'fit_method': fit_method, 'n': {}, 'changes': {}}
+    if spectral is None or len(spectral) == 0:
+        return out
+    sub = spectral
+    if fit_method is not None and 'fit_method' in sub.columns:
+        sub = sub[sub['fit_method'] == fit_method]
+    sub = sub[sub['algorithm'].isin([model_a, model_b])
+              & sub['component'].isin(components)]
+    if sub.empty:
+        return out
+    waves = np.asarray(sorted(sub['wavelength'].dropna().unique()), dtype=float)
+    if waves.size == 0:
+        return out
+    band = float(waves[np.argmin(np.abs(waves - float(ref)))])
+    if abs(band - float(ref)) > tol:
+        return out
+    out['band'] = band
+    at = sub[np.isclose(sub['wavelength'].astype(float), band)]
+    for comp in components:
+        c = at[at['component'] == comp]
+        a = c[c['algorithm'] == model_a][list(keys) + ['value']]
+        b = c[c['algorithm'] == model_b][list(keys) + ['value']]
+        merged = a.merge(b, on=list(keys), suffixes=('_a', '_b'))
+        va = merged['value_a'].to_numpy(dtype=float)
+        vb = merged['value_b'].to_numpy(dtype=float)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            frac = vb / va - 1.0
+        frac = frac[np.isfinite(frac) & (va > 0) & (vb > 0)]
+        out['changes'][comp] = frac
+        out['n'][comp] = int(frac.size)
+    return out

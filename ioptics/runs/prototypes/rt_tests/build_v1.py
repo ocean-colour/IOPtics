@@ -34,7 +34,7 @@ Usage (one stage per call, mirroring ``build_v2.py`` / ``build_v3.py``)::
     2  metrics arm A (both sweeps)             -> metrics parquets per sweep
     3  run     arm B
     4  metrics arm B
-    5  report  (all sweeps; see the stage-5 stub)
+    5  report  (the RT-ladder page for every arm that has run; task 14)
 
 Stages 1/2 iterate over both arm-A sweeps by default (PANGAEA first — it
 finishes in hours and validates the split before the multi-day L23 half);
@@ -90,7 +90,7 @@ CONFIGS = {'rta_l23': CONFIG_RTA_L23, 'rta_pangaea': CONFIG_RTA_PANGAEA,
 #: in order" (PANGAEA first: it finishes in hours and validates the split
 #: before the multi-day L23 half starts). ``--config`` overrides it.
 STAGE_CONFIG = {1: ('rta_pangaea', 'rta_l23'), 2: ('rta_pangaea', 'rta_l23'),
-                3: 'rtb', 4: 'rtb'}
+                3: 'rtb', 4: 'rtb', 5: ('rta_pangaea', 'rta_l23', 'rtb')}
 
 #: The frozen PANGAEA population (see ``derive_pangaea97.py``).
 PANGAEA_IDS_CSV = os.path.join(HERE, 'pangaea97_ids.csv')
@@ -219,6 +219,35 @@ def _metrics(config_name):
     return metrics.compute(cfg.sweep_id, dbic_pair=pair)
 
 
+def _sweep_has_results(sweep_id):
+    """Whether a sweep's persisted results exist (an arm that has not run is skipped)."""
+    from ioptics import io
+    return (io.sweep_dir(sweep_id) / 'results_scalar.parquet').is_file()
+
+
+def _report(config_name):
+    """Stage-5 report of one config: the RT-ladder page (rt_tests task 14).
+
+    The ladder gets its own page type (:mod:`ioptics.report.rt_ladder`) rather
+    than the cross-algorithm one — five rows that are one algorithm break that
+    page and would fold ``expb_pow`` against itself on the leaderboard. Arms
+    whose sweep has not run yet are skipped with a note, so stage 5 can be
+    re-run as the arms land; the landing page and leaderboard are untouched.
+    """
+    from ioptics.report import rt_ladder
+
+    _register()
+    cfg = config.load(CONFIGS[config_name])
+    if not _sweep_has_results(cfg.sweep_id):
+        print(f'[{config_name}] no results for {cfg.sweep_id}; skipping the page')
+        return None
+    print(f'[{config_name}] RT-ladder page for {cfg.sweep_id}; '
+          f'dbic_pair={_dbic_pair()}')
+    out = rt_ladder.build(cfg.sweep_id, pair=_dbic_pair())
+    print(f'[{config_name}] wrote {out}')
+    return out
+
+
 def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name=None):
     """Run one stage. ``config_name`` overrides the stage's default config."""
     flg = int(flg)
@@ -241,13 +270,11 @@ def main(flg, *, n_cores=1, strict=True, obs_ids=None, config_name=None):
             _metrics(name)
 
     elif flg == 5:
-        # Stage numbering is kept stable so the run notes and the shell history
-        # do not have to be rewritten when the report lands.
-        raise SystemExit(
-            'stage 5 (report) is task 13: the RT ladder needs its own page '
-            '(five rows that are one algorithm, a leaderboard that must stay '
-            'out of it, and the no_CDOMfl_truth / CDOM-fraction caveats in the '
-            'prose). Run stages 1-4 now; regenerate 5 when task 13 lands.')
+        # Stage numbering was kept stable while this was a stub, so the run
+        # notes and the shell history did not have to be rewritten when the
+        # report landed (rt_tests task 14, 2026-09-18).
+        for name in names:
+            _report(name)
 
 
 def _cli(argv=None):

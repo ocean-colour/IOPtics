@@ -590,3 +590,110 @@ def dbic_cdf(curves, *, ax=None):
     ax.set_ylim(0, 1)
     ax.legend()
     return fig
+
+
+# --------------------------------------------------------------------------- #
+# RT ladder figures
+# --------------------------------------------------------------------------- #
+
+@style.styled
+def fractional_change_hist(data, *, ax=None, clip_dex=1.5):
+    """Histograms of how far a change of forward model moves each retrieved IOP.
+
+    ``data`` is the dict from :func:`ioptics.diagnostics.fractional_change_data`.
+    One panel per component; the x axis is the **ratio** of the retrieved value
+    under model B to that under model A, drawn in log10 and labelled as a factor
+    (0.1×, 0.3×, 1×, 3×, 10×), because the changes span factors rather than
+    percent: a_ph near zero under one physics and finite under another is a
+    ratio of hundreds, and a percent axis wide enough to hold it flattens the
+    population everyone else sits in.  Ratios beyond ``±clip_dex`` decades are
+    folded into the end bins and their count stated in the title.  The rule at
+    1× is "no change"; the dashed line is the median and the grey band the
+    16–84 % span (both quoted as percent change in the annotation).
+    """
+    changes = {c: np.asarray(v, dtype=float)
+               for c, v in (data.get('changes') or {}).items() if len(v)}
+    if not changes:
+        fig, ax = _axes(ax, figsize=(6, 4))
+        _annotate_empty(ax)
+        return fig
+    comps = list(changes)
+    if ax is not None:
+        fig, axes = ax.figure, [ax] * len(comps)
+    else:
+        fig, axes = plt.subplots(1, len(comps), figsize=(4.2 * len(comps), 3.8),
+                                 squeeze=False, layout='constrained')
+        axes = list(axes[0])
+    edges = np.linspace(-clip_dex, clip_dex, 41)
+    ticks = [t for t in (-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2)
+             if -clip_dex <= t <= clip_dex]
+    for a, comp in zip(axes, comps):
+        frac = changes[comp]
+        ratio = 1.0 + frac
+        ratio = ratio[np.isfinite(ratio) & (ratio > 0)]
+        dex = np.log10(ratio)
+        folded = np.clip(dex, -clip_dex, clip_dex)
+        n_fold = int((np.abs(dex) > clip_dex).sum())
+        a.hist(folded, bins=edges,
+               color=style.algo_color(data.get('model_b', comp)),
+               alpha=0.85, edgecolor='white', linewidth=0.4)
+        med = float(np.median(frac)) * 100.0
+        p16, p84 = np.percentile(frac, [16, 84]) * 100.0
+        a.axvline(0.0, color=style.GUIDE_COLOR, lw=0.8)
+        a.axvline(np.log10(1.0 + med / 100.0), color='k', lw=1.0, linestyle='--')
+        lo, hi = np.log10(max(1.0 + p16 / 100.0, 1e-9)), np.log10(1.0 + p84 / 100.0)
+        a.axvspan(lo, hi, color='k', alpha=0.08, lw=0)
+        title = style.component_label(comp, data.get('band') or data.get('ref'),
+                                      unit=False)
+        if n_fold:
+            title += f'  ({n_fold} folded into end bins)'
+        a.set_title(title, fontsize=9)
+        a.set_xticks(ticks)
+        a.set_xticklabels([f'{10 ** t:.2g}×' for t in ticks], fontsize=8)
+        a.set_xlabel('retrieved under B / retrieved under A', fontsize=8)
+        a.text(0.02, 0.96,
+               f'n = {frac.size}\nmedian {med:+.0f}%\n16–84%: {p16:+.0f}…{p84:+.0f}%',
+               transform=a.transAxes, ha='left', va='top', fontsize=8)
+    axes[0].set_ylabel('spectra')
+    fig.suptitle(f'A = {data.get("model_a", "A")}   →   B = {data.get("model_b", "B")}',
+                 fontsize=9)
+    return fig
+
+
+@style.styled
+def dbic_hist(curve, *, ax=None, strong=10.0, clip=50.0):
+    """Histogram of per-spectrum ΔBIC for one two-model contest.
+
+    ``curve`` is the dict from :func:`ioptics.diagnostics.dbic_cdf_data` (the
+    same input as :func:`dbic_cdf`).  A CDF answers "what fraction favours A";
+    the histogram answers "is that fraction one population or two" — on the RT
+    tests' PACE arm the answer was bimodal, which a CDF shows only as a kink.
+    Values beyond ``±clip`` are folded into the end bins and their count stated;
+    the ``±strong`` band (the conventional "strong evidence" threshold) is shaded.
+    ΔBIC < 0 favours model A, the more complex one.
+    """
+    fig, ax = _axes(ax, figsize=(6, 4))
+    dbic = np.asarray(curve.get('dbic', []), dtype=float)
+    dbic = dbic[np.isfinite(dbic)]
+    if dbic.size == 0:
+        _annotate_empty(ax)
+        return fig
+    folded = np.clip(dbic, -clip, clip)
+    n_fold = int((np.abs(dbic) > clip).sum())
+    edges = np.linspace(-clip, clip, 51)
+    ax.hist(folded, bins=edges, color=style.SERIES_COLORS[0], alpha=0.85,
+            edgecolor='white', linewidth=0.4)
+    ax.axvspan(-strong, strong, color='k', alpha=0.06, lw=0)
+    ax.axvline(0.0, color=style.GUIDE_COLOR, lw=0.8)
+    frac_a = float(np.mean(dbic < 0))
+    frac_a_strong = float(np.mean(dbic < -strong))
+    frac_b_strong = float(np.mean(dbic > strong))
+    ax.text(0.02, 0.96,
+            f'n = {dbic.size}\nfavour A (ΔBIC<0): {frac_a:.0%}\n'
+            f'strongly A (<−{strong:g}): {frac_a_strong:.0%}\n'
+            f'strongly B (>+{strong:g}): {frac_b_strong:.0%}'
+            + (f'\n{n_fold} folded into end bins' if n_fold else ''),
+            transform=ax.transAxes, ha='left', va='top', fontsize=8)
+    ax.set_xlabel(r'$\Delta$BIC  (<0 favors model A)')
+    ax.set_ylabel('spectra')
+    return fig
