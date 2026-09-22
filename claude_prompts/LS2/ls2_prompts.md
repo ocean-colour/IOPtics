@@ -489,6 +489,223 @@ you want drawn, and whether the chapter should say the port is yours.
 >A. Don't worry about the thesis.  The development from here is 
 self-contained in the `IOPtics` repository.
 
+*Round 2, 2026-09-21, written after planning prompt 1 verified the Context and
+measured LS2 on L23.  Round 1 settled what is being benchmarked; these settle
+what the benchmark will actually show, because three measurements changed the
+picture.  **(1)** The published LUT is not neutral on L23 — it biases `a` by
++2.6%, `bb` by +9.8% and `bb_p` by +24%.  **(2)** The re-derivation as scoped in
+Q6 cannot be done: L23 populates 3 of the 8 μw nodes.  **(3)** LS2 can only be
+compared with BING if it is allowed into the same contest, which the metrics
+code currently forbids.  Q9–Q12 are about LS2 the algorithm, Q13–Q15 about LS2
+the IOPtics citizen, Q16–Q18 about the Kd network and the plumbing.*
+
+**Q9. The published LUT has a measured bias on L23 — what is rung (i)'s
+baseline, and do we diagnose the bias before refitting it away?**  Running the
+real `LS2_main` on L23 X=4 with *everything* handed to it as truth (⟨Kd⟩₁, b_p =
+`bnw`, L23's own a_w and b_w) gives median relative errors of **a +2.6%, bb
++9.8%, bb_p +24%** — that is rung (i), the upper bound "nobody could reach from
+orbit", and it is already biased before any side-chain enters.  The cause is
+partly identified: the paper's limiting check says a/⟨Kd⟩₁ → μw as Rrs → 0, but
+on L23 it goes to **0.9694 at θs = 0** (where μw = 1) and 0.7648 at θs = 60°
+(μw = 0.7631) — a 3.1% shortfall at nadir with a p5–p95 span of only 0.0015, so
+it is a systematic, not scatter.  That signature — too small at θs = 0, slightly
+too large at 60° — is what a **diffuse sky component** looks like: L23's
+Hydrolight runs are not the direct beam the LUT's μw assumes.  If that is the
+whole story, an "effective μw" taken from L23's own geometry would remove most
+of the `a` bias with no refit at all, and the refit of Q6 would then be
+attacking the *bb* discrepancy, which is four times larger and not explained by
+illumination.  *Recommended:* insert one diagnostic rung between "published LUT"
+and "re-derived LUT" — published LUT evaluated at an effective μw derived from
+L23's own mean cosine — and report all three.  It is nearly free (the LUT is
+already interpolated in μw) and it separates an illumination-bookkeeping error
+from a genuine coefficient error, which is exactly the forward-model/
+parameterization split the thesis is about.  Do you want that rung, and should
+rung (i) be reported as "LS2 at its best" even though it carries a known +2.6%?
+
+**Q10. Which ⟨Kd⟩₁ is canonical, given L23 contradicts itself?**  `z1_lambda`
+disagrees with the e-folding depth implied by `Ed_z` — 1.77× too deep at 700 nm,
+37,039 pairs off by >10%.  Planning prompt 1 used the trapezoid of `KEd_z` over
+`[0, z1_lambda]`, which is robust to that (≲1.6% if z₁ is replaced by the
+Ed-derived depth) because L23's ocean is homogeneous.  But this choice is not
+cosmetic: LS2 *divides* by ⟨Kd⟩₁, so a definitional offset in ⟨Kd⟩₁ maps
+one-for-one onto retrieved `a`, and the re-derived a₁ intercept inherits it too.
+The candidates are (a) trapezoid of `KEd_z` over the stored `z1_lambda` (status
+quo); (b) the same trapezoid over a z₁ recomputed from `Ed_z`, which is
+internally consistent but no longer the database's own z₁; (c) `ln[Ed(0⁻)/Ed(z₁)]
+/ z₁`, closest to the LS1 definition.  All three agree to ~0.03% in the blue and
+diverge in the red.  *Recommended:* (c) as canonical, since it is LS1's actual
+definition and is computed from `Ed_z` alone, with (a) reported once as a
+sensitivity so the 700 nm discrepancy is on the record rather than buried.  Which
+do you want, and should the choice be a documented option rather than a constant?
+
+**Q11. The re-derivation of Q6 cannot be done as scoped — what shape should the
+re-derived LUT have?**  Q6 says "refit the a-LUT and bb-LUT from L23 X=1 on the
+paper's (η, μw) grid".  Three measurements say that grid is unreachable:
+
+- **μw: L23 has 3 of 8 nodes.**  θs ∈ {0, 30, 60} lands exactly on nodes 0, 3
+  and 6.  Nodes 1, 2, 4, 5 and 7 have no data at all, and node 7 (θs = 70°) is
+  the edge the operational algorithm is actually used at.
+- **η: populated at all 21 nodes but 50:1 unbalanced and wavelength-confounded.**
+  corr(log η, λ) = −0.72 — η is largely a wavelength axis in disguise, because
+  b_w is a fixed spectrum and η is high exactly where b_p is small and blue.
+  Node 0 has no blue samples; node 20 has no red ones.  A node-by-node refit
+  would bake wavelength into an axis that is meant to be wavelength-free.
+- **b/a: L23 spans 0.002–14.4 against the paper's 0.05–30.**  Above b/a = 10
+  there are 225 cells in the whole corpus (0.08%); the paper's turbid half is
+  essentially unsampled, and 9.3% of L23 sits *below* 0.05, all of it at
+  600–750 nm.
+
+Against that, the good news is that the functional form holds: within the three
+best-populated η bins a cubic in Rrs fits ⟨Kd⟩₁/a with R² ≈ 0.99 and 95% of
+points inside 1.2%.  So the *form* survives; the *grid* does not.  Options:
+(a) refit on a 3-node μw axis and declare 0–60° the supported domain; (b) fit
+the coefficients as a smooth low-order function of μw, which extrapolates to 70°
+honestly and costs one more modelling assumption; (c) refit at μw = 1 only and
+treat solar geometry as out of scope.  For η, the parallel choice is a reduced
+node set with a regularized/smoothed fit rather than 21 independent nodes.
+*Recommended:* (b) for μw with (a) as the validation check, and a reduced,
+smoothed η axis — plus a held-out split **by IOP scenario, never by row**, since
+the 3,320 scenarios are shared across every X and Y and a random row split would
+leak.  Do you accept a re-derived LUT that is not shape-compatible with the
+published one, and if so may it be a different object (coefficients as functions)
+rather than a drop-in (21, 8, 4) array?
+
+**Q12. κ: 19% of L23 gets no Raman correction, and two of those failures are
+defects in the shipped table.**  Corpus-wide, 19.1% of in-envelope cells have
+bb/a outside the κ table's tabulated range, so κ comes back NaN and the
+correction is silently skipped.  Two of the failures are table pathologies, not
+water: the **502 nm row has a collapsed valid range** ([0.0674, 0.0741], with
+coefficients of order 1e5 — a bad fit row), which costs ~44% of cells near
+490–505 nm; and the **table stops at 702 nm**, after which `np.interp` clamps, so
+90% of cells at 750 nm are compared against a 702 nm row whose bb/a floor is 4×
+too high.  Where κ *is* finite it is a real correction — median 0.929, i.e. a 7%
+adjustment to Rrs.  Two decisions.  First, for the benchmark rungs, what happens
+to a κ-NaN cell: skip the correction (κ = 1), drop the cell, or mark it not-ok?
+Dropping 19% would bias the comparison toward easy water; marking not-ok would
+make LS2 look like it failed when the *table* failed.  Second, the Q6 κ refit
+from X=1 vs X=2 — should it cover 350–750 nm (L23's full range, fixing the 702 nm
+cutoff) rather than the paper's 400–700 nm, and should it extend the bb/a range
+to cover L23 instead of inheriting a range that excludes a fifth of it?
+*Recommended:* κ = 1 with the reason recorded as a separate count (per Q5's "NaN
+reasons are themselves a result"), and yes to both halves of the refit — the
+matched X=1/X=2 pair is exactly what makes a wider, better-conditioned κ
+possible.  Confirm?
+
+**Q13. `fit_method` is a contest key, so a `DirectSpec` would never meet BING.**
+This is the sharpest integration problem, and it was invisible before prompt 1.
+The leaderboard keys contests on `(dataset, algorithm, fit_method, stratum,
+component, ref_wave)`, and `standard.build`'s helpers all default to
+`fit_method='chisq'`.  So if LS2 carries an honest `fit_method='direct'`, it
+forms a contest of one, is labelled **"sole competitor"**, is never ranked
+against BING, and is absent from every standard-report section — which defeats
+the entire purpose of Q5's head-to-head.  If instead it carries `'chisq'`, the
+comparison happens automatically but the label is a lie and the χ² columns
+invite exactly the nonsense Q1 rejected option (a) to avoid.  Options:
+(a) carry `'direct'` and teach the contest/report code to pool across
+`fit_method` when the algorithms are of different kinds; (b) carry `'chisq'` and
+rely on the NaN columns to signal what LS2 is; (c) make the contest key
+configurable per report.  *Recommended:* (a) — it is the honest label, and the
+pooling change is confined to the contest key, which is one place.  It does mean
+a second core touch point beyond the `DirectSpec` branch Q1 authorised, so I am
+asking before spending it.  Also: `a_nw` is not a component the framework knows
+at all, so the Q5 head-to-head on `a`, `a_nw`, `bb`, `bb_p` needs `a_nw` added to
+four vocabularies **and** BING taught to emit `a_dg + a_ph` as `a_nw`.  Is that
+sanctioned?
+
+**Q14. Where does the working LS2 live, and does it iterate?**  The ocpy `ls2`
+branch turns out to have **no commits of its own** — it points at `main`, where
+`ocpy/ls2/` already lives.  So "we will use that" is a clean starting point, not
+existing work.  What is there cannot be used as-is for a benchmark: it is scalar
+(one call per sample per wavelength, so ~800k calls for one arm), it returns
+`None` off-grid instead of NaN, it raises `UnboundLocalError` on an exact
+boundary node, and it has the stale-corner Raman defect.  Options: (a) fix and
+vectorize in ocpy on the `ls2` branch — which is also where the Chl→b_p function
+of Q2 is going, so the two land together; (b) leave ocpy alone and write a fresh
+implementation in IOPtics that imports only the LUT; (c) fix ocpy and put a thin
+adapter in IOPtics.  *Recommended:* (c).  The fix belongs upstream where the bug
+is and where Q2's function is going; IOPtics gets the vectorized driver and the
+`DirectSpec`.  Second half: the paper iterates the Raman correction to
+convergence and the port does one pass.  *Recommended:* iterate, with LS1's
+criterion (bb/a change < 0.1%, which it says converges in 2–3 passes), and keep
+single-pass available as a diagnostic — on L23 the stale-corner fix alone moves
+median `a` error by only 0.25 points, so iteration is the larger of the two
+effects and worth measuring.  Do you want the ocpy fix as a separate commit that
+could be upstreamed, and do we keep an "as-published, defects included" row to
+quantify what the port itself cost?
+
+**Q15. Does LS2 see the same noise BING sees?**  RT-A ran L23 X=4 with the
+`pace` noise model, and Q2's rung (iii) is explicitly "the only rung that is a
+fair comparison with BING".  Fair requires the same Rrs.  But the rungs also
+differ in what *Kd* they see, and true ⟨Kd⟩₁ is noiseless — an advantage no real
+retrieval has even when Kd is measured.  PACE noise on L23 is ~6% of Rrs at
+440 nm, ~11% at 550 and **~50% at 670** (3.3% of Rrs(670) go negative after one
+draw), so this is not a small perturbation for a closed-form algorithm with no
+fitting to average it away.  *Recommended:* every rung sees the same noised Rrs
+as RT-A, at the same seed policy, so the LS2-vs-BING comparison is like-for-like;
+and Kd noise becomes its own sensitivity rung rather than being baked into rungs
+(i) and (ii), since "how much does LS2 degrade per percent of Kd error" is a
+result worth having separately.  Agreed, and should the noiseless-Rrs run also be
+kept as the zero-noise reference?
+
+**Q16. The Kd network: which bands, what scope, and an unexplained 15%.**  Three
+measurements shape this.  **(a) Band set.**  There is no local dataset with
+OCI-band Rrs *and* measured Kd, so validation can only happen at bands PANGAEA
+carries.  A SeaWiFS-like input set (443, 490, 510, 555, 670) has 339 PANGAEA rows
+matching within ±2.5 nm and 1,884 within ±6 nm, and three of those bands sit
+within 0.5 nm of OCI centres; the MODIS set the current network uses has **0**
+rows at ±2.5 nm and 243 at ±6 nm, of which 69% lie outside L23's Kd range
+entirely.  So the band set decides whether the network can ever be validated
+against real data.  **(b) Scope.**  L23 is clear-water dominated: Kd(490) ≤ 0.65
+m⁻¹ with 95% below 0.10, against PANGAEA in situ where 15% of rows exceed 0.3 and
+the max is 3.9.  The 2018 network's *turbid* branch cannot be learned from L23 at
+all.  **(c) An unexplained discrepancy.**  The shipped MODIS network overestimates
+L23's ⟨Kd⟩₁ by **15–18% at 440 and 490 nm** while agreeing to 2–4% at 555 and
+670 nm, uniformly across Kd bins.  The sza scaling of the two agrees to 1–3%, so
+the geometry is consistent and the blue gap is something else — a difference in
+pure-water IOPs, in the ⟨Kd⟩₁ definition, or a real network error.  Until it is
+resolved we do not know whether L23's ⟨Kd⟩₁ is the truth the network should be
+trained against or the thing that is wrong.  *Recommended:* the SeaWiFS-like band
+set, because it is the only one with a validation path; state clear-water-only
+scope explicitly and do not attempt a turbid branch; and resolve (c) **before**
+training, as a short diagnostic, since every downstream number depends on which
+⟨Kd⟩₁ is right.  Effective training size is 3,320 IOP scenarios, not the 2.4M
+rows — the nine X/Y files are RT replicates of the same water bodies — so splits
+must be by scenario.  Do you agree, and is the 60–70° extrapolation gap (L23
+stops at 60°) acceptable given the operational domain is 0–70°?
+
+**Q17. The PACE arm is blocked — where is the data?**  Q3 asks for an LS2-PACE
+network "to generate Kd for the PACE dataset", but on this machine the artifact
+the IOPtics adapter expects
+(`$OS_COLOR/IOPtics/pace_pab_100/pace_pab_100.parquet`) does not exist, no local
+PACE product carries Kd, and the one PACE file present — a single-day L3m 0.1°
+AOP composite — has **no per-pixel solar zenith angle**, which the network
+requires as an input.  The `pab.db` matchups reference L2 granules under paths
+belonging to a different machine.  Options: (a) you point me at the PACE data or
+regenerate the parquet; (b) compute θs from date + lat + lon on the L3m composite
+and accept a daily composite as the PACE arm; (c) defer the PACE arm and deliver
+the network trained and validated on L23 + PANGAEA only.  *Recommended:* (c) for
+the current window, with (a) as soon as the data is reachable — the network is
+the deliverable, and applying it to PACE is a separate step that should not block
+it.  Where is the PACE data, and do you want the arm deferred?
+
+**Q18. Branch hygiene and the report module.**  Two small decisions with a git
+dependency, so they are yours.  First, `origin/rt-tests` carries three commits
+that `ls2` does not, including `ioptics/report/rt_ladder.py` and the RT-A ladder
+pages that supersede `rta_headline.md` — the very numbers LS2 is to be compared
+against.  A merge would be **clean**: the two sides touch disjoint files (118
+files, but 104 are generated docs, and `ls2` has only added two files, neither of
+them touched on the other side).  Second, `rt_ladder.py` is the first
+per-experiment report module, and it is hard-wired to the RT rungs
+(`LADDER = registry.RT_VARIANT_SEED`), to `fit_method` 'mcmc'/'chisq', and to
+cells that exclude `a_nw`; it also drops any cell with `n == 0`, which is exactly
+how Q5's explicit "not applicable" rows would have to arrive.  Options: generalize
+`rt_ladder.py` to take its ladder and cells as parameters, or write a sibling
+`ls2_ladder.py`.  *Recommended:* merge `origin/rt-tests` into `ls2` first (you
+run git), then write a sibling `ls2_ladder.py` rather than generalizing — the
+rung axis means something different here (input ladder, not RT ladder), and
+churning a module that just landed on another branch invites a conflict for no
+gain.  Shall I assume the merge has happened when I write the execution prompts?
+
 ## Logs
 
 ### 2026-09-17 (Doc created from the thesis repository; context compiled; round-1 questions posed)
@@ -604,3 +821,74 @@ confirmed: MCMC MAE 0.050–0.059 across the five rungs.
 
 **No questions posed.**  Per the prompt, round 1 is already answered above;
 planning prompt 2 asks the next set.
+
+### 2026-09-21 (Planning prompt 2: LS2 measured on L23; round-2 questions posed)
+
+**Method.**  Three Fable subagents in parallel, each measuring something a
+round-1 answer now depends on: the η/b/a/Rrs envelope and what a LUT refit from
+L23 could even look like; what an L23-trained Kd network for PACE can and cannot
+be; and the RT-ladder report pattern plus the branch situation.  Then ten
+questions, Q9–Q18.  One subagent's safety review timed out, so its headline
+claim — the Rrs → 0 limit — was re-checked by hand before it was used
+(0.9694 at θs = 0 against μw = 1; 0.7648 at θs = 60° against 0.7631; p5–p95
+span 0.0015, so systematic).  No git commands were run.
+
+**Three measurements changed the plan.**
+
+*1. Rung (i) is not neutral.*  LS2 with everything handed to it as truth —
+⟨Kd⟩₁, b_p = `bnw`, L23's own a_w and b_w — is biased on L23: median relative
+error **a +2.6%, bb +9.8%, bb_p +24%**.  The `a` half is partly explained: the
+paper's own limiting check (a/⟨Kd⟩₁ → μw as Rrs → 0) fails on L23 by 3.1% at
+nadir, in the direction and with the tightness of a **diffuse-sky effect** —
+L23's Hydrolight runs are not the direct beam the LUT's μw assumes.  That turns
+Q6's re-derivation from a refinement into the fix for a measured bias, and it
+suggests a cheap diagnostic rung (published LUT at an effective μw) that would
+separate illumination bookkeeping from genuine coefficient error.  Hence Q9.
+The bb bias is four times larger and *not* explained by illumination.
+
+*2. The re-derivation as scoped in Q6 is impossible.*  "Refit on the paper's
+(η, μw) grid" cannot be done from L23: θs ∈ {0, 30, 60} lands on exactly **3 of
+the 8 μw nodes** (0, 3, 6), leaving node 7 — θs = 70°, the operational edge —
+with no data at all.  The η axis is populated at all 21 nodes but 50:1
+unbalanced and **wavelength-confounded** (corr(log η, λ) = −0.72), because b_w is
+a fixed spectrum, so η is really a wavelength axis in disguise; and b/a spans
+0.002–14.4 against the paper's 0.05–30, with the turbid half essentially
+unsampled (225 cells above b/a = 10 in the whole corpus).  The functional form
+does survive — a cubic in Rrs fits ⟨Kd⟩₁/a with R² ≈ 0.99 in the best-populated
+η bins — so the form holds and the grid does not.  Hence Q11, which asks whether
+a re-derived LUT may be a different *object* (coefficients as smooth functions)
+rather than a drop-in (21, 8, 4) array.
+
+*3. LS2 would never meet BING.*  `fit_method` is a **contest key** in
+`leaderboard.py`, and every `standard.build` helper defaults to
+`fit_method='chisq'`.  An honest `DirectSpec` carrying `fit_method='direct'`
+would therefore form a contest of one, be labelled "sole competitor", and be
+absent from every standard-report section — defeating the Q5 head-to-head
+entirely.  Hence Q13, which asks for a second core touch point beyond the
+`DirectSpec` branch that Q1 authorised.
+
+**Also measured, and folded into the questions.**  The η envelope is *not* a
+blocker: 99.4% of cells are inside, 98.4% with a finite ⟨Kd⟩₁, and none of the
+crash cases (η exactly 0 or 0.2) occur on L23.  The κ table fails on 19.1% of
+cells, two of those failures being table defects rather than water — a collapsed
+valid range in the 502 nm row, and a 702 nm cutoff that `np.interp` clamps (Q12).
+The ocpy `ls2` branch has **no commits of its own**; `ocpy/ls2/` is already on
+`main`, so Q2's "we will use that" is a clean start, not existing work (Q14).
+L23's ⟨Kd⟩₁ depends on sza almost exactly as 1/μw with ≤1% scenario spread, so
+three sza nodes is a mild limit for a Kd network — but L23 is clear-water
+dominated (Kd(490) ≤ 0.65, 95% below 0.10), so the 2018 network's turbid branch
+cannot be learned from it, and there is **no local dataset with OCI-band Rrs and
+measured Kd**, which makes the band set a validation decision rather than an
+aesthetic one (Q16).  The shipped MODIS network overestimates L23's ⟨Kd⟩₁ by
+15–18% in the blue while agreeing to 2–4% in the red, unexplained — worth
+resolving before L23 ⟨Kd⟩₁ is adopted as training truth.  A merge of
+`origin/rt-tests` into `ls2` would be clean (disjoint file sets), and
+`rt_ladder.py` is hard-wired to the RT rungs (Q18).
+
+**Ten questions posed (Q9–Q18), none self-answered.**  Q9–Q12 are about LS2 the
+algorithm (baseline bias, the ⟨Kd⟩₁ definition, the shape of the re-derivation,
+κ); Q13–Q15 about LS2 as an IOPtics citizen (the contest key and `a_nw`, where
+the working code lives and whether it iterates, noise parity with RT-A);
+Q16–Q18 about the Kd network, the blocked PACE arm, and branch/report hygiene.
+Q9, Q11 and Q13 are the ones that change the build; Q17 needs a pointer to data
+that is not on this machine.
