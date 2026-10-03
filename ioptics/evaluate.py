@@ -11,6 +11,10 @@ same way for both fit methods so intervals are comparable:
 - **MCMC** (``from_chains``) — same percentiles over the posterior chain
   (arrives in Stage 3).
 
+A **direct** algorithm (no fit at all; ls2 Q1) is assembled separately by
+:func:`assemble_direct`: its values come straight from the driver, its bounds
+and fit statistics are NaN, and its status follows the ls2 Q5 rule.
+
 This module wraps ``bing.evaluate`` / ``bing.stats``; it operates on already-built
 models (so it does not itself load L23 data — but its inputs come from
 :func:`ioptics.run.fit_chisq`, which does).
@@ -358,3 +362,102 @@ def from_chains(spec, record, models, rt_dict, chains, *,
     point = np.median(flat, axis=0)
     return _assemble(spec, record, models, rt_dict, flat, point, 'mcmc', perc,
                      geom=geom)
+
+
+# --- direct (non-fitting) algorithms ------------------------------------------
+
+#: Fit-quality statistics a direct algorithm cannot have. Emitted explicitly
+#: as NaN -- never omitted and never 0.0 -- so a reader sees "undefined", not
+#: "perfect" (ls2 Q5). ``n_bands`` is the one statistic that survives.
+_DIRECT_NAN_STATS = ('chi2', 'chi2_nu', 'AIC', 'BIC', 'k', 'rel_misfit')
+
+
+def _direct_status(components, outputs):
+    """The ls2 Q5 status rule for a direct algorithm.
+
+    ``ok`` when every requested output is finite and positive at every
+    wavelength. Otherwise ``poor_fit`` when at least one value of one
+    requested output is finite -- the algorithm returned numbers, just not a
+    complete physical set -- and ``fit_failed`` when nothing finite came back.
+    The status set itself is fixed (``records.STATUSES``; ls2 Q24), so the
+    *reasons* live elsewhere: per wavelength, in the spectral table.
+
+    Not :func:`_fit_status`, which gates ``ok`` on a finite χ²_ν that a direct
+    algorithm never has.
+    """
+    values = [np.asarray(components[o].med, dtype=float) for o in outputs]
+    if all(np.all(np.isfinite(v) & (v > 0)) for v in values):
+        return 'ok'
+    if any(np.any(np.isfinite(v)) for v in values):
+        return 'poor_fit'
+    return 'fit_failed'
+
+
+def assemble_direct(spec, record, outputs, *, fit_method='direct'):
+    """Build a :class:`RetrievalResult` from a direct algorithm's outputs.
+
+    The direct counterpart of :func:`_assemble`, which is bound to BING model
+    objects and posterior samples that a direct algorithm does not have.
+
+    - **Components** are exactly ``spec.outputs``, each a
+      :class:`ComponentFit` whose ``med`` is the driver's value and whose four
+      bounds arrays are NaN of the same length: there is no posterior, and an
+      interval of zero width would claim certainty instead.
+    - **No** ``Rrs_model``: a direct algorithm reproduces nothing, so
+      ``rel_misfit`` and the χ² family stay NaN instead of a vacuous 0.0
+      from comparing ``Rrs`` with itself.
+    - **Stats** are NaN for everything in :data:`_DIRECT_NAN_STATS`;
+      ``n_bands`` is the record's band count.
+    - **Status** follows :func:`_direct_status` (ls2 Q5).
+
+    Parameters
+    ----------
+    spec : DirectSpec
+        The algorithm (``name`` and ``outputs`` are read).
+    record : PreparedRecord
+        The observation; ``wave`` sets the grid every output must lie on.
+    outputs : mapping
+        The driver's return value: ``'components'`` (``{name: (L,) array}``,
+        covering every name in ``spec.outputs``) and optionally ``'scalars'``
+        (``{name: (value, sigma)}``).
+    fit_method : str, optional
+        Label for the result; ``'direct'``.
+
+    Returns
+    -------
+    RetrievalResult
+
+    Raises
+    ------
+    ValueError
+        If a requested output is missing or not on ``record.wave``.
+    """
+    wave = np.asarray(record.wave, dtype=float)
+    n = int(wave.size)
+    given = dict(outputs.get('components', {}))
+    missing = [o for o in spec.outputs if o not in given]
+    if missing:
+        raise ValueError(f"{spec.name}: driver returned no {missing}; "
+                         f"spec.outputs asks for {list(spec.outputs)}")
+
+    components = {}
+    for name in spec.outputs:
+        med = np.asarray(given[name], dtype=float).ravel()
+        if med.size != n:
+            raise ValueError(f"{spec.name}: {name} has {med.size} values, "
+                             f"record has {n} bands")
+        nan = np.full(n, np.nan)
+        components[name] = ComponentFit(wave=wave, med=med, lo68=nan.copy(),
+                                        hi68=nan.copy(), lo95=nan.copy(),
+                                        hi95=nan.copy())
+
+    stats = {key: np.nan for key in _DIRECT_NAN_STATS}
+    stats['n_bands'] = n
+    scalars = {k: (float(v[0]), float(v[1]))
+               for k, v in dict(outputs.get('scalars', {})).items()}
+
+    return RetrievalResult(
+        dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
+        fit_method=fit_method, components=components, params={},
+        scalars=scalars, stats=stats,
+        status=_direct_status(components, spec.outputs), provenance_id='')

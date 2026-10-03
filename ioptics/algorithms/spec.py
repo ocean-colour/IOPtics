@@ -13,6 +13,11 @@ round-trips losslessly to a BING ``p`` and back:
 - :meth:`AlgorithmSpec.build_models` builds the ``[a_nw, bb_nw]`` model list
   (on the record's native grid) that :mod:`ioptics.run` fits.
 
+:class:`DirectSpec` is the second spec type (ls2 Q1): a **direct**, non-fitting
+algorithm such as LS2, which turns ``Rrs`` plus side inputs into IOPs in closed
+form.  It carries none of the BING fields; :func:`is_direct` is how the run,
+provenance and report code tell the two apart.
+
 BING is imported lazily inside the methods so importing this module stays cheap
 (and the docs build, which mocks bing, still imports it).
 
@@ -388,3 +393,161 @@ class AlgorithmSpec:
             for prior_dict in self.othera_priors:
                 models[0].priors.add_prior(prior_dict)
         return models
+
+
+# --- direct (non-fitting) algorithms -----------------------------------------
+
+#: Fields a sweep config may override on a :class:`DirectSpec`.
+#:
+#: A whitelist for the same reason as :data:`OVERRIDABLE_FIELDS`: a typo must be
+#: an error, never a silently ignored request.  ``name``/``label`` identify the
+#: algorithm, ``method`` selects which driver runs it (changing it is a
+#: different algorithm, not an override), and ``fit_method`` is always
+#: ``'direct'``.
+DIRECT_OVERRIDABLE_FIELDS = frozenset({
+    'kd_source', 'bp_source', 'raman', 'muw_mode', 'kd_noise', 'tol',
+    'max_iter', 'fits_turbid', 'outputs',
+})
+
+#: ``kd_source`` values: the ``Kd`` carried on the record (for L23 the
+#: ``<Kd>_1`` derived from its own profile, for PANGAEA the measured value), or
+#: one of ocpy's neural networks (``ocpy.ls2.kd_nn.NETWORKS``) applied to the
+#: record's Rrs.
+KD_SOURCES = ('record', 'nn:MODIS_v1.1', 'nn:MODIS_v1.3', 'nn:PACE_v2.3')
+
+#: ``bp_source`` values: the particulate scattering coefficient from the
+#: record's truth (input rung i), or ``b_p`` from chlorophyll via OC4v4 and
+#: ``ocpy.iop.scattering.bp_from_chla`` (rungs ii and iii).
+BP_SOURCES = ('truth', 'oc4v4')
+
+#: ``muw_mode`` values: ``'snell'`` refracts the record's solar zenith angle
+#: (the published algorithm); ``'effective'`` uses an effective cosine derived
+#: from the radiative transfer's own light field -- the diagnostic rung of
+#: ls2 Q9, which asks whether LS2's ``a`` bias is illumination bookkeeping.
+MUW_MODES = ('snell', 'effective')
+
+#: Components a direct algorithm may be asked to return.  LS2 produces totals
+#: and their non-water parts only; it has no ``a_ph``/``a_dg`` decomposition,
+#: and that absence is reported, not hidden (ls2 Q5/Q25).
+DIRECT_OUTPUTS = ('a', 'a_nw', 'bb', 'bb_p')
+
+
+@dataclass
+class DirectSpec:
+    """Declarative description of a **direct** (non-fitting) algorithm.
+
+    The second spec type beside :class:`AlgorithmSpec` (ls2 Q1).  A direct
+    algorithm computes IOPs from ``Rrs`` and side inputs in closed form: there
+    is no fit, no likelihood, no posterior and no model ``Rrs``, so none of
+    the BING machinery (priors, RT toggles, MCMC settings, ``build_models``)
+    applies, and none of it is carried.  ``fit_method`` is the honest label
+    ``'direct'``; the contest code pools direct rows with each fitted pool
+    (ls2 Q13/Q23) rather than this spec pretending to be a χ² fit.
+
+    The configuration fields are LS2's input ladder (ls2 Q2/Q4/Q9/Q15): where
+    ``Kd`` comes from, where ``b_p`` comes from, whether the Raman correction
+    runs, and which ``muw`` the look-up tables are entered at.
+
+    Parameters
+    ----------
+    name : str
+        Registry key (e.g. ``'ls2_i'``).
+    label : str
+        Human-readable label.
+    method : str
+        Which direct driver computes the result (``'ls2'``); see
+        :func:`ioptics.run.run_direct`.
+    fit_method : str
+        Always ``'direct'``.  Present so code that reads ``spec.fit_method``
+        works on either spec type.
+    kd_source : str
+        One of :data:`KD_SOURCES`.
+    bp_source : str
+        One of :data:`BP_SOURCES`.
+    raman : bool
+        Apply LS2's Raman correction ``kappa``.  Off for L23 ``X=1`` (elastic
+        truth), on for ``X=2`` and ``X=4`` (ls2 Q4).
+    muw_mode : str
+        One of :data:`MUW_MODES`.
+    kd_noise : float or None
+        Relative 1-sigma noise added to ``Kd`` -- the Kd-noise sensitivity
+        rung of ls2 Q15.  ``None`` (default): no Kd noise.
+    tol, max_iter : float, int
+        Raman iteration criterion, ``|d(bb/a)|/(bb/a) < tol`` with a cap of
+        ``max_iter`` passes (ls2 Q14/Q22; ``ocpy.ls2.ls2_main.ls2_invert``).
+    fits_turbid : bool
+        Whether red-peaked spectra are in scope; the same pre-fit
+        ``out_of_scope`` guard as :attr:`AlgorithmSpec.fits_turbid`.
+    outputs : tuple of str
+        Components the algorithm returns, a subset of :data:`DIRECT_OUTPUTS`.
+        The result's ``ok`` status requires every one of them to be finite and
+        positive at every wavelength (ls2 Q5).
+    """
+
+    name:        str
+    label:       str
+    method:      str = 'ls2'
+    fit_method:  str = 'direct'
+    kd_source:   str = 'record'
+    bp_source:   str = 'truth'
+    raman:       bool = True
+    muw_mode:    str = 'snell'
+    kd_noise:    float | None = None
+    tol:         float = 1.0e-3
+    max_iter:    int = 10
+    fits_turbid: bool = False
+    outputs:     tuple = DIRECT_OUTPUTS
+
+    def __post_init__(self):
+        self.outputs = tuple(self.outputs)
+        self.validate()
+
+    def validate(self):
+        """Raise :class:`ValueError` on any field outside its allowed values."""
+        if self.fit_method != 'direct':
+            raise ValueError(f"{self.name}: a DirectSpec's fit_method is always "
+                             f"'direct', got {self.fit_method!r}")
+        for field_name, value, allowed in (
+                ('kd_source', self.kd_source, KD_SOURCES),
+                ('bp_source', self.bp_source, BP_SOURCES),
+                ('muw_mode', self.muw_mode, MUW_MODES)):
+            if value not in allowed:
+                raise ValueError(f"{self.name}: {field_name} must be one of "
+                                 f"{allowed}, got {value!r}")
+        bad = [o for o in self.outputs if o not in DIRECT_OUTPUTS]
+        if bad or not self.outputs:
+            raise ValueError(f"{self.name}: outputs must be a non-empty subset "
+                             f"of {DIRECT_OUTPUTS}, got {self.outputs!r}")
+        if self.kd_noise is not None and not self.kd_noise >= 0:
+            raise ValueError(f"{self.name}: kd_noise must be None or >= 0, "
+                             f"got {self.kd_noise!r}")
+        if not (self.tol > 0 and int(self.max_iter) >= 0):
+            raise ValueError(f"{self.name}: need tol > 0 and max_iter >= 0")
+
+    def with_overrides(self, overrides):
+        """A **copy** with ``overrides`` applied, or a clear error.
+
+        Mirrors :meth:`AlgorithmSpec.with_overrides`: anything outside
+        :data:`DIRECT_OVERRIDABLE_FIELDS` raises -- including every BING field
+        (``apriors``, ``rt``, ``mcmc``, ...), which a direct algorithm does not
+        have -- and the result is re-validated, so an override cannot smuggle in
+        a value the constructor would reject.
+        """
+        import dataclasses
+
+        if not overrides:
+            return self
+        unknown = [k for k in overrides if k not in DIRECT_OVERRIDABLE_FIELDS]
+        if unknown:
+            raise ValueError(
+                f"{self.name}: cannot override {sorted(unknown)} on a direct "
+                f"algorithm -- overridable fields are "
+                f"{sorted(DIRECT_OVERRIDABLE_FIELDS)}. A DirectSpec has no "
+                f"priors, RT toggles or MCMC settings, and 'name'/'label'/"
+                f"'method' identify the algorithm")
+        return dataclasses.replace(self, **overrides)
+
+
+def is_direct(spec):
+    """``True`` for a :class:`DirectSpec`, the one test every branch point uses."""
+    return isinstance(spec, DirectSpec)

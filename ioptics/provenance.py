@@ -82,8 +82,40 @@ def versions():
     return v
 
 
+def _direct_block(spec):
+    """Provenance block for a :class:`~ioptics.algorithms.spec.DirectSpec`.
+
+    Every field that changes what the algorithm computes: where ``Kd`` and
+    ``b_p`` come from, whether the Raman correction runs, which ``muw`` the
+    tables are entered at, the Kd-noise level, the iteration criterion, the
+    scope claim and the requested outputs. ``kind: direct`` is what tells a
+    reader (and :func:`algorithm_digest`) that this is not a BING block; a
+    BING block carries no ``kind`` key at all, so its bytes are unchanged.
+    """
+    return {
+        'name': spec.name,
+        'label': spec.label,
+        'kind': 'direct',
+        'method': spec.method,
+        'fit_method': spec.fit_method,
+        'kd_source': spec.kd_source,
+        'bp_source': spec.bp_source,
+        'raman': spec.raman,
+        'muw_mode': spec.muw_mode,
+        'kd_noise': spec.kd_noise,
+        'tol': spec.tol,
+        'max_iter': int(spec.max_iter),
+        'fits_turbid': spec.fits_turbid,
+        'outputs': list(spec.outputs),
+    }
+
+
 def algorithm_block(spec):
     """Serializable provenance block for one :class:`AlgorithmSpec`.
+
+    A :class:`~ioptics.algorithms.spec.DirectSpec` gets its own block
+    (:func:`_direct_block`); everything below describes the BING block, which
+    is byte-for-byte what it was before direct algorithms existed.
 
     Everything that changes what the fit does, and nothing that does not.
 
@@ -102,6 +134,10 @@ def algorithm_block(spec):
     per-record tag (which records the imputation actually applied) is persisted onto
     ``results_scalar`` instead, where it can be counted.
     """
+    from ioptics.algorithms.spec import is_direct
+
+    if is_direct(spec):
+        return _direct_block(spec)
     return {
         'name': spec.name,
         'label': spec.label,
@@ -157,6 +193,10 @@ def algorithm_block(spec):
 #: ``rt_backend`` / ``fit_Bp`` / ``Bp_value`` / ``include_CDOM_fl`` /
 #: ``cdom_fraction``; the sweep-level record additionally carries
 #: ``dataset_opts`` and the ``leaderboard`` flag.
+#: Direct-algorithm blocks (``kind: direct``, ls2 task 4, 2026-10-03) did **not**
+#: bump the schema: the BING block is unchanged, and a direct block identifies
+#: itself by ``kind``. A bump would have made every new BING block read as a
+#: different schema era from its own re-run for no change in content.
 PROVENANCE_SCHEMA = 4
 
 #: Keys added after schema 1, with the value that means "as the default"
@@ -236,6 +276,12 @@ def algorithm_digest(spec_or_block):
     block = (spec_or_block if isinstance(spec_or_block, dict)
              else algorithm_block(spec_or_block))
     payload = {k: v for k, v in block.items() if k not in _DIGEST_EXCLUDE}
+    if payload.get('kind') == 'direct':
+        # A direct block was born complete, so there is no schema history to
+        # normalize -- and back-filling BING's maxfev/mcmc into it would put
+        # fields in its digest that the algorithm does not have.
+        canonical = json.dumps(payload, sort_keys=True, default=str)
+        return hashlib.md5(canonical.encode('utf-8')).hexdigest()[:12]
     for key, default in _SCHEMA_FIELD_DEFAULTS.items():
         payload.setdefault(key, default)
     for key, defaults in _SCHEMA_NESTED_DEFAULTS.items():

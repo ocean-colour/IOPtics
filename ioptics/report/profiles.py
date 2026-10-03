@@ -158,9 +158,12 @@ def _spec_block(name):
     """
     try:
         from ioptics.algorithms import registry
+        from ioptics.algorithms.spec import is_direct
         spec = registry.get(name)
     except Exception:
         return ''
+    if is_direct(spec):
+        return _direct_spec_block(spec)
     rows = [('a_nw model', spec.anw_model), ('bb_nw model', spec.bbnw_model),
             ('fit method', spec.fit_method or 'chisq')]
     for label, attr in (('set_Sdg', 'set_Sdg'), ('sSdg', 'sSdg'),
@@ -173,6 +176,26 @@ def _spec_block(name):
           if v}
     if rt:
         rows.append(('RT toggles', ', '.join(f'``{k}``' for k in sorted(rt))))
+    lines = ['.. list-table::', '   :stub-columns: 1', '   :widths: auto', '']
+    for label, val in rows:
+        lines.append(f'   * - {label}')
+        lines.append(f'     - {val}')
+    return '\n'.join(lines) + '\n'
+
+
+def _direct_spec_block(spec):
+    """:func:`_spec_block` for a direct (non-fitting) algorithm.
+
+    A :class:`~ioptics.algorithms.spec.DirectSpec` has no a_nw/bb_nw models,
+    priors or RT toggles; what it parameterizes is where its inputs come from.
+    """
+    rows = [('method', spec.method), ('fit method', spec.fit_method),
+            ('Kd source', spec.kd_source), ('b_p source', spec.bp_source),
+            ('Raman correction', 'on' if spec.raman else 'off'),
+            ('mu_w', spec.muw_mode),
+            ('outputs', ', '.join(f'``{o}``' for o in spec.outputs))]
+    if spec.kd_noise is not None:
+        rows.append(('Kd noise', spec.kd_noise))
     lines = ['.. list-table::', '   :stub-columns: 1', '   :widths: auto', '']
     for label, val in rows:
         lines.append(f'   * - {label}')

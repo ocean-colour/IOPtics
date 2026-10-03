@@ -23,6 +23,12 @@ and threaded as the items tuple's optional 5th element, and may fit ``B_p``
 (``spec.rt.fit_Bp``), which appends one trailing element to the fitted vector,
 the bounds, the seed, and every saved chain.
 
+**Direct algorithms** (:class:`~ioptics.algorithms.spec.DirectSpec`, ls2 Q1)
+take a separate branch in :func:`run_algorithm`, after the pre-fit scope
+decision and before anything BING-specific: :func:`run_direct` hands the record
+to the spec's driver and :func:`ioptics.evaluate.assemble_direct` builds the
+result. No models, no geometry resolution, no fit.
+
 .. note::
 
    Building BING models loads the L23 pure-water backscattering data, so the
@@ -37,6 +43,7 @@ from collections.abc import Mapping
 
 import numpy as np
 
+from ioptics.algorithms.spec import is_direct
 from ioptics.records import RED_PEAK_NM, RetrievalResult
 
 #: Anchor wavelength (nm) for the QAA-style band inversion in
@@ -648,6 +655,12 @@ def run_algorithm(spec, record, *, fit_method=None,
       as an optimizer failure (robust).
 
     Both results carry the true ``n_bands``/``k`` in their stats.
+
+    A **direct** spec (:func:`~ioptics.algorithms.spec.is_direct`) branches
+    off right after the scope decision -- before :func:`resolve_geometry`,
+    which reads ``spec.rt``, a field a direct spec does not have -- and runs
+    through :func:`run_direct`. Its method must be ``'direct'``, and a fitted
+    spec's must not be.
     """
     from ioptics import evaluate
 
@@ -655,6 +668,16 @@ def run_algorithm(spec, record, *, fit_method=None,
     declined = _prefit_decline(spec, record, method)
     if declined is not None:
         return declined
+    if is_direct(spec):
+        if method != 'direct':
+            raise ValueError(
+                f"{spec.name} is a direct algorithm and runs only as "
+                f"fit_method='direct', got {method!r}")
+        return run_direct(spec, record)
+    if method == 'direct':
+        raise ValueError(
+            f"{spec.name} is a fitted algorithm; fit_method='direct' applies "
+            "only to a DirectSpec")
     try:
         geom = resolve_geometry(spec, record)
         if method == 'chisq':
@@ -667,7 +690,82 @@ def run_algorithm(spec, record, *, fit_method=None,
                                         perc=perc, geom=geom)
     except UnderdeterminedFitError:
         return _failed_result(spec, record, method)
-    raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc')")
+    raise ValueError(f"unknown fit_method {method!r} (expected 'chisq'|'mcmc' "
+                     "for a fitted algorithm, 'direct' for a direct one)")
+
+
+#: Direct-algorithm drivers, by :attr:`DirectSpec.method`: the module that
+#: provides ``invert(spec, record)``. Imported only when a record is run, so
+#: registering or resolving a direct spec needs neither the driver nor its
+#: dependencies (ocpy).
+DIRECT_DRIVER_MODULES = {'ls2': 'ioptics.algorithms.ls2'}
+
+#: Drivers registered in-process (:func:`register_direct_driver`); consulted
+#: before :data:`DIRECT_DRIVER_MODULES`.
+_DIRECT_DRIVERS: dict = {}
+
+
+def register_direct_driver(method, invert):
+    """Register ``invert(spec, record)`` as the driver for ``method``.
+
+    The hook a test, or a new direct algorithm not yet in
+    :data:`DIRECT_DRIVER_MODULES`, uses to plug in. ``invert`` must return a
+    mapping with:
+
+    ``'components'``
+        ``{name: values}``, one ``(L,)`` array on ``record.wave`` for every
+        name in ``spec.outputs``;
+    ``'scalars'`` (optional)
+        ``{name: (value, sigma)}``, as on :attr:`RetrievalResult.scalars`.
+    """
+    _DIRECT_DRIVERS[method] = invert
+    return invert
+
+
+def _direct_driver(method):
+    """Resolve the ``invert`` callable for a direct ``method``."""
+    import importlib
+
+    if method in _DIRECT_DRIVERS:
+        return _DIRECT_DRIVERS[method]
+    modpath = DIRECT_DRIVER_MODULES.get(method)
+    if modpath is None:
+        raise ValueError(f"no driver for direct method {method!r}; known: "
+                         f"{sorted(set(DIRECT_DRIVER_MODULES) | set(_DIRECT_DRIVERS))}")
+    try:
+        module = importlib.import_module(modpath)
+    except ModuleNotFoundError as err:
+        if err.name == modpath:
+            raise NotImplementedError(
+                f"direct method {method!r} has no driver yet: {modpath} does "
+                "not exist") from err
+        raise
+    return module.invert
+
+
+def run_direct(spec, record):
+    """Run a direct (non-fitting) algorithm on one record.
+
+    Hands ``record`` to the driver for ``spec.method`` and assembles its
+    outputs with :func:`ioptics.evaluate.assemble_direct`. The caller
+    (:func:`run_algorithm`) has already applied the pre-fit scope decision.
+
+    Parameters
+    ----------
+    spec : DirectSpec
+        The algorithm.
+    record : PreparedRecord
+        The observation.
+
+    Returns
+    -------
+    RetrievalResult
+        ``fit_method='direct'``; see :func:`ioptics.evaluate.assemble_direct`.
+    """
+    from ioptics import evaluate
+
+    outputs = _direct_driver(spec.method)(spec, record)
+    return evaluate.assemble_direct(spec, record, outputs)
 
 
 def _prefit_decline(spec, record, fit_method):
@@ -698,6 +796,13 @@ def _unfit_result(spec, record, fit_method, status):
     recoverable by counting ``Rrs_obs`` rows in the spectral table.
     """
     stats = {'n_bands': int(np.asarray(record.wave).size)}
+    if is_direct(spec):
+        # No models and no parameter count: k is undefined, and NaN says so
+        # rather than a 0 that would read as "a zero-parameter fit".
+        stats['k'] = np.nan
+        return RetrievalResult(
+            dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
+            fit_method='direct', stats=stats, status=status)
     try:
         models = spec.build_models(record.wave)
         stats['k'] = n_free_params(
@@ -745,7 +850,8 @@ def run_batch(spec, records, *, fit_method=None, n_cores=1, strict=True,
     records : iterable of PreparedRecord
         The observations to fit.
     fit_method : str or None, optional
-        Override the spec's fit method (``'chisq'`` | ``'mcmc'``).
+        Override the spec's fit method (``'chisq'`` | ``'mcmc'``; a direct
+        spec takes only ``'direct'``).
     n_cores : int, optional
         Parallel workers (default 1 = serial).
     strict : bool, optional
@@ -765,9 +871,11 @@ def run_batch(spec, records, *, fit_method=None, n_cores=1, strict=True,
         fn = partial(_run_one_star, spec=spec, fit_method=fit_method,
                      perc=perc, strict=strict)
         # Pay the BING/JAX import once per worker at start-up rather than on
-        # its first record (see :func:`_warm_fit_imports`).
+        # its first record (see :func:`_warm_fit_imports`). A direct
+        # algorithm never touches BING, so it skips the warm-up.
+        init = None if is_direct(spec) else _warm_fit_imports
         with ProcessPoolExecutor(max_workers=n_cores,
-                                 initializer=_warm_fit_imports) as ex:
+                                 initializer=init) as ex:
             return list(ex.map(fn, records))
     if strict:
         return [run_algorithm(spec, record, fit_method=fit_method, perc=perc)
@@ -993,9 +1101,11 @@ def _mcmc_subset(spec, records, sweep_id, *, root=None, strict=True,
 def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     """Run a full sweep (all algorithms × all records) and write the outputs.
 
-    For each algorithm: a least-squares (χ²) fit over **all** records, then —
-    when ``cfg.mcmc_subset`` is set — an MCMC fit over the first ``mcmc_subset``
-    records. Every result is stamped with its ``provenance_id``; the results are
+    For each fitted algorithm: a least-squares (χ²) fit over **all** records,
+    then — when ``cfg.mcmc_subset`` is set — an MCMC fit over the first
+    ``mcmc_subset`` records. A direct algorithm
+    (:class:`~ioptics.algorithms.spec.DirectSpec`) runs once over all records
+    as ``'direct'``, and never enters the MCMC subset. Every result is stamped with its ``provenance_id``; the results are
     flattened to ``results_{spectral,scalar}.parquet`` and a ``provenance.yaml``
     is written under ``$OS_COLOR/IOPtics/runs/<sweep_id>/`` (or ``root=``).
 
@@ -1072,10 +1182,31 @@ def run_sweep(cfg, *, obs_ids=None, n_cores=1, strict=True, root=None):
     # with a default one as "the same algorithm".
     specs = [registry.get(ac.name).with_overrides(ac.overrides)
              for ac in cfg.algorithms]
+    # A per-algorithm fit_method must suit the spec's type. Checked for every
+    # algorithm before any record runs, so a mismatch fails in seconds rather
+    # than after the algorithms ahead of it have spent hours.
+    for ac, spec in zip(cfg.algorithms, specs):
+        if is_direct(spec) and ac.fit_method not in (None, 'direct'):
+            raise ValueError(
+                f"{spec.name} is a direct algorithm; its config entry asks for "
+                f"fit_method={ac.fit_method!r}, but a direct algorithm has no "
+                "fit to run")
+        if not is_direct(spec) and ac.fit_method == 'direct':
+            raise ValueError(
+                f"{spec.name} is a fitted algorithm; fit_method='direct' "
+                "applies only to a DirectSpec")
 
     pairs = []
     any_mcmc = False
     for ac, spec in zip(cfg.algorithms, specs):
+        if is_direct(spec):
+            # One pass, as 'direct': there is no χ² first pass to run and no
+            # posterior to sample, whatever the sweep-level fit_method says.
+            direct = run_batch(spec, records, fit_method='direct',
+                               n_cores=n_cores, strict=strict)
+            pairs.extend(_tag_pairs(direct, records, cfg.sweep_id, spec.name))
+            io.write_results(cfg.sweep_id, pairs, root=out_root)
+            continue
         # χ² over all records (the sweep's fast first pass; every algorithm).
         chisq = run_batch(spec, records, fit_method='chisq', n_cores=n_cores,
                           strict=strict)

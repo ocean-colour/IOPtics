@@ -8,18 +8,21 @@ comparison tooling is exercised on a genuine two-way contest from day one;
 ``config`` resolves a sweep's algorithm *names* against this registry into
 ``AlgorithmSpec`` objects.
 
-Two families are **opt-in** rather than seeded, because neither belongs on a
-cross-algorithm leaderboard beside the standard three: the turbid-water models
-(:func:`register_turbid`), which merely reproduce the single-power-law solution
-on open-ocean water, and the RT-test variants (:func:`register_rt_variants`),
-which are one algorithm under five different forward models. A sweep that names
-them calls the corresponding function before its names are resolved;
-:func:`get` says which one when the lookup fails.
+Three families are **opt-in** rather than seeded, because none belongs on a
+cross-algorithm leaderboard beside the standard three by default: the
+turbid-water models (:func:`register_turbid`), which merely reproduce the
+single-power-law solution on open-ocean water; the RT-test variants
+(:func:`register_rt_variants`), which are one algorithm under five different
+forward models; and the direct (non-fitting) algorithms
+(:func:`register_direct`), LS2's input ladder, whose rungs differ only in where
+their inputs come from. A sweep that names them calls the corresponding
+function before its names are resolved; :func:`get` says which one when the
+lookup fails.
 """
 
 from __future__ import annotations
 
-from ioptics.algorithms.spec import AlgorithmSpec
+from ioptics.algorithms.spec import AlgorithmSpec, DirectSpec
 
 REGISTRY: dict = {}
 
@@ -48,6 +51,9 @@ def get(name):
         elif name in RT_VARIANT_SEED:
             hint = (f"; {name!r} is an RT-test variant -- call "
                     "ioptics.algorithms.registry.register_rt_variants() first")
+        elif name in DIRECT_SEED:
+            hint = (f"; {name!r} is a direct (non-fitting) algorithm -- call "
+                    "ioptics.algorithms.registry.register_direct() first")
         raise KeyError(
             f"unknown algorithm {name!r}; available: {available()}{hint}")
     return REGISTRY[name]
@@ -277,6 +283,75 @@ def register_rt_variants(*, overwrite=True, maxfev=DEFAULT_MAXFEV,
         rt = dataclasses.replace(base.rt, fit_Bp=True, **rt_fields)
         spec = dataclasses.replace(base, name=name, label=label, rt=rt,
                                    fit_method=fit_method, maxfev=maxfev)
+        register(spec, overwrite=overwrite)
+        out[name] = spec
+    return out
+
+
+# --- direct algorithms: opt-in, not seeded -----------------------------------
+# LS2 (Loisel et al. 2018) as a ladder that separates the algorithm's accuracy
+# from the accuracy of its inputs (ls2 Q2): every rung runs the same published
+# look-up tables, and two adjacent rungs differ in exactly one input.
+#
+#   ls2_i            Kd from the record    + b_p from truth     -- LS2 alone
+#   ls2_ii           Kd from the record    + b_p from OC4v4 Chl -- + the Chl chain
+#   ls2_iii          Kd from the PACE NN   + b_p from OC4v4 Chl -- satellite mode
+#   ls2_iii_modis    Kd from the MODIS NN  + b_p from OC4v4 Chl -- 2nd Kd network
+#   ls2_i_effmuw     ls2_i at an effective muw from the RT's own light field --
+#                    the Q9 diagnostic: is the a bias illumination bookkeeping?
+#
+# Rung (iii) uses the authors' PACE network, with their current MODIS network
+# (v1.3) as the documented alternative run beside it (ls2 Q27, Q30). The
+# Kd-noise sensitivity rung of Q15 is not seeded here: its noise level is set
+# when the driver lands (task 7), via the ``kd_noise`` field.
+#
+# The Raman correction is on in every seed. An L23 X=1 sweep, whose truth is
+# elastic, switches it off per algorithm with ``raman: false`` (ls2 Q4).
+#
+# ``{name: (label, DirectSpec field overrides)}``, insertion order = ladder
+# order; everything not named takes the DirectSpec default, so the table *is*
+# the diff between rungs.
+DIRECT_SEED = {
+    'ls2_i': ('LS2 (i) Kd record, b_p truth', {
+        'kd_source': 'record', 'bp_source': 'truth'}),
+    'ls2_ii': ('LS2 (ii) Kd record, b_p OC4v4', {
+        'kd_source': 'record', 'bp_source': 'oc4v4'}),
+    'ls2_iii': ('LS2 (iii) Kd PACE-NN, b_p OC4v4', {
+        'kd_source': 'nn:PACE_v2.3', 'bp_source': 'oc4v4'}),
+    'ls2_iii_modis': ('LS2 (iii) Kd MODIS-NN v1.3, b_p OC4v4', {
+        'kd_source': 'nn:MODIS_v1.3', 'bp_source': 'oc4v4'}),
+    'ls2_i_effmuw': ('LS2 (i) effective muw (diagnostic)', {
+        'kd_source': 'record', 'bp_source': 'truth',
+        'muw_mode': 'effective'}),
+}
+
+
+def register_direct(*, overwrite=True):
+    """Register the direct (non-fitting) algorithms and return their specs.
+
+    Opt-in counterpart to the standard seed, mirroring
+    :func:`register_turbid` and :func:`register_rt_variants`. Call this before
+    running (or resolving the algorithm names of) a sweep whose config names
+    any of :data:`DIRECT_SEED`.
+
+    Registration needs neither BING nor ocpy: a :class:`DirectSpec` is pure
+    configuration, and its driver is imported only when a record is run
+    (:func:`ioptics.run.run_direct`).
+
+    Parameters
+    ----------
+    overwrite : bool, optional
+        Replace an existing registration of the same name (default True, so
+        repeat calls are harmless).
+
+    Returns
+    -------
+    dict
+        ``{name: DirectSpec}`` for the algorithms registered, in ladder order.
+    """
+    out = {}
+    for name, (label, fields) in DIRECT_SEED.items():
+        spec = DirectSpec(name=name, label=label, **fields)
         register(spec, overwrite=overwrite)
         out[name] = spec
     return out

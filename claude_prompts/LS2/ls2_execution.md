@@ -448,7 +448,314 @@ RT-A's numbers stay reproducible, and record which Chl each algorithm uses in
 its provenance block (task 7).  Should BING be switched, now or later?
 >A.  Use your recommendation.
 
+**Q30. Which MODIS Kd network: the v1.1 we ship, or the authors' current
+v1.3?**  Task 3 found that ocpy's "variant" MODIS network is not a variant.  It
+is the authors' own **v1.1** (2023-10-10, commit `a5c7ec2`), byte-identical in
+its weights.  Since then the authors have shipped **v1.3** (2025-04-15): a
+retrained network with different architecture (clear 8/8, turbid 4/4) and
+reordered inputs.  On the authors' 100 reference spectra, v1.1 reads a median
+**12% higher than v1.3 in clear water** (5–95%: 0.93–1.45×) and 33% higher in
+turbid water.  That matters twice.  First, the 15–18% blue overestimate that
+task 10 must explain was measured with v1.1, and v1.3 may close much of it.
+Second, Q27 keeps "the MODIS network" as rung (iii)'s documented alternative
+without saying which release.  Both are now in ocpy (`kd_nn(...,
+'MODIS_v1.1' | 'MODIS_v1.3' | 'PACE_v2.3')`).  `Kd_NN_MODIS` still defaults to
+v1.1, so nothing already measured moves.  *Recommended:*
+- Task 10 tests all three networks against L23's ⟨Kd⟩₁, so the 15% question is
+  answered for the network the authors actually stand behind.
+- Rung (iii)'s MODIS alternative uses **v1.3**.
+- The `Kd_NN_MODIS` default flips to v1.3 only after task 10 reports.
+
+Do you agree?
+
+>A. Yes, I agree
+
+**Q31. A direct result that is not `ok`: which label, and is it scored at
+all?**  Task 4 implements Q5 literally.  A direct result is `ok` only if every
+requested output (`a`, `a_nw`, `bb`, `bb_p`) is finite and positive at
+**every** wavelength.  Q24 froze the status set, so the remaining cases had to
+map onto existing labels.  As built:
+- **`poor_fit`** when something finite came back but not a complete physical
+  set, e.g. one off-grid band or one negative `a_nw`;
+- **`fit_failed`** when nothing finite came back.
+
+The consequence is bigger than the label: **accuracy is scored on `status ==
+'ok'` rows only** (`report/leaderboard.py:16`, `report/standard.py:165`).  So an
+LS2 spectrum with a single bad band leaves the accuracy statistics entirely.
+In the authors' reference vector, 11 of 60 cells have negative `a_nw`, mostly
+in the red where `a_w` dominates, and clear blue water fails η < 0.2 in some
+bands.  Strict whole-spectrum exclusion could drop a large share of LS2's
+spectra, and it would drop them selectively: the hardest water, which flatters
+LS2.  Options:
+- (a) keep it as built: strict `ok`, and LS2 is scored on complete spectra only;
+- (b) keep `frac_ok` strict per Q5, but for direct algorithms score the
+  **finite cells** of `poor_fit` rows too.  The per-wavelength NaN reasons of
+  Q24/task 6 already say which cells are missing and why, so accuracy is
+  per-cell and the coverage loss is reported beside it;
+- (c) relax `ok` to "finite and positive where defined" and leave scoring
+  alone.
+
+*Recommended:* (b), implemented in task 6 alongside the `nan_reason` column.
+It keeps Q5's definition honest, avoids the selection bias, and puts the
+missing cells where they can be counted.  Should I also relabel the partial
+case?  `poor_fit`'s docstring means "χ²_ν > 5", which a direct algorithm never
+has.  Which do you want?
+
 ## Logs
+
+### 2026-10-03 (Q30 noted; task 4 — IOPtics: DirectSpec, registration, run-stage branch)
+
+**New answer.**  *Q30*: agreed.  Task 10 tests all three Kd networks; rung
+(iii)'s MODIS alternative uses v1.3, and it is already seeded as
+`ls2_iii_modis`.  The `Kd_NN_MODIS` default flips only after task 10 reports.
+
+**What was built.**
+- **(a) `DirectSpec`** (`ioptics/algorithms/spec.py`), the second spec type.
+  - Fields:
+    - `name`, `label`;
+    - `method` (`'ls2'`, which selects the driver);
+    - `fit_method` (always `'direct'`, validated);
+    - the ladder inputs: `kd_source` (`record` | `nn:MODIS_v1.1` |
+      `nn:MODIS_v1.3` | `nn:PACE_v2.3`), `bp_source` (`truth` | `oc4v4`),
+      `raman`, `muw_mode` (`snell` | `effective`, Q9), `kd_noise` (Q15);
+    - `tol` and `max_iter` (Q14/Q22);
+    - `fits_turbid`, and `outputs` ⊆ (`a`, `a_nw`, `bb`, `bb_p`).
+  - It carries none of the BING surface: no `rt`, `mcmc`, priors,
+    `build_models` or `to_bing_p`.
+  - `with_overrides` whitelists against `DIRECT_OVERRIDABLE_FIELDS`, rejects
+    every BING field and the identity fields, and re-validates the result.
+    `is_direct(spec)` (an `isinstance` check) is the one test every branch
+    point uses.
+  - I named the Kd source `record`, not `truth`, because task 5 makes Kd an
+    *input* carried on the record, not truth.
+- **(b) Registry.**  `DIRECT_SEED` plus an opt-in `register_direct()`, with a
+  third hint branch in `registry.get`.  Five rungs are seeded:
+  - `ls2_i` (Kd record, b_p truth);
+  - `ls2_ii` (+ b_p from OC4v4);
+  - `ls2_iii` (+ Kd from the PACE network, per Q27);
+  - `ls2_iii_modis` (MODIS v1.3, per Q27/Q30);
+  - `ls2_i_effmuw` (the Q9 diagnostic).
+
+  A test pins that each rung differs from `ls2_i` only in its intended
+  fields.  Raman is on in every seed; an X=1 sweep sets `raman: false` per
+  algorithm (Q4).  **Not seeded:** the Q15 Kd-noise rung, whose noise level is
+  task 7's to set (the `kd_noise` field is ready).  **Decision:** the seeds
+  keep `fits_turbid=False`, the framework default.  Rungs (ii)/(iii) lean on
+  open-ocean side chains (OC4v4 Chl → b_p), and L23 is moot either way.
+  Revisit for PANGAEA in task 7.
+- **(c) Config.**  `ALLOWED_FIT_METHODS` gains `'direct'` for per-algorithm
+  use.  A new `SWEEP_FIT_METHODS` keeps it out of the **sweep default**,
+  because that default is inherited by every BING algorithm in the sweep.
+  Override keys are validated at load against the union of both whitelists
+  (config cannot know a name's type), and the spec's own `with_overrides`
+  then rejects a key that does not apply to it.
+- **(d) Run stage** (`ioptics/run.py`).
+  - **`run_algorithm`:** the direct branch sits right after
+    `_prefit_decline` and before `resolve_geometry`.  It raises if a direct
+    spec is asked for `chisq`/`mcmc`, or a BING spec for `'direct'`, and the
+    final error string now names all three methods.
+  - **New `run_direct`** with a driver lookup:
+    `DIRECT_DRIVER_MODULES = {'ls2': 'ioptics.algorithms.ls2'}` is imported
+    lazily, so registering a direct spec needs neither the driver nor ocpy.
+    `register_direct_driver` plugs in a driver in-process.  A method whose
+    module does not exist raises `NotImplementedError` naming it, and that is
+    what `ls2` does until task 7 adds `ioptics/algorithms/ls2.py`.  Driver
+    contract: return `{'components': {name: (L,) array}, 'scalars': {...}}`.
+  - **`run_sweep`:**
+    - it no longer forces `'chisq'`: a direct spec runs once as `'direct'`
+      and never enters the MCMC subset, whatever the sweep default says;
+    - a mismatched per-algorithm `fit_method` raises before any record runs;
+    - `run_batch` skips the BING/JAX warm-up in pool workers for a direct
+      spec.
+  - **`_unfit_result`:** for a direct spec it returns `n_bands` with `k =
+    NaN` and never touches `build_models`/`spec.rt`.
+- **(e) `evaluate.assemble_direct`.**
+  - Components are exactly `spec.outputs`, with NaN bounds arrays of the
+    record's length.  There is no `Rrs_model` and `params` is empty.
+  - `chi2`, `chi2_nu`, `AIC`, `BIC`, `k` and `rel_misfit` are explicitly NaN;
+    `n_bands` is set.
+  - Status follows the Q5 rule (`_direct_status`), not `_fit_status`.  For the
+    two non-ok labels see Q31.
+  - It raises if the driver omits a requested output or returns the wrong
+    length.
+- **(f) Guards.**
+  - `provenance.algorithm_block` sends a direct spec to a new
+    `_direct_block`, marked `kind: direct`.  `algorithm_digest` hashes a
+    direct block as is, skipping BING's schema back-fill of
+    `maxfev`/`mcmc`/`fits_turbid`, which would put fields in its digest that
+    it does not have.
+  - **The BING branch is byte-identical.**  I loaded `HEAD`'s
+    `provenance.py` from git and compared blocks and digests for all 11
+    registered BING algorithms (standard, turbid, RT variants): identical.
+  - `PROVENANCE_SCHEMA` stays 4, with a comment explaining why: a bump would
+    make every new BING block read as a different era from its own re-run,
+    for no change in content.
+  - `profiles._spec_block` routes a direct spec to `_direct_spec_block`
+    (method, Kd/b_p source, Raman, μw, outputs).
+
+**Seen but left for later tasks:** `report/tables.py:307` hard-codes
+`methods=('chisq', 'mcmc')`, which is the contest pooling of task 6/9.
+Accuracy scoring keeps `ok` rows only (Q31).
+
+**Tests (`ioptics/tests/test_direct.py`, 31, all Tier-1/data-free; a toy
+driver stands in for LS2).**
+- Spec: defaults and the honest label; rejection of bad values; overrides
+  apply, copy and re-validate.
+- Registry: opt-in, the hint, idempotence, and rung-diff discipline.
+- Config: per-algorithm `direct` plus round-trip; a sweep-level `direct` is
+  refused; a typo is still caught.
+- `run_algorithm` result shape: NaN bounds of the right length, NaN stats
+  except `n_bands`, no `Rrs_model`.
+- The Q5 rule (NaN band and negative value → `poor_fit`; all-NaN →
+  `fit_failed`; only requested outputs judged).
+- Missing or short driver outputs raise; fit-method/spec-type mismatches
+  raise.
+- A red-peaked record is declined before the driver runs, unless
+  `fits_turbid`.
+- Robust mode turns a driver exception into `fit_failed`; a missing driver
+  module names itself.
+- `run_sweep` end to end (monkeypatched prep): runs as `direct` despite
+  `fit_method: mcmc` + `mcmc_subset`, writes no `Rrs_model` rows, null
+  chains, NaN χ² columns and a `kind: direct` provenance block whose digest
+  matches; a mismatched fit method fails before any record.
+- Provenance: the direct block and its digest, which moves with every
+  configuration field but not with `name`/`label`; a mixed BING + direct
+  record round-trips through YAML.
+- The profile spec block.
+
+**Pre-existing failures, not from this task.**  Three `test_spec.py` tests
+(`…twelve_key_rt_dict`, `…configured_backend…`, `…yaml_rt_override…`) fail
+before and after.  The BING checkout is on branch `rob_rt`, whose
+`rt_dict_from_p` returns 10 keys and lacks `include_CDOM_fl`/`cdom_fraction`,
+which live on BING's CDOM branch.  It is an environment mismatch between the
+two repos.  Baseline before any task-4 edit: 513 passed, 3 failed (those),
+61 skipped.
+
+**Results.**  `pytest -q` **without `$OS_COLOR`**: 544 passed, 61 skipped, 3
+failed.  That is the baseline plus the 31 new tests; the 3 are the
+`test_spec.py` trio above.  **With `$OS_COLOR`**: 597 passed, 6 skipped, 5
+failed.  The extra two (`test_rt_backends.py::…misconfigured_rt_dict…` and
+`…cdom_fluorescence_runs…`) have the same root cause: `rob_rt` has no
+`include_CDOM_fl` validation and no `has_a_dg` model attribute.  Neither
+touches a direct-spec path.  Switching BING to the branch that carries the
+CDOM work should clear all five; I have not done that, because BING's checkout
+is JXP's.  `sphinx-build -W` on `docs/source` is green.  Nothing committed;
+JXP runs git.
+
+### 2026-10-03 (Q29 noted; task 3 — ocpy: port the authors' Kd networks)
+
+**New answer.**  *Q29*: BING stays on the 1998 `oc4`.  Task 7's provenance
+block must name the Chl algorithm per algorithm: OC4v4 for LS2, the 1998 OC4
+for BING.  No code change now.
+
+**The headline: ocpy's MODIS network is the authors' v1.1, and they have
+since moved on.**  I cloned `Kd_NN_Distribution` with full history and decoded
+every MODIS LUT release.  The `.mat` files hold MATLAB `table` objects that
+`scipy.io` cannot read, so I used `mat-io`, installed into the scratchpad only;
+it is not an ocpy dependency.
+- ocpy's `weights_1/2.csv` and `train_switch.csv` match the authors' LUT at
+  `a5c7ec2` (v1.1, 2023-10-10), and the two hard-coded test scalars (0.04600481,
+  0.56233418) are rows 0–1 of that commit's reference xls.
+- The hidden layers 8/6 and 9/6, the band list, and the "40,000 samples" all
+  come from the authors' v1.1 `Kd_NN_MODIS.m`.  The planning round's
+  "variant… exists only in a docstring" was wrong.  The real story is
+  *version drift*.
+- The authors' current **v1.3** (`19c2501`, 2025-04-15) is retrained: clear
+  8/8, turbid 4/4, inputs reordered from `[Rrs, λ, μw]` to `[Rrs, μw, λ]`, and
+  new training statistics.  On the same 100 spectra it gives 0.04082 and
+  0.43197 where v1.1 gives 0.04600 and 0.56233.  Median v1.1/v1.3 is 1.12 in
+  clear water and 1.33 in turbid water; the largest gap is 115%.  Posed as Q30,
+  because the 15–18% blue bias of task 10 was measured with v1.1.
+- The PACE network (v2.3, LUT `982b52c`) differs structurally from both MODIS
+  releases:
+  - inputs `[Rrs×12, sza, λ]`, i.e. **sza, not μw**;
+  - MATLAB `tansig` (= tanh), where MODIS uses 1.715905·tanh(2x/3);
+  - the clear branch drops Rrs(670) and Rrs(700);
+  - clear 19/17, turbid 17/9.
+- The authors' 2025-10-03 edits to both `.m` files are cosmetic only (a
+  function name and a comment).  The April reference vectors stand.
+- The PACE reference xls at `982b52c` had MODIS column headers and only five
+  Rrs columns.  `fef4d15` (2025-04-20) fixes the sheet without changing its Kd,
+  so that is the version converted.
+
+**What was built (ocpy).**
+- `runs/LS2/convert_kd_nn_luts.py` regenerates three NPZs and three reference
+  CSVs from a full-history clone, each pinned to its commit:
+  - NPZs: `ocpy/data/LS2/Kd_NN_LUT_{MODIS_v1.1,MODIS_v1.3,PACE_v2.3}.npz`;
+  - CSVs: `ocpy/tests/files/Kd_NN_test_run_{…}.csv`;
+  - it needs `mat-io` and `xlrd`, and the docstring says how to install them
+    privately.
+
+  The NPZs carry NaN-stripped LUT columns in MATLAB storage order, plus
+  `version` and `source_commit`.  The existing CSVs are kept for
+  `io.load_Kd_tables` and the legacy API.  The v1.1 NPZ weights equal the CSVs
+  exactly; `train_switch` agrees only to ~1e-10, because the CSV was printed at
+  15 digits, so the `.mat` is now the source.
+- `ocpy/ls2/kd_nn.py` is rewritten:
+  - Architectures, input order, train-switch rows and activation are
+    transcribed per release into `_SPECS`, as code rather than data.
+  - `load_network(name)` reshapes column-major (`order='F'`) exactly as
+    MATLAB's `reshape(w1, nc1, ne)`, checks sizes against the architecture,
+    and is `lru_cache`d, so **the weight files are read once per process**.
+  - `kd_nn(Rrs, sza, wave, network, return_branch=False)` is vectorized:
+    `(N, nb)` spectra × `(L,)` wavelengths → `(N, L)` in one pass, branch
+    selection per spectrum.  It is silent on negative Rrs and returns NaN
+    with per-spectrum `clear/turbid/negative` flags.  A non-finite switch
+    ratio falls in neither branch and gives NaN; MATLAB would error there.
+  - `Kd_NN_MODIS(…, version='1.1')` and the new `Kd_NN_PACE` are scalar
+    wrappers that **always return `(1, 1)`**, NaN plus a warning on negative
+    Rrs; previously this case returned a bare `np.nan`.  The MODIS switch is
+    now by named column (488/547), no longer positional.
+  - `load_weights`/`MLP_Kd` are kept as the legacy v1.1 interface.  A test
+    shows their `(ne, nc1)` reshape is the exact transpose of MATLAB's, which
+    settles the "These could be backwards" comment.
+  - `from IPython import embed` is gone from the test file, and so is the
+    module-level `test_kd_nn()` call that ran at import.
+- `docs/api/ls2.rst`: the Kd section is rewritten, with a release table and a
+  corrected example; the old one passed six Rrs values and a wavelength array
+  as `lambda_`.  `test_ls2_kd.py` is now in ocpy CI, since it no longer needs
+  IPython.
+
+**Measured.**  Against their own reference vectors, MODIS v1.1 (100 rows, 36
+clear / 64 turbid) matches to 1.8e-13, MODIS v1.3 (100 rows) to 7.2e-14, and
+PACE v2.3 (1 clear row) to 1.1e-13.  Speed: 10,000 spectra × 80 wavelengths
+(800k cells) take 0.11 s for MODIS and 0.28 s for PACE.
+
+**Gap, stated plainly: the PACE turbid branch has no oracle.**  The authors'
+PACE reference is a single clear spectrum.  The turbid branch is checked only
+against a literal loop-for-loop transcription of `Kd_NN_PACE.m` inside the
+test, on synthetic green-peaked spectra (rtol 1e-12), plus a 0.05–20 m⁻¹
+range check.  That pins the vectorization and the input wiring, not the
+weights.  A crude cross-check of PACE against MODIS v1.3 used the MODIS
+reference spectra interpolated to PACE bands.  It is **inconclusive**: linear
+interpolation from 547 to 667 nm grossly overstates Rrs at 580–640 nm, which
+the PACE clear branch uses.  The proper comparison is task 10's, on L23
+hyperspectral Rrs.
+
+**Tests (`ocpy/tests/test_ls2_kd.py`, 13).**
+- All three reference vectors (rtol 1e-11).
+- The two historical scalars, now at rtol 1e-9 with a `(1, 1)` shape check,
+  plus their v1.3 values.
+- Both branches exercised (36/64), with the switch rule checked.
+- Batch ≡ a loop over the scalar wrapper (rtol 1e-14) for both MODIS releases.
+- The PACE turbid literal transcription.
+- Negative Rrs: `(1, 1)` NaN with a warning in the scalar wrapper, quiet and
+  flagged in batch.  A negative Rrs(667) in the clear branch is ignored, as in
+  the authors' code.
+- A non-finite ratio gives NaN.
+- Weights load once: the hot path is checked never to call `load_Kd_tables`.
+- The legacy reshape is the transpose.
+- Bad arguments raise.
+
+ocpy `pytest -q`: 130 passed, 7 skipped, 4 failed.  The 4 are the known
+`test_plot_oc_scene.py` failures; this task added 12 tests.  A fresh
+`sphinx -E` build shows no LS2/Kd warnings, so the two `kd_nn` docstring
+warnings noted in task 1 are gone.  Nothing committed; JXP runs git.
+**Commit note:** ocpy's `.gitignore` ignores `*.npz` and `*.csv` everywhere,
+and the existing LS2 data files were force-added.  The three new
+`ocpy/data/LS2/Kd_NN_LUT_*.npz` and three new
+`ocpy/tests/files/Kd_NN_test_run_*.csv` therefore need `git add -f`.  Without
+them `kd_nn` cannot load and CI fails.
 
 ### 2026-10-02 (Q28 implemented; task 2 — ocpy: the Chl side-chain)
 

@@ -35,7 +35,8 @@ Validation rules (per the design doc):
 - ``algorithms`` is **required**; each entry is either a bare registry name
   (string) or a mapping carrying ``name`` plus optional overrides.
 - ``noise_model`` and ``fit_method`` are **sweep-level**.
-- ``fit_method`` is **overridable per algorithm**; ``noise_model`` is **not**
+- ``fit_method`` is **overridable per algorithm** (``'chisq'`` | ``'mcmc'`` |
+  ``'direct'``; the sweep default may not be ``'direct'``); ``noise_model`` is **not**
   (a per-algorithm ``noise_model`` is a hard error — comparing one algorithm
   under two noise models is, by construction, two sweeps).
 - ``dataset_opts`` is a mapping ``{dataset: {option: value}}`` whose keys must
@@ -52,7 +53,14 @@ from pathlib import Path
 
 import yaml
 
-ALLOWED_FIT_METHODS = ('chisq', 'mcmc')
+ALLOWED_FIT_METHODS = ('chisq', 'mcmc', 'direct')
+
+#: Fit methods allowed as the **sweep-level** default.  ``'direct'`` is not one:
+#: the sweep default applies to every algorithm that does not override it, and
+#: a fitted (BING) algorithm cannot run directly.  A direct algorithm is
+#: labelled ``'direct'`` by its own spec (:class:`ioptics.algorithms.spec.DirectSpec`)
+#: whatever the sweep default says.
+SWEEP_FIT_METHODS = ('chisq', 'mcmc')
 
 
 class ConfigError(ValueError):
@@ -70,8 +78,10 @@ class AlgorithmConfig:
         Registry name of the algorithm (e.g. ``'expb_pow'``). Resolution to an
         :class:`~ioptics.algorithms.spec.AlgorithmSpec` happens in Stage 2.
     fit_method : str or None
-        Per-algorithm fit-method override (``'chisq'`` | ``'mcmc'``). ``None``
-        means "use the sweep-level default".
+        Per-algorithm fit-method override (``'chisq'`` | ``'mcmc'`` |
+        ``'direct'``). ``None`` means "use the sweep-level default"; a direct
+        algorithm always runs as ``'direct'``, and ``run.run_sweep`` rejects a
+        fitted method on it (or ``'direct'`` on a fitted one).
     overrides : dict
         Any remaining per-algorithm overrides (e.g. ``mcmc``, ``rt``, priors,
         model names), passed through verbatim for Stage-2 resolution.
@@ -229,12 +239,20 @@ def _coerce_algorithm(entry, idx):
         # discovering it, which is what happened while overrides were ignored
         # entirely. The registry is not consulted here (config stays a neutral
         # carrier, resolvable without the algorithm layer); only the field names are.
-        from ioptics.algorithms.spec import OVERRIDABLE_FIELDS
-        unknown = [k for k in d if k not in OVERRIDABLE_FIELDS]
+        # Both spec types' whitelists are accepted here, since config does not
+        # know which type ``name`` resolves to; the spec's own
+        # ``with_overrides`` then rejects a key that does not apply to it (an
+        # ``rt`` override on a DirectSpec, a ``kd_source`` on a BING spec).
+        from ioptics.algorithms.spec import (DIRECT_OVERRIDABLE_FIELDS,
+                                             OVERRIDABLE_FIELDS)
+        allowed = OVERRIDABLE_FIELDS | DIRECT_OVERRIDABLE_FIELDS
+        unknown = [k for k in d if k not in allowed]
         if unknown:
             raise ConfigError(
                 f"algorithms[{idx}] ('{name}'): cannot override {sorted(unknown)} — "
-                f"overridable fields are {sorted(OVERRIDABLE_FIELDS)}")
+                f"overridable fields are {sorted(OVERRIDABLE_FIELDS)} "
+                f"(fitted algorithms) and {sorted(DIRECT_OVERRIDABLE_FIELDS)} "
+                f"(direct algorithms)")
         return AlgorithmConfig(name=name, fit_method=fit_method, overrides=d)
 
     raise ConfigError(
@@ -325,10 +343,13 @@ def from_dict(mapping, *, source_path=None):
         raise ConfigError("'noise_model' must be a non-empty string")
 
     fit_method = d.pop('fit_method', 'chisq')
-    if fit_method not in ALLOWED_FIT_METHODS:
+    if fit_method not in SWEEP_FIT_METHODS:
         raise ConfigError(
-            f"'fit_method' must be one of {ALLOWED_FIT_METHODS}, "
-            f"got {fit_method!r}")
+            f"'fit_method' must be one of {SWEEP_FIT_METHODS}, "
+            f"got {fit_method!r}"
+            + (" — 'direct' is a property of a direct algorithm's spec, not "
+               "a sweep default that fitted algorithms could inherit"
+               if fit_method == 'direct' else ''))
 
     mcmc_subset = d.pop('mcmc_subset', None)
     if mcmc_subset is not None and (
