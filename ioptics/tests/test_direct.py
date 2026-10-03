@@ -132,6 +132,7 @@ def test_each_rung_differs_from_rung_i_only_in_its_intended_inputs():
     assert diff('ls2_iii') == {'bp_source', 'kd_source'}
     assert diff('ls2_iii_modis') == {'bp_source', 'kd_source'}
     assert diff('ls2_i_effmuw') == {'muw_mode'}
+    assert diff('ls2_i_kdnoise') == {'kd_noise'}
     assert specs['ls2_iii'].kd_source == 'nn:PACE_v2.3'           # Q27
     assert specs['ls2_iii_modis'].kd_source == 'nn:MODIS_v1.3'    # Q30
 

@@ -207,6 +207,10 @@ class L23Adapter:
         # scalars as plain floats
         for s in ('Chl', 'Y', 'Sdg'):
             truth[s] = float(truth[s])
+        # The particulate scattering coefficient, which bing's extraction does
+        # not carry. It is an *input* to LS2's rung (i) ("true b_p", ls2 Q2),
+        # read from truth by design, and not an accuracy component.
+        truth['b_p'] = np.asarray(ds['bnw'].values[idx], dtype=float)
 
         # meta['Y'] is the solar-zenith *load option*, distinct from truth['Y']
         # (the Lee-2002 backscatter slope).

@@ -57,6 +57,9 @@ Algorithm registry
 .. automodule:: ioptics.algorithms.registry
    :members:
 
+.. automodule:: ioptics.algorithms.ls2
+   :members:
+
 Retrieval & run
 ===============
 

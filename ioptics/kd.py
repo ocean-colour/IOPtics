@@ -291,6 +291,52 @@ def _check_rows(ds, X, Y, wave):
                          'matched to obs_ids')
 
 
+#: Wavelength [nm] at which :func:`load_l23_muw_effective` reads the light
+#: field: the longest L23 band, where water absorbs ~2.85 m^-1 and in-water
+#: scattering barely redistributes the downwelling light.
+MUW_EFFECTIVE_WAVE = 750.0
+
+
+def load_l23_muw_effective(X=4, Y=0):
+    """An *effective* ``muw`` per L23 scenario, from the RT's own light field.
+
+    LS2's tables are entered at ``muw``, the cosine of the refracted direct
+    solar beam (Snell). Hydrolight's sky is not a direct beam alone: L23's
+    ``a/<Kd>_1`` tends to 0.9694 as ``Rrs -> 0`` at ``theta_s = 0``, not 1
+    (ls2 Q9). The diagnostic rung therefore enters the tables at the mean
+    cosine of the downwelling light just beneath the surface, ``md_z`` at
+    ``z = 0-``, taken at :data:`MUW_EFFECTIVE_WAVE`. There, in-water scattering
+    contributes almost nothing, so the value describes the illumination
+    entering the water and not the diffusion LS2's tables already model
+    through ``Rrs``. A cosine averaged over the first attenuation depth, or
+    taken in the blue, would count that scattering twice.
+
+    Measured (X=4): 0.9654, 0.9016 and 0.7595 at ``theta_s`` = 0, 30 and 60
+    degrees, against Snell's 1, 0.9278 and 0.7631. The values are nearly
+    scenario-independent (1st-99th percentile span below 0.001), as an
+    illumination property should be.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_scenario,)`` effective ``muw``; NaN for a scenario missing from
+        the profile file (:data:`KNOWN_EMPTY_PROFILE_ROWS`).
+    """
+    key = ('muw_eff', int(X), int(Y))
+    if key in _CACHE:
+        return _CACHE[key]
+    import xarray as xr
+
+    with xr.open_dataset(l23_profile_path(X, Y), engine='h5netcdf') as ds:
+        z = np.asarray(ds['z'].values, dtype=float)
+        lam = np.asarray(ds['Lambda'].values, dtype=float)
+        j = int(np.argmin(np.abs(lam - MUW_EFFECTIVE_WAVE)))
+        i0 = int(np.flatnonzero(z == 0.0)[0])
+        md0 = np.asarray(ds['md_z'].values[i0, :, j], dtype=float)
+    _CACHE[key] = md0
+    return md0
+
+
 def clear_cache():
     """Drop every cached ``<Kd>_1`` array."""
     _CACHE.clear()

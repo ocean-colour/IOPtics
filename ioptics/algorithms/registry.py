@@ -299,11 +299,12 @@ def register_rt_variants(*, overwrite=True, maxfev=DEFAULT_MAXFEV,
 #   ls2_iii_modis    Kd from the MODIS NN  + b_p from OC4v4 Chl -- 2nd Kd network
 #   ls2_i_effmuw     ls2_i at an effective muw from the RT's own light field --
 #                    the Q9 diagnostic: is the a bias illumination bookkeeping?
+#   ls2_i_kdnoise    ls2_i with 10% multiplicative Kd noise -- the Q15
+#                    sensitivity rung: how much does LS2 lose per unit of Kd
+#                    error? (The level is a placeholder pending ls2 Q33.)
 #
 # Rung (iii) uses the authors' PACE network, with their current MODIS network
-# (v1.3) as the documented alternative run beside it (ls2 Q27, Q30). The
-# Kd-noise sensitivity rung of Q15 is not seeded here: its noise level is set
-# when the driver lands (task 7), via the ``kd_noise`` field.
+# (v1.3) as the documented alternative run beside it (ls2 Q27, Q30).
 #
 # The Raman correction is on in every seed. An L23 X=1 sweep, whose truth is
 # elastic, switches it off per algorithm with ``raman: false`` (ls2 Q4).
@@ -323,6 +324,8 @@ DIRECT_SEED = {
     'ls2_i_effmuw': ('LS2 (i) effective muw (diagnostic)', {
         'kd_source': 'record', 'bp_source': 'truth',
         'muw_mode': 'effective'}),
+    'ls2_i_kdnoise': ('LS2 (i) + 10% Kd noise (sensitivity)', {
+        'kd_source': 'record', 'bp_source': 'truth', 'kd_noise': 0.10}),
 }
 
 
