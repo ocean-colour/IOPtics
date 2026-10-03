@@ -299,9 +299,11 @@ def register_rt_variants(*, overwrite=True, maxfev=DEFAULT_MAXFEV,
 #   ls2_iii_modis    Kd from the MODIS NN  + b_p from OC4v4 Chl -- 2nd Kd network
 #   ls2_i_effmuw     ls2_i at an effective muw from the RT's own light field --
 #                    the Q9 diagnostic: is the a bias illumination bookkeeping?
-#   ls2_i_kdnoise    ls2_i with 10% multiplicative Kd noise -- the Q15
-#                    sensitivity rung: how much does LS2 lose per unit of Kd
-#                    error? (The level is a placeholder pending ls2 Q33.)
+#   ls2_i_kdnoise05  ls2_i with 5 / 10 / 20% multiplicative Kd noise, one
+#   ls2_i_kdnoise10    draw per spectrum (a bad Kd *spectrum*, as a real
+#   ls2_i_kdnoise20    retrieval error is) -- the Q15 sensitivity ladder, from
+#                    which the page quotes LS2's loss per unit of Kd error as a
+#                    slope (ls2 Q33).
 #
 # Rung (iii) uses the authors' PACE network, with their current MODIS network
 # (v1.3) as the documented alternative run beside it (ls2 Q27, Q30).
@@ -324,8 +326,12 @@ DIRECT_SEED = {
     'ls2_i_effmuw': ('LS2 (i) effective muw (diagnostic)', {
         'kd_source': 'record', 'bp_source': 'truth',
         'muw_mode': 'effective'}),
-    'ls2_i_kdnoise': ('LS2 (i) + 10% Kd noise (sensitivity)', {
+    'ls2_i_kdnoise05': ('LS2 (i) + 5% Kd noise (sensitivity)', {
+        'kd_source': 'record', 'bp_source': 'truth', 'kd_noise': 0.05}),
+    'ls2_i_kdnoise10': ('LS2 (i) + 10% Kd noise (sensitivity)', {
         'kd_source': 'record', 'bp_source': 'truth', 'kd_noise': 0.10}),
+    'ls2_i_kdnoise20': ('LS2 (i) + 20% Kd noise (sensitivity)', {
+        'kd_source': 'record', 'bp_source': 'truth', 'kd_noise': 0.20}),
 }
 
 

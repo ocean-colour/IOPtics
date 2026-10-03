@@ -23,7 +23,8 @@ The inputs, one at a time, which is what makes the ladder a ladder (ls2 Q2):
     others come back NaN with reason ``kd_missing``). ``'nn:<network>'``: one
     of ocpy's Kd networks (:mod:`ocpy.ls2.kd_nn`) applied to the record's
     observed Rrs, linearly interpolated onto the network's bands. An optional
-    multiplicative Kd noise is the Q15 sensitivity rung.
+    multiplicative Kd noise -- one draw per spectrum, fully correlated across
+    bands -- is the Q15/Q33 sensitivity ladder (5, 10, 20%).
 ``b_p``
     ``bp_source='truth'``: the record's truth ``b_p`` (rung i, "nobody could
     reach this from orbit"). ``'oc4v4'``: OC4v4 chlorophyll from the observed
@@ -130,7 +131,9 @@ def _kd(spec, record, theta_s):
             rrs_bands = np.interp(bands, wave, np.asarray(record.Rrs, float))
             kd = kd_nn.kd_nn(rrs_bands, theta_s, wave, network)[0]
     if spec.kd_noise:
-        kd = kd * (1.0 + spec.kd_noise * _rng(spec, record).standard_normal(kd.size))
+        # One draw per spectrum (ls2 Q33): a Kd retrieval's error is a bad
+        # spectrum, not independent bad bands, which would average down.
+        kd = kd * (1.0 + spec.kd_noise * _rng(spec, record).standard_normal())
     return kd, ~np.isfinite(kd) | (kd <= 0)
 
 

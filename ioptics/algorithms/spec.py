@@ -470,8 +470,10 @@ class DirectSpec:
     muw_mode : str
         One of :data:`MUW_MODES`.
     kd_noise : float or None
-        Relative 1-sigma noise added to ``Kd`` -- the Kd-noise sensitivity
-        rung of ls2 Q15.  ``None`` (default): no Kd noise.
+        Relative 1-sigma noise on ``Kd`` -- the Kd-noise sensitivity rungs of
+        ls2 Q15/Q33: one multiplicative draw per spectrum, ``Kd * (1 + kd_noise
+        * eps)``, so the whole spectrum is wrong together.  ``None``
+        (default): no Kd noise.
     tol, max_iter : float, int
         Raman iteration criterion, ``|d(bb/a)|/(bb/a) < tol`` with a cap of
         ``max_iter`` passes (ls2 Q14/Q22; ``ocpy.ls2.ls2_main.ls2_invert``).

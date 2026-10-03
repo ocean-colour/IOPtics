@@ -572,6 +572,113 @@ meaningful.  Which do you want?
 
 ## Logs
 
+### 2026-10-03 (Q33/Q34 noted; task 8 — IOPtics: configs, build script, smoke and the full run)
+
+**New answers.**
+- *Q33*, option (c) with (b)'s form: implemented here.  Three Kd-noise rungs,
+  `ls2_i_kdnoise05`/`10`/`20`, replace the 10% placeholder, and the noise is
+  now **one multiplicative draw per spectrum** (`Kd·(1 + σε)`), fully
+  correlated across bands, seeded per (algorithm, record).  The spec
+  docstring, driver, registry and tests are updated.  A test checks that the
+  factor is identical across bands and that its spread across records
+  matches σ at each level.
+- *Q34*: (a) for tables and (b) for figures.  Nothing to do in task 8; task 9
+  restricts `a_nw`'s *figures* to bands where `a_nw/a` exceeds a floor.
+
+**What was built** (`ioptics/runs/prototypes/ls2/`).
+- **Three sweep YAMLs**, not one.  A sweep carries one `dataset_opts`, so X =
+  1, 2 and 4 are three sweeps:
+  - `run_ls2_l23_x4.yaml`, `run_ls2_l23_x2.yaml`, and `run_ls2_l23_x1.yaml`
+    (`raman: false` on every rung, per Q4).
+  - Each runs all eight rungs with `kd1: ln_ratio` (Q10), `pace` noise (Q15,
+    the form not the draws, seed 20260907), 400–750 nm and `leaderboard:
+    false`.
+  - Each opens with the design comment citing `ls2 Qnn`, as the RT configs do.
+    X=2's documents its five profile holes.
+- **`run_smoke.yaml`**: 16 L23 X=4 records (the first 15 plus record 75, for
+  the off-grid path) × all eight rungs.  It is not a scientific result.
+- **`build_v1.py`**, in `rt_tests/build_v1.py`'s staged integer-flag style:
+  1 run, 2 metrics, 3 report (a stub until task 9), 9 summary.  `--config
+  smoke|x4|x2|x1` selects a config.  `register_direct()` is called before any
+  name is resolved, and `--strict false` is the default.  Stage 1 times the
+  sweep, captures every warning and prints one line per distinct message, then
+  prints the per-rung summary: statuses, NaN-reason cell counts per component,
+  and the median share of κ-failed cells.
+- **`ioptics/tests/test_ls2_build.py`** (6, Tier-1) pins the invariants:
+  - every config resolves to direct specs and runs every seeded rung;
+  - `kd1`, `pace` and the 400–750 nm window are set, and none reaches the
+    leaderboard;
+  - X=1 has Raman off on every rung, and X=2/X=4 on;
+  - the smoke includes record 75.
+
+**Smoke first.**  128 results in 4.8 s on one core (37.6 ms per result,
+prep included), and metrics in 1.9 s.  Sanity-checked:
+- `fit_method` is `direct` throughout, and the χ² family is NaN.
+- Rung (i) ref-band medians match the corpus (`a` ×1.017, `bb(555)` ×1.064),
+  and effective μw brings `a` below 1.
+- The `frac_nan_*` columns are present, and there are no `not_applicable` rows
+  because no fitted algorithm is in the sweep (the cross-sweep comparison is
+  task 9's).
+- The only warning is a numpy binary-compatibility notice, which is
+  environmental.
+
+**Then the full corpus**, three sweeps × 3,320 records × 8 rungs = 79,680
+results, on 12 cores: **118 s, 118 s and 117 s** (4.4 ms per result, prep
+included), and metrics about 37 s each.  Warnings: the same numpy notice once
+(X=4), none at X=2 or X=1.  Outputs: `ls2_l23_x{4,2,1}_v1` under
+`$OS_COLOR/IOPtics/runs/`, with results, provenance and metrics.
+
+| records, X=4 | ok | poor_fit | fit_failed | out_of_scope |
+|---|---|---|---|---|
+| `ls2_i` | 161 | 3148 | 0 | 11 |
+| `ls2_iii` (PACE NN) | 0 | 3191 | **118** | 11 |
+| `ls2_iii_modis` | 0 | 3309 | 0 | 11 |
+
+**Sanity notes from the full run, to carry into tasks 9–14:**
+- **Strict `ok` is rare (~5%) once Rrs is noised.**  About 4% of `bb` cells
+  and 6% of `bb_p` cells are negative, because `pace` noise drives red Rrs
+  negative.  Almost every spectrum therefore has one unusable cell and is
+  `poor_fit`.  It is scored cell by cell (Q31b).
+- **X=4 NaN reasons in `ls2_i`'s `a`** (234,939 cells): `kappa_out_of_range`
+  72,513 (a median 28% of cells per spectrum), `kd_missing` 2,443 (z₁ beyond
+  the 50 m grid), `off_grid` 450, `not_converged` 207.
+- **The PACE-network rung fails outright on 118 records at X=4/X=2, and 278 at
+  X=1.**  Its inputs reach 700 nm, where noised Rrs goes negative, so the
+  network returns NaN for every band.  MODIS v1.3's clear branch stops at
+  547 nm, and it never fails.  This is a real satellite-mode failure mode for
+  task 10.
+- **X=2's five missing-profile scenarios behave as designed**: `fit_failed`
+  with `kd_missing` on the six record-Kd rungs (30 rows), and still running
+  on the two network rungs (10 rows).
+- **9–11 red-peaked records are declined `out_of_scope`** (`fits_turbid=False`,
+  task 4).  That keeps the population aligned with BING's, whose sweeps
+  decline the same records.
+- **Where the `bb` bias comes from.**  Rung (i), `bb(555)` median ratio:
+  **1.011 at X=1, 1.071 at X=2, 1.071 at X=4**.  With elastic truth and κ
+  off, the `bb` bias almost vanishes; adding Raman brings in nearly all of
+  it.  So the κ table, not the `bb` coefficients, carries most of LS2's `bb`
+  bias.  That is task 13's target more than task 12's (and it fits the 502 nm
+  defect and the 25% κ failure rate).
+- **Chl fluorescence at X=4 inflates `bb(670)` by 24%** (×1.24, against ×1.01
+  at X=2).  LS2 has no fluorescence term; κ corrects Raman only.  The page
+  should say so.
+- **Effective μw takes `a` from ×1.019 to ×0.984** on noised Rrs at every X,
+  consistent with task 7's noiseless result.
+- **The Kd-noise rungs barely move the medians** (`a` ×1.018–1.023) because
+  the noise is unbiased.  Their cost is in spread, MAE, and should be read off
+  the metrics as a slope (task 9).
+
+**Tests.**  IOPtics without `$OS_COLOR`: 586 passed, 73 skipped, 3 failed.
+With `$OS_COLOR`: 650 passed, 6 skipped, 6 failed.  Five are the known
+BING-branch (`rob_rt`) failures.  The sixth, `test_micro.py::
+test_fit_mcmc_accepts_string_obs_id`, passes in isolation (3/3) and with its
+own file (2/2).  Its docstring records a known dependence on test order (a
+120-step chain seeded from BING's global RNG), and the new test files
+reorder the suite.  Nothing here touches the MCMC path.  A full re-run with
+`$OS_COLOR` gave **651 passed, 5 failed**: the known five only, with
+`test_micro` passing.  So it is a flake, not a regression.  It is worth
+hardening in task 15's cleanup.  Nothing committed; JXP runs git.
+
 ### 2026-10-03 (Task 7 — IOPtics: the LS2 algorithm and its rungs)
 
 **New answers.**  None since Q32.

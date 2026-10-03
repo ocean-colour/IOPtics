@@ -1,0 +1,54 @@
+# LS2 on L23 X=4 -- the input ladder against inelastic HydroLight truth.
+#
+# LS2 (Loisel et al. 2018) is a DIRECT algorithm: closed-form a and bb from
+# Rrs, <Kd>_1, b_p and theta_s through published look-up tables, no fit
+# (ls2 Q1). It runs as a ladder of rungs that differ in exactly one input each
+# (ls2 Q2), so a difference between two rows is the cost of that input:
+#
+#   ls2_i            Kd <Kd>_1 from the record  + b_p from truth   (LS2 alone)
+#   ls2_ii           Kd from the record         + b_p from OC4v4   (+ Chl chain)
+#   ls2_iii          Kd from the PACE network   + b_p from OC4v4   (satellite mode)
+#   ls2_iii_modis    Kd from MODIS network v1.3 + b_p from OC4v4   (ls2 Q27, Q30)
+#   ls2_i_effmuw     ls2_i at L23's effective muw  (the Q9 diagnostic)
+#   ls2_i_kdnoise05  ls2_i with 5 / 10 / 20% Kd noise, one draw per spectrum
+#   ls2_i_kdnoise10    (the Q15 sensitivity ladder, ls2 Q33)
+#   ls2_i_kdnoise20
+#
+# The rungs are opt-in: the build script calls
+# ioptics.algorithms.registry.register_direct() before resolving these names.
+# This is one of three sweeps (X = 1, 2, 4), because a sweep carries one L23
+# realization; the inelastic variants are ls2 Q4.
+sweep_id: ls2_l23_x4_v1
+datasets: [L23]
+
+dataset_opts:
+  L23:
+    X: 4                       # Raman + Chl fluorescence in the truth
+    kd1: ln_ratio              # attach <Kd>_1 from the profile files, canonical
+                               #   definition ln[Ed(0-)/Ed(z1)]/z1 (ls2 Q10)
+
+noise_model: pace              # the SAME noise FORM as RT-A, not the same draws
+                               #   (ls2 Q15); every rung sees the noised Rrs. Kd
+                               #   is not perturbed except on the kdnoise rungs.
+seed: 20260907                 # the RT-A seed family
+
+algorithms:                    # Raman correction ON (kappa iterated, ls2 Q14/Q22)
+  - ls2_i
+  - ls2_ii
+  - ls2_iii
+  - ls2_iii_modis
+  - ls2_i_effmuw
+  - ls2_i_kdnoise05
+  - ls2_i_kdnoise10
+  - ls2_i_kdnoise20
+
+fit_method: chisq              # sweep default, irrelevant here: a direct
+                               #   algorithm always runs once as 'direct' and never
+                               #   enters an MCMC subset (ls2 task 4)
+
+wv_min: 400                    # 400-750 nm, RT-A's window, so the head-to-head
+wv_max: 750                    #   with BING is like-for-like. Above 702 nm the kappa
+                               #   table ends and those cells carry the reason
+                               #   kappa_out_of_range (ls2 Q22).
+
+leaderboard: false             # not until the report is trusted (ls2 task 8)

@@ -1,0 +1,40 @@
+# LS2 -- the end-to-end smoke sweep. NOT a scientific result.
+#
+# Its job is to exercise everything the three L23 sweeps depend on in a minute
+# instead of hours, and to gate them (ls2 task 8): opt-in direct registration,
+# the 'direct' run branch, <Kd>_1 from the profile files, every Kd/b_p source
+# (record, PACE and MODIS networks, OC4v4), the effective-muw rung, the Kd-noise
+# ladder, per-cell NaN reasons, the results tables, provenance and the metrics
+# tables (pool, not_applicable rows, frac_nan_* columns).
+#
+# 16 L23 X=4 records x all eight rungs: the first 15 plus record 75, chosen for
+# its 15 cells outside the eta < 0.2 envelope so the off_grid path is hit.
+#
+#     python build_v1.py 1 --config smoke
+#     python build_v1.py 2 --config smoke
+sweep_id: ls2_smoke
+datasets: [L23]
+
+dataset_opts:
+  L23: {X: 4, kd1: ln_ratio}   # as the real X=4 sweep
+
+noise_model: pace
+seed: 20260907
+
+algorithms:
+  - ls2_i
+  - ls2_ii
+  - ls2_iii
+  - ls2_iii_modis
+  - ls2_i_effmuw
+  - ls2_i_kdnoise05
+  - ls2_i_kdnoise10
+  - ls2_i_kdnoise20
+
+wv_min: 400
+wv_max: 750
+
+leaderboard: false             # a smoke must never reach the published board
+
+# The record bound lives in build_v1.py (SMOKE_L23_IDS), not here: obs_ids is a
+# run-time argument to run_sweep, not a config key.

@@ -97,10 +97,11 @@ def test_each_rung_differs_from_its_neighbour_only_in_its_input(rungs):
     assert _diff(rungs['ls2_ii'], rungs['ls2_iii'], rec) == {'Kd'}
     # (iii) -> (iii, MODIS): a different network, nothing else
     assert _diff(rungs['ls2_iii'], rungs['ls2_iii_modis'], rec) == {'Kd'}
-    # (i) -> Kd noise: Kd alone
-    assert _diff(rungs['ls2_i'], rungs['ls2_i_kdnoise'], rec) == {'Kd'}
+    # (i) -> Kd noise: Kd alone, at every level
+    for level in ('05', '10', '20'):
+        assert _diff(rungs['ls2_i'], rungs[f'ls2_i_kdnoise{level}'], rec) == {'Kd'}
     # pure water and geometry are the same on every rung
-    for name in ('ls2_ii', 'ls2_iii', 'ls2_iii_modis', 'ls2_i_kdnoise'):
+    for name in ('ls2_ii', 'ls2_iii', 'ls2_iii_modis', 'ls2_i_kdnoise10'):
         assert not {'a_w', 'b_w', 'theta_s', 'Rrs'} & _diff(rungs['ls2_i'],
                                                             rungs[name], rec)
 
@@ -173,16 +174,22 @@ def test_a_network_that_cannot_be_fed_gives_kd_missing(rungs):
 
 # --- Kd noise ---------------------------------------------------------------------
 
-def test_kd_noise_is_reproducible_and_per_record(rungs):
-    noisy = rungs['ls2_i_kdnoise']
-    k1 = ls2.inputs(noisy, _record())['Kd']
-    k2 = ls2.inputs(noisy, _record())['Kd']
-    k3 = ls2.inputs(noisy, _record(obs_id=1))['Kd']
+def test_kd_noise_is_one_draw_per_spectrum(rungs):
+    """ls2 Q33: a fully correlated draw, reproducible, per record, at its level."""
+    noisy = rungs['ls2_i_kdnoise10']
     clean = ls2.inputs(rungs['ls2_i'], _record())['Kd']
-    np.testing.assert_array_equal(k1, k2)
-    assert not np.allclose(k1, k3)
+    k1 = ls2.inputs(noisy, _record())['Kd']
+    np.testing.assert_array_equal(k1, ls2.inputs(noisy, _record())['Kd'])
     rel = k1 / clean - 1
-    assert 0.05 < np.std(rel) < 0.15                # 10% noise
+    np.testing.assert_allclose(rel, rel[0], rtol=1e-12)   # one factor, all bands
+    assert rel[0] != 0
+    assert not np.allclose(ls2.inputs(noisy, _record(obs_id=1))['Kd'], k1)
+    # across records the factor has the stated spread, level by level
+    for level, sigma in (('05', 0.05), ('10', 0.10), ('20', 0.20)):
+        spec = rungs[f'ls2_i_kdnoise{level}']
+        draws = [ls2.inputs(spec, _record(obs_id=i))['Kd'][0] / clean[0] - 1
+                 for i in range(400)]
+        assert np.std(draws) == pytest.approx(sigma, rel=0.15)
     zero = rungs['ls2_i'].with_overrides({'kd_noise': 0.0})
     np.testing.assert_array_equal(ls2.inputs(zero, _record())['Kd'], clean)
 
