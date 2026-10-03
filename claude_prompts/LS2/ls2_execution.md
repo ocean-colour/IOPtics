@@ -421,8 +421,201 @@ documented alternative, and keep task 11 as planned with the authors' PACE
 network as its baseline rather than its replacement.  Do you agree, and should
 rung (iii) be re-run with both networks so the Kd side-chain's cost is measured
 against two implementations rather than one?
+A. Follow your recommendation, and re-run with both networks.
+
+**Q28. When κ leaves its range on a later Raman pass, which κ should be
+reported?**  Task 1(c) asked for this to be decided and documented.  As built,
+the cell stops iterating, **keeps the `a`/`bb` of the last completed pass**
+(already Raman-corrected), reports `kappa = NaN` and sets both
+`kappa_out_of_range` and `not_converged`.  On pass 1 this is exactly the
+authors' behaviour.  On the reference vector it affects 3 of 60 cells, all at
+670 nm.  The catch is that the reported κ (NaN) is not the κ that produced the
+reported `a`/`bb`.  Alternatives: (i) report the last *applied* κ and rely on the
+flags; (ii) revert the cell to the uncorrected solution, so that "κ NaN" always
+means "no correction"; (iii) keep it as it is.  Downstream, task 6's per-wavelength
+NaN reasons will count these cells as κ failures either way.  Which do you want?
+>A. Let's report the last applied κ and rely on the flags.
+
+**Q29. Should BING's Chl prior move from 1998 OC4 to OC4v4?**  Task 2 found
+that `ocpy.chl.band_ratios.oc4` is the 1998 modified-cubic OC4, not OC4v4.
+`oc4v4` now exists beside it for LS2.  `oc4` itself is unchanged because
+`ioptics/prep.py:219` (the Chl/Y prior for BING) and `bing/models/utils.py:55`
+both call it.  On the LS2 reference spectra the 1998 form reads 0.1–2.3% lower
+than OC4v4.  That is small next to the prior's width, but it means the two
+algorithms' Chl side-chains would not match if LS2's rungs (ii)/(iii) are
+compared with BING.  *Recommended:* leave BING on `oc4` for this project, so
+RT-A's numbers stay reproducible, and record which Chl each algorithm uses in
+its provenance block (task 7).  Should BING be switched, now or later?
+>A.  Use your recommendation.
 
 ## Logs
+
+### 2026-10-02 (Q28 implemented; task 2 — ocpy: the Chl side-chain)
+
+**New answers.**  *Q27*: port the authors' PACE network, make it rung (iii)'s
+Kd on L23, and also re-run rung (iii) with the MODIS network.  Nothing to do
+until tasks 3 and 7.  Task 7 should register **two** rung-(iii) variants
+(PACE-NN and MODIS-NN Kd), and task 9's page shows both.  *Q28*: implemented
+(below).
+
+**Q28 in ocpy (`ls2_main.py`).**  When κ leaves its range on a later pass, the
+returned κ is now the last one *applied*.  It is NaN only if the failure came
+on pass 1, i.e. no correction was ever applied, which is the authors'
+behaviour.  This is one line in the loop (`stalled & (n_iter == 0)`), plus
+updated `LS2Result`/`ls2_invert` docstrings.  The returned κ now always
+reproduces the returned `a`/`bb`.  `test_kappa_is_applied_to_the_original_rrs`
+therefore covers all 46 finite-κ cells (it was 43), and
+`test_kappa_leaving_range_on_a_later_pass` asserts a finite κ on the three
+670 nm cells, with both flags set.
+
+**`bp_from_chla` (new `ocpy/iop/scattering.py`).**  It implements the authors'
+`bp_from_Chla.m` exactly (cloned from `LS2_Distribution`):
+`b_p(λ) = 0.347·Chl^0.766·(λ/660)^(−1)`.  It is vectorized:
+`(N,)` Chl × `(L,)` λ → `(N, L)`, scalar Chl → `(L,)`.  Negative or non-finite
+Chl → NaN, quietly.  The docstring states that the λ⁻¹ shape is the authors'
+choice, not MM01's, and cites the distribution, LM98 and MM01.
+
+**The 0.347 amplitude, checked against `loisel1998.pdf`.**  The Drive copy is at
+`Oceanography/Papers/Color/Scattering/loisel1998.pdf`, read through the Drive
+mount; no Drive API was needed.  0.347·[Chl]^0.766 is **LM98 Eq. 6**, the
+homogeneous-layer regression in Table 2 (r² = 0.88, N = 850).  Two points that
+are not in the authors' code:
+1. LM98's regression is for the particle **attenuation** c_p(660), not b_p.
+   The paper argues c_p "can be safely considered as equivalent to b_p" at
+   660 nm.  The authors make that identification without saying so.
+2. LM98 itself uses a **λ⁻¹** dependence, to shift Gordon & Morel's band from
+   550 to 660 nm (the 0.83 factor).  So the authors' shape has a precedent in
+   the paper they took the amplitude from, though not as part of Eq. 6.
+
+The other LM98 fits are not what the code uses: the surface layer
+0.407·Chl^0.795 (Eq. 5) and all depths 0.189·Chl^0.751 (Eq. 4).  MM01 is still
+not on this machine.  From the published form, MM01's
+b_p(550) = 0.416·Chl^0.766 equals 0.347 × 660/550, which is LM98 shifted by
+λ⁻¹.  So the authors' `bp_from_Chla.m` is consistent with MM01's *amplitude*
+and replaces only MM01's Chl-dependent spectral exponent.  This MM01 statement
+comes from recollection and has **not** been checked against the paper.
+
+**The reference vector cannot test the amplitude.**  `LS2_test_run.csv` and
+`LS2_test_run.m` carry `b_p` but no Chl.  The `b_p` column is an exact λ⁻¹ law
+(per-sample spread of b_p·λ is 2e-15), and inverting it gives a Chl per sample
+(0.08–0.59 mg m⁻³).  OC4v4 of the same rows' Rrs is close but not equal to that
+Chl (ratio 0.975–1.140), and the 1998 OC4 and OC2 are no closer.  So the
+authors' Chl was an independent input, presumably measured.  The test pins
+this, so nobody goes looking for an exact end-to-end match.
+
+**OC4 audit.**  Confirmed against the primary source, SeaWiFS Postlaunch
+Tech. Report Vol. 11 (NASA TM 2000-206892), fetched from earthdata.nasa.gov.
+OC4v4 (its Eq. 4) is `log10 Chl = 0.366 − 3.067R + 1.930R² + 0.649R³ −
+1.532R⁴`, with R the log of max(443, 490, 510)/555.  The same report calls the
+first OC4 (O'Reilly et al. 1998) "a modified cubic polynomial (i.e., a third
+order polynomial plus an extra coefficient)".  That is exactly ocpy's `oc4`, so
+**`oc4` is the 1998 OC4, not OC4v4**.  Its coefficients (0.4708, −3.8469,
+4.5338, −2.4434, −0.0414) could not be checked against the 1998 paper in this
+session.  The docstring says they are "as carried in ocpy".
+- Added `oc4v4(wave, Rrs, max_offset=10.)`, vectorized over `(..., L)`.  It
+  raises when a band is more than 10 nm off-grid, instead of silently taking
+  the nearest band as `oc4` does.  A non-positive ratio gives NaN, quietly.
+- `oc4` and `oc2` are **behaviourally unchanged**: docstrings only, and the
+  only removed code line is the EOF newline.  BING and IOPtics `prep` call
+  them (Q29).
+- The API page (`docs/api/chl.rst`) and the user guide both described OC4 as a
+  quartic, which was wrong for `oc4`.  Both are fixed.  `docs/api/iop.rst` gains
+  a Particulate Scattering section.
+- **For task 7's provenance block:** rungs (ii)/(iii) must call `oc4v4`, and
+  provenance should name it as "OC4v4 (O'Reilly et al. 2000)", with the 1998
+  form named for BING if Q29 keeps it there.
+
+**Tests (`ocpy/tests/test_ls2_chl.py`, 10 tests).**
+- The reference `b_p` is an exact λ⁻¹ law (< 1e-12), and `bp_from_chla`
+  reproduces it from the implied Chl to 1e-12.  That is a much tighter bound
+  than the ~1e-6 the prompt asked for, which the data allow.
+- Round-number values for the relation itself.
+- Vectorization ≡ scalar loop, and the output shapes.
+- Bad Chl → NaN with no warnings.
+- Regression pins, to 1e-7 on four reference rows: OC4v4 (also checked against
+  the explicit quartic) and the 1998 OC4.  Batch ≡ per-spectrum.  The 1998 form
+  sits 0.1–2.3% below OC4v4 on every row.
+- The band guard, and NaN on bad ratios.
+- The implied Chl is not OC4v4 (ratio 0.975–1.140).
+
+`test_ls2_chl.py` is added to ocpy CI next to `test_ls2.py`.
+
+ocpy `pytest -q`: 118 passed, 7 skipped, 4 failed.  The 4 are the known
+`test_plot_oc_scene.py` failures; this work added 10 tests, all passing.  The
+ocpy sphinx build shows no warnings for `chl`, `iop.scattering` or `ls2_main`.
+**Process note:** a bundled doc-edit script was rejected mid-session but had
+already written its changes.  The follow-up Edits duplicated a section in
+`iop.rst` and a reference in `chl.rst`; both duplicates were found and
+removed.  Nothing committed; JXP runs git.
+
+### 2026-09-26 (Task 1 — ocpy: fix, iterate and vectorize LS2)
+
+**State found.**  The code and tests were already committed in ocpy `6dc6a48`
+("ok", `ls2` branch): `ls2_main.py` rewritten (+859/−…), `test_ls2.py` (+549),
+`io.py`, `kd_nn.py`, `docs/api/ls2.rst` and `.github/workflows/tests.yml`.  The
+earlier session did not get as far as the Q&A and Log.  This session reviewed the
+commit against (a)–(g), re-measured everything, fixed two stale spots and wrote
+this entry.
+
+**Checked against the prompt.**
+- (a) `_solve` evaluates Eqs. 9/8 at all four corners on every pass; there is no
+  separate Raman branch left to go stale.  `test_ls2_run` passes `a` and `bb` to
+  `rtol=1e-9` against the 60-cell CSV with `max_iter=1`.
+- (b) Off-grid returns NaN (`off_grid` flag).  `_bracket` uses `searchsorted` and
+  a clip, with the last cell right-closed.  **One addition beyond the prompt:**
+  θs = 70° lands 4.9e-7 *outside* the table, because the stored μw nodes are
+  rounded to six decimals.  It is snapped onto the edge with `_EDGE_ATOL = 1e-5`,
+  which is 500× smaller than the narrowest cell.
+- (c) Iterates to |Δ(bb/a)|/(bb/a) < 1e-3 with a cap of 10, applying κ to the
+  original Rrs on every pass (tested: a single uncorrected pass on `Rrs·κ_final`
+  reproduces the result to 1e-12).  Returns `n_iter` plus `not_converged` and a
+  `converged` property.  For the late-κ-failure policy see Q28.
+- (d) κ outside 302–702 nm is NaN and counted in `kappa_out_of_range`.
+  `LS2_calc_kappa` does the same.
+- (e) `ls2_invert` returns `LS2Result` with four flags and `counts()`.
+  `LS2_main` is a wrapper with the 5-tuple contract, defaulting to
+  `max_iter=1, clip_negative=True`, i.e. the authors' behaviour.  Corners are
+  interpolated on the derived `a`/`bb`, not on the coefficients.  The κ cubic's
+  coefficients are interpolated to λ *before* evaluation.  That is algebraically
+  identical to the authors' evaluate-then-interpolate and costs O(L), not
+  O(N·L·101).
+- (f) `IPython.embed` is gone from `ls2_main.py` and `kd_nn.py`, and `io.py` uses
+  `importlib.resources`.  `test_ls2.py` now runs in ocpy CI.  (`ph/load_data.py`,
+  `tara/ingest.py` and `polarize/load_data.py` still use `pkg_resources`.  They
+  are outside LS2 and left alone.)
+- (g) The vectorized path emits no warnings (`test_no_warning_storm`).
+
+**Measured (reference vector, 60 cells).**  `a`, `bb`, `bbp`, κ (46 finite, 14
+NaN), `anw` (49 finite; the 11 blanks are negative) all match to 1e-9, and so do
+the three negative `bbp`.  Iterated: 43 cells usable.  Passes to converge are
+2:16, 3:6, 4:20, 5:1.  **One cell needs 5 passes, not the ≤ 4 the prompt
+estimated**, so the test bound is ≤ 6.  Three cells at 670 nm leave κ's range on
+a later pass (46 → 43 usable).  Single-pass vs iterated: median |Δbb| 0.34%
+(max 1.6%), in both directions; median |Δa| 0.02% (max 0.26%).  This is the
+"reported once" number of Q22 on the reference vector.  It needs re-measuring
+on L23 in task 8.
+
+**Speed.**  800k random cells: 0.34 s at `max_iter=1`, 1.5 s at `max_iter=10`.
+`LS2_main` looped per cell now costs ~1.4 min per 800k (1.1e-4 s/cell), down
+from the 18.5 min of the old scalar path.
+
+**Fixed this session (ocpy, uncommitted).**
+- `docs/api/ls2.rst`: the usage example passed `bp = 0`.  That gives η = 1,
+  every cell off-grid, all NaN.  The bug predates the commit, which kept it.  It
+  now uses a λ⁻¹ `b_p` that satisfies b_p > 4·b_w, and I ran the example: it
+  returns finite values.  The "set to zeros if unknown" input note is corrected.
+- `test_ls2.py`: the speed-test docstring described the old scalar path as
+  current.  The iteration-shift comment said "0.3% low" when the shift goes in
+  both directions.  Both are reworded to match the measurements above.
+
+**Tests.**  ocpy `pytest -q`: 108 passed, 7 skipped, 4 failed.  All 4 failures
+are in `test_plot_oc_scene.py` (detect_file_type mocking), which the commit did
+not touch and the CI file already records.  `test_ls2.py` + `test_ls2_kd.py`: 16
+passed.  The ocpy sphinx build is clean for `ls2_main`.  It shows two docutils
+warnings in `kd_nn.py` docstrings (`load_weights`, `Kd_NN_MODIS`), left for
+task 3, which rewrites that file.  CI triggers on push only for
+`main/develop/pangaea`, so `ls2` gets CI via its PR.  Nothing committed; JXP
+runs git.
 
 ### 2026-09-23 (Created by planning prompt 4; the authors' distribution found)
 
