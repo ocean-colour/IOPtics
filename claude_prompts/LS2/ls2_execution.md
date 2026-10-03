@@ -530,7 +530,195 @@ NaN reason makes the coverage cost visible.  Which do you want?
 
 >A. Use (a)
 
+**Q33. The Kd-noise rung: what level and what form?**  Q15 made Kd noise its
+own sensitivity rung but set no level.  Task 7 seeds `ls2_i_kdnoise` at
+**10%** relative noise.  The draws are multiplicative, Gaussian and
+independent per band, seeded per (algorithm, record), so they are
+reproducible and independent of pool layout.  Both the level and the form
+matter.  A network's Kd error is spectrally correlated: it is a bad
+*spectrum*, not 81 independent bad bands.  Independent draws average down
+across the spectrum in a way a real error would not.  Options:
+- (a) keep 10%, independent per band;
+- (b) one multiplicative draw per spectrum (fully correlated) at 10%;
+- (c) a small ladder of levels (5/10/20%), so the page can quote "LS2 loses
+  X% in `a` per 1% of Kd error" as a slope.
+
+*Recommended:* (c) with the fully correlated form of (b).  That gives the
+slope Q15 asked for, under the error structure a real Kd retrieval has.  The
+placeholder is one line in `DIRECT_SEED` either way.  Which do you want?
+
+>A. Use your recommendation.
+
+**Q34. `a_nw` in the red: score it, or say why not?**  Task 7 measured rung
+(i) per band on L23 X=4, Y=0.  `a` is biased by +2.7% almost uniformly, but
+`a_nw = a − a_w` turns that into **+2.5% below 500 nm, +65% at 550–600 nm,
++420% at 600–650 nm, +590% at 650–700 nm and ~+8,800% at 700–750 nm**.  `a_w`
+is nearly all of `a` there, so a small error in `a` is an enormous error in
+the difference.  The ref-band metrics (440/443 nm) are unaffected, and LS2's
+`a_nw` there is +2.5%.  But `metrics_spectral`, the figures and any
+per-wavelength head-to-head will show LS2's `a_nw` exploding in the red,
+which is true but says little beyond "`a_w` dominates".  BING's `a_nw` will
+show the same structure for the same reason.  Options:
+- (a) score and plot `a_nw` everywhere and explain it in the limitations;
+- (b) restrict `a_nw`'s spectral scoring to where `a_nw/a` exceeds some floor
+  (say 10%), with the excluded share stated;
+- (c) report `a_nw` at the absorption ref bands only.
+
+*Recommended:* (a) for the tables and (b) for the figures.  Every number
+stays available, and the per-wavelength figure shows where the question is
+meaningful.  Which do you want?
+
+>A. Use your recommendation.
+
 ## Logs
+
+### 2026-10-03 (Task 7 — IOPtics: the LS2 algorithm and its rungs)
+
+**New answers.**  None since Q32.
+
+**A prerequisite fix upstream: ocpy's ZHH2009 was broken, and it is the
+`b_w` Q21 named.**  `ocpy.water.scattering.betasw_ZHH2009` raised "THIS IS
+NOT SUCCESFULLY CONVERTED YET".  ocpy's other option, `bbw_from_l23`, reads
+L23 itself, which is the truth-free violation Q21 forbids.  The port had three
+transcription errors, all present in the PDF-extracted `zhang2009.m` beside
+it:
+- the Boltzmann constant at 1.38e-**22** (it is e-23);
+- two T³ coefficients of `dlnasw_ds` at e+11 (they are e-11).  The second
+  one, written `- 1.39872e11` with a space after the minus, is easy to miss.
+
+Fixed and validated two ways.  It agrees exactly with EPFT-UP's independent
+port (`epft_up/sdp/gsm.py`, the same constants and formulas), and it gives
+L23's own pure-seawater scattering to **−0.27% at 20 °C, S = 35, uniformly
+across 400–750 nm**.  So L23 evidently uses ZHH2009.  ocpy's
+`test_dlnasw_ds` had **pinned the buggy value** (−1.56e16), so the test
+protected the bug.  It now pins the corrected value, which matches
+EPFT-UP's to every digit at 20 °C.  A new `test_betasw_ZHH2009` checks the
+value and the physics: a λ^-4.2 slope, roughly 30% salt enhancement, and a
+symmetric phase function.  I also removed `from IPython import embed` from
+`scattering.py` and let `theta` be a scalar.
+
+**Upstream (ocpy) addition: `ls2_invert(..., muw=None)`.**  An optional
+effective μw, broadcastable to `(N, L)`, replaces the refracted solar cosine.
+It is for the Q9 diagnostic rung only.  Tests check that passing Snell's μw
+reproduces the default exactly, that a per-band μw is honoured cell by cell,
+and that a μw below the table is off-grid.
+
+**The driver (`ioptics/algorithms/ls2.py`)** implements task 4's
+`invert(spec, record)` contract and an `inputs()` that a test can diff.
+- **θs** comes from `run.resolve_theta_s`.
+- **Kd**:
+  - `record`: the record's Kd.  PANGAEA uses only `Kd_on_band` cells (Q32);
+    the others are NaN with reason `kd_missing`.  An L23 record without
+    `kd1` raises a message that says how to add it.
+  - `nn:<net>`: ocpy's `kd_nn` on the observed Rrs, linearly interpolated onto
+    the network's bands.  A network that cannot be fed (bands outside the
+    record) gives `kd_missing`.
+  - Optional Kd noise (Q15): multiplicative, deterministic per (algorithm,
+    record).
+- **b_p**: `truth` reads a new L23 `b_p` truth (from `bnw`, which BING's
+  extraction does not carry); `oc4v4` runs OC4v4 → `bp_from_chla` on the
+  observed Rrs, and the Chl is kept as the scalar `Chl_oc4v4`.
+- **Pure water always from ocpy (Q21)**: IOCCG `a_w` (the default GSFC table
+  is 44% high at 400 nm) and the fixed ZHH2009 `b_w`.
+- **Raman** iterated (Q14/Q22), off when `raman: false`.  No clipping.
+- **NaN reasons** are translated per cell: `kd_missing`, `bp_missing` (which
+  takes the place of the `off_grid` that an undefined η would otherwise
+  report), `off_grid`, `kappa_out_of_range`, `not_converged`.
+  `assemble_direct` adds `negative` per output.
+- **Scalars**: `theta_s`, the μw used, `frac_kappa_oor` and, where
+  applicable, `Chl_oc4v4`.
+- **Speed**: milliseconds per record.
+
+**Effective μw (Q9).**  `ioptics.kd.load_l23_muw_effective(X, Y)` is the
+per-scenario mean cosine of downwelling light just beneath the surface (`md_z`
+at z = 0⁻), taken at 750 nm.
+- **Why 750 nm, at the surface:** there in-water scattering barely
+  redistributes the light, so the value describes the illumination entering
+  the water.  A cosine averaged over the first attenuation depth, or taken in
+  the blue (0.87 at 443 nm), would count the in-water diffusion the tables
+  already model through Rrs.
+- **The values** are 0.9654 / 0.9016 / 0.7595 at θs = 0/30/60°, against
+  Snell's 1 / 0.9278 / 0.7631, and nearly scenario-independent (1st–99th
+  percentile within 0.001).  At θs = 0 that is within 0.4% of the 0.9694
+  limit Q9 measured.
+
+**Rungs registered.**  `ls2_i_kdnoise` (Kd noise at **10%**, a placeholder;
+see Q33) is added to the five from task 4, and the rung-diff test is extended.
+
+**Regeneratable numbers** (two new scripts in `runs/prototypes/ls2/`, run from
+the repo root with `PYTHONPATH=.`, since `ioptics` is not `pip install -e`'d
+in `ocean14`):
+- `pure_water_delta.py`: **δa_w = 0 at every band**, because ocpy's IOCCG
+  table *is* L23's.  **δb_w = −0.27%** (−0.275% to −0.267%), δbb_w = −0.27%.
+  The pure-water choice is therefore not a material bias on `a_nw` or `bb_p`.
+- `rung_i_baseline.py`, vectorized over the whole corpus with three
+  configurations:
+
+  | X=4, 350–750 nm | a | bb | bb_p | a_nw | off-grid |
+  |---|---|---|---|---|---|
+  | planning (L23 water, single pass, stored-z₁ Kd), θs=0 | +2.72% | +10.69% | +24.84% | +28.4% | 0.60% |
+  | driver (ocpy water, iterated, `ln_ratio` Kd), θs=0 | +2.74% | +10.07% | +24.05% | +29.4% | 0.59% |
+  | **effective μw**, θs=0 | **−0.87%** | +8.19% | +19.41% | −17.8% | 0.59% |
+  | driver, θs=30 | +2.18% | +7.33% | +17.85% | +24.4% | 0.59% |
+  | **effective μw**, θs=30 | **−0.70%** | +4.68% | +11.35% | −12.7% | 0.59% |
+  | driver, θs=60 | −0.60% | +1.60% | +3.91% | −8.6% | 0.59% |
+  | effective μw, θs=60 | −1.09% | +1.31% | +3.26% | −15.7% | 0.59% |
+
+  **Planning's figures were taken over 350–750 nm**; over 400–750 nm the same
+  configuration gives a +2.81% / bb +9.86% / bb_p +22.0% and only 0.19%
+  off-grid.  The "~0.6%" η-envelope figure is the 350–750 nm one.
+
+**What the numbers say, for the ladder page and task 12:**
+- **The `a` bias is illumination bookkeeping.**  Entering the published
+  tables at L23's effective μw takes `a` from +2.7% to −0.9% at θs = 0, and
+  from +2.2% to −0.7% at 30°, with no refit.  At 60°, where Snell's μw and
+  the light field nearly agree, nothing changes.
+- **Most of the `bb`/`bb_p` bias is not.**  It falls only from +10.1% to
+  +8.2% (0°) and from +7.3% to +4.7% (30°).  That is the part task 12's refit
+  must attack.
+- **`a_nw` in the red is dominated by `a_w`** (see Q34).
+
+Also from this task: 25% of cells lose κ at X=4 over 350–750 nm (all cells
+above 702 nm, plus the 490–505 nm table defect).
+
+**Tests (`ioptics/tests/test_ls2_driver.py`, 15).**
+- Tier-1:
+  - ocpy's pure water;
+  - each rung differs from its neighbour **only** in its input: (i)→(ii)
+    changes `b_p` (and its Chl scalar), (ii)→(iii) `Kd`, (iii)→(iii-MODIS)
+    `Kd`, (i)→Kd-noise `Kd`, with water, geometry and Rrs identical
+    throughout;
+  - every rung runs end to end, and a missing Kd raises a clear error;
+  - the Q32 measured-band rule;
+  - `off_grid` and `bp_missing` are told apart;
+  - κ flags finite cells, all of those above 702 nm, and `raman: false` gives
+    none;
+  - a network that cannot be fed gives `kd_missing`;
+  - Kd noise is reproducible, per record, at 10%, and zero noise reproduces
+    rung (i).
+- `@needs_l23_profile`:
+  - the corpus medians are pinned, planning's within tolerance of
+    +2.6/+9.8/+24 and the driver's to ±0.05 points;
+  - off-grid is 0.59%;
+  - the driver reproduces the vectorized corpus run record for record
+    (records 5, 75 and 1234, rtol 1e-6);
+  - record 75's 15 off-grid cells come back NaN with reason `off_grid`, and
+    the record is `poor_fit` (scored per cell, per Q31b);
+  - the effective-μw `a` result is pinned at θs = 0 and 30;
+  - the effective-μw rung runs through the driver;
+  - the pure-water δ is pinned.
+- Also updated: ocpy `test_water.py` (ZHH2009, corrected `dlnasw_ds`) and
+  `test_ls2.py` (μw override), plus the rung-diff test in IOPtics
+  `test_direct.py`.  `ioptics.algorithms.ls2` is added to the API docs.
+
+**Results.**  ocpy `pytest -q`: 132 passed, 7 skipped, 4 failed.  The 4 are
+the known `test_plot_oc_scene.py` failures, so ocpy picked up only the new
+tests.  IOPtics without `$OS_COLOR`: 580 passed, 73 skipped, 3 failed.  With
+`$OS_COLOR`: 645 passed, 6 skipped, 5 failed.  Those are the same five
+BING-branch (`rob_rt`) failures as in tasks 4–6.  `sphinx-build -W` exits 0.
+Nothing committed; JXP runs git.  This task touched **both** repos: ocpy
+(`water/scattering.py`, `ls2/ls2_main.py`, `tests/test_water.py`,
+`tests/test_ls2.py`) and IOPtics.
 
 ### 2026-10-03 (Q32 noted; task 6 — IOPtics: metrics for an algorithm with no misfit)
 
