@@ -60,54 +60,11 @@ def l23_profile_path(X: int = 4, Y: str = '00') -> str:
     return os.path.join(loisel23.l23_path, f'Hydrolight{X}{Y}_profile.nc')
 
 
-def mean_kd_first_attenuation_depth(ds) -> np.ndarray:
-    """Depth-average ``KEd_z`` over the first attenuation depth ``z1_lambda``.
-
-    ``<Kd>_1`` is the quantity LS2 takes as its second observable.  L23 stores a
-    profile of the diffuse attenuation coefficient and, separately, the depth
-    ``z1`` at which downwelling irradiance falls to 1/e of its surface value, so
-    the average is a trapezoid over ``[0, z1]`` with the final partial cell
-    closed by linear interpolation of ``KEd`` inside the bracketing pair.
-
-    The ``z=-1`` row (above water) is dropped; the fill value ``-999`` in
-    ``z1_lambda`` (``z1`` deeper than the 50 m grid, i.e. very clear water in the
-    blue) propagates to NaN.
-
-    Parameters
-    ----------
-    ds : xarray.Dataset
-        An opened ``Hydrolight{X}{Y}_profile.nc``.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``<Kd>_1`` with shape ``(n_scenario, n_lambda)``, NaN where undefined.
-    """
-    z = ds['z'].values.astype(float)
-    keep = z >= 0
-    zs = z[keep]
-    # (z, scenario, lambda) -> (scenario, lambda, z)
-    ked = np.moveaxis(ds['KEd_z'].values[keep].astype(float), 0, -1)
-    # z1_lambda is stored transposed, as (lambda, scenario)
-    z1 = ds['z1_lambda'].values.astype(float).T
-    z1 = np.where(z1 > 0, z1, np.nan)
-
-    n_s, n_l = z1.shape
-    out = np.full((n_s, n_l), np.nan)
-    for i in range(n_s):
-        for j in range(n_l):
-            zt = z1[i, j]
-            if not np.isfinite(zt) or zt > zs[-1]:
-                continue
-            k = int(np.searchsorted(zs, zt))
-            if k == 0:
-                continue
-            # Close the partial cell: interpolate KEd at exactly z1.
-            kd_at = np.interp(zt, zs[k - 1:k + 1], ked[i, j, k - 1:k + 1])
-            zz = np.concatenate([zs[:k], [zt]])
-            kk = np.concatenate([ked[i, j, :k], [kd_at]])
-            out[i, j] = np.trapezoid(kk, zz) / zt
-    return out
+# Lifted into the package (ls2 task 5) and vectorized there; re-exported under
+# the old name so the checks below, and anyone importing it from here, keep
+# working.  ioptics.kd.kd1_from_profile also offers the other two <Kd>_1
+# definitions of ls2 Q10.
+from ioptics.kd import mean_kd_first_attenuation_depth  # noqa: E402
 
 
 def check_lut() -> None:

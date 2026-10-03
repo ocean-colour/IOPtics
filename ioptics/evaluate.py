@@ -31,11 +31,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from ioptics.records import (CHI2NU_POOR_FIT, RED_PEAK_NM,
-                             ComponentFit, RetrievalResult)
+from ioptics.records import (CHI2NU_POOR_FIT, NAN_REASON_SEP, NAN_REASONS,
+                             RED_PEAK_NM, ComponentFit, RetrievalResult)
 
 # Components reconstructed for every retrieval (spectral).
-_SPECTRAL = ('a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'Rrs_model')
+_SPECTRAL = ('a', 'a_nw', 'bb', 'a_ph', 'a_dg', 'bb_p', 'Rrs_model')
 
 
 def _component_fit(wave, samples, perc, point=None):
@@ -226,7 +226,10 @@ def _assemble(spec, record, models, rt_dict, samples, point_params,
     Rrs_s, a_s, bb_s = _forward(models, aparams, bparams, rt_dict, geom, Bp_s)
     a_dg_s, a_ph_s = models[0].eval_anw(aparams, retsub_comps=True)
     bb_p_s = models[1].eval_bbnw(bparams)
-    arrays = {'a': a_s, 'bb': bb_s, 'a_ph': a_ph_s, 'a_dg': a_dg_s,
+    # a_nw = a_dg + a_ph on the *same* draws, so its 68/95 bands are the
+    # bands of the sum, not a combination of two marginal intervals.
+    arrays = {'a': a_s, 'a_nw': np.asarray(a_dg_s) + np.asarray(a_ph_s),
+              'bb': bb_s, 'a_ph': a_ph_s, 'a_dg': a_dg_s,
               'bb_p': bb_p_s, 'Rrs_model': Rrs_s}
 
     # The same curves at the **point estimate**. Every central value below is
@@ -236,7 +239,8 @@ def _assemble(spec, record, models, rt_dict, samples, point_params,
                                    rt_dict, geom, Bp_pt)
     a_dg_pt, a_ph_pt = models[0].eval_anw(mpoint[:, :na], retsub_comps=True)
     bb_p_pt = models[1].eval_bbnw(mpoint[:, na:])
-    points = {'a': a_pt, 'bb': bb_pt, 'a_ph': a_ph_pt, 'a_dg': a_dg_pt,
+    points = {'a': a_pt, 'a_nw': np.asarray(a_dg_pt) + np.asarray(a_ph_pt),
+              'bb': bb_pt, 'a_ph': a_ph_pt, 'a_dg': a_dg_pt,
               'bb_p': bb_p_pt, 'Rrs_model': Rrs_pt}
 
     components = {key: _component_fit(record.wave, arrays[key], perc,
@@ -418,8 +422,12 @@ def assemble_direct(spec, record, outputs, *, fit_method='direct'):
         The observation; ``wave`` sets the grid every output must lie on.
     outputs : mapping
         The driver's return value: ``'components'`` (``{name: (L,) array}``,
-        covering every name in ``spec.outputs``) and optionally ``'scalars'``
-        (``{name: (value, sigma)}``).
+        covering every name in ``spec.outputs``), optionally ``'scalars'``
+        (``{name: (value, sigma)}``), and optionally ``'nan_reason'``
+        (``{name: (L,) array of str}``, codes from
+        :data:`ioptics.records.NAN_REASONS`, several joined by
+        :data:`~ioptics.records.NAN_REASON_SEP`). See :func:`_complete_reasons`
+        for the reasons assembled when the driver gives none.
     fit_method : str, optional
         Label for the result; ``'direct'``.
 
@@ -430,7 +438,8 @@ def assemble_direct(spec, record, outputs, *, fit_method='direct'):
     Raises
     ------
     ValueError
-        If a requested output is missing or not on ``record.wave``.
+        If a requested output is missing or not on ``record.wave``, or a
+        reason code is not in :data:`ioptics.records.NAN_REASONS`.
     """
     wave = np.asarray(record.wave, dtype=float)
     n = int(wave.size)
@@ -455,9 +464,48 @@ def assemble_direct(spec, record, outputs, *, fit_method='direct'):
     stats['n_bands'] = n
     scalars = {k: (float(v[0]), float(v[1]))
                for k, v in dict(outputs.get('scalars', {})).items()}
+    given_reasons = dict(outputs.get('nan_reason', {}))
+    nan_reason = {name: _complete_reasons(components[name].med,
+                                          given_reasons.get(name), name, spec)
+                  for name in spec.outputs}
 
     return RetrievalResult(
         dataset=record.dataset, obs_id=record.obs_id, algorithm=spec.name,
         fit_method=fit_method, components=components, params={},
         scalars=scalars, stats=stats,
-        status=_direct_status(components, spec.outputs), provenance_id='')
+        status=_direct_status(components, spec.outputs), provenance_id='',
+        nan_reason=nan_reason)
+
+
+def _complete_reasons(values, given, name, spec):
+    """Validate a driver's per-cell reasons and fill the gaps.
+
+    Every cell a scorer will drop gets a reason: a non-positive finite value
+    without ``'negative'`` gains it, and a non-finite value with no reason at
+    all becomes ``'unexplained'`` -- so an unexplained NaN is visible as such
+    rather than as an empty string. A driver's own codes are kept, in order,
+    and must come from :data:`ioptics.records.NAN_REASONS`.
+    """
+    values = np.asarray(values, dtype=float)
+    n = values.size
+    if given is None:
+        cells = [[] for _ in range(n)]
+    else:
+        given = np.asarray(given, dtype=object).ravel()
+        if given.size != n:
+            raise ValueError(f"{spec.name}: nan_reason[{name!r}] has "
+                             f"{given.size} values, record has {n} bands")
+        cells = [[c for c in str(g).split(NAN_REASON_SEP) if c]
+                 if g is not None else [] for g in given]
+    out = []
+    for codes, v in zip(cells, values):
+        bad = [c for c in codes if c not in NAN_REASONS]
+        if bad:
+            raise ValueError(f"{spec.name}: unknown nan_reason code(s) {bad} "
+                             f"for {name!r}; allowed: {NAN_REASONS}")
+        if np.isfinite(v) and v <= 0 and 'negative' not in codes:
+            codes = codes + ['negative']
+        if not np.isfinite(v) and not codes:
+            codes = ['unexplained']
+        out.append(NAN_REASON_SEP.join(codes))
+    return np.array(out, dtype=object)

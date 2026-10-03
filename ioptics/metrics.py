@@ -749,10 +749,15 @@ def rankings(metrics_scalar, *, by=('dataset', 'component'),
 
 REF_WAVES = {'absorption': (440, 443), 'backscatter': (555, 670)}
 REF_TOL = 3.0                     # nm: ref-band match tolerance (Q19)
-ACCURACY_COMPONENTS = ('a', 'bb', 'a_ph', 'a_dg', 'bb_p')
-_COMPONENT_REFSET = {'a': 'absorption', 'a_ph': 'absorption',
-                     'a_dg': 'absorption', 'bb': 'backscatter',
-                     'bb_p': 'backscatter'}
+#: Components scored for accuracy. ``a_nw`` (non-water absorption, the
+#: ``a - a_w`` every algorithm can report) was added for LS2 (ls2 Q13): it is
+#: the absorption quantity a direct algorithm and BING share, where BING's
+#: ``a_ph``/``a_dg`` split has no LS2 counterpart. BING emits it as
+#: ``a_dg + a_ph`` on the same draws (:func:`ioptics.evaluate._assemble`).
+ACCURACY_COMPONENTS = ('a', 'a_nw', 'bb', 'a_ph', 'a_dg', 'bb_p')
+_COMPONENT_REFSET = {'a': 'absorption', 'a_nw': 'absorption',
+                     'a_ph': 'absorption', 'a_dg': 'absorption',
+                     'bb': 'backscatter', 'bb_p': 'backscatter'}
 # Derived scalar variables scored vs their truth columns in results_scalar.
 SCALAR_VARS = {'Chl': 'Chl_truth', 'a_cdom440': 'a_cdom440_truth',
                'Sdg': 'Sdg_truth'}
@@ -767,7 +772,74 @@ METRICS_PAIRWISE_FILE = 'metrics_pairwise.parquet'
 
 MetricsTables = namedtuple('MetricsTables', ['spectral', 'scalar', 'pairwise'])
 
-_KEYS = ['dataset', 'algorithm', 'fit_method', 'stratum']
+#: Grouping key of every per-algorithm reduction. ``pool`` sits beside
+#: ``fit_method`` (ls2 Q23): it is the *population* a row is scored in, while
+#: ``fit_method`` stays the honest label of how the row was produced. For a
+#: fitted algorithm the two are equal; a direct algorithm (``fit_method =
+#: 'direct'``) is duplicated into each fitted pool of the sweep, so its rows
+#: appear once per pool with ``fit_method='direct'`` throughout.
+_KEYS = ['dataset', 'algorithm', 'fit_method', 'pool', 'stratum']
+
+#: The label of a direct (non-fitting) algorithm's rows (ls2 Q1).
+DIRECT_FIT_METHOD = 'direct'
+
+#: Statuses scored for a **direct** algorithm, in addition to the sweep's
+#: ``score_statuses`` (ls2 Q31b). ``ok`` is strict (every requested output
+#: finite and positive everywhere, ls2 Q5), so a direct spectrum with a
+#: single unusable band is ``poor_fit``; excluding it whole would drop the
+#: hardest water selectively. Its finite cells are scored instead -- the
+#: per-cell intersection in :func:`n_valid` already drops the rest -- and
+#: the closure row still reports ``frac_ok`` strictly.
+DIRECT_SCORE_STATUSES = ('ok', 'poor_fit')
+
+#: Caveat on a row for a component an algorithm structurally cannot produce
+#: (a direct algorithm's missing ``a_ph``/``a_dg``; the ΔBIC of an algorithm
+#: with no likelihood). Such rows carry ``n = 0`` and NaN metrics and are kept,
+#: not dropped as unscored, because the absence is the result (ls2 Q5/Q25).
+CAVEAT_NOT_APPLICABLE = 'not_applicable'
+
+
+def _ensure_pool(df):
+    """``df`` with a ``pool`` column, defaulting to ``fit_method``.
+
+    The reducers below key on ``pool``; a frame built without one (a fitted-
+    only fixture, an older caller) has ``pool == fit_method`` by definition.
+    """
+    if df is None or 'pool' in df.columns or 'fit_method' not in df.columns:
+        return df
+    return df.assign(pool=df['fit_method'])
+
+
+def _pools(scalar_df):
+    """The fitted pools present in a sweep (``['direct']`` if there are none)."""
+    if 'fit_method' not in scalar_df.columns:
+        return []
+    methods = scalar_df['fit_method'].dropna().unique()
+    fitted = sorted(m for m in methods if m != DIRECT_FIT_METHOD)
+    if fitted:
+        return fitted
+    return [DIRECT_FIT_METHOD] if len(methods) else []
+
+
+def _with_pool(df, pools):
+    """Add ``pool``: ``fit_method`` for fitted rows; direct rows once per pool.
+
+    The duplication is what lets a direct algorithm meet BING in both the χ²
+    and the MCMC contests (ls2 Q23) while every contest stays keyed on one
+    population -- :func:`test_chisq_and_mcmc_are_separate_contests` still
+    holds, because a χ² row and an MCMC row never share a pool.
+    """
+    if df is None:
+        return df
+    if 'fit_method' not in df.columns or df.empty:
+        return df if 'pool' in df.columns else df.assign(
+            pool=df['fit_method'] if 'fit_method' in df.columns else None)
+    direct = df['fit_method'] == DIRECT_FIT_METHOD
+    fitted = df[~direct].assign(pool=df.loc[~direct, 'fit_method'])
+    if not direct.any():
+        return fitted
+    copies = [df[direct].assign(pool=p) for p in pools]
+    return pd.concat([fitted] + copies, ignore_index=True)
 
 
 def _chl_stratum(chl):
@@ -976,9 +1048,28 @@ def _ref_frame(spectral_df, ref_waves, tol=REF_TOL):
     return pd.concat(out, ignore_index=True)
 
 
+def _reasons_present(spec):
+    """The :data:`ioptics.records.NAN_REASONS` that occur anywhere in ``spec``."""
+    if 'nan_reason' not in spec.columns:
+        return []
+    seen = set()
+    for cell in spec['nan_reason'].dropna().unique():
+        seen.update(c for c in str(cell).split(records.NAN_REASON_SEP) if c)
+    return [r for r in records.NAN_REASONS if r in seen]
+
+
 def _spectral_metrics(spec):
-    """metrics_spectral: §1 accuracy + §4 coverage per native (key, λ)."""
+    """metrics_spectral: §1 accuracy + §4 coverage per native (key, λ).
+
+    When any cell of the sweep carries a ``nan_reason`` (a direct algorithm),
+    one ``frac_nan_<reason>`` column per reason present is added: the share
+    of this ``(key, λ)``'s cells with that reason (ls2 Q24). That is the
+    wavelength-resolved view -- kappa failing near 490-505 nm -- that a
+    per-spectrum count would erase. A sweep with no reasons gains no columns.
+    """
+    spec = _ensure_pool(spec)
     keys = _KEYS + ['component', 'wavelength']
+    reasons = _reasons_present(spec)
     out = []
     for kvals, g in spec.groupby(keys, sort=False):
         row = dict(zip(keys, kvals))
@@ -987,12 +1078,20 @@ def _spectral_metrics(spec):
         row['coverage68'] = coverage(O, g['lo68'], g['hi68'])
         row['coverage95'] = coverage(O, g['lo95'], g['hi95'])
         row['coverage_n'] = coverage_n(O, g['lo68'], g['hi68'])
+        if reasons:
+            cells = [set(str(c).split(records.NAN_REASON_SEP))
+                     for c in g['nan_reason'].fillna('')]
+            for reason in reasons:
+                row[f'frac_nan_{reason}'] = (float(np.mean([reason in c
+                                                            for c in cells]))
+                                             if cells else np.nan)
         out.append(row)
     return pd.DataFrame(out)
 
 
 def _ref_accuracy_rows(ref):
     """Ref-band §1 accuracy + coverage rows for metrics_scalar."""
+    ref = _ensure_pool(ref)
     keys = _KEYS + ['component', 'ref_wave', 'ref_match']
     out = []
     for kvals, g in ref.groupby(keys, sort=False):
@@ -1012,6 +1111,7 @@ def _ref_accuracy_rows(ref):
 
 def _scalar_var_rows(scalar):
     """Derived-scalar (Chl/a_cdom440/Sdg) §1 accuracy rows for metrics_scalar."""
+    scalar = _ensure_pool(scalar)
     out = []
     for var, truth_col in SCALAR_VARS.items():
         if var not in scalar or truth_col not in scalar:
@@ -1054,6 +1154,7 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
     observation" and does not. Read together they separate a misfit from a
     mis-stated error bar; either alone can mislead.
     """
+    scalar = _ensure_pool(scalar)
     out = []
     for kvals, g in scalar.groupby(_KEYS, sort=False):
         row = dict(zip(_KEYS, kvals))
@@ -1073,9 +1174,13 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
         # be identically zero, since 'ok' is *defined* by chi2_nu <= qc_max,
         # and a table reading "0% QC fail" beside 10% coverage would be a lie
         # of omission.
+        # Over the fits that *have* a chi^2 only, and NaN when none do: a
+        # direct algorithm (no likelihood) or an all-failed group used to read
+        # "0% QC fail", which is a measurement of nothing (ls2 task 6b).
         cn_all = g['chi2_nu'].to_numpy(dtype=float)
-        row['frac_qc_fail'] = (float(np.mean(cn_all > qc_max))
-                               if cn_all.size else np.nan)
+        cn_fin = cn_all[np.isfinite(cn_all)]
+        row['frac_qc_fail'] = (float(np.mean(cn_fin > qc_max))
+                               if cn_fin.size else np.nan)
         # Relative misfit, reported over **all attempted** fits as well as over
         # the scored ones. Unlike chi-squared it needs no noise model, so it is
         # the one closure number that stays comparable when the assumed error
@@ -1084,9 +1189,13 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
         if REL_MISFIT_COL in g:
             rm_all = g[REL_MISFIT_COL].to_numpy(dtype=float)
             row['rel_misfit_median_all'] = (float(np.nanmedian(rm_all))
-                                            if rm_all.size else np.nan)
+                                            if np.isfinite(rm_all).any()
+                                            else np.nan)
         # Closure: over the scored rows only -- these describe the solutions.
-        g = g[np.isin(status, list(score_statuses))]
+        scored = list(score_statuses)
+        if row['fit_method'] == DIRECT_FIT_METHOD:
+            scored = sorted(set(scored) | set(DIRECT_SCORE_STATUSES))
+        g = g[np.isin(status, scored)]
         cn = g['chi2_nu'].to_numpy(dtype=float)
         dof = (g['n_bands'].to_numpy(dtype=float)
                - g['k'].to_numpy(dtype=float))
@@ -1094,14 +1203,21 @@ def _closure_rows(scalar, *, n_sigma, qc_max=CHI2NU_QC_MAX,
                            for c, d in zip(cn, dof)])
         nq = labels.size
         row['n'] = int(nq)
-        row['chi2_nu_median'] = float(np.nanmedian(cn)) if nq else np.nan
-        row['frac_good'] = float(np.mean(labels == 'good')) if nq else np.nan
-        row['frac_overfit'] = float(np.mean(labels == 'overfit')) if nq else np.nan
-        row['frac_underfit'] = float(np.mean(labels == 'underfit')) if nq else np.nan
+        # A fraction of 'good'/'overfit'/'underfit' over labels that are all
+        # 'unknown' (no finite chi^2: a direct algorithm) is not 0.0, it is
+        # undefined -- NaN, never 0.0 (ls2 Q5, task 6b).
+        known = nq and bool(np.any(labels != 'unknown'))
+        row['chi2_nu_median'] = (float(np.nanmedian(cn))
+                                 if nq and np.isfinite(cn).any() else np.nan)
+        row['frac_good'] = float(np.mean(labels == 'good')) if known else np.nan
+        row['frac_overfit'] = (float(np.mean(labels == 'overfit')) if known
+                               else np.nan)
+        row['frac_underfit'] = (float(np.mean(labels == 'underfit')) if known
+                                else np.nan)
         if REL_MISFIT_COL in g:
             rm = g[REL_MISFIT_COL].to_numpy(dtype=float)
-            row['rel_misfit_median'] = (float(np.nanmedian(rm)) if rm.size
-                                        else np.nan)
+            row['rel_misfit_median'] = (float(np.nanmedian(rm))
+                                        if np.isfinite(rm).any() else np.nan)
         out.append(row)
     return pd.DataFrame(out)
 
@@ -1116,23 +1232,38 @@ def _configured_pair(dbic_pair):
 
 def _pairwise_metrics(ref, scalar, *, dbic_pair):
     """metrics_pairwise: §5 wins (per component/ref) + §3 ΔBIC contest."""
+    ref, scalar = _ensure_pool(ref), _ensure_pool(scalar)
     frames = []
-    # §5 wins — per-spectrum head-to-head at each ref band.
+    contest = ('dataset', 'pool', 'stratum', 'component', 'ref_wave')
+    # §5 wins — per-spectrum head-to-head at each ref band, keyed on the
+    # **pool** so a direct algorithm meets the fitted ones (ls2 Q23). Each
+    # row then gets its algorithm's honest fit_method back.
     if not ref.empty:
-        w = wins(ref, by=('dataset', 'fit_method', 'stratum', 'component',
-                          'ref_wave'))
+        w = wins(ref, by=contest)
         if not w.empty:
-            w = rankings(w, by=('dataset', 'fit_method', 'stratum',
-                                'component', 'ref_wave'),
-                         lower_is_better=(), higher_is_better=('win_frac',))
+            w = rankings(w, by=contest, lower_is_better=(),
+                         higher_is_better=('win_frac',))
+            labels = (ref[['algorithm', 'pool', 'fit_method']]
+                      .drop_duplicates(['algorithm', 'pool']))
+            w = w.merge(labels, on=['algorithm', 'pool'], how='left')
             w['contest'] = 'wins'
             frames.append(w)
     # §5 head-to-head: per-**pair** contests with a tie-capable verdict. Kept
     # alongside `wins` (which reports one row per algorithm) because only the
     # paired form can answer "are these two distinguishable at this n".
+    # A pair row's ``fit_method`` is its pool (the population both sides were
+    # scored in); ``fit_method_a``/``fit_method_b`` are the honest labels.
     if not ref.empty:
-        h2h = head_to_head(ref)
+        h2h = head_to_head(ref, by=contest)
         if not h2h.empty:
+            h2h['fit_method'] = h2h['pool']
+            fm = (ref[['algorithm', 'pool', 'fit_method']]
+                  .drop_duplicates(['algorithm', 'pool']))
+            for side in ('a', 'b'):
+                h2h = h2h.merge(
+                    fm.rename(columns={'algorithm': f'model_{side}',
+                                       'fit_method': f'fit_method_{side}'}),
+                    on=[f'model_{side}', 'pool'], how='left')
             frames.append(h2h)
 
     # §3 ΔBIC contest (like-for-like χ²), overall + per stratum. Run for **every**
@@ -1149,22 +1280,37 @@ def _pairwise_metrics(ref, scalar, *, dbic_pair):
     # because one of the two algorithms failed everywhere — is then visible as
     # "no row has configured=True" rather than invisible.
     want = _configured_pair(dbic_pair)
+    direct = set(scalar.loc[scalar['fit_method'] == DIRECT_FIT_METHOD,
+                            'algorithm'].dropna().unique()) \
+        if 'fit_method' in scalar.columns else set()
     rows = []
-    for kvals, g in scalar.groupby(['dataset', 'fit_method', 'stratum'],
+    for kvals, g in scalar.groupby(['dataset', 'pool', 'stratum'],
                                    sort=False):
         present = sorted(g['algorithm'].dropna().unique())
         pairs = [(a, b) for i, a in enumerate(present) for b in present[i + 1:]]
         for a, b in pairs:
-            res = dbic_cdf(g, a, b, fit_method=None)   # fit_method already a key
+            base = {'dataset': kvals[0], 'fit_method': kvals[1],
+                    'pool': kvals[1], 'stratum': kvals[2], 'contest': 'dbic',
+                    'model_a': a, 'model_b': b,
+                    'configured': (want is not None
+                                   and frozenset((a, b)) == want)}
+            if a in direct or b in direct:
+                # A direct algorithm has no likelihood, so there is no ΔBIC to
+                # compute. Say so with an explicit n=0 row rather than leaving
+                # the pair silently absent (ls2 task 6d).
+                rows.append({**base, 'n': 0, 'frac_favor_a': np.nan,
+                             'frac_favor_b': np.nan, 'median_dbic': np.nan,
+                             'caveat': CAVEAT_NOT_APPLICABLE})
+                continue
+            res = dbic_cdf(g, a, b, fit_method=None)   # the pool is a key
             if res['n'] == 0:
                 continue
             rows.append({
-                'dataset': kvals[0], 'fit_method': kvals[1], 'stratum': kvals[2],
-                'contest': 'dbic', 'model_a': a, 'model_b': b, 'n': res['n'],
+                **base, 'n': res['n'],
                 'frac_favor_a': res['frac_favor_a'],
                 'frac_favor_b': res['frac_favor_b'],
                 'median_dbic': float(np.median(res['dbic'])),
-                'configured': want is not None and frozenset((a, b)) == want,
+                'caveat': '',
             })
     if rows:
         frames.append(pd.DataFrame(rows))
@@ -1193,10 +1339,62 @@ def _with_status(spectral_df, scalar_df):
 
 
 def _scored(df, statuses):
-    """Rows whose ``status`` is scorable (everything, if there is no column)."""
+    """Rows whose ``status`` is scorable (everything, if there is no column).
+
+    A direct algorithm's rows are scored on ``statuses`` **plus**
+    :data:`DIRECT_SCORE_STATUSES` (ls2 Q31b); every other row on ``statuses``
+    alone, exactly as before.
+    """
     if 'status' not in df.columns:
         return df
-    return df[df['status'].isin(list(statuses))]
+    keep = df['status'].isin(list(statuses))
+    if 'fit_method' in df.columns:
+        direct = df['fit_method'] == DIRECT_FIT_METHOD
+        keep |= direct & df['status'].isin(list(DIRECT_SCORE_STATUSES))
+    return df[keep]
+
+
+def _not_applicable_rows(ref, scalar_all, spectral_all):
+    """``n = 0`` ``not_applicable`` rows for what a direct algorithm cannot produce.
+
+    For each direct algorithm present in a ``(dataset, pool, stratum)`` group,
+    every ``(component, ref_wave)`` that some algorithm in the group was
+    scored on but this algorithm never returned at all -- in any row, any
+    status -- gets an explicit row with ``n = 0``, NaN metrics and
+    ``caveat = 'not_applicable'``. That is LS2's missing ``a_ph``/``a_dg``:
+    the absence is the thesis point, and a missing row would read as a gap
+    in the report rather than as a statement (ls2 Q5/Q25). Inferred from the
+    tables rather than from specs, which the metrics layer never opens; it is
+    restricted to direct algorithms because a fitted algorithm missing a
+    component means something else.
+    """
+    if ref.empty or 'fit_method' not in scalar_all.columns:
+        return pd.DataFrame()
+    direct = scalar_all[scalar_all['fit_method'] == DIRECT_FIT_METHOD]
+    if direct.empty:
+        return pd.DataFrame()
+    produced = (spectral_all.groupby(['dataset', 'algorithm'])['component']
+                .agg(lambda c: set(c)).to_dict())
+    bands = ref[['dataset', 'pool', 'stratum', 'component', 'ref_wave',
+                 'ref_match']].drop_duplicates()
+    rows = []
+    for kvals, g in direct.groupby(_KEYS, sort=False):
+        key = dict(zip(_KEYS, kvals))
+        have = produced.get((key['dataset'], key['algorithm']), set())
+        avail = bands[(bands['dataset'] == key['dataset'])
+                      & (bands['pool'] == key['pool'])
+                      & (bands['stratum'] == key['stratum'])]
+        for _, b in avail.iterrows():
+            if b['component'] in have:
+                continue
+            rows.append({**key, 'component': b['component'],
+                         'ref_wave': b['ref_wave'], 'ref_match': b['ref_match'],
+                         'n': 0, 'mae': np.nan, 'bias': np.nan,
+                         'abs_bias': np.nan, 'rms_log': np.nan,
+                         'median_ratio': np.nan, 'coverage68': np.nan,
+                         'coverage95': np.nan, 'coverage_n': 0,
+                         'caveat': CAVEAT_NOT_APPLICABLE})
+    return pd.DataFrame(rows)
 
 
 REL_MISFIT_COL = 'rel_misfit'
@@ -1264,6 +1462,17 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
       ``configured = True``, so "the pair I asked for was scored" is a table
       lookup rather than an assumption.
 
+    **Direct algorithms** (``fit_method='direct'``, ls2 task 6). A ``pool``
+    column sits beside ``fit_method``: a fitted row's pool is its fit method,
+    and a direct row is duplicated into every fitted pool of the sweep, so it
+    meets the fitted algorithms in each contest while ``fit_method`` keeps the
+    honest label. Every contest (``wins``, ``pair``, ``dbic``, the rankings)
+    keys on ``pool``. A direct algorithm's ``poor_fit`` rows are scored cell by
+    cell (:data:`DIRECT_SCORE_STATUSES`); components it never returns get
+    ``n = 0`` rows with ``caveat = 'not_applicable'``, as do its ΔBIC pairs;
+    and ``metrics_spectral`` gains a ``frac_nan_<reason>`` column per NaN
+    reason present (:data:`ioptics.records.NAN_REASONS`).
+
     **Only rows whose ``status`` is in ``score_statuses`` are scored**
     (default :data:`SCORE_STATUSES`, i.e. ``'ok'`` alone). The rest are
     reported as coverage on the closure row and otherwise excluded — a
@@ -1277,6 +1486,8 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
     :func:`ioptics.io.sweep_dir`. Returns a :class:`MetricsTables` namedtuple.
     """
     spectral_df, scalar_df = io.read_results(sweep_id, root=root)
+    if 'nan_reason' not in spectral_df.columns:     # sweeps before ls2 Q24
+        spectral_df = spectral_df.assign(nan_reason='')
     spectral_df = _with_status(spectral_df, scalar_df)
 
     # Per-fit relative misfit rides along on the scalar frame, so the closure
@@ -1295,6 +1506,12 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
         else:
             scalar_df = scalar_df.merge(rm, on=_STATUS_KEYS, how='left')
 
+    # The pool (ls2 Q23), added *after* the status and rel_misfit joins above,
+    # which key on fit_method and would otherwise cross-multiply the copies.
+    pools = _pools(scalar_df)
+    spectral_df = _with_pool(spectral_df, pools)
+    scalar_df = _with_pool(scalar_df, pools)
+
     strata = _strata_map(scalar_df)
     spectral_df = spectral_df.merge(strata, on=['dataset', 'obs_id'], how='left')
     scalar_df = scalar_df.merge(strata, on=['dataset', 'obs_id'], how='left')
@@ -1312,6 +1529,8 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
     ref = _ref_frame(spec_scoped, ref_waves, ref_tol)
 
     scalar_parts = [p for p in (_ref_accuracy_rows(ref),
+                                _not_applicable_rows(ref, scal_all,
+                                                     _scoped(spectral_df)),
                                 _scalar_var_rows(scal_scoped)) if not p.empty]
     # A sweep in which *every* fit failed has nothing to score — which is a real
     # state (the GLORIA runs before the iteration budget was raised failed 72 of
@@ -1321,7 +1540,7 @@ def compute(sweep_id, *, root=None, levels=(0.68, 0.95), ref_waves=REF_WAVES,
     if not scalar_acc.empty:
         scalar_acc = rankings(
             scalar_acc,
-            by=('dataset', 'fit_method', 'stratum', 'component', 'ref_wave'))
+            by=('dataset', 'pool', 'stratum', 'component', 'ref_wave'))
 
     closure = _closure_rows(scal_all, n_sigma=n_sigma,
                             qc_max=chi2nu_qc_max,

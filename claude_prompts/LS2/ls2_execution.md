@@ -501,7 +501,284 @@ missing cells where they can be counted.  Should I also relabel the partial
 case?  `poor_fit`'s docstring means "χ²_ν > 5", which a direct algorithm never
 has.  Which do you want?
 
+>A. Use your recommendation.
+
+**Q32. On PANGAEA, should a Kd-consuming rung use interpolated Kd, or only
+the bands where Kd was measured?**  Task 5 carries PANGAEA's `kd` onto the
+record.  It is sparse:
+- 2,410 records with usable Rrs have it, on 23 distinct wavelengths;
+- 351 records have a **single** band, and the median record has about 6;
+- 94% of the values (15,562 of 16,516) fall exactly on an Rrs band, and every
+  record has at least one such band.
+
+Alignment follows the truth convention: linear interpolation between Kd
+bands, NaN outside them, never extrapolated.  But Kd is not linear in
+wavelength.  It roughly tracks `a_w`, which climbs steeply past 550 nm, so a
+linear fill between 555 and 665 nm can be badly wrong, and LS2 divides by Kd.
+Each record now carries `meta['Kd_on_band']`, a per-band flag marking measured
+values, so either choice is a one-liner in task 7.
+- (a) LS2 on PANGAEA uses only `Kd_on_band` cells; the other cells come back
+  NaN with reason `kd_missing`.
+- (b) Use the interpolated Kd everywhere it is finite.
+- (c) Interpolate only between bands no more than ~25 nm apart.
+
+Separately, PANGAEA's `kd` is a measured near-surface Kd, not L23's ⟨Kd⟩₁
+over exactly the first attenuation depth.  That is a definitional caveat the
+PANGAEA results inherit (it is noted in the adapter docstring).
+*Recommended:* (a).  It scores LS2 only where its input was measured, and the
+NaN reason makes the coverage cost visible.  Which do you want?
+
+>A. Use (a)
+
 ## Logs
+
+### 2026-10-03 (Q32 noted; task 6 — IOPtics: metrics for an algorithm with no misfit)
+
+**New answer.**  *Q32*: option (a).  On PANGAEA, LS2 uses only the cells where
+`meta['Kd_on_band']` is true, and the rest come back NaN with reason
+`kd_missing`.  That code is in the vocabulary added below, and task 7 applies
+it.
+
+**(a) `a_nw` is first-class.**  I added it to `metrics.ACCURACY_COMPONENTS`
+and `_COMPONENT_REFSET` (absorption), `evaluate._SPECTRAL`, `io._UNITS`, and
+mapped L23's `anw` → `a_nw` in `_L23_TRUTH_MAP`.  BING emits `a_nw = a_dg +
+a_ph` in `_assemble` on the **same draws**, for both the samples and the point
+estimate, so the 68/95 bands are those of the sum.  `test_run` checks that the
+medians add exactly.  The fixtures the prompt named were updated:
+`test_run.py`'s component set, `test_sweep_multi` (via `_BASE` in
+`test_metrics.py`, which gains `a_nw = 0.14`).  So were four more the prompt
+did not name, all data-gated and all just counting components or truth keys:
+`test_datasets` (truth keys, plus a check that `a_nw = a − a_w` to L23's
+float32 precision), `test_prep`, `test_sweep` (7 → 8 components) and
+`test_micro`.
+
+**(b) No misleading zeros.**
+- `frac_qc_fail` is now computed over finite χ²ᵥ only, and is NaN when none
+  is finite.
+- `frac_good`/`frac_overfit`/`frac_underfit` are NaN when every label is
+  `unknown`.
+- `chi2_nu_median` and the `rel_misfit` medians are NaN, without a numpy
+  warning, when nothing is finite.
+- **The `frac_qc_fail` change moves BING numbers too.**  Declined and failed
+  fits have no χ², and they used to count as passes.  On the sweeps on disk,
+  `multi_L23_PANGAEA_v2` PANGAEA changes:
+  - `expb_pow` 0.553 → 0.739 (1,192 of 1,593 fits have a χ²);
+  - `giop` 0.647 → 0.709;
+  - `gsm` 0.933 → 0.965.
+
+  The L23 sweeps don't move.  `frac_qc_fail` is in the QC table, not the
+  leaderboard fold.  The new number answers the question its name asks.
+
+**(c) NaN reasons per wavelength.**
+- `records.NAN_REASONS` defines the vocabulary: `off_grid`, `negative`,
+  `kappa_out_of_range`, `not_converged`, `kd_missing`, `bp_missing`,
+  `unexplained`.  Several reasons for one cell are joined by `;`.
+- `RetrievalResult.nan_reason` holds `{component: (L,) str}`, persisted as
+  **one new column, `nan_reason`**, in `results_spectral`.  It is `''` for
+  every BING row and for `Rrs_obs`.
+- `assemble_direct` accepts the driver's codes and validates them against the
+  vocabulary.  It adds `negative` to any non-positive finite cell, and gives
+  `unexplained` to any non-finite cell with no reason, so every unusable cell
+  carries one.
+- `metrics_spectral` gains one `frac_nan_<reason>` column per reason present,
+  per `(key, λ)`.  That is the wavelength-resolved view of Q24 (κ failing near
+  490–505 nm), and a BING-only sweep gains no columns.
+- `κ_out_of_range` is the one *finite* reason: it flags a cell holding an
+  uncorrected or last-applied value (Q28), rather than removing it.
+
+**(d) "Not applicable" rows.**
+- `metrics.CAVEAT_NOT_APPLICABLE = 'not_applicable'`.
+- For each direct algorithm, each `(component, ref_wave)` that a fitted
+  algorithm in the same `(dataset, pool, stratum)` was scored on, but the
+  direct algorithm never returned in any row, gets an `n = 0`, NaN-metric row
+  with that caveat: LS2's `a_ph`/`a_dg`.  This is inferred from the tables,
+  which is all the metrics layer reads, and restricted to direct algorithms.
+- ΔBIC pairs involving a direct algorithm emit an `n = 0` row with the caveat,
+  instead of `continue`.  BING pairs behave as before, and ΔBIC rows now carry
+  `pool` and `caveat` columns.
+- `tables.accuracy`'s `drop_unscored` and `leaderboard.render`'s equivalent
+  both keep `not_applicable` rows, and `leaderboard.ranked` labels them
+  **`not applicable`**, unranked.
+
+**(e) `pool`.**
+- **Assignment.**  `pool = fit_method` for BING rows.  Direct rows are
+  duplicated into every fitted pool in the sweep, or form a `direct` pool when
+  there are none.  The duplication happens *after* the status and
+  `rel_misfit` joins, which key on `fit_method` and would otherwise
+  cross-multiply the copies.
+- **Contests.**  `_KEYS` gains `pool`.  `wins`, `head_to_head`, ΔBIC and the
+  scalar rankings key on `pool`.
+- **Labels.**  `wins` rows get each algorithm's honest `fit_method` back.
+  Pair and ΔBIC rows set `fit_method = pool` (the population) and add
+  `fit_method_a`/`fit_method_b`.
+- **Old frames.**  A frame without `pool` is given `pool = fit_method`.
+- **Report consumers.**
+  - `report/tables.py` gains `_in_pool`, so `accuracy`, `head_to_head`, `qc`
+    and the tied-rank check select a pool, and LS2 appears in the χ² tables
+    beside BING with `fit_method = 'direct'`.  `fit_method_compare` keeps the
+    honest `fit_method`.
+  - `report/leaderboard.py` folds and joins on `pool` (back-filled for older
+    sweeps), `_CONTEST` keys on `pool`, and `pool` is added to the headline and
+    full columns.  `render` **hides it when it equals `fit_method`**, so every
+    BING-only board renders exactly as before.
+- **The prompt's test.**  `test_chisq_and_mcmc_are_separate_contests` passes
+  unchanged.  Its analogue with a direct algorithm in the sweep is in
+  `test_metrics_direct.py`.
+
+**Q31b, implemented here.**  `metrics.DIRECT_SCORE_STATUSES = ('ok',
+'poor_fit')`.  A direct algorithm's `poor_fit` rows are scored cell by cell,
+since `n_valid`'s per-cell intersection already drops their NaN and
+non-positive cells, while its closure row reports `frac_ok` strictly.  BING's
+`poor_fit` rows are still excluded, as tested.  The `records.STATUSES`
+docstring now says what `ok`, `poor_fit` and `fit_failed` mean for a direct
+algorithm.
+
+**Left for task 9.**  `report/standard.py`, `figures.*` and `rt_ladder.py`
+still select by `fit_method` in places.  That is correct for BING-only pages.
+The `ls2_ladder` page reuses those builders and must pass the pool.
+
+**Tests.**  New `ioptics/tests/test_metrics_direct.py` (18, Tier-1) runs a
+synthetic sweep: two BING algorithms by χ², one also by MCMC, plus a direct
+algorithm assembled through `assemble_direct`, carried through `io`,
+`metrics.compute`, the report tables and the leaderboard.  It covers:
+- `a_nw` scored for both kinds of algorithm;
+- `frac_qc_fail` over finite χ² only, and a direct closure row that is NaN,
+  not 0, with no empty-slice warnings;
+- the reason vocabulary, its completion and validation, the spectral column,
+  `frac_nan_off_grid` = 0.25 at the poisoned wavelength only, and no reason
+  columns on a BING-only sweep;
+- pool duplication, the stand-alone `direct` pool, contests keyed on the pool
+  with honest labels, and χ²/MCMC still separate with a direct algorithm;
+- Q31b: partial direct cells scored (n = 4 at 440 nm, 3 at 443 nm),
+  `frac_ok` = 0.75, and BING `poor_fit` still excluded;
+- `not_applicable` rows (exactly `a_ph`/`a_dg` × bands × pools), the n = 0
+  ΔBIC rows, survival through `tables.accuracy` and the board ("not
+  applicable", unranked), `qc` in each pool, and the conditional `pool`
+  column.
+
+**Results.**  `pytest -q` without `$OS_COLOR`: 570 passed, 67 skipped, 3
+failed.  With `$OS_COLOR`: 630 passed, 6 skipped, 5 failed.  The failures are
+the same five BING-branch (`rob_rt`) ones as in tasks 4 and 5.  The final
+`render` edit came after that run began; the leaderboard and metrics-direct
+tests were re-run on it (42 passed).  `sphinx-build -W` exits 0.  Nothing
+committed; JXP runs git.
+
+### 2026-10-03 (Q31 noted; task 5 — IOPtics: Kd as a second observable)
+
+**New answer.**  *Q31*: option (b).  `ok` stays strict per Q5, and task 6
+scores the **finite cells** of partial (`poor_fit`) direct rows, with the
+per-wavelength NaN reasons beside them.  No new label was chosen, so the
+partial case stays `poor_fit`, and task 6 should widen that status's
+docstring to cover it.
+
+**What was built.**
+- **(a) The field.**  `Kd` is a defaulted field on `RawObs` (an array on
+  `wave`, or a `(src_wave, values)` pair) and on `PreparedRecord` (an array on
+  `wave`, or `None`).  It is an input, never truth: it never touches
+  `_build_truth`, and a test asserts it stays out of `truth`/`truth_interp`.
+  Only `prep_one` builds a `PreparedRecord` field by field, so no other
+  construction site needed changing.
+- **(b) Prep.**  A new `prep._prep_kd`:
+  - an on-grid Kd is trimmed with the same mask as `Rrs`/`Rrs_err`;
+  - an off-grid pair goes through `_align_truth`: linear, out-of-range NaN,
+    never extrapolated;
+  - `meta['Kd_interp']` records whether a regrid happened, and the per-band
+    `meta['Kd_on_band']` marks which bands are measured (an addition beyond
+    the prompt, prompted by the PANGAEA numbers; see Q32);
+  - Kd is **not perturbed** by the noise model (Q15).
+- **(c) L23.**
+  - **The X=2 refusal is lifted**, along with its "never 2" docstring, and
+    the old Tier-1 guard test is replaced by one showing X=2 reaches the
+    loader.
+  - A new module, **`ioptics/kd.py`**, provides the three ⟨Kd⟩₁ definitions
+    of Q10 as a documented option: `ln_ratio` (canonical), `trapz_stored_z1`
+    and `trapz_ed_z1`.
+    - `ln_ratio` is `ln[Ed(0⁻)/Ed(z₁)]/z₁` with z₁ the e-folding depth of
+      `Ed_z` itself, from linear interpolation of ln Ed.  Defined that way,
+      the ratio is exactly e and the value is 1/z₁.
+    - `mean_kd_first_attenuation_depth` is lifted out of `verify_context.py`
+      and vectorized, from a double loop to array ops (0.1 s for 3320×81).  It
+      matches the old loop to 4e-16, and `verify_context.py` now re-exports
+      the package function, so there is one copy.
+  - **Loading and caching.**  `load_l23_kd1(X, Y, definition)` reads only
+    the five variables it needs from the 727 MB profile file and caches the
+    derived (3320, 81) array per `(X, Y, definition)`.  The first load takes
+    about 2.5 s; later calls hit the cache.
+  - **Row check.**  The loader checks once per file that the profile file is
+    row-aligned with the main file: same scenario ids, wavelength grid and
+    `Rrs`.
+  - **Kd is opt-in on the adapter.**  `L23Adapter.load_obs(..., kd1=None)`
+    loads Kd only when asked, passed through `dataset_opts` (`{'L23': {'X':
+    4, 'kd1': 'ln_ratio'}}`), so it lands in provenance next to `X`/`Y`.
+    **Decision:** opt-in rather than default, so that BING-only L23 sweeps
+    neither read the profile files nor need them on disk.
+- **(d) PANGAEA.**  The adapter carries ocpy's `kd` family (the `iop` table)
+  as a `(src_wave, values)` pair.  The docstring states the definitional
+  caveat: measured near-surface Kd, not ⟨Kd⟩₁.
+- **(e) Guard.**  A new `@needs_l23_profile` in `conftest.py`, in the style
+  of `_l23_available`, requires `Hydrolight{1,2,4}00_profile.nc`.
+  `ioptics.kd` is added to the API docs.
+
+**Found: a hole in the distributed L23 data.**  The row check fired on X=2,
+Y=0.  In `Hydrolight200_profile.nc`, **five scenarios (rows 365, 376, 387, 398,
+409) are entirely NaN**, in `Rrs` and in every profile, while the main
+`Hydrolight200.nc` has them.  The other eight profile files have none.  The
+check now compares only populated rows, so a hole is reported, not treated
+as a misalignment.  Those rows' ⟨Kd⟩₁ is NaN, and they are pinned as
+`kd.KNOWN_EMPTY_PROFILE_ROWS`, so a re-download that changes them is noticed.
+It matters for tasks 12/13: the matched X=1/X=2 pair is 3,315 scenarios at
+Y=0, not 3,320.
+
+**Measured (X=4, Y=0; pinned in `test_kd.py`).**  Relative to the canonical
+`ln_ratio`:
+
+| | 400–500 nm median | p99 | 680–720 nm p1 | max anywhere |
+|---|---|---|---|---|
+| `trapz_stored_z1` | −0.010% | +0.30% | **−0.20%** | 1.45% |
+| `trapz_ed_z1` | −0.000% | +0.004% | −0.03% | 0.19% |
+
+So the definitions agree to better than 0.03% in the blue.  They "diverge in
+the red" only modestly: the stored-z₁ trapezoid drifts at 680–720 nm, and its
+worst cell is 1.45%, inside Q10's ≲1.6%.  L23's water is vertically
+homogeneous, so a depth average of KEd barely cares where z₁ falls; the stored
+z₁ is wrong, but it moves ⟨Kd⟩₁ little.  98.97% of (scenario, λ) pairs are
+finite; the rest are clear blue water where z₁ lies beyond the 50 m grid.
+The `z1_lambda` inconsistency is reproduced exactly and pinned as a
+regression: **37,039 of 266,067** pairs are off by more than 10%, and at
+700 nm the stored z₁ is **1.769×** the `Ed_z` e-folding depth.
+
+**Tests (`ioptics/tests/test_kd.py`).**
+- Tier-1, on synthetic Hydrolight-shaped profiles:
+  - in homogeneous water all three definitions return K, even with z₁
+    stored 1.77× too deep;
+  - with depth-varying Kd only the stored-z₁ trapezoid diverges;
+  - z₁ beyond the grid gives NaN, and the e-folding depth is exact for an
+    exponential Ed;
+  - an unknown definition raises.
+- Tier-1, Kd through prep via a fake adapter:
+  - on-grid Kd survives a trim exactly, unperturbed under `add_noise=True`,
+    and stays out of truth;
+  - off-grid Kd is aligned and never extrapolated, with a per-band
+    `Kd_on_band`;
+  - `None` stays `None`, and a misshapen Kd raises.
+- `@needs_l23_profile`:
+  - the measured blue agreement and red divergence;
+  - the `z1_lambda` pin;
+  - the lifted function is identical to the prototype's;
+  - X=2 loads with Kd, trimmed;
+  - the empty-row pin, and X=1/X=4 have no holes;
+  - caching works, and Kd stays absent unless asked for.
+- `@needs_pangaea`: a real record carries `kd`, and every measured band on
+  the record grid survives exactly.
+- Plus the replaced X=2 test in `test_datasets.py`.
+
+**Results.**  `pytest -q` **without `$OS_COLOR`**: 553 passed, 67 skipped, 3
+failed.  **With `$OS_COLOR`**: 612 passed, 6 skipped, 5 failed.  The
+failures are the same five as in task 4 (BING checkout on `rob_rt`).  After
+the final `Kd_on_band` edit, `test_kd`, `test_datasets` and `test_prep` were
+re-run in both modes: 38 passed with 20 skipped, then 58 passed.
+`sphinx-build -W` on `docs/source` exits 0 with `ioptics.kd` added.  Nothing
+committed; JXP runs git.
 
 ### 2026-10-03 (Q30 noted; task 4 — IOPtics: DirectSpec, registration, run-stage branch)
 

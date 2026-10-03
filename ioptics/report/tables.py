@@ -42,6 +42,23 @@ NOMINAL_COVERAGE = metrics.NOMINAL_COVERAGE
 COVERAGE_MISS_SIGMA = 2.0
 
 
+def _in_pool(df, pool):
+    """Boolean mask of the rows scored in contest population ``pool``.
+
+    ``pool`` (ls2 Q23) is the population a row was scored in; for a fitted
+    algorithm it equals ``fit_method``, while a direct algorithm's rows carry
+    ``fit_method='direct'`` and appear once in every fitted pool. The
+    ``fit_method=`` argument of the functions below therefore selects a
+    **pool**. A frame without a ``pool`` column (``results_scalar``, or metrics
+    written before the column existed) falls back to ``fit_method == pool``
+    plus the direct rows, which belong to every pool by construction.
+    """
+    if 'pool' in df.columns:
+        return df['pool'] == pool
+    fm = df['fit_method']
+    return (fm == pool) | (fm == metrics.DIRECT_FIT_METHOD)
+
+
 def _require(df, what):
     if df is None:
         raise FileNotFoundError(
@@ -146,7 +163,7 @@ def _blank_tied_ranks(acc, sweep, *, fit_method='chisq', stratum='all'):
     out['ranking'] = 'ranked'
     if pw is None or 'contest' not in getattr(pw, 'columns', []):
         return out, 0
-    pairs = pw[(pw['contest'] == 'pair') & (pw['fit_method'] == fit_method)
+    pairs = pw[(pw['contest'] == 'pair') & _in_pool(pw, fit_method)
                & (pw['stratum'] == stratum)]
     if pairs.empty:
         return out, 0
@@ -192,18 +209,21 @@ def accuracy(sweep, *, fit_method='chisq', stratum='all', root=None,
     """
     sweep = figures.resolve(sweep, root)
     ms = _require(sweep.metrics_scalar, 'metrics_scalar')
-    acc = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
+    acc = ms[_in_pool(ms, fit_method) & (ms['stratum'] == stratum)
              & ms['component'].isin(metrics.ACCURACY_COMPONENTS)
              & ms['ref_wave'].notna()].copy()
     keep = [c for c in _CONTEST_KEY if c in acc.columns]
-    keep += [c for c in ('ref_match', 'caveat') if c in acc.columns]
+    # fit_method rides along as the honest label: inside one pool a direct
+    # algorithm's rows say 'direct' beside the fitted ones.
+    keep += [c for c in ('fit_method', 'ref_match', 'caveat')
+             if c in acc.columns]
     keep += [c for c in _ACC_COLS if c in acc.columns]
     acc = acc[keep]
     acc = _coverage_flags(acc)
 
     pw = sweep.metrics_pairwise
     if pw is not None and 'contest' in pw.columns:
-        wins = pw[(pw['contest'] == 'wins') & (pw['fit_method'] == fit_method)
+        wins = pw[(pw['contest'] == 'wins') & _in_pool(pw, fit_method)
                   & (pw['stratum'] == stratum)]
         if not wins.empty:
             on = [c for c in _CONTEST_KEY if c in wins.columns and c in acc.columns]
@@ -219,9 +239,14 @@ def accuracy(sweep, *, fit_method='chisq', stratum='all', root=None,
     # because that dataset has spectral truth for one component only. Drop them
     # and record the count so the page can say how many, rather than either
     # publishing empty rows or hiding them silently.
+    # ``not_applicable`` rows are the exception: n=0 *is* their content (an
+    # algorithm that structurally cannot produce the component; ls2 task 6d),
+    # so dropping them would delete the statement before it could render.
     n_unscored = 0
     if drop_unscored and 'n_pairs' in acc.columns:
         unscored = acc['n_pairs'].fillna(0) <= 0
+        if 'caveat' in acc.columns:
+            unscored &= acc['caveat'].ne(metrics.CAVEAT_NOT_APPLICABLE)
         n_unscored = int(unscored.sum())
         acc = acc[~unscored].reset_index(drop=True)
 
@@ -259,7 +284,7 @@ def head_to_head(sweep, *, fit_method='chisq', stratum='all', root=None,
     pw = sweep.metrics_pairwise
     if pw is None or 'contest' not in getattr(pw, 'columns', []):
         return pd.DataFrame()
-    rows = pw[(pw['contest'] == 'pair') & (pw['fit_method'] == fit_method)
+    rows = pw[(pw['contest'] == 'pair') & _in_pool(pw, fit_method)
               & (pw['stratum'] == stratum)]
     if rows.empty:
         return pd.DataFrame()
@@ -375,14 +400,14 @@ def qc(sweep, *, fit_method='chisq', stratum='all', root=None, write=True):
     Writes ``qc_<fit_method>_<stratum>.csv`` when ``write``; returns the DataFrame.
     """
     sweep = figures.resolve(sweep, root)
-    sc = sweep.scalar[sweep.scalar['fit_method'] == fit_method]
+    sc = sweep.scalar[_in_pool(sweep.scalar, fit_method)]
     by = [c for c in ('dataset', 'algorithm') if c in sc.columns]
     not_ok = (sc.assign(_bad=sc['status'].ne('ok'))
                 .groupby(by)['_bad'].mean()
                 .rename('frac_not_ok').reset_index())
 
     ms = _require(sweep.metrics_scalar, 'metrics_scalar')
-    closure = ms[(ms['fit_method'] == fit_method) & (ms['stratum'] == stratum)
+    closure = ms[_in_pool(ms, fit_method) & (ms['stratum'] == stratum)
                  & (ms['component'] == 'Rrs')]
 
     # ``frac_not_ok`` above counts every row of the algorithm, but the closure block

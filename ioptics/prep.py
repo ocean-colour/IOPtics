@@ -133,6 +133,37 @@ def _build_truth(raw, wave):
     return truth, truth_interp
 
 
+def _prep_kd(raw_kd, wave_full, mask, wave, meta):
+    """Put a :attr:`RawObs.Kd` onto the record grid.
+
+    An array on the native grid is trimmed with the same ``mask`` as ``Rrs``
+    and ``Rrs_err``. A ``(src_wave, values)`` pair is aligned with
+    :func:`_align_truth` -- linear interpolation, out-of-range bands NaN,
+    never extrapolated -- and ``meta['Kd_interp']`` records whether a regrid
+    happened. ``meta['Kd_on_band']`` is a per-band boolean on ``wave``: True
+    where Kd is a reported value, False where it was interpolated (all True
+    for an on-grid Kd). ``None`` stays ``None``.
+    """
+    if raw_kd is None:
+        return None
+    if isinstance(raw_kd, tuple):
+        src_wave, values = raw_kd
+        aligned, interpolated = _align_truth(src_wave, values, wave)
+        meta['Kd_interp'] = bool(interpolated)
+        # Which record bands carry a *measured* Kd rather than an interpolated
+        # one: PANGAEA reports Kd on a few discrete bands, and Kd is not linear
+        # in wavelength, so a consumer may want to use only these.
+        meta['Kd_on_band'] = np.isin(wave, np.asarray(src_wave, dtype=float))
+        return aligned
+    arr = np.asarray(raw_kd, dtype=float)
+    if arr.shape != wave_full.shape:
+        raise ValueError(f'Kd has shape {arr.shape}; the native grid has '
+                         f'{wave_full.shape}')
+    meta['Kd_interp'] = False
+    meta['Kd_on_band'] = np.ones(int(mask.sum()), dtype=bool)
+    return arr[mask].copy()
+
+
 # QWIP polynomial coefficients, Dierssen et al. (2022), Eq. 4 — predicts
 # NDI(492,665) from the Apparent Visible Wavelength (AVW, nm). Verified
 # digit-for-digit against the published equation.
@@ -322,13 +353,18 @@ def prep_one(dataset, obs_id, *, noise=None, add_noise=None, seed=None,
     truth, truth_interp = _build_truth(raw, wave)
     init = _init_from_rrs(wave, Rrs_out)
 
+    # Kd is an input, not truth: trimmed like Rrs_err, aligned like a
+    # per-family truth spectrum, never perturbed (ls2 Q15).
+    meta = dict(raw.meta)
+    Kd = _prep_kd(getattr(raw, 'Kd', None), wave_full, mask, wave, meta)
+
     return PreparedRecord(
         dataset=dataset, obs_id=obs_id, wave=wave,
         Rrs=Rrs_out, varRrs=varRrs, Rrs_clean=Rrs_clean,
         truth=truth, truth_interp=truth_interp, init=init,
-        noise_model=tag, noise_seed=seed_used, meta=dict(raw.meta),
+        noise_model=tag, noise_seed=seed_used, meta=meta,
         # spectral-shape quality annotation, on the spectrum the fit sees
-        qwip_score=qwip_score(wave, Rrs_out))
+        qwip_score=qwip_score(wave, Rrs_out), Kd=Kd)
 
 
 def _prep_one_star(item, dataset, noise, add_noise, wv_min, wv_max, load_opts,

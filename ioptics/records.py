@@ -31,11 +31,17 @@ import numpy as np
 
 #: Allowed :class:`RetrievalResult` status values.
 #:
-#: - ``'ok'`` -- the fit converged and is an acceptable solution.
+#: - ``'ok'`` -- the fit converged and is an acceptable solution. For a
+#:   **direct** algorithm (no fit; ls2 Q5): every requested output is finite
+#:   and positive at every wavelength.
 #: - ``'poor_fit'`` -- the optimiser returned, but the solution is not
 #:   acceptable: reduced chi-squared above :data:`CHI2NU_POOR_FIT`. The
 #:   parameters are recorded, so the row can be inspected, but it should
-#:   not be scored as a success.
+#:   not be scored as a success. For a **direct** algorithm it means a
+#:   *partial* result: something finite came back, but not a complete
+#:   physical set (an off-grid band, a negative ``a_nw``). Its finite cells
+#:   are scored (ls2 Q31b, :data:`ioptics.metrics.DIRECT_SCORE_STATUSES`) and
+#:   the per-cell reasons are in :data:`NAN_REASONS`.
 #: - ``'out_of_scope'`` -- the spectrum sits outside what the model family
 #:   is built for (see :data:`RED_PEAK_NM`). Since 2026-08-10 this is
 #:   assigned **before** fitting: :func:`ioptics.run.run_algorithm` declines
@@ -46,8 +52,36 @@ import numpy as np
 #:   "this model did badly here" and "no algorithm in this family should be
 #:   expected to work here".
 #: - ``'fit_failed'`` -- no usable parameters (the optimiser raised, or
-#:   produced non-finite values).
+#:   produced non-finite values). For a direct algorithm: nothing finite came
+#:   back, or the driver raised.
 STATUSES = ('ok', 'poor_fit', 'out_of_scope', 'fit_failed')
+
+#: Per-cell reasons a direct algorithm's value at one ``(component,
+#: wavelength)`` is missing or unusable (ls2 Q24). The status set above is
+#: fixed and per *spectrum*; these are per *cell*, persisted in the
+#: ``nan_reason`` column of ``results_spectral``, because the failures are
+#: wavelength-specific (LS2's kappa table fails near 490-505 nm and above
+#: 702 nm) and a per-spectrum count would erase exactly that. Several reasons
+#: for one cell are joined with :data:`NAN_REASON_SEP`; ``''`` means none.
+#:
+#: - ``'off_grid'`` -- an input (``eta``, ``muw``) fell outside the look-up
+#:   table; the cell is NaN.
+#: - ``'negative'`` -- the value came out non-positive (e.g. ``a_nw`` where
+#:   ``a_w`` dominates); it cannot be scored on a log scale.
+#: - ``'kappa_out_of_range'`` -- the Raman correction could not be evaluated;
+#:   the value is the uncorrected one (or the last applied, ls2 Q28). Finite,
+#:   so this one flags a cell rather than removing it.
+#: - ``'not_converged'`` -- the Raman iteration hit its cap.
+#: - ``'kd_missing'`` -- no measured ``Kd`` at this band (ls2 Q32).
+#: - ``'bp_missing'`` -- no ``b_p`` at this band.
+#: - ``'unexplained'`` -- non-finite with no reason supplied by the driver;
+#:   assigned by :func:`ioptics.evaluate.assemble_direct` so every unusable
+#:   cell carries *some* reason.
+NAN_REASONS = ('off_grid', 'negative', 'kappa_out_of_range', 'not_converged',
+               'kd_missing', 'bp_missing', 'unexplained')
+
+#: Separator between several reasons for one cell.
+NAN_REASON_SEP = ';'
 
 #: Reduced chi-squared above which a converged fit is not a solution.
 #: Shared with :data:`ioptics.metrics.CHI2NU_QC_MAX` so the per-row status
@@ -137,6 +171,17 @@ class PreparedRecord:
         NaN when the spectrum cannot support it (no coverage of 492/665 nm).
         See :func:`ioptics.prep.qwip_score`; added 2026-08-12 (PANGAEA
         investigation Task-4 B1, approved by JXP).
+    Kd : numpy.ndarray or None, optional
+        Diffuse attenuation coefficient of downwelling irradiance [m^-1] on
+        ``wave`` -- an **input** to Kd-consuming algorithms (LS2's
+        ``<Kd>_1``), never truth, so it is not in ``truth`` and is never
+        scored. Trimmed with ``Rrs`` and, when the dataset reports it on its
+        own bands, linearly aligned onto ``wave`` with out-of-range bands NaN
+        (``meta['Kd_interp']`` says whether that happened, and the per-band
+        ``meta['Kd_on_band']`` which bands carry a reported rather than an
+        interpolated value). Not perturbed by
+        the noise model: Kd noise is its own sensitivity rung (ls2 Q15).
+        ``None`` when the dataset carries none.
     """
 
     dataset:      str
@@ -152,6 +197,7 @@ class PreparedRecord:
     noise_seed:   int | None
     meta:         dict = field(default_factory=dict)
     qwip_score:   float = np.nan
+    Kd:           np.ndarray | None = None
 
 
 @dataclass
@@ -223,6 +269,12 @@ class RetrievalResult:
         algorithm block). Defaults to an empty string.
     chain_file : str or None
         Path to the saved MCMC chain NPZ (``None`` for least-squares results).
+    nan_reason : dict
+        Per-cell reasons a value is missing or unusable, ``{component: (L,)
+        array of str}`` with codes from :data:`NAN_REASONS` (``''`` = none).
+        Filled for direct algorithms (ls2 Q24); empty for fitted ones, whose
+        rows get ``''``. Persisted as the ``nan_reason`` column of
+        ``results_spectral``.
     """
 
     dataset:    str
@@ -236,3 +288,4 @@ class RetrievalResult:
     status:     str  = 'ok'
     provenance_id: str = ''
     chain_file: str | None = None     # path to the saved MCMC chain NPZ (None for chisq)
+    nan_reason: dict = field(default_factory=dict)

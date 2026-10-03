@@ -44,8 +44,12 @@ _VALUE_COLS = ['n', 'coverage_n', 'bias', 'abs_bias', 'mae', 'rms_log',
 #: ``fit_method`` is a key, not a filter. The fold used to hard-select ``chisq``,
 #: which made an MCMC-fit algorithm invisible on the board no matter how well it
 #: performed — and silently, since the column was not carried either.
-_KEY_COLS = ['sweep_id', 'dataset', 'algorithm', 'fit_method', 'stratum',
-             'component', 'ref_wave']
+#: ``pool`` (ls2 Q23) is the contest population: equal to ``fit_method`` for a
+#: fitted algorithm, while a direct algorithm (``fit_method='direct'``) has one
+#: row per pool it was scored in. Folded sweeps written before the column
+#: existed get ``pool = fit_method``, which is what it meant for them.
+_KEY_COLS = ['sweep_id', 'dataset', 'algorithm', 'fit_method', 'pool',
+             'stratum', 'component', 'ref_wave']
 
 #: Closure columns folded alongside accuracy. Without them the board cannot answer
 #: "why were the other 79% not scored", which is half of what a rank means.
@@ -59,12 +63,13 @@ _RANK_BY = ['win_frac', 'abs_bias', 'mae']
 #: with the accuracy numbers because a top rank over a tenth of the spectra is not a
 #: better algorithm than a lower rank over all of them (Brewin's eta, promoted from a
 #: trailing column to a scored one).
-HEADLINE_COLS = ['dataset', 'component', 'ref_wave', 'fit_method', 'rank',
+HEADLINE_COLS = ['dataset', 'component', 'ref_wave', 'pool', 'fit_method', 'rank',
                  'ranking', 'algorithm', 'win_frac', 'mae', 'bias', 'frac_ok',
                  'coverage68', 'caveat']
 
 #: The full drill-down grid.
-FULL_COLS = ['dataset', 'component', 'ref_wave', 'stratum', 'fit_method', 'rank',
+FULL_COLS = ['dataset', 'component', 'ref_wave', 'stratum', 'pool', 'fit_method',
+             'rank',
              'ranking', 'algorithm', 'win_frac', 'bias', 'mae', 'coverage68',
              'coverage95', 'coverage_n', 'frac_ok', 'n_attempted',
              'frac_overfit', 'frac_poor_fit', 'frac_out_of_scope',
@@ -195,7 +200,9 @@ def _separable(sweep_dir):
     pairs = pw[pw['contest'] == 'pair']
     if pairs.empty:
         return pd.DataFrame()
-    keys = [c for c in ('dataset', 'fit_method', 'stratum', 'component',
+    if 'pool' not in pairs.columns:
+        pairs = pairs.assign(pool=pairs['fit_method'])
+    keys = [c for c in ('dataset', 'pool', 'stratum', 'component',
                         'ref_wave') if c in pairs.columns]
     names = set(pairs['model_a']) | set(pairs['model_b'])
     pairs = pairs.assign(_decided=pairs['verdict'].isin(names))
@@ -219,7 +226,7 @@ def _coverage(ms):
     cols = [c for c in _CLOSURE_COLS if c in cov.columns]
     if cov.empty or not cols:
         return pd.DataFrame()
-    keys = [c for c in ('dataset', 'algorithm', 'fit_method', 'stratum')
+    keys = [c for c in ('dataset', 'algorithm', 'fit_method', 'pool', 'stratum')
             if c in cov.columns]
     return cov[keys + cols]
 
@@ -235,6 +242,8 @@ def _fold_sweep(sweep_id, runs_root):
     if not mpath.is_file():
         return None
     ms = pd.read_parquet(mpath)
+    if 'pool' not in ms.columns:
+        ms = ms.assign(pool=ms['fit_method'])
     acc = ms[ms['component'].isin(metrics.ACCURACY_COMPONENTS)
              & ms['ref_wave'].notna()].copy()
     if acc.empty:
@@ -250,6 +259,8 @@ def _fold_sweep(sweep_id, runs_root):
     pw_path = d / metrics.METRICS_PAIRWISE_FILE
     if pw_path.is_file():
         pw = pd.read_parquet(pw_path)
+        if 'contest' in pw.columns and 'pool' not in pw.columns:
+            pw = pw.assign(pool=pw['fit_method'])
         if 'contest' in pw.columns:
             wins = pw[pw['contest'] == 'wins']
             if not wins.empty:
@@ -259,7 +270,7 @@ def _fold_sweep(sweep_id, runs_root):
                 # two-dataset fixture: 80 rows became 160, with ('L23',
                 # 'expb_pow') carrying both its own 1.0 and PANGAEA's 0.0).
                 # Same defect as the one fixed in report.tables.
-                on = [c for c in ('dataset', 'fit_method', 'stratum',
+                on = [c for c in ('dataset', 'fit_method', 'pool', 'stratum',
                                   'component', 'ref_wave', 'algorithm')
                       if c in wins.columns and c in out.columns]
                 out = out.merge(wins[on + ['win_frac']], on=on, how='left')
@@ -267,7 +278,8 @@ def _fold_sweep(sweep_id, runs_root):
         out['win_frac'] = float('nan')
     cov = _coverage(ms)
     if not cov.empty:
-        on = [c for c in ('dataset', 'algorithm', 'fit_method', 'stratum')
+        on = [c for c in ('dataset', 'algorithm', 'fit_method', 'pool',
+                          'stratum')
               if c in cov.columns and c in out.columns]
         out = out.merge(cov, on=on, how='left')
 
@@ -277,7 +289,7 @@ def _fold_sweep(sweep_id, runs_root):
     if sep.empty:
         out = out.assign(separable=pd.NA)
     else:
-        on = [c for c in ('dataset', 'fit_method', 'stratum', 'component',
+        on = [c for c in ('dataset', 'pool', 'stratum', 'component',
                           'ref_wave') if c in out.columns and c in sep.columns]
         out = out.merge(sep, on=on, how='left')
 
@@ -343,7 +355,12 @@ def update(runs_root=None, *, root=None, out=None, sweep_ids=None):
 #: key so MCMC results could reach the board at all, and without it a χ² row and an
 #: MCMC row of the same algorithm land in one ranking — comparing win fractions drawn
 #: from different pools, and publishing the same algorithm at rank 1 and rank 2.
-_CONTEST = ['dataset', 'component', 'ref_wave', 'stratum', 'fit_method']
+#:
+#: It keys on ``pool`` rather than ``fit_method`` (ls2 Q23), so a direct
+#: algorithm meets the fitted ones inside each population. For a fitted
+#: algorithm the two are equal, so the χ²/MCMC separation above is unchanged;
+#: a board folded before the column existed is given ``pool = fit_method``.
+_CONTEST = ['dataset', 'component', 'ref_wave', 'stratum', 'pool']
 
 
 def ranked(board, *, stratum=None):
@@ -354,6 +371,8 @@ def ranked(board, *, stratum=None):
     Returns a sorted copy.
     """
     df = board if stratum is None else board[board['stratum'] == stratum]
+    if 'pool' not in df.columns and 'fit_method' in df.columns:
+        df = df.assign(pool=df['fit_method'])
     # An empty or un-scored board is a legitimate state (stage 3 before stage 2, a
     # fresh machine), not a crash: the sort keys simply do not exist yet.
     missing = [c for c in _CONTEST + _RANK_BY if c not in df.columns]
@@ -392,14 +411,21 @@ def ranked(board, *, stratum=None):
             # No verdicts at all — every rank here is unsupported, and saying so is
             # the point of the rule.
             unsupported = pd.Series(True, index=df.index)
+        # A component the algorithm structurally cannot produce is neither
+        # ranked nor "not scored": it is not applicable (ls2 task 6d).
+        na = (df['caveat'].eq(metrics.CAVEAT_NOT_APPLICABLE)
+              if 'caveat' in df.columns
+              else pd.Series(False, index=df.index))
+        df.loc[na, 'rank'] = pd.NA
         df['rank'] = df['rank'].astype('Int64')
         df['ranking'] = np.select(
-            [df['rank'].notna() & ~unsupported,
+            [na,
+             df['rank'].notna() & ~unsupported,
              df['rank'].notna() & unsupported,
              measured & (n_measured < 2),
              df[scored].notna().any(axis=1)],
-            ['ranked', 'ranked (no head-to-head)', 'sole competitor',
-             'indistinguishable'],
+            ['not applicable', 'ranked', 'ranked (no head-to-head)',
+             'sole competitor', 'indistinguishable'],
             default='not scored')
     return df
 
@@ -431,7 +457,12 @@ def render(board=None, *, runs_root=None, root=None, out=None, fmt='rst',
 
     scored = [c for c in _RANK_BY if c in df.columns]
     if drop_unscored and scored:
-        df = df[df[scored].notna().any(axis=1)]
+        # ``not_applicable`` rows have nothing measured by construction and are
+        # kept: their absence would erase the statement (ls2 task 6d).
+        keep = df[scored].notna().any(axis=1)
+        if 'caveat' in df.columns:
+            keep |= df['caveat'].eq(metrics.CAVEAT_NOT_APPLICABLE)
+        df = df[keep]
     if headline:
         if 'stratum' in df.columns:
             df = df[df['stratum'] == 'all']
@@ -439,6 +470,12 @@ def render(board=None, *, runs_root=None, root=None, out=None, fmt='rst',
     else:
         cols = FULL_COLS
     cols = [c for c in cols if c in df.columns]
+    # ``pool`` says something only when it differs from ``fit_method`` -- i.e.
+    # when a direct algorithm is on the board. Otherwise it is a duplicate
+    # column, and the landing page of every BING-only board stays as it was.
+    if {'pool', 'fit_method'} <= set(df.columns) and \
+            df['pool'].astype(str).eq(df['fit_method'].astype(str)).all():
+        cols = [c for c in cols if c != 'pool']
 
     def _cell(v):
         if v is None or (isinstance(v, float) and pd.isna(v)) or v is pd.NA:

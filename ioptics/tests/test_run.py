@@ -359,7 +359,12 @@ def test_mcmc_path_round_trip():
     res = run.run_algorithm(spec, record, fit_method='mcmc')
     assert res.fit_method == 'mcmc'
     assert res.status == 'ok'
-    assert set(res.components) == {'a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'Rrs_model'}
+    assert set(res.components) == {'a', 'a_nw', 'bb', 'a_ph', 'a_dg', 'bb_p',
+                                   'Rrs_model'}
+    # a_nw is a_dg + a_ph on the same draws, so the medians add exactly
+    np.testing.assert_allclose(res.components['a_nw'].med,
+                               res.components['a_dg'].med
+                               + res.components['a_ph'].med, rtol=1e-12)
     cf = res.components['a']
     assert cf.med.shape == record.wave.shape
     assert np.all(np.isfinite(cf.med))

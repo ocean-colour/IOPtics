@@ -60,6 +60,15 @@ class RawObs:
         sources); ``None`` for synthetic datasets such as L23.
     meta : dict, optional
         Free-form metadata (e.g. L23 ``X``/``Y`` load options, ``obs_id``).
+    Kd : numpy.ndarray, tuple or None, optional
+        Diffuse attenuation coefficient of downwelling irradiance [m^-1], an
+        **input** for algorithms that take it (LS2's ``<Kd>_1``), never a
+        truth to score against -- so it is kept out of ``truth`` and out of
+        :func:`ioptics.prep._build_truth`. Either an array on ``wave`` or a
+        ``(src_wave, values)`` pair on its own wavelength set (PANGAEA's
+        discrete ``kd`` bands), which :mod:`ioptics.prep` aligns onto ``wave``
+        without extrapolating. ``None`` when the dataset has none (or was not
+        asked for it).
     """
 
     wave:    np.ndarray
@@ -67,6 +76,7 @@ class RawObs:
     truth:   dict
     Rrs_err: np.ndarray | None = None
     meta:    dict = field(default_factory=dict)
+    Kd:      np.ndarray | tuple | None = None
 
 
 # --- registry ---------------------------------------------------------------
@@ -126,6 +136,7 @@ class Adapter(Protocol):
 # bing's load_one_l23 returns these dict keys; map them onto IOPtics truth keys.
 _L23_TRUTH_MAP = {
     'a':    'a',
+    'anw':  'a_nw',    # a - a_w; scored against BING's a_dg + a_ph and LS2's a_nw
     'bb':   'bb',
     'aph':  'a_ph',
     'adg':  'a_dg',
@@ -146,18 +157,26 @@ class L23Adapter:
     + full truth using bing's canonical ``bing.fitting.l23.load_one_l23`` on the
     native Hydrolight grid.
 
-    The ``X``/``Y`` load options (``X``: 1 = elastic first pass, 4 = +Raman/Chl
-    fluorescence, never 2; ``Y``: solar-zenith index 00/30/60) are adapter
-    options, recorded in ``meta`` for provenance.
+    The ``X``/``Y`` load options (``X``: 1 = elastic, 2 = +Raman, 4 =
+    +Raman/Chl fluorescence; ``Y``: solar zenith 0/30/60 degrees) are adapter
+    options, recorded in ``meta`` for provenance. ``X=2`` is the Raman-only
+    realization LS2's matched X=1/X=2 pair needs (ls2 Q4, Q12); BING sweeps
+    still run X=1 or X=4.
+
+    The ``kd1`` load option attaches ``<Kd>_1`` to every observation as
+    :attr:`RawObs.Kd`, computed from the matching
+    ``Hydrolight{X}{Y}_profile.nc`` by :func:`ioptics.kd.load_l23_kd1` under
+    one of :data:`ioptics.kd.KD1_DEFINITIONS` (``'ln_ratio'`` is canonical,
+    ls2 Q10). It is **opt-in** (default ``None``): only a sweep that runs a
+    Kd-consuming algorithm pays for reading the profile file, or needs it on
+    disk. Pass it through ``dataset_opts``, e.g. ``{'L23': {'X': 4, 'kd1':
+    'ln_ratio'}}``, so it is recorded in provenance with ``X``/``Y``.
     """
 
     def __init__(self):
         self._cache: dict = {}          # (X, Y) -> xarray.Dataset
 
     def _load_ds(self, X, Y):
-        if X == 2:
-            raise ValueError(
-                "L23 X=2 (Raman-only) is not used by IOPtics; use X=1 or X=4")
         key = (X, Y)
         if key not in self._cache:
             from ocpy.hydrolight import loisel23
@@ -169,8 +188,12 @@ class L23Adapter:
         ds = self._load_ds(X, Y)
         return list(range(ds.Rrs.shape[0]))
 
-    def load_obs(self, obs_id, X=1, Y=0, **opts):
-        """Load L23 row ``obs_id`` as a :class:`RawObs` on the native grid."""
+    def load_obs(self, obs_id, X=1, Y=0, kd1=None, **opts):
+        """Load L23 row ``obs_id`` as a :class:`RawObs` on the native grid.
+
+        ``kd1`` (one of :data:`ioptics.kd.KD1_DEFINITIONS`, or ``None``)
+        attaches that row's ``<Kd>_1`` as ``Kd``.
+        """
         from bing.fitting import l23 as bing_l23
 
         ds = self._load_ds(X, Y)
@@ -188,10 +211,20 @@ class L23Adapter:
         # meta['Y'] is the solar-zenith *load option*, distinct from truth['Y']
         # (the Lee-2002 backscatter slope).
         meta = {'dataset': 'L23', 'obs_id': idx, 'X': X, 'Y': Y}
+        wave = np.asarray(odict['wave'], dtype=float)
 
-        return RawObs(wave=np.asarray(odict['wave'], dtype=float),
-                      Rrs=np.asarray(odict['Rrs'], dtype=float),
-                      truth=truth, Rrs_err=None, meta=meta)
+        Kd = None
+        if kd1 is not None:
+            from ioptics import kd as kd_mod
+            kd_wave, kd_all = kd_mod.load_l23_kd1(X, Y, kd1)
+            if not np.array_equal(kd_wave, wave):
+                raise ValueError(f'L23 X={X} Y={Y}: profile wavelengths do not '
+                                 'match the observation grid')
+            Kd = kd_all[idx].copy()
+            meta['kd1'] = kd1
+
+        return RawObs(wave=wave, Rrs=np.asarray(odict['Rrs'], dtype=float),
+                      truth=truth, Rrs_err=None, meta=meta, Kd=Kd)
 
 
 # --- PANGAEA adapter --------------------------------------------------------
@@ -230,6 +263,13 @@ class PANGAEAAdapter:
     as ``(src_wave, values)`` pairs for :mod:`ioptics.prep` to align onto
     ``wave``. Chlorophyll (HPLC, falling back to fluorometric) is returned as
     the scalar ``Chl`` and total suspended matter as ``tss``.
+
+    The measured diffuse attenuation ``kd`` (ocpy maps PANGAEA's ``KD`` family
+    to it) is carried as :attr:`RawObs.Kd`, a ``(src_wave, values)`` pair on
+    its own discrete bands, when the observation has it. It is an *input*, not
+    truth. It is a measured near-surface ``Kd(lambda)``, not L23's
+    ``<Kd>_1`` over exactly the first attenuation depth, so a Kd-consuming
+    algorithm run on it inherits that definitional difference.
 
     Enumeration is **permissive** (design Q12): every ``ID`` whose ``Rrs`` has
     at least ``min_rrs`` finite bands (default 5) is returned, even if it lacks
@@ -291,10 +331,18 @@ class PANGAEAAdapter:
         if chl is not None:
             truth['Chl'] = chl
 
+        Kd = None
+        if obs_id in iop.index:
+            s = pangaea.spectrum(iop, obs_id, kind='kd')
+            if len(s) > 0:
+                Kd = (np.asarray(s.index, dtype=float),
+                      np.asarray(s.to_numpy(), dtype=float))
+
         meta = {'dataset': 'PANGAEA', 'obs_id': obs_id}
         meta.update(self._ancillary(rrs, obs_id))
 
-        return RawObs(wave=wave, Rrs=Rrs, truth=truth, Rrs_err=None, meta=meta)
+        return RawObs(wave=wave, Rrs=Rrs, truth=truth, Rrs_err=None, meta=meta,
+                      Kd=Kd)
 
     def _chl(self, obs_id):
         """Merged chlorophyll scalar (HPLC preferred, then fluorometric)."""

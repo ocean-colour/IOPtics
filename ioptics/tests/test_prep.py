@@ -18,7 +18,7 @@ from ioptics.datasets import RawObs
 from ioptics.records import PreparedRecord
 from ioptics.tests.conftest import needs_gloria, needs_l23, needs_pangaea
 
-L23_TRUTH_KEYS = {'a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
+L23_TRUTH_KEYS = {'a', 'a_nw', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
                   'Chl', 'Y', 'Sdg'}
 
 

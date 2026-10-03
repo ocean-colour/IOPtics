@@ -1,7 +1,7 @@
 """Tests for ``ioptics.datasets`` — registry, ``RawObs``, and the L23 adapter.
 
 Tier-1 (data-independent) covers the registry, the ``RawObs`` carrier, the
-``Adapter`` protocol, the L23 truth-key mapping, and the ``X=2`` guard. Tier-2
+``Adapter`` protocol, the L23 truth-key mapping, and that ``X=2`` now loads. Tier-2
 (``@needs_l23``) loads a real L23 row and checks its shape + truth keys.
 """
 
@@ -13,7 +13,7 @@ from ioptics.datasets import (Adapter, GLORIAAdapter, L23Adapter,
                               PANGAEAAdapter, RawObs)
 from ioptics.tests.conftest import needs_gloria, needs_l23, needs_pangaea
 
-L23_TRUTH_KEYS = {'a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
+L23_TRUTH_KEYS = {'a', 'a_nw', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w',
                   'Chl', 'Y', 'Sdg'}
 # PANGAEA provides a subset of these per observation (permissive coverage).
 PANGAEA_TRUTH_KEYS = {'a_ph', 'a_dg', 'bb_p', 'Chl', 'tss'}
@@ -52,16 +52,32 @@ def test_rawobs_defaults_independent():
 
 
 def test_l23_truth_map_keys():
-    # the canonical IOPtics truth keys; redundant anw/bbnw intentionally absent
+    # the canonical IOPtics truth keys. L23's anw is mapped (as a_nw, the
+    # component BING and LS2 share; ls2 task 6a); bbnw stays absent, since
+    # bb_p is already its IOPtics name.
     assert set(D._L23_TRUTH_MAP.values()) == L23_TRUTH_KEYS
+    assert D._L23_TRUTH_MAP['anw'] == 'a_nw'
     assert 'anw' not in D._L23_TRUTH_MAP.values()
     assert 'bbnw' not in D._L23_TRUTH_MAP.values()
 
 
-def test_l23_x2_is_guarded():
-    # X=2 (Raman-only) is rejected before any data load, so no data needed.
-    with pytest.raises(ValueError, match='X=2'):
-        L23Adapter().obs_ids(X=2)
+def test_l23_x2_is_no_longer_refused(monkeypatch):
+    """X=2 (Raman only) reaches the loader; LS2's X=1/X=2 pair needs it.
+
+    It used to be refused before any data load (ls2 task 5 lifted that). The
+    loader is stubbed, so no data is needed.
+    """
+    from ocpy.hydrolight import loisel23
+
+    class _DS:
+        class Rrs:
+            shape = (3, 81)
+
+    calls = []
+    monkeypatch.setattr(loisel23, 'load_ds',
+                        lambda X, Y: calls.append((X, Y)) or _DS())
+    assert L23Adapter().obs_ids(X=2) == [0, 1, 2]
+    assert calls == [(2, 0)]
 
 
 def test_registry_seeded_with_pangaea():
@@ -115,8 +131,12 @@ def test_l23_load_obs_native_grid_and_truth():
 
     # full truth: spectral arrays on the native grid + scalar floats
     assert L23_TRUTH_KEYS.issubset(raw.truth)
-    for comp in ('a', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w'):
+    for comp in ('a', 'a_nw', 'bb', 'a_ph', 'a_dg', 'bb_p', 'a_w', 'bb_w'):
         assert np.asarray(raw.truth[comp]).shape == raw.wave.shape
+    # L23's own anw is a - a_w, to the float32 precision it is stored at
+    np.testing.assert_allclose(raw.truth['a_nw'],
+                               raw.truth['a'] - raw.truth['a_w'],
+                               rtol=1e-5, atol=2e-7)
     for scalar in ('Chl', 'Y', 'Sdg'):
         assert np.ndim(raw.truth[scalar]) == 0
 

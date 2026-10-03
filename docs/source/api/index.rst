@@ -45,6 +45,9 @@ Data preparation
 .. automodule:: ioptics.noise
    :members:
 
+.. automodule:: ioptics.kd
+   :members:
+
 Algorithm registry
 ==================
 

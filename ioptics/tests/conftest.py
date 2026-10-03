@@ -126,6 +126,23 @@ def _l23_available():
         return False
 
 
+def _l23_profile_available():
+    """True if the L23 depth-profile files for X = 1, 2 and 4 are present.
+
+    ``Hydrolight{X}00_profile.nc`` (~727 MB each) carry the ``Ed_z``/``KEd_z``
+    profiles that ``<Kd>_1`` is derived from (:mod:`ioptics.kd`). They ship
+    with L23 but are large, so an install may hold the main files without
+    them; resolved through ocpy like :func:`_l23_available`.
+    """
+    try:
+        from ocpy.hydrolight import loisel23
+        return all(os.path.isfile(os.path.join(loisel23.l23_path,
+                                               f'Hydrolight{X}00_profile.nc'))
+                   for X in (1, 2, 4))
+    except Exception:
+        return False
+
+
 def _pangaea_available():
     """True if the PANGAEA V3 directory can be resolved via ocpy."""
     try:
@@ -215,6 +232,10 @@ needs_data = pytest.mark.skipif(
 
 needs_l23 = pytest.mark.skipif(
     not _l23_available(), reason='requires L23 (Loisel+2023) Hydrolight data')
+
+needs_l23_profile = pytest.mark.skipif(
+    not _l23_profile_available(),
+    reason='requires the L23 depth-profile files (Hydrolight{1,2,4}00_profile.nc)')
 
 needs_pangaea = pytest.mark.skipif(
     not _pangaea_available(), reason='requires the PANGAEA V3 data directory')

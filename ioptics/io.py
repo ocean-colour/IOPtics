@@ -41,7 +41,7 @@ SCALAR_FILE = 'results_scalar.parquet'
 # — persisted as its own component so ``metrics`` §2 closure can score
 # ``Rrs_model`` against it. Its ``truth`` is NaN (it is the observation, not a
 # truth) and it carries no uncertainty bounds.
-_UNITS = {'a': '1/m', 'bb': '1/m', 'a_ph': '1/m', 'a_dg': '1/m',
+_UNITS = {'a': '1/m', 'a_nw': '1/m', 'bb': '1/m', 'a_ph': '1/m', 'a_dg': '1/m',
           'bb_p': '1/m', 'Rrs_model': '1/sr', 'Rrs_obs': '1/sr'}
 
 
@@ -174,10 +174,12 @@ def _truth_spectrum(record, component):
 def _spectral_rows(result, record):
     """Tidy rows (one per component × wavelength) for the spectral table."""
     wave = np.asarray(record.wave, dtype=float)
+    reasons = getattr(result, 'nan_reason', None) or {}
     rows = []
     for component, cf in result.components.items():
         truth, interp = _truth_spectrum(record, component)
         unit = _UNITS.get(component, '')
+        why = reasons.get(component)
         for i, lam in enumerate(wave):
             rows.append({
                 'dataset': result.dataset, 'obs_id': result.obs_id,
@@ -188,6 +190,9 @@ def _spectral_rows(result, record):
                 'lo95': float(cf.lo95[i]), 'hi95': float(cf.hi95[i]),
                 'truth': float(truth[i]), 'truth_interp': interp,
                 'unit': unit,
+                # Per-cell reason the value is missing/unusable (ls2 Q24);
+                # '' for every fitted-algorithm row.
+                'nan_reason': '' if why is None else str(why[i]),
             })
     # Observed Rrs the fit saw — a no-uncertainty, no-truth component so
     # metrics can close Rrs_model against it (the observation, not a truth).
@@ -200,6 +205,7 @@ def _spectral_rows(result, record):
             'value': float(obs_rrs[i]),
             'lo68': np.nan, 'hi68': np.nan, 'lo95': np.nan, 'hi95': np.nan,
             'truth': np.nan, 'truth_interp': False, 'unit': _UNITS['Rrs_obs'],
+            'nan_reason': '',
         })
     return rows
 
