@@ -662,6 +662,41 @@ RT-A sweep directory live?
 
 ## Logs
 
+### 2026-10-04 (Task 9a — workstation: RT-A staged onto Google Drive)
+
+**New answers.**  None.
+
+**Staged** to `RoB:RT/rt_tests_A_l23_v1/` with rclone, from
+`$OS_COLOR/IOPtics/runs/rt_tests_A_l23_v1/` on the workstation (`profx`).
+Exactly three files plus a manifest; `chains/`, `metrics_*.parquet`,
+`figures/` and `tables/` were not copied.  The sweep directory is unchanged.
+
+| file | bytes | rows |
+|---|---|---|
+| `results_scalar.parquet` | 4,525,572 | 33,200 |
+| `results_spectral.parquet` | 651,308,122 | 16,453,540 |
+| `provenance.yaml` | 4,323 | – |
+| `MANIFEST.txt` | 639 | – |
+
+`MANIFEST.txt` gives each file's byte size, SHA-256 and parquet row count,
+plus the sweep's commits from `provenance.yaml` (ioptics `92eea90`, bing
+`bf56f6d`, ocpy `c3132a6`; created 2026-09-17T02:22:07Z) and the date.
+`rclone check --one-way` (size + md5) found 0 differences for all four
+files.  33,200 scalar rows = 5 models × {chisq, mcmc} × 3,320 spectra, as
+expected.
+
+**Where it lives, for 9b.**  `RoB` is a **Shared Drive** (rclone remote
+`team_drive = 0AAeT_zUSejhNUk9PVA`), not a My Drive folder.  JXP owns it as
+jxp@ucsc.edu, so on the laptop it should appear under
+`~/Library/CloudStorage/GoogleDrive-jxp@ucsc.edu/Shared drives/RoB/RT/rt_tests_A_l23_v1/`,
+not under `My Drive`.  The workstation's rclone is signed in as
+xavier@ucolick.org, which is a member.  The earlier laptop check that found no
+`RoB` folder is unexplained.  It may have been sync lag, since the drive
+held only `results_spectral.parquet` then.  If the mount still shows
+nothing, 9b can fetch with rclone on the laptop instead.
+
+No code changes and no tests (none required).  9b is unblocked.
+
 ### 2026-10-04 (Q35 answered; prompts 9a and 9b added)
 
 **New answer.**  *Q35*: the RT-A files go on Google Drive under
