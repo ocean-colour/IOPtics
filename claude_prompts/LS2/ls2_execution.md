@@ -316,6 +316,68 @@ also become rung (iii)'s Kd on L23**, replacing the MODIS-band network.
    population (NaN bounds, NaN stats, `a_nw` present, no `a_ph`/`a_dg`/
    `Rrs_model`).  `sphinx-build -W` green; `pytest -q` both modes. Q&A, Log.
 
+9a. **Workstation: stage the RT-A comparator onto Google Drive** (run on JXP's
+    workstation, where `rt_tests_A_l23_v1` lives; per Q35 option (a)).  The
+    laptop needs RT-A's *results*, not its chains, to re-score it alongside
+    LS2.
+    - From `$OS_COLOR/IOPtics/runs/rt_tests_A_l23_v1/`, copy **exactly**
+      `results_scalar.parquet` (required: per-fit `status`, `chi2_nu`, `BIC`,
+      `n_bands`, `k`, `Chl_truth` for the strata), `results_spectral.parquet`
+      (required), and `provenance.yaml` (wanted: config, versions, algorithm
+      digests).
+    - Destination: the Google Drive folder `RoB/RT/rt_tests_A_l23_v1/`.
+      **It must sit in My Drive, or have a shortcut there.**  Drive for
+      Desktop does not mount "Shared with me", and on 2026-10-04 the laptop's
+      mount (jxp@ucsc.edu) showed no `RoB` folder at all.
+    - Do **not** copy `chains/`, `metrics_*.parquet` or figures.  The metrics
+      are regenerated in 9b, because RT-A was scored before `a_nw` and `pool`
+      existed.
+    - Write `MANIFEST.txt` beside the three files: for each, its byte size and
+      SHA-256, and for each parquet its row count.  Add the sweep's git commit
+      from `provenance.yaml`, and the date.  9b verifies against it.
+    - Change nothing in the sweep directory itself.  No code changes and
+      no tests.  Log in this file.
+
+9b. **Laptop: bring RT-A over, give it `a_nw`, re-score, and rebuild the X=4
+    page** (needs 9a).
+    - **Copy.**  Find `RoB/RT/rt_tests_A_l23_v1/` on the Drive mount
+      (`~/Library/CloudStorage/GoogleDrive-jxp@ucsc.edu/My Drive/`; also
+      check `Shared drives`).  If it is absent, stop and say so in Q&A.  Copy
+      the three files into `$OS_COLOR/IOPtics/runs/rt_tests_A_l23_v1/`.
+      Verify every size, SHA-256 and row count against `MANIFEST.txt`, and
+      refuse on any mismatch.  Never write to the Drive.
+    - **Add `a_nw`.**  A new script, `ioptics/runs/prototypes/ls2/rta_add_anw.py`,
+      adds the `a_nw` rows that BING has emitted only since task 6.
+      - Per (spectrum, algorithm, fit_method): `value = a_dg + a_ph` from the
+        same rows; `lo68`…`hi95` are **NaN**, because a sum of two marginal
+        intervals is not the interval of the sum (state this in the
+        docstring); `truth` = L23 X=4 `anw` on the record grid; `nan_reason`
+        = `''`.
+      - Write `results_spectral.parquet` back in place, but first keep the
+        pristine copy as `results_spectral.orig.parquet`.  Make the script
+        idempotent: if `a_nw` rows are already present it is a no-op.
+      - Record the derivation in the sweep's `provenance.yaml` under a new
+        top-level `derived` key.  Leave the algorithm blocks and their
+        digests untouched.
+    - **Re-score.**  Run `metrics.compute('rt_tests_A_l23_v1',
+      dbic_pair=registry.RT_DBIC_PAIR)`.  That adds `pool` and the `a_nw`
+      accuracy rows.  Check that the RT-A numbers already published
+      (`docs/source/reports/rt_tests_A_l23_v1/accuracy_mcmc_all.csv`, e.g.
+      `expb_pow_hyb_el` `a(440)` `mae` 0.0523) are reproduced, apart from the
+      task-6 `frac_qc_fail` definition change.  Any other difference is a
+      finding to report, not to paper over.
+    - **Rebuild.**  `build_v1.py 3 --config x4`: the X=4 `ls2_ladder` page
+      gains the BING (MCMC) row, `a_nw` included.  Choose the comparator
+      algorithm explicitly: RT-A has five rungs.  Recommend which one stands
+      for "BING" (probably `expb_pow_hyb_ramfl`, the rung whose physics
+      matches X=4's truth) and pose the choice in Q&A rather than defaulting
+      silently.
+    - **Tests.**  `rta_add_anw` on a tiny synthetic sweep: rows added, NaN
+      bounds, idempotent, the original kept.  The manifest check refuses a
+      tampered file.  A Tier-2 (`@needs_l23`) test checks that the derived
+      `a_nw` truth equals L23's `anw`.  `pytest -q` both modes;
+      `sphinx-build -W` green.  Q&A, Log.
+
 10. **The 15% question** (diagnostic; blocks task 11 per Q16).  The shipped
     MODIS Kd network overestimates L23's ⟨Kd⟩₁ by **15–18% at 440 and 490 nm**
     while agreeing to **2–4% at 555 and 670 nm**, uniformly across Kd bins, with
@@ -396,9 +458,11 @@ also become rung (iii)'s Kd on L23**, replacing the MODIS-band network.
 other; 1 gates everything that runs LS2, 2 gates rungs (ii)/(iii), 3 gates rung
 (iii) and gives task 11 its baseline.  Tasks 4–6 are IOPtics core and independent
 of the ocpy work, so they can proceed in parallel; 7 needs 1, 2, 4 and 5; 8 needs
-7; 9 needs 8 and 6.  Task 10 gates 11 per Q16.  Tasks 12–13 need only task 5's
-data plumbing and can start early, but 14 needs 12, 13 and 9.  The smoke run in
-task 8 gates the only expensive run in the plan.
+7; 9 needs 8 and 6.  9a (workstation) gates 9b (laptop), and 9b gates the
+BING half of task 14; neither blocks tasks 10–13.  Task 10 gates 11 per Q16.
+Tasks 12–13 need only task 5's data plumbing and can start early, but 14 needs
+12, 13, 9 and 9b.  The smoke run in task 8 gates the only expensive run in the
+plan.
 
 ## Q&A
 
@@ -593,7 +657,40 @@ Options:
 run, and task 14 then pairs LS2 and BING spectrum by spectrum.  Where does the
 RT-A sweep directory live?
 
+>A. I have pushed files related to the RT-A into my Google Drive named `RoB` under the 
+`RT/rt_tests_A_l23_v1/results_spectral.parquet`.  Check to see if that is all you need for (a).  If not, I will push more files in the Drive from my workstation.
+
 ## Logs
+
+### 2026-10-04 (Q35 answered; prompts 9a and 9b added)
+
+**New answer.**  *Q35*: the RT-A files go on Google Drive under
+`RoB/RT/rt_tests_A_l23_v1/`, with `results_spectral.parquet` pushed first.
+Checked on the laptop the same day: the Drive mount
+(`~/Library/CloudStorage/GoogleDrive-jxp@ucsc.edu`) shows **no `RoB`
+folder** in My Drive or in any shared drive, and a search of the whole mount
+finds no `rt_tests_A_l23_v1` and no recent `results_spectral.parquet`.  The
+likely causes are sync lag, the folder sitting in "Shared with me" (not
+mounted), or a different account.  Even when visible, the spectral table
+alone cannot be re-scored: the metrics need `results_scalar.parquet` (status,
+χ²ᵥ, BIC, band and parameter counts, Chl truth), and `provenance.yaml` is
+wanted for the config and digests.
+
+**Added as two prompts**, so task numbers 10–15 and every cross-reference
+stay put:
+- **9a, on the workstation**: stage exactly those three files, plus a
+  `MANIFEST.txt` of sizes, SHA-256 and row counts, into a My-Drive-visible
+  `RoB/RT/rt_tests_A_l23_v1/`.  No code changes.
+- **9b, on the laptop**: copy them into `$OS_COLOR/IOPtics/runs/`, verify
+  against the manifest, add BING's missing `a_nw` rows with a new
+  `rta_add_anw.py` (value `a_dg + a_ph`, NaN bounds, truth from L23 `anw`),
+  re-score with `metrics.compute` (adding `pool` and `a_nw`), check the
+  published RT-A numbers are reproduced, and rebuild the X=4 `ls2_ladder`
+  page with BING beside LS2.  The choice of which RT-A rung stands for
+  "BING" goes to Q&A.
+
+The ordering note is updated: 9a gates 9b, 9b gates task 14's BING half, and
+neither blocks tasks 10–13.  We are ready for task 10.
 
 ### 2026-10-04 (Task 9 — IOPtics: the `ls2_ladder` report page)
 
