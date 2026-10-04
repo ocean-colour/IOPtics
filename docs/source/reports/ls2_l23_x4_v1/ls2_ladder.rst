@@ -56,7 +56,7 @@ What this page can and cannot claim
 The ladder
 ----------
 
-One row per rung, all strata. Coverage: ``frac_ok`` / ``frac_poor_fit`` / ``frac_out_of_scope`` / ``frac_fit_failed`` over ``n_attempted`` spectra (``ok`` is strict, ``poor_fit`` a partial result; see the limitations). Accuracy at ``a(440)``, ``a_nw(440)``, ``bb(555)``, ``bb_p(555)``, ``bb_p(670)``: ``n`` scored cells, ``mae`` (fractional multiplicative error in log space; 0.10 ≈ 10 %), signed ``bias`` (> 0 = over-estimate) and ``ratio`` = median retrieved/true. ``a_ph(440)``, ``a_dg(440)`` read "not applicable" on every LS2 row. No BING comparator was available for this build, so the table is LS2 alone (see the note at the end of the page). Read the table down a column: what changes from one rung to the next is the cost of that rung's input.
+One row per rung, all strata. Coverage: ``frac_ok`` / ``frac_poor_fit`` / ``frac_out_of_scope`` / ``frac_fit_failed`` over ``n_attempted`` spectra (``ok`` is strict, ``poor_fit`` a partial result; see the limitations). Accuracy at ``a(440)``, ``a_nw(440)``, ``bb(555)``, ``bb_p(555)``, ``bb_p(670)``: ``n`` scored cells, ``mae`` (fractional multiplicative error in log space; 0.10 ≈ 10 %), signed ``bias`` (> 0 = over-estimate) and ``ratio`` = median retrieved/true. ``a_ph(440)``, ``a_dg(440)`` read "not applicable" on every LS2 row. The last row is BING expb_pow_hyb_ramfl (mcmc, rt_tests_A_l23_v1), the population the headline is quoted against; its ``a_ph``/``a_dg`` cells carry BING's own error. Its ``a_nw`` was derived after the fit as ``a_dg + a_ph`` (point estimates), with L23's ``anw`` as truth and no interval, because the sweep predates BING emitting ``a_nw``; see ``derived`` in its ``provenance.yaml``. Read the table down a column: what changes from one rung to the next is the cost of that rung's input.
 
 .. csv-table:: One row per LS2 rung.
    :file: ls2_ladder_all.csv
@@ -195,10 +195,3 @@ Coverage and quality control
    :file: qc_direct_all.csv
    :header-rows: 1
    :widths: auto
-
-Not shown for this sweep
-------------------------
-
-The figure set is derived from what this sweep actually measured, so a panel with no data behind it is omitted rather than published blank. For the record, this page leaves out:
-
-* BING beside LS2 — the comparator sweep ``rt_tests_A_l23_v1`` has no metrics on this machine. The LS2-versus-BING head-to-head is read against MCMC BING on the same spectra (ls2 Q23) and lands with ls2 task 14.

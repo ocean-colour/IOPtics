@@ -63,6 +63,13 @@ STAGE_CONFIG = {1: ('x4', 'x2', 'x1'), 2: ('x4', 'x2', 'x1'),
 #: only; the X=2 and X=1 pages have no comparator and say so.
 COMPARATOR = {'x4': 'rt_tests_A_l23_v1'}
 
+#: Which of RT-A's five rungs stands for "BING" on the page (ls2 task 9b; posed
+#: as Q36). ``expb_pow_hyb_ramfl`` is the rung whose forward physics matches
+#: X=4's truth (Raman + Chl fluorescence, no CDOM fluorescence, which L23 does
+#: not simulate). Named explicitly so the page never falls back to the first
+#: algorithm in sorted order.
+COMPARATOR_ALGORITHM = {'x4': 'expb_pow_hyb_ramfl'}
+
 #: The smoke's L23 records: the first 15 plus record 75, which has 15 cells
 #: outside the ``eta < 0.2`` envelope, so the ``off_grid`` path is exercised.
 #: ``obs_ids`` is a run-time argument to ``run_sweep``, not a config key, so it
@@ -196,8 +203,9 @@ def _report(config_name):
     if not (io.sweep_dir(cfg.sweep_id) / 'results_scalar.parquet').is_file():
         print(f'[{config_name}] no results for {cfg.sweep_id}; skipping the page')
         return None
-    out = ls2_ladder.build(cfg.sweep_id,
-                           compare_sweep=COMPARATOR.get(config_name))
+    out = ls2_ladder.build(
+        cfg.sweep_id, compare_sweep=COMPARATOR.get(config_name),
+        compare_algorithm=COMPARATOR_ALGORITHM.get(config_name))
     print(f'[{config_name}] wrote {out}')
     return out
 

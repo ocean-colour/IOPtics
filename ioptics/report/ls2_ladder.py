@@ -221,13 +221,19 @@ def comparator_rows(compare_sweep, *, root=None,
     same data -- for L23 X=4, the RT-A sweep. Its rows are taken from the
     ``fit_method`` population (MCMC by default: the LS2 headline is quoted
     against MCMC BING, ls2 Q23) and, if ``algorithm`` is ``None``, from its
-    first algorithm in sorted order.
+    first algorithm in sorted order. A sweep with several BING rungs (RT-A
+    has five) should be given ``algorithm`` explicitly; ``build_v1.py`` does.
 
     Returns
     -------
     tuple or None
         ``(label, rows)``, or ``None`` when the sweep or its metrics are not on
         disk -- which the page then says, rather than omitting silently.
+
+    Raises
+    ------
+    KeyError
+        When ``algorithm`` is named but the population does not carry it.
     """
     try:
         sw = figures.resolve(compare_sweep, root)
@@ -239,7 +245,11 @@ def comparator_rows(compare_sweep, *, root=None,
     sub = _in_pool(ms, fit_method)
     if sub.empty:
         return None
-    algo = algorithm or sorted(sub['algorithm'].unique())[0]
+    have = sorted(sub['algorithm'].unique())
+    if algorithm is not None and algorithm not in have:
+        raise KeyError(f'comparator algorithm {algorithm!r} is not in '
+                       f'{sw.sweep_id} ({fit_method}); it has {have}')
+    algo = algorithm or have[0]
     sub = sub[sub['algorithm'] == algo]
     return (f'BING {algo} ({fit_method}, {sw.sweep_id})', sub)
 
@@ -591,11 +601,30 @@ def _limitations(f):
     return '\n\n'.join(f'* {t}' for t in items)
 
 
-def _ladder_desc(f, comparator_label):
+def _comparator_derived(compare_sweep, root=None):
+    """The comparator sweep's ``derived`` provenance block (``{}`` if none).
+
+    A comparator scored before BING emitted ``a_nw`` (RT-A) gains it after the
+    fact (``runs/prototypes/ls2/rta_add_anw.py``, ls2 task 9b), which records
+    the derivation here; the page then says so beside the row.
+    """
+    try:
+        return _provenance(figures.resolve(compare_sweep, root)).get('derived') or {}
+    except Exception:
+        return {}
+
+
+def _ladder_desc(f, comparator_label, derived=None):
     cells = ', '.join(f'``{c}({int(r)})``' for c, r in LADDER_CELLS)
     na = ', '.join(f'``{c}({int(r)})``' for c, r in NOT_APPLICABLE_CELLS)
+    anw = ((' Its ``a_nw`` was derived after the fit as ``a_dg + a_ph`` (point '
+            'estimates), with L23\'s ``anw`` as truth and no interval, because '
+            'the sweep predates BING emitting ``a_nw``; see ``derived`` in its '
+            '``provenance.yaml``.')
+           if (derived or {}).get('a_nw') else '')
     bing = (f' The last row is {comparator_label}, the population the headline is '
             f'quoted against; its ``a_ph``/``a_dg`` cells carry BING\'s own error.'
+            f'{anw}'
             if comparator_label else
             ' No BING comparator was available for this build, so the table is '
             'LS2 alone (see the note at the end of the page).')
@@ -648,7 +677,9 @@ def build(sweep_id, *, root=None, docs_root=None, compare_sweep=None,
         blocks.append(_table_section(
             sweep, report_dir, 'The ladder', tables_dir / 'ls2_ladder_all.csv',
             'One row per LS2 rung.',
-            desc=_ladder_desc(f, comparator[0] if comparator else None),
+            desc=_ladder_desc(f, comparator[0] if comparator else None,
+                              _comparator_derived(compare_sweep, root)
+                              if comparator else None),
             published=published))
     if comparator is None:
         not_shown.append(

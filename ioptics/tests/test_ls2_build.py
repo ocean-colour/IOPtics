@@ -66,3 +66,12 @@ def test_the_smoke_bound_includes_the_off_grid_record():
     assert build.bounded_obs_ids('x4') is None
     with pytest.raises(KeyError):
         build.bounded_obs_ids('nope')
+
+
+def test_every_comparator_names_its_bing_rung():
+    """A comparator sweep with several BING rungs must name one (ls2 task 9b)."""
+    build = _build()
+    assert set(build.COMPARATOR_ALGORITHM) == set(build.COMPARATOR)
+    registry.register_rt_variants()
+    for name in build.COMPARATOR_ALGORITHM.values():
+        registry.get(name)                      # a registered RT-A rung

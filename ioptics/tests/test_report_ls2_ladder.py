@@ -211,3 +211,27 @@ def test_page_renders_under_sphinx(tmp_path):
         capture_output=True, text=True)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert (src / '_build' / 'reports' / _SID / 'ls2_ladder.html').is_file()
+
+
+def test_a_named_comparator_algorithm_is_honoured_or_refused(tmp_path):
+    _build(tmp_path)
+    comp = ls2_ladder.comparator_rows(_BING, root=tmp_path,
+                                      algorithm='expb_pow')
+    assert set(comp[1]['algorithm']) == {'expb_pow'}
+    with pytest.raises(KeyError, match='not in'):
+        ls2_ladder.comparator_rows(_BING, root=tmp_path,
+                                   algorithm='expb_pow_hyb_ramfl')
+
+
+def test_a_derived_comparator_anw_is_stated_on_the_page(tmp_path):
+    from ioptics import io as _io
+    _build(tmp_path)
+    docs = tmp_path / 'docs'
+    out = ls2_ladder.build(_SID, root=tmp_path, docs_root=docs,
+                           compare_sweep=_BING)
+    assert 'derived after the fit' not in out.read_text(encoding='utf-8')
+    (_io.sweep_dir(_BING, root=tmp_path) / 'provenance.yaml').write_text(
+        'sweep_id: bing_comparator_v1\nderived:\n  a_nw:\n    task: ls2 9b\n')
+    out = ls2_ladder.build(_SID, root=tmp_path, docs_root=docs,
+                           compare_sweep=_BING)
+    assert 'derived after the fit' in out.read_text(encoding='utf-8')
