@@ -1,0 +1,13 @@
+network,geometry_input,seed,mae_ln_vis_60deg,median_ratio_490
+hyper,False,23,0.0357,1.025
+hyper,False,1,0.0354,1.0248
+hyper,False,7,0.0352,1.0244
+hyper,True,23,0.0471,1.0689
+hyper,True,1,0.0473,1.0614
+hyper,True,7,0.048,1.0721
+seawifs,False,23,0.0525,1.0398
+seawifs,False,1,0.0514,1.0355
+seawifs,False,7,0.052,1.0372
+seawifs,True,23,0.2257,1.4057
+seawifs,True,1,0.1989,1.391
+seawifs,True,7,0.1546,1.1554

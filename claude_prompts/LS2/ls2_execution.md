@@ -751,7 +751,254 @@ held-out spectra measure that honestly.  The test split is fixed
 (`ioptics.kd_net.split_scenarios`, seed 11), so this is a filter, not a new
 sweep.  Which do you want?
 
+**Q40. A serial MCMC run may not be bit-reproducible after other JAX work
+in the same process — investigate or accept?**  Since task 11 added two test
+files that train Flax networks, `test_mcmc_subset_pooled_and_reordered_match_serial`
+fails intermittently in the full suite.  It failed 2 of 4 full runs with the
+new files and 0 of 2 without them, and passes every time on its own (0 of 7
+failures).  It compares serial chains, computed in the test process, with
+pooled ones from fresh `spawn` workers, bit for bit.  If the serial result
+depends on earlier JAX/XLA activity in the process (thread pools, compiled
+kernels, a config flag), that is not only a test nuisance: a sweep run in a
+notebook after other JAX work would not reproduce a script run bit for
+bit.  Options:
+- (a) investigate now: bisect which earlier computation perturbs the serial
+  chain, and fix the root cause, for example by running the serial MCMC path
+  in a fresh worker as well;
+- (b) relax the test to `allclose` at a tight tolerance and record the
+  finding;
+- (c) isolate the two new test files (run their training in a subprocess)
+  and leave the question open.
+
+*Recommended:* (a), time-boxed, folded into task 15's cleanup.  (c) would
+make the symptom disappear without answering whether the contract holds.
+Which do you want?
+
+>A. Ok, go with (a), but give up and default to (b) if it proves to be too onerous.
+
 ## Logs
+
+### 2026-10-04 (Q40 answered; task 12 — a and bb coefficients re-derived from L23 X=1)
+
+**New answers.**  *Q40* (a), time-boxed, falling back to (b).  As
+recommended, this is folded into task 15's cleanup and not started here.
+*Q39* is still open; it governs task 14 only.
+
+**Result: on held-out L23 X=1, with true ⟨Kd⟩₁ and η, the refit removes the
+coefficient error almost entirely.**  The report is
+`docs/source/reports/ls2_refit_ab/ls2_refit_ab.rst`.  The script
+`ioptics/runs/prototypes/ls2/refit_ab.py` regenerates every number, table
+and figure, and the table, in about 15 s.
+
+| median ratio (mean abs ln ratio) | published table | refit, same table machinery |
+|---|---|---|
+| `a` | +2.46% (1.9%) | −0.07% (0.2%) |
+| `bb` | +1.15% (5.5%) | +0.16% (0.6%) |
+| `a_nw` (where a_nw/a ≥ 0.1, Q34) | +3.3% (5.1%) | −0.05% (0.6%) |
+| `bb_p` | +2.3% (10.6%) | +0.3% (1.2%) |
+
+The published `bb` carries a spectral tilt, +4.6% at 440 nm and −4.3% at
+670 nm, and the refit removes it.  The refit evaluated directly, without
+the table, scores 0.2% / 0.5%, so bilinear interpolation between the 21×8
+nodes costs ≤0.1 pp.  The refit is better in **every** η bin, including the
+thinnest: at η 0.15–0.2 (447 held-out cells), `a` 0.4% vs 1.7% and `bb`
+0.9% vs 5.3%.
+
+- **Form (Q11).**  The cubic is kept.  Each coefficient is a quadratic in
+  √(η/0.2), the reduced and smoothed η axis, times a μw basis.  That gives
+  24 parameters for `a` and 18 for `bb`, against the published 672 and 504
+  table entries.  It is one weighted linear least-squares solve per table
+  on relative error, with no seed and no optimiser.  η degree 2 ≈ 3 ≈ 4,
+  so the lowest adequate degree is used.
+- **The 3-node μw check decided the geometry basis**, separately per table.
+  Trained on 0°/30° and predicting the unseen 60°:
+  - `a`: 1.3% with `(1, 1/μw)`, the limiting relation's form; 2.7% with
+    `(1, μw)`; 20% with no μw dependence;
+  - `bb`: 2.5% with `(1, μw)`; 7.7% with `(1, 1/μw)`.
+
+  `bb/⟨Kd⟩₁ ∝ μw` for the same slant-path reason that `⟨Kd⟩₁/a ∝ 1/μw`.
+  The 70° node has no L23 data and is extrapolated by these bases (flagged
+  in the table's provenance).
+- **The limiting relation (a₁ → 1/μw) does not hold on L23, and the cause is
+  illumination bookkeeping.**  The refit's c₀ is 1.033 / 1.102 / 1.308 at
+  θs = 0/30/60°, against the paper's 1/μw = 1 / 1.078 / 1.310 and L23's
+  1/μ_eff = 1.036 / 1.109 / 1.317 (Q9's effective cosine).  The published
+  table's `a` error falls from 3.0% at 0° to 0.4% at 60°, where μ_eff ≈ μw.
+  This answers the prompt's question: task 7's effective-μw rung was
+  measuring this.  Consequence for task 14: with the refit table, use
+  **Snell μw**, not the effective one, or the illumination correction is
+  applied twice.
+- **Domain.**  L23's b/a spans 0.0023–14.1 against the paper's 0.05–30.  The
+  turbid part (14–30) is **unsampled**, and the refit extrapolates there,
+  which the page and the table's provenance both say.  10.6% of L23's cells
+  are clearer than the paper's lower bound; the refit covers them.  0.19% of
+  L23 cells have η > 0.2 and stay off-grid, as before.
+- **Code layout.**  `ocpy/ls2/refit.py` (new, NumPy only) provides `fit`,
+  `SmoothCoefficients` (`coefficients`, `invert`, `to_lut`), `save` and
+  `load`.  The table is `ocpy/data/LS2/LS2_LUT_L23_v1.npz`: the published
+  `LS2_LUT` keys, so `ls2_invert` takes it unchanged, plus the model and its
+  provenance.  **κ in it is still the published κ** until task 13.  The
+  training split is `ioptics.kd_net.split_scenarios`, the same 2,324/498/498
+  as task 11, so task 14 has one held-out set for both.
+- Not done here: wiring the table into the IOPtics LS2 driver (task 14), and
+  any Raman (X=2/X=4) evaluation (task 13).
+
+**Tests.**  New `ocpy/tests/test_ls2_refit.py` (5): recovers known
+coefficients to 1e-6, one-basis and NaN handling, `to_lut` agrees with the
+smooth model at a node through `ls2_invert`, save/load round trip, and the
+shipped table loads and runs.  New `ioptics/tests/test_refit_ab.py`: Tier 1
+helpers, and a Tier-2 full rebuild into tmp that pins the findings (published
+bias, refit < 0.5% / 1%, refit better on every component and every η bin,
+the basis choice, c₀ ≈ 1/μ_eff).  `sphinx-build -W` green.
+IOPtics `pytest -q` without `$OS_COLOR`: 619 passed, 78 skipped, 3 failed;
+with it: 689 passed, 6 skipped, 5 failed.  These are the known five
+(`test_spec` ×3, `test_rt_backends` ×2).  The intermittent Q40 MCMC test
+passed on this run.  ocpy: 147 passed, 4 failed (the known
+`test_plot_oc_scene`).
+
+**Commit note.**  ocpy ignores `*.npz`, so
+`ocpy/data/LS2/LS2_LUT_L23_v1.npz` needs `git add -f`, as do task 11's
+`Kd_L23_{hyper,seawifs}_v1.npz`, which are still untracked.
+
+**Files.**  ocpy, new: `ocpy/ls2/refit.py`, `ocpy/tests/test_ls2_refit.py`,
+`ocpy/data/LS2/LS2_LUT_L23_v1.npz`.  IOPtics, new:
+`ioptics/runs/prototypes/ls2/refit_ab.py`, `ioptics/tests/test_refit_ab.py`,
+and `docs/source/reports/ls2_refit_ab/` (page, 5 CSVs, 2 PNGs).
+
+### 2026-10-04 (Q36–Q38 answered; Q37 implemented; task 11 — the L23 Kd networks)
+
+**New answers.**  *Q36* (a): `expb_pow_hyb_ramfl` stands for BING, as the
+X=4 page already shows.  *Q37* (a): restore the seeds.  *Q38* (a): train on
+X=4, with X=1 as an ablation.
+
+**Q37 done.**  `metrics._pair_seed` now normalises the contest key to plain
+Python scalars (`.item()` on numpy scalars) before hashing, so the seed
+depends on values, not dtypes.  A new test pins `np.float64(440.0)` ≡ `440.0`
+(and `np.int64`, `np.str_`).  After re-scoring, `rta_rescore_check.py`
+reports **ALL PUBLISHED NUMBERS REPRODUCED**: 0 of 800 head-to-head cells
+now differ.  The three LS2 pages (built since task 6) were re-scored and
+rebuilt.  Only `d_lo`/`d_hi` moved (by ≤0.004), and three borderline X=4
+verdicts flipped between `underpowered` and `indistinguishable`.  Their
+intervals sit on the practical floor (`bb(555)` and `bb_p(670)` against
+`ls2_i_kdnoise20`).
+
+**Task 11: two networks, trained, saved and reported.**  The report is
+`docs/source/reports/ls2_kd_l23/ls2_kd_l23.rst`.  The script
+`ioptics/runs/prototypes/ls2/train_kd_l23.py` (about 15 min, deterministic:
+two runs gave identical scores) trains, scores and writes everything, and
+saves the weights into ocpy.
+- **Code layout (pinned decision on ocpy).**  Inference is NumPy-only in
+  ocpy, so ocpy gains no JAX dependency.  `ocpy/ls2/kd_l23.py` provides
+  `kd_l23(Rrs, sza, wave, network)` with flags `out_of_domain` /
+  `extrapolated_sza` / `unsupported_sza`; the weights are
+  `ocpy/data/LS2/Kd_L23_{hyper,seawifs}_v1.npz` (121 kB, 83 kB) and carry
+  their standardisation, domain, feature names, envelope and provenance.
+  Training is Flax/Optax in the new `ioptics/kd_net.py`, which follows
+  `robust/rt/emulator.py`: tanh MLP, full-batch unshuffled Adam,
+  train-split-only standardisation, a linear baseline, and refusal of a
+  feature mismatch.
+- **Design.**
+  - Target: `ln(μw⟨Kd⟩₁)` at the 71 L23 bands 400–750 nm, with 1/μw put
+    back analytically (μw from Snell, n=1.34, as the authors' networks use).
+  - One output head per wavelength, not pointwise; ~100× cheaper.
+  - Data: X=4 at θs = 0/30/60°.
+  - Split by IOP scenario: 2,324 / 498 / 498, seed 11.
+  - Each training spectrum is used clean plus 8 PACE noise draws (62,748
+    rows).
+  - Parameters are selected on the noisy validation split.
+- **Geometry experiment (the emulator's lesson).**  Trained on 0°/30° and
+  tested on the unseen 60°, over three seeds:
+  - hyperspectral: 3.5% without μw as an input (seed spread 0.05 pp), 4.7%
+    with it;
+  - five-band: 5.2% without (spread 0.1 pp), but **15–23% with it**, the
+    emulator's seed-dependent extrapolation again.
+
+  Adopted: **no geometry input** for both.  60–70° is therefore pure
+  arithmetic in 1/μw (flagged), and beyond 70° the result is NaN.
+- **Held-out L23 X=4** (498 test scenarios × 3 θs; mean |ln ratio| over
+  400–700 nm):
+
+  | | noisy | clean |
+  |---|---|---|
+  | **ours, hyperspectral** | **2.3%** | 1.8% |
+  | hyperspectral, linear baseline | 4.4% | 4.1% |
+  | **ours, five-band** | **4.1%** | 2.7% |
+  | five-band, linear baseline | 6.8% | 4.9% |
+  | PACE v2.3 | 8.9% (4.5% NaN) | 3.0% |
+  | MODIS v1.3 | 7.3% | 6.1% |
+  | MODIS v1.1 | 15.9% | 11.2% |
+
+  Median ratios are within 0.6% of 1 at 440/490/555/670 nm for both of
+  ours.  The final configuration varies by ≤0.05 pp across three seeds.
+- **Q38 ablation.**  Trained on elastic X=1 and applied to X=4, the
+  hyperspectral net scores 4.2% (vs 2.3%), +6–7% high at 440/490 nm.  The
+  five-band net scores 4.9% (vs 4.1%).  X=4 is the right truth.
+- **PANGAEA (five-band only).**  Rrs was matched within ±2.5 nm (332
+  spectra, the planning number was 339) and ±6 nm (1,782), and θs computed
+  from time and position.
+  - Ours reads low: median ratio 0.83 (±2.5 nm, mean |ln ratio| 0.34); in
+    scope 0.90 (0.23).  At ±6 nm in scope it is 0.96 (0.19, 1,531 spectra).
+    It flattens above ~0.3 m⁻¹.
+  - **On the 92 in-scope spectra the MODIS networks can also score, MODIS
+    v1.1 is closest to PANGAEA (0.23), then ours (0.38), then v1.3 (0.40)**:
+    the reverse of the L23 ranking.  Stated on the page as a bound on what
+    held-out L23 scores can promise.  Real water attenuates more than L23
+    predicts from the same Rrs, or near-surface Kd differs from ⟨Kd⟩₁; this
+    data can't separate the two.
+- **Scope, stated on the page and in the weights.**  Clear water only, with
+  no turbid branch.  The hyperspectral network has no in-situ validation.
+  The red is noise-dominated.
+- Not done here: wiring a `kd_source='l23:…'` rung into the LS2 driver.
+  That is task 14's, and it raises an in-sample question, posed as **Q39**
+  (recommendation: score it on the 498 held-out scenarios only).
+
+**Tests.**
+- New `ocpy/tests/test_ls2_kd_l23.py` (9): round trip, feature mismatch
+  refused, 1/μw analytic, θs flags and NaN beyond 70°, out-of-domain flag,
+  ln-Kd interpolation, bad arguments, and the shipped weights load and give
+  physical Kd.
+- New `ioptics/tests/test_kd_net.py` (8): scenario split fixed and disjoint,
+  target, augmentation, and a synthetic fit that learns and selects on val,
+  with train-only standardisation and ocpy reproducing the Flax net
+  (rtol 1e-12).  Tier 2 checks that the shipped weights reproduce their
+  stored held-out score.
+- A new seed test in `test_head_to_head.py`.
+
+ocpy `pytest -q`: 142 passed, 4 failed (the known `test_plot_oc_scene`).
+IOPtics `pytest -q` without `$OS_COLOR`: 618 passed, 77 skipped, 3 failed
+(the known `test_spec` three).  With it: 686–687 passed, 6 skipped, and
+5 or 6 failed: the known five, plus **an intermittent
+`test_mcmc_scale::test_mcmc_subset_pooled_and_reordered_match_serial`**.
+The evidence:
+- in full runs with the new tests included it failed 2 of 4 times;
+- in full runs without `test_kd_net.py`/`test_kd_15pct.py` it failed
+  0 of 2 times;
+- alone it failed 0 of 3 times, and directly after the two new files 0 of 4
+  times;
+- it never failed before this task.
+
+The test asserts that MCMC chains from a 2-worker pool are bit-identical to
+the serial run.  The pool uses `spawn` on macOS, so workers start fresh; the
+serial run executes in the test process.  The likely mechanism is that the
+serial chain depends, bitwise, on what that process ran before, here
+JAX/XLA training.  That isn't confirmed.  Posed as **Q40** rather than masked
+by isolating the new tests.  `sphinx-build -W` green (after fixing two RST
+errors on the new page: a `|…|` read as a substitution, and a short title
+overline).  `train_kd_l23.py --page-only` rewrites the page from the CSVs
+and weights without retraining.
+
+**Commit note (ocpy).**  `*.npz` is git-ignored there, so
+`ocpy/data/LS2/Kd_L23_hyper_v1.npz` and `Kd_L23_seawifs_v1.npz` need
+`git add -f`.  The task-10 ocpy changes (`kd_nn.py`, `test_ls2_kd.py`,
+`docs/api/ls2.rst`) are also still uncommitted there.
+
+**Files.**  IOPtics, new: `ioptics/kd_net.py`,
+`ioptics/runs/prototypes/ls2/train_kd_l23.py`, `ioptics/tests/test_kd_net.py`,
+and `docs/source/reports/ls2_kd_l23/` (page, 6 CSVs, 2 PNGs).  IOPtics,
+changed: `ioptics/metrics.py`, `ioptics/tests/test_head_to_head.py`, and the
+three `docs/source/reports/ls2_l23_x*_v1/` pages.  ocpy, new:
+`ocpy/ls2/kd_l23.py`, `ocpy/tests/test_ls2_kd_l23.py`, and the two weight
+files.
 
 ### 2026-10-04 (Task 10 — the 15% question)
 

@@ -1,0 +1,5 @@
+network,geometry_input,median,min,max,spread
+hyper,False,0.0354,0.0352,0.0357,0.0005
+hyper,True,0.0473,0.0471,0.048,0.0009
+seawifs,False,0.052,0.0514,0.0525,0.0012
+seawifs,True,0.1989,0.1546,0.2257,0.0712

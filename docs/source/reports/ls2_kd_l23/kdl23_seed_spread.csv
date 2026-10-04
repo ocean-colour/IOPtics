@@ -1,0 +1,7 @@
+network,seed,test_noisy_mae_ln_vis
+hyper,23,0.0234
+hyper,1,0.0233
+hyper,7,0.0233
+seawifs,23,0.0407
+seawifs,1,0.0411
+seawifs,7,0.0406

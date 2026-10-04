@@ -278,7 +278,7 @@ def pangaea_validation(net, P):
                              if fin.any() else np.nan,
                              'mae_ln': round(float(np.nanmean(np.abs(lr))), 3)
                              if fin.any() else np.nan})
-                if subset == 'all matched' and tol == PANGAEA_TOLS[0]:
+                if subset == 'all matched' and tol == PANGAEA_TOLS[1]:
                     cells[label] = (kd_rows[m], kp[m])
         rows.append({'tol_nm': tol, 'predictor': '(spectra matched)', 'subset':
                      f'{int(ok5.sum())} with Rrs at all five bands; '
@@ -314,7 +314,7 @@ def fig_heldout(spectra, path):
     axes[0].axhline(1, color='k', lw=0.6)
     axes[0].set_ylim(0.75, 1.3)
     axes[0].set_ylabel('median Kd / ⟨Kd⟩₁')
-    axes[1].set_ylabel('mean |ln ratio| [%]')
+    axes[1].set_ylabel('mean abs(ln ratio) [%]')
     axes[1].set_ylim(0, 40)
     axes[1].set_xlabel('wavelength [nm]')
     for ax in axes:
@@ -396,6 +396,30 @@ def build(docs_root=None, save=True):
             'nets': nets, 'hists': hists}
 
 
+def page_only(docs_root=None):
+    """Rewrite the page from the CSVs a full run wrote and the saved weights.
+
+    For wording fixes: no retraining.  The numbers are the full run's, read
+    back from ``kdl23_*.csv``; the network metadata from ocpy's weight files.
+    """
+    from ocpy.ls2 import kd_l23
+    docs_root = Path(docs_root) if docs_root is not None else DEFAULT_DOCS
+    out = docs_root / 'reports' / SID
+    rd = lambda n: pd.read_csv(out / n)                     # noqa: E731
+    geo_summary = rd('kdl23_geometry_summary.csv')
+    geometry = {n: bool(geo_summary[geo_summary.network == n]
+                        .set_index('geometry_input')['median'].idxmin())
+                for n in NETS}
+    nets = {(n, 'mlp'): kd_l23.load_network(WEIGHT_NAME[n]) for n in NETS}
+    page = _page(geometry, geo_summary, rd('kdl23_seed_spread.csv'),
+                 rd('kdl23_heldout.csv'), rd('kdl23_ablation.csv'),
+                 rd('kdl23_pangaea.csv'), nets, None)
+    path = out / f'{SID}.rst'
+    path.write_text(page, encoding='utf-8')
+    print(f'wrote {path}')
+    return path
+
+
 def _page(geometry, geo_summary, seed_spread, held, abl, pang, nets, hists):
     """Report text; every number read from the tables of this run."""
     H = held.set_index(['condition', 'predictor'])
@@ -432,9 +456,9 @@ def _page(geometry, geo_summary, seed_spread, held, abl, pang, nets, hists):
     return f"""\
 .. _ls2_kd_l23:
 
-=================================================
+========================================================
 L23-trained ⟨Kd⟩₁ networks — hyperspectral and five-band
-=================================================
+========================================================
 
 :Task: ls2 task 11 (Q16, Q20, Q26, Q38)
 :Script: ``ioptics/runs/prototypes/ls2/train_kd_l23.py`` (trains, scores and
@@ -450,7 +474,7 @@ Summary
 -------
 
 * **Hyperspectral network** (71 bands, 400–750 nm): {pc(hy['mae_ln_vis'])}
-  mean |ln ratio| over 400–700 nm on held-out L23 with PACE noise
+  mean abs(ln ratio) over 400–700 nm on held-out L23 with PACE noise
   ({pc(hyc['mae_ln_vis'])} clean).  On the same noisy spectra the authors' PACE
   v2.3 scores {pc(pace['mae_ln_vis'])}, MODIS v1.3 {pc(m13['mae_ln_vis'])} and
   the MODIS v1.1 ocpy used to ship {pc(m11['mae_ln_vis'])}.  Its linear baseline
@@ -462,11 +486,17 @@ Summary
   {pc(swl['mae_ln_vis'])}).  On PANGAEA's measured Kd (Rrs within ±2.5 nm,
   {int(match25['n_spectra'])} spectra), its median ratio is
   {pgv(pg, 'L23 seawifs (mlp)', 'all matched', 'median_ratio')} and its mean
-  |ln ratio| {pgv(pg, 'L23 seawifs (mlp)', 'all matched', 'mae_ln')}; in its
+  abs(ln ratio) {pgv(pg, 'L23 seawifs (mlp)', 'all matched', 'mae_ln')}; in its
   clear-water scope (in its trained domain, Kd(490) ≤ 0.65), median ratio
-  {pgv(pg, 'L23 seawifs (mlp)', 'in scope', 'median_ratio')} and mean |ln ratio|
+  {pgv(pg, 'L23 seawifs (mlp)', 'in scope', 'median_ratio')} and mean abs(ln ratio)
   {pgv(pg, 'L23 seawifs (mlp)', 'in scope', 'mae_ln')}.
-  The details, and what PANGAEA's Kd is and is not, are below.
+  On the {int(pgv(pg6, 'MODIS_v1.1', 'common and in scope', 'n_spectra'))}
+  in-scope spectra the authors' MODIS networks can also score, MODIS v1.1 is
+  closer to PANGAEA than ours
+  ({pgv(pg6, 'MODIS_v1.1', 'common and in scope', 'mae_ln')} against
+  {pgv(pg6, 'L23 seawifs (mlp)', 'common and in scope', 'mae_ln')}), the reverse
+  of the L23 ranking.  The details, and what PANGAEA's Kd is and is not, are
+  below.
 * **Geometry**: the held-out-zenith experiment settles whether ``μw`` is an
   input (below).  The 1/μw factor is analytic in either case, so 60–70° is
   arithmetic extrapolation, flagged; beyond 70° the networks return NaN.
@@ -480,11 +510,11 @@ Held-out L23
 .. figure:: kdl23_heldout.png
    :width: 90%
 
-   Median ratio (top) and mean |ln ratio| (bottom) per wavelength on the
+   Median ratio (top) and mean abs(ln ratio) (bottom) per wavelength on the
    {len(K.split_scenarios()['test'])} held-out test scenarios × 3 zeniths, with one PACE noise draw on every spectrum.  Grey: above
    700 nm, outside the authors' recommended range for their networks.
 
-{_tbl('Held-out test scores, clean and with PACE noise. mae_ln_vis = mean |ln(Kd/⟨Kd⟩₁)| over 400–700 nm (≈ fractional error); ratio_λ = median ratio; frac_nan = cells with no prediction.', 'kdl23_heldout.csv')}
+{_tbl('Held-out test scores, clean and with PACE noise. mae_ln_vis = mean abs(ln(Kd/⟨Kd⟩₁)) over 400–700 nm (≈ fractional error); ratio_λ = median ratio; frac_nan = cells with no prediction.', 'kdl23_heldout.csv')}
 Noise matters most for the networks that use the red.  PACE noise is about
 50% of ``Rrs`` at 670 nm.  Ours were trained on it and degrade from
 {pc(hyc['mae_ln_vis'])} clean to {pc(hy['mae_ln_vis'])} noisy.  The authors'
@@ -537,7 +567,7 @@ PANGAEA spectrum carries those within ±2.5 nm, and
 {int(pgv(pg6, 'MODIS_v1.3', 'all matched', 'n_spectra'))} do within ±6 nm.
 "Common to all three" compares the three networks on those spectra:
 
-* On all of them, the five-band network's mean |ln ratio| is
+* On all of them, the five-band network's mean abs(ln ratio) is
   {pgv(pg6, 'L23 seawifs (mlp)', 'common to all three', 'mae_ln')} (median
   ratio {pgv(pg6, 'L23 seawifs (mlp)', 'common to all three', 'median_ratio')}),
   against {pgv(pg6, 'MODIS_v1.3', 'common to all three', 'mae_ln')} for MODIS
@@ -556,16 +586,28 @@ Across all matched spectra the five-band network reads **low** against
 PANGAEA (median ratio
 {pgv(pg6, 'L23 seawifs (mlp)', 'all matched', 'median_ratio')} at ±6 nm), and
 less so in scope ({pgv(pg6, 'L23 seawifs (mlp)', 'in scope', 'median_ratio')}).
-How much of that is L23's ocean against the real one, and how much is
-near-surface Kd against ⟨Kd⟩₁, this data cannot separate.
+In the scatter it flattens above about 0.3 m⁻¹, where L23 thins out (95% of
+its Kd(490) is below 0.10).  How much of the low reading is L23's ocean
+against the real one, and how much is near-surface Kd against ⟨Kd⟩₁, this
+data cannot separate.
+
+**Read plainly**: on the in-scope spectra all three can score, the network
+furthest from L23, MODIS v1.1, is closest to PANGAEA
+({pgv(pg6, 'MODIS_v1.1', 'common and in scope', 'mae_ln')}, against
+{pgv(pg6, 'L23 seawifs (mlp)', 'common and in scope', 'mae_ln')} for ours).
+Task 10 found v1.1 the worst of the three against L23.  A network trained on
+L23 is as good as L23's ocean is like the real one, and on this sample real
+water attenuates more than L23 predicts from the same ``Rrs``.  That bounds what
+held-out L23 scores can promise, for the hyperspectral network above all.
 
 .. figure:: kdl23_pangaea.png
    :width: 95%
 
-   Network against PANGAEA Kd, every matched (spectrum, band) cell, ±2.5 nm.
+   Network against PANGAEA Kd, every matched (spectrum, band) cell, ±6 nm
+   (the MODIS bands match no PANGAEA spectrum within ±2.5 nm).
    Dotted: Kd = 0.65 m⁻¹, the top of L23's range at 490 nm.
 
-{_tbl('PANGAEA validation. mae_ln = mean |ln(network/measured)| over cells.', 'kdl23_pangaea.csv')}
+{_tbl('PANGAEA validation. mae_ln = mean abs(ln(network/measured)) over cells.', 'kdl23_pangaea.csv')}
 Scope and limits
 ----------------
 
@@ -588,5 +630,11 @@ if __name__ == '__main__':
     p.add_argument('--docs-root', default=None)
     p.add_argument('--no-save', action='store_true',
                    help='do not write the weights into ocpy')
+    p.add_argument('--page-only', action='store_true',
+                   help='rewrite the page from the CSVs and weights of the last '
+                        'full run (no training)')
     a = p.parse_args()
-    build(a.docs_root, save=not a.no_save)
+    if a.page_only:
+        page_only(a.docs_root)
+    else:
+        build(a.docs_root, save=not a.no_save)

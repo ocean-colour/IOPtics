@@ -1,0 +1,27 @@
+tol_nm,predictor,subset,n_spectra,n_cells,median_ratio,mae_ln
+2.5,L23 seawifs (mlp),all matched,332,3049.0,0.827,0.34
+2.5,L23 seawifs (mlp),common to all three,0,0.0,,
+2.5,L23 seawifs (mlp),in scope,264,2279.0,0.902,0.232
+2.5,L23 seawifs (mlp),common and in scope,0,0.0,,
+2.5,MODIS_v1.3,all matched,0,0.0,,
+2.5,MODIS_v1.3,common to all three,0,0.0,,
+2.5,MODIS_v1.3,in scope,0,0.0,,
+2.5,MODIS_v1.3,common and in scope,0,0.0,,
+2.5,MODIS_v1.1,all matched,0,0.0,,
+2.5,MODIS_v1.1,common to all three,0,0.0,,
+2.5,MODIS_v1.1,in scope,0,0.0,,
+2.5,MODIS_v1.1,common and in scope,0,0.0,,
+2.5,(spectra matched),332 with Rrs at all five bands; 68 out of domain; 0 with Kd(490) > 0.65,332,,,
+6.0,L23 seawifs (mlp),all matched,1782,13617.0,0.909,0.285
+6.0,L23 seawifs (mlp),common to all three,219,2605.0,0.564,0.624
+6.0,L23 seawifs (mlp),in scope,1531,10963.0,0.958,0.186
+6.0,L23 seawifs (mlp),common and in scope,92,1079.0,0.728,0.377
+6.0,MODIS_v1.3,all matched,219,2605.0,0.708,0.393
+6.0,MODIS_v1.3,common to all three,219,2605.0,0.708,0.393
+6.0,MODIS_v1.3,in scope,92,1079.0,0.717,0.395
+6.0,MODIS_v1.3,common and in scope,92,1079.0,0.717,0.395
+6.0,MODIS_v1.1,all matched,219,2605.0,0.842,0.24
+6.0,MODIS_v1.1,common to all three,219,2605.0,0.842,0.24
+6.0,MODIS_v1.1,in scope,92,1079.0,0.853,0.229
+6.0,MODIS_v1.1,common and in scope,92,1079.0,0.853,0.229
+6.0,(spectra matched),1782 with Rrs at all five bands; 251 out of domain; 3 with Kd(490) > 0.65,1782,,,
