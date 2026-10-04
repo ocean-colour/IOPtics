@@ -687,6 +687,8 @@ needs one population).  At 440/555/670 nm on MCMC, all strata:
 falls back silently to the first rung in sorted order, which would have been
 (c).  Which do you want?
 
+>A. Use (a).
+
 **Q37. The head-to-head bootstrap seeds changed with task 6 — restore them?**
 Re-scoring RT-A reproduces every published number except 84 of 800 cells in
 `head_to_head_mcmc_all.csv`, all of them bootstrap interval endpoints
@@ -708,7 +710,125 @@ A seed that depends on a scalar's type is fragile.  Options:
 a Python-typed key alike.  It is a one-line change in core metrics, which is
 why it is asked rather than done.  Which do you want?
 
+>A. Use (a).
+
+**Q38. Task 11's training truth: which L23 realization?**  Task 10 settled
+*whether* L23's ⟨Kd⟩₁ is the truth to train against (yes).  Task 11's prompt
+doesn't say *which* of the three inelastic realizations.  It matters by a few
+percent.  The authors' PACE v2.3 network matches X=4 and X=2 to within 1–3% at
+440/490/555/670 nm, and reads 3–4% low against elastic X=1.  X=2 and X=4 agree
+with each other to 0.3% at these bands, and every network shifts the same way.
+The Rrs inputs differ by realization too, so a network trained on one and
+applied to another carries that shift.  Options:
+- (a) train on **X=4** (Raman + Chl fluorescence; real water has both, and
+  it is the realization of RT-A and the X=4 ladder), with X=1 as an ablation;
+- (b) pool all three realizations, so the network averages over the
+  inelastic treatment;
+- (c) train on X=1 to match the elastic LUT refit of task 12.
+
+*Recommended:* (a).  (b) teaches the network a mixture no real water has.
+(c) would match task 12's elastic refit but not the data it is applied to.
+Which do you want?
+
+>A. Use (a).
+
+**Q39. Should task 14 add an LS2 rung fed by our own L23 Kd network, and
+on which spectra?**  Task 11's hyperspectral network beats every authors'
+network on held-out L23. With PACE noise it scores 2.3% against PACE v2.3's
+8.9%, and PACE v2.3 also fails on 4.5% of noisy cells. So it is the natural
+satellite-mode Kd for an "our own LS2" rung (iii). But it was trained on L23
+X=4, so scoring it on all 3,320 L23 spectra would let 70% of them be training
+data.  Options:
+- (a) add a rung `ls2_iii_l23` (hyperspectral network + OC4v4 b_p), scored on
+  the **498 held-out test scenarios only** and set beside the other rungs
+  re-scored on the same 498, so the comparison is like-for-like;
+- (b) add it on all spectra and state the in-sample share;
+- (c) don't add it; keep PACE v2.3 as rung (iii) and quote task 11's
+  network separately.
+
+*Recommended:* (a).  The ladder's point is the cost of each input, and only
+held-out spectra measure that honestly.  The test split is fixed
+(`ioptics.kd_net.split_scenarios`, seed 11), so this is a filter, not a new
+sweep.  Which do you want?
+
 ## Logs
+
+### 2026-10-04 (Task 10 — the 15% question)
+
+**New answers.**  None (Q36–Q37 still open; the page keeps `hyb_ramfl` and
+the seed code is unchanged).
+
+**Answer: L23's ⟨Kd⟩₁ is not what's wrong; the 15% is an error of the MODIS
+v1.1 network, and part of a larger one.**  The report is
+`docs/source/reports/ls2_kd_15pct/ls2_kd_15pct.rst`.  Its script,
+`ioptics/runs/prototypes/ls2/kd_15pct.py`, regenerates every number, table and
+figure in about a minute (L23 noise-free Rrs, all 9 X/θs realizations,
+three networks).
+
+- **Reproduced.**  MODIS v1.1 on X=4, θs=0: **+15% at 440, +19% at 490**,
+  +2% at 555, +4% at 670 nm, as planning found.
+- **Not blue-only.**  Over 400–700 nm the same network swings −22% to +25%
+  in a sawtooth in output wavelength: −11% at 510, −18% at 520, +23% at 580,
+  −18% at 600 nm.  The planning bands sampled two peaks and two crossings.
+  Its median |ratio − 1| over the visible is 11.4%.
+- **PACE v2.3 agrees with L23**: median deviation 1.8% over 400–700 nm (range
+  −6% to +5%), with bands on L23's grid, so no interpolation is involved.
+  **MODIS v1.3** sits between the two at 3.2%: it fixes 440 nm (−1%) but not
+  490 nm (+15%), and its 490 gap is a clear-water one (1.22 in the clearest Kd
+  quintile, 1.03 in the most turbid).
+- **Definitions (Q10): ruled out.**  They move the ratio by at most 0.08%.
+- **Pure water: ruled out**, on structure and on size.  v1.1's gap is
+  multiplicative: the ratio is flat across Kd quintiles (440 nm:
+  1.19/1.15/1.13/1.13/1.17 over 0.02–1.09 m⁻¹), with fit α = 1.19 and β only
+  −4% of the median Kd.  Closing it with a_w alone would need a_w to change by
+  +76% at 440, then −22% at 520, +25% at 580 and −19% at 600 nm, changing sign
+  three times in 110 nm.  ocpy's only alternative table (GSFC Pope & Fry) turns
+  out to be L23's own data from 440 to 700 nm.
+- **Interpolation: ruled out** if linear or better.  Cubic or a 10 nm band
+  moves the ratio ≤1.8%.  Nearest-band sampling does add 6–9% (planning's
+  "24–25%"), which shows how sensitive v1.1 is to a 2–3 nm input shift.
+- **New: training domain.**  The LUTs store each network's training
+  statistics.  v1.1 was trained around Kd = 0.35 m⁻¹ (geometric mean), v1.3
+  and PACE around 0.18 m⁻¹.  L23's median ⟨Kd⟩₁(440) of 0.035 sits at
+  z = −2.1 for v1.1, with 57% of scenarios beyond 2σ, against z = −1.4 for the
+  others.
+- **New: realization.**  X=2 and X=4 agree to 0.3% at these bands, so Raman is
+  what matters there.  Elastic X=1 lowers every network's ratio, and moves 40%
+  of v1.1's 440 nm gap (+15% → +9%).  PACE fits X=4 best, so task 11 should
+  train on X=4: posed as **Q38**.  The sun matters little (v1.1 440 nm: +15% at
+  0°, +13% at 60°).
+- Above 700 nm every network falls far below L23 (≈0.3–0.4 at 740 nm).  That
+  is outside the authors' recommended range, and κ is NaN there anyway.
+
+**Recommendation (on the page).**  L23 X=4 ⟨Kd⟩₁, canonical definition, is
+task 11's training truth.  PACE v2.3 is the baseline to beat.  MODIS v1.3 is a
+documented alternative only.
+
+**Q30 follow-through (ocpy).**  Q30 agreed that `Kd_NN_MODIS` flips to v1.3
+once this reported, so it now has.  `kd_nn`'s own default network flipped
+with it, so the two entry points cannot disagree.  The module docstring, the
+`docs/api/ls2.rst` release table and the docstrings say when and why.  Tests
+that mean v1.1 now name it, and `test_the_default_is_v1_3` is new.  Nothing in
+IOPtics or BING relied on the default (the LS2 rungs name their network:
+`nn:PACE_v2.3`, `nn:MODIS_v1.3`), so no published number moves.  ocpy
+`pytest -q`: 133 passed, 7 skipped, 4 failed (the known `test_plot_oc_scene`
+four).
+
+**Tests.**  New `ioptics/tests/test_kd_15pct.py`.  Tier 1 checks the band
+feeds on a straight-line spectrum and refuses an off-grid band.  Tier 2
+(`@needs_l23` + `@needs_l23_profile`) builds the whole report into a tmp docs
+root and pins the findings the recommendation rests on: the planning number,
+the visible swing, PACE within 3%, v1.3 better than v1.1, definitions under
+0.2%, a multiplicative gap, and interpolation under 1%.  `sphinx-build -W`
+green.  `pytest -q` without `$OS_COLOR`: 611 passed, 75 skipped, 3
+failed; with it: 678 passed, 6 skipped, 5 failed.  These are the same
+pre-existing five (`test_spec` ×3, `test_rt_backends` ×2, from bing on
+`rob_rt`).
+
+**Files.**  New: `ioptics/runs/prototypes/ls2/kd_15pct.py`,
+`ioptics/tests/test_kd_15pct.py`, `docs/source/reports/ls2_kd_15pct/` (page,
+8 CSVs, 2 PNGs).  ocpy: `ocpy/ls2/kd_nn.py`, `ocpy/tests/test_ls2_kd.py`,
+`docs/api/ls2.rst`.
 
 ### 2026-10-04 (Task 9b — laptop: RT-A brought over, given `a_nw`, re-scored; X=4 page rebuilt)
 

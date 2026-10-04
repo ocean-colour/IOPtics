@@ -558,8 +558,20 @@ def _pair_seed(group_key, model_a, model_b, *, base=BOOTSTRAP_SEED):
     would be comparing correlated noise. Deriving the seed from the contest key and
     the pair names keeps every interval reproducible while making them independent
     draws.
+
+    The key is normalised to plain Python scalars first (ls2 Q37), so the seed
+    depends on the contest's *values*, not on their dtype: ``440.0`` and
+    ``np.float64(440.0)`` give the same seed. Without this, regrouping a frame
+    (as ls2 task 6 did, adding ``pool``) changed ``repr`` of the key under
+    numpy 2 and redrew every published interval.
     """
-    key = repr((group_key, model_a, model_b)).encode('utf-8')
+    def _plain(v):
+        if isinstance(v, tuple):
+            return tuple(_plain(x) for x in v)
+        return v.item() if isinstance(v, np.generic) else v
+
+    key = repr((_plain(group_key), _plain(model_a),
+                _plain(model_b))).encode('utf-8')
     return (base + int(hashlib.md5(key).hexdigest()[:8], 16)) % (2 ** 32)
 
 

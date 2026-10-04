@@ -169,7 +169,7 @@ LS2 has **no likelihood**: it does not fit, so it has no χ², no BIC and no pos
 Head-to-head verdicts between rungs
 -----------------------------------
 
-Every pair of rungs on the spectra both retrieved: ``delta_mae`` = ``mae(A) − mae(B)`` with its paired-bootstrap 95 % interval, and a ``verdict`` naming a winner only when the interval excludes 0 **and** clears the practical floor of 10%. 167 of 224 pairs are indistinguishable — between rungs, that says the input made no material difference.
+Every pair of rungs on the spectra both retrieved: ``delta_mae`` = ``mae(A) − mae(B)`` with its paired-bootstrap 95 % interval, and a ``verdict`` naming a winner only when the interval excludes 0 **and** clears the practical floor of 10%. 168 of 224 pairs are indistinguishable — between rungs, that says the input made no material difference.
 
 .. csv-table:: Pairwise accuracy verdicts, all strata.
    :file: head_to_head_direct_all.csv

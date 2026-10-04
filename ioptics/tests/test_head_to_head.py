@@ -260,6 +260,23 @@ def test_each_pair_gets_its_own_bootstrap_draw():
     assert k1 == metrics._pair_seed(('L23', 'a', 440.0), 'x', 'y')
 
 
+def test_the_seed_depends_on_values_not_dtypes():
+    """ls2 Q37: ``np.float64(440.0)`` and ``440.0`` must give one seed.
+
+    Under numpy 2 their ``repr`` differs, so regrouping a frame redrew every
+    published interval. The pinned value is the seed RT-A's page was built
+    with (``a_ph(440)``, el vs ram), which reproduces its published interval.
+    """
+    py = metrics._pair_seed(('L23', 'mcmc', 'all', 'a_ph', 440.0),
+                            'expb_pow_hyb_el', 'expb_pow_hyb_ram')
+    npk = metrics._pair_seed(('L23', np.str_('mcmc'), 'all', 'a_ph',
+                              np.float64(440.0)),
+                             np.str_('expb_pow_hyb_el'), 'expb_pow_hyb_ram')
+    assert py == npk
+    assert metrics._pair_seed(('L23', 'a', np.int64(440)), 'x', 'y') == \
+        metrics._pair_seed(('L23', 'a', 440), 'x', 'y')
+
+
 def test_the_floor_can_be_read_relative_to_the_error_being_compared():
     """1% vs 5% error is a 5x gap that an absolute 0.10 floor calls a tie."""
     df = _spectral({'a1': [1.01] * 60, 'a2': [1.05] * 60})
