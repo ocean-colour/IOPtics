@@ -1,0 +1,9 @@
+dataset,algorithm,frac_not_ok,n_attempted,n_scored,chi2_nu_median,rel_misfit_median,rel_misfit_median_all,frac_good,frac_overfit,frac_underfit,frac_qc_fail,frac_ok,frac_poor_fit,frac_out_of_scope,frac_fit_failed
+L23,ls2_i,0.9581,3320,3306,,,,,,,,0.0419,0.9539,0.0027,0.0015
+L23,ls2_i_effmuw,1.0,3320,3306,,,,,,,,0.0,0.9958,0.0027,0.0015
+L23,ls2_i_kdnoise05,0.9723,3320,3306,,,,,,,,0.0277,0.9681,0.0027,0.0015
+L23,ls2_i_kdnoise10,0.972,3320,3306,,,,,,,,0.028,0.9678,0.0027,0.0015
+L23,ls2_i_kdnoise20,0.9777,3320,3306,,,,,,,,0.0223,0.9735,0.0027,0.0015
+L23,ls2_ii,0.9581,3320,3306,,,,,,,,0.0419,0.9539,0.0027,0.0015
+L23,ls2_iii,1.0,3320,3193,,,,,,,,0.0,0.9617,0.0027,0.0355
+L23,ls2_iii_modis,1.0,3320,3311,,,,,,,,0.0,0.9973,0.0027,0.0

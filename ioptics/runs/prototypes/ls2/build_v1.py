@@ -18,7 +18,7 @@ Usage (one stage per call)::
 
     1  run     the L23 sweeps (X=4, then X=2, then X=1) -> results + provenance
     2  metrics the L23 sweeps                          -> metrics parquets
-    3  report  the ls2_ladder page (ls2 task 9; a stub until then)
+    3  report  the ls2_ladder page, one per sweep (ls2 task 9)
     9  summary of a sweep that has run (status, NaN reasons, kappa) -- printed
        automatically after stage 1, and callable on its own
 
@@ -57,6 +57,11 @@ CONFIGS = {
 #: mirrors, so a problem shows up on the sweep that matters most.
 STAGE_CONFIG = {1: ('x4', 'x2', 'x1'), 2: ('x4', 'x2', 'x1'),
                 3: ('x4', 'x2', 'x1'), 9: ('x4', 'x2', 'x1')}
+
+#: BING sweep each LS2 sweep is set beside on its page (ls2 Q23: the headline
+#: is quoted against MCMC BING on the same spectra). RT-A ran BING on L23 X=4
+#: only; the X=2 and X=1 pages have no comparator and say so.
+COMPARATOR = {'x4': 'rt_tests_A_l23_v1'}
 
 #: The smoke's L23 records: the first 15 plus record 75, which has 15 cells
 #: outside the ``eta < 0.2`` envelope, so the ``off_grid`` path is exercised.
@@ -176,9 +181,25 @@ def _metrics(config_name):
 
 
 def _report(config_name):
-    """Stage 3: the ``ls2_ladder`` page -- lands with ls2 task 9."""
-    print(f'[{config_name}] the ls2_ladder report page arrives with ls2 task 9; '
-          'nothing to do yet')
+    """Stage 3: the ``ls2_ladder`` page for one sweep (ls2 task 9).
+
+    Written into the docs tree (``docs/source/reports/<sweep_id>/``); never
+    touches the leaderboard or the landing page. The comparator BING sweep
+    (:data:`COMPARATOR`) is used when its metrics are on this machine; the page
+    states it when they are not.
+    """
+    from ioptics import config, io
+    from ioptics.report import ls2_ladder
+
+    _register()
+    cfg = config.load(CONFIGS[config_name])
+    if not (io.sweep_dir(cfg.sweep_id) / 'results_scalar.parquet').is_file():
+        print(f'[{config_name}] no results for {cfg.sweep_id}; skipping the page')
+        return None
+    out = ls2_ladder.build(cfg.sweep_id,
+                           compare_sweep=COMPARATOR.get(config_name))
+    print(f'[{config_name}] wrote {out}')
+    return out
 
 
 def main(flg, *, n_cores=1, strict=False, config_name=None):

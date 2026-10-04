@@ -102,6 +102,9 @@ Reporting
 .. automodule:: ioptics.report.leaderboard
    :members:
 
+.. automodule:: ioptics.report.ls2_ladder
+   :members:
+
 .. automodule:: ioptics.report.bokeh
    :members:
 
