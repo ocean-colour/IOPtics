@@ -1,0 +1,5 @@
+x,muw_basis,test_mae,interp_30_mae,extrap_60_mae,extrap_60_worst_band
+bb/a,none,0.0234,0.0247,0.0238,0.0336
+ln(bb/a),none,0.0231,0.0245,0.0236,0.0325
+bb/a,lin,0.0181,0.0323,0.1011,0.1864
+bb/a,inv,0.0186,0.0344,0.1324,0.2412

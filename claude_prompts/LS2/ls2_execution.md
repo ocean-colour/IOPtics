@@ -751,6 +751,8 @@ held-out spectra measure that honestly.  The test split is fixed
 (`ioptics.kd_net.split_scenarios`, seed 11), so this is a filter, not a new
 sweep.  Which do you want?
 
+>A. That is fine
+
 **Q40. A serial MCMC run may not be bit-reproducible after other JAX work
 in the same process — investigate or accept?**  Since task 11 added two test
 files that train Flax networks, `test_mcmc_subset_pooled_and_reordered_match_serial`
@@ -777,6 +779,84 @@ Which do you want?
 >A. Ok, go with (a), but give up and default to (b) if it proves to be too onerous.
 
 ## Logs
+
+### 2026-10-04 (Q39 answered; task 13 — κ re-derived from the matched X=1/X=2 pair)
+
+**New answers.**  *Q39*: (a).  Task 14 adds `ls2_iii_l23` (our hyperspectral
+Kd network + OC4v4 b_p), scored on the 498 held-out test scenarios, beside
+the other rungs re-scored on the same 498.
+
+**Result: the refit κ is available almost everywhere, and on held-out
+spectra it beats the published κ.**  The report is
+`docs/source/reports/ls2_refit_kappa/ls2_refit_kappa.rst`.  The script
+`ioptics/runs/prototypes/ls2/refit_kappa.py` regenerates every number,
+table and figure, and the table, in about 6 s.  Truth is κ = Rrs(X=1)/Rrs(X=2),
+cell by cell.
+
+| held-out inversion, true ⟨Kd⟩₁ and η | κ unavailable | `bb` mae | `bb_p` mae |
+|---|---|---|---|
+| X=1, refit a/bb (elastic ceiling) | – | 0.6% | 1.2% |
+| X=2, refit a/bb, no κ | – | 10.6% | 20.7% |
+| X=2, refit a/bb + **published κ** | **25.4%** | 4.6% | 9.0% |
+| X=2, refit a/bb + **refit κ** | **0.05%** | 2.6% | 5.2% |
+| X=4, refit a/bb + published κ | 25.8% | 8.8% | 14.7% |
+| X=4, refit a/bb + refit κ | 0.16% | 6.6% | 10.5% |
+
+The κ-unavailable share above is from an actual inversion.  Planning's
+figure for the published table was 19.1%, on a different cell set; on this
+one it is 25%.  The published table reproduces all three defects on L23:
+- the 490–505 nm hole from the 502 nm row (only 17.5% of cells evaluable at
+  500 nm);
+- 100% NaN above 702 nm;
+- 12–19% of cells out of range at 400–450 nm.
+
+Against the true κ, the published table evaluates on 75.8% of held-out
+cells, with a 3.3% error where it does.  The refit evaluates on 99.99%, with
+a 2.3% error.  `a` barely needs κ (0.85% → 0.35%); `bb` and `bb_p` are where
+it matters.
+
+- **Form: the published one is kept**: a cubic in bb/a per 5 nm row,
+  350–750 nm (81 rows).  Each row's range is L23's training min/max widened
+  by 1% of the span.  It drops into `ls2_invert` unchanged.
+- **κ depends on the sun, and that is the floor.**  At the same bb/a, κ at
+  θs = 0° sits well below 30° and 60°, which agree with each other.  At
+  670 nm the 0° cells form a separate branch (see the figure).  A μw term
+  helps on held-out scenarios (1.8% vs 2.3%) but fails the
+  leave-one-zenith-out check: 10–13% when extrapolating to 60°, against 2.4%
+  without it.  A dependence that turns over between three zeniths cannot be
+  modelled with a low-order term.  The residual 2.6% vs 0.6% gap in `bb` on
+  X=2 is this.  A cubic in ln(bb/a) gains nothing (2.31% vs 2.34%).
+- **X=4** adds chlorophyll fluorescence, which this κ does not model by
+  construction.  `bb_p` 10.5% on X=4 against 5.2% on X=2 is consistent with
+  that.  The page says so and does not try to separate it.
+- **Code.**  `ocpy/ls2/refit.py` gains `fit_kappa`, `with_kappa` and
+  `kappa_eval`, the last evaluating exactly as `ls2_invert` does.  New table
+  `ocpy/data/LS2/LS2_LUT_L23_abk_v1.npz` combines task 12's a/bb refit with
+  this κ: "our own LS2", ready for task 14.  `LS2_LUT_L23_v1.npz` (refit a/bb
+  + published κ) is unchanged.
+
+**Tests.**  `ocpy/tests/test_ls2_refit.py` gains 3: the cubic and range are
+recovered, `kappa_eval` reproduces the published 502 nm and >702 nm NaNs,
+and the shipped abk table covers 350–750 nm and evaluates at 500/700/740 nm.
+New `ioptics/tests/test_refit_kappa.py`: design shapes, plus a Tier-2 full
+rebuild that pins the findings (NaN rate >15% → <1% on X=2 and X=4, ordering
+none > published > refit for `bb`, elastic ceiling below, 99% evaluable,
+the 502 nm hole, μw term rejected).  `sphinx-build -W` green.
+IOPtics `pytest -q` without `$OS_COLOR`: 620 passed, 79 skipped, 3 failed;
+with it: 691 passed, 6 skipped, 5 failed.  These are the known five; the
+intermittent Q40 test passed on this run.  ocpy: 150 passed, 4 failed (the
+known `test_plot_oc_scene`).
+
+**Commit note (ocpy).**  Still untracked there: `ocpy/ls2/refit.py` (from
+task 12, now extended) and four git-ignored `.npz` files needing
+`git add -f`: `Kd_L23_hyper_v1`, `Kd_L23_seawifs_v1`, `LS2_LUT_L23_v1`, and
+`LS2_LUT_L23_abk_v1`.
+
+**Files.**  ocpy: `ocpy/ls2/refit.py`, `ocpy/tests/test_ls2_refit.py`,
+`ocpy/data/LS2/LS2_LUT_L23_abk_v1.npz`.  IOPtics, new:
+`ioptics/runs/prototypes/ls2/refit_kappa.py`,
+`ioptics/tests/test_refit_kappa.py`, and
+`docs/source/reports/ls2_refit_kappa/` (page, 4 CSVs, 2 PNGs).
 
 ### 2026-10-04 (Q40 answered; task 12 — a and bb coefficients re-derived from L23 X=1)
 
