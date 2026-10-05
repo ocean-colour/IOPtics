@@ -1,0 +1,44 @@
+# LS2 on the LEADERBOARD (ls2 task 15, Q41).
+#
+# Only the published operational rung, ls2_iii: Kd from the authors' PACE
+# network, b_p from OC4v4 chlorophyll, the authors' tables. It is fully
+# out-of-sample on L23 and scored on all 3,320 spectra, like every other
+# algorithm on the board.
+#
+# Two choices make it a standing rather than an orphan row (JXP, task 15):
+#
+# - L23 X=1 (elastic, Raman correction off). The board's L23 contests are
+#   elastic L23 (the adapter's default realization), so an X=4 entry would be
+#   ranked against a different truth.
+# - BING in the same sweep (expb_pow and giop, chi-squared, as on the board).
+#   The board ranks by within-sweep head-to-head wins. A direct algorithm alone
+#   in a sweep has no fitted pool to join and no head-to-head, so it would show
+#   as "sole competitor", unranked. With BING beside it, its rows join the chisq
+#   pool (ls2 Q23) and get verdicts like any other entry.
+#
+# Our own LS2 (ls2r_*) is NOT here: its tables and Kd network were fitted on
+# 70% of L23 and it has not been tested off L23 (ls2 Q41). It stays on the
+# ls2_ours page.
+sweep_id: ls2_l23_x1_board_v1
+datasets: [L23]
+
+dataset_opts:
+  L23:
+    X: 1                       # elastic, as the board's other L23 sweeps
+    kd1: ln_ratio              # <Kd>_1 for LS2's record-Kd needs (unused by
+                               #   ls2_iii, which takes Kd from the PACE network)
+
+noise_model: pace
+seed: 20260907
+
+algorithms:
+  - {name: ls2_iii, raman: false}   # elastic truth: no Raman to correct (ls2 Q4)
+  - expb_pow
+  - giop
+
+fit_method: chisq
+
+wv_min: 400
+wv_max: 750
+
+leaderboard: true              # ls2 Q41: published operational LS2 is a standing

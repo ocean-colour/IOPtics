@@ -109,3 +109,35 @@ def test_every_config_resolves_heldout_included():
     cfg = config.load(build.CONFIGS['heldout'])
     for ac in cfg.algorithms:
         assert is_direct(registry.get(ac.name).with_overrides(ac.overrides))
+
+
+def test_the_board_config_is_published_ls2_beside_bing_on_elastic_l23():
+    """ls2 Q41 + task 15: only ls2_iii, on the board's realization (X=1, Raman
+    off), with BING in the same sweep so it joins the chisq pool and is ranked."""
+    build = _build()
+    registry.register_direct()
+    registry.register_direct_l23()
+    cfg = config.load(build.CONFIGS['board'])
+    names = [ac.name for ac in cfg.algorithms]
+    assert [n for n in names if n.startswith('ls2')] == ['ls2_iii']
+    assert {'expb_pow', 'giop'} <= set(names)
+    assert cfg.dataset_opts['L23']['X'] == 1 and cfg.leaderboard is True
+    ls2 = next(ac for ac in cfg.algorithms if ac.name == 'ls2_iii')
+    assert ls2.overrides == {'raman': False}
+    assert cfg.fit_method == 'chisq'
+    # every other LS2 sweep stays off the board
+    for name in ('x4', 'x2', 'x1', 'heldout', 'smoke'):
+        assert config.load(build.CONFIGS[name]).leaderboard is False
+
+
+def test_the_landing_guard_names_what_a_rebuild_would_drop(tmp_path):
+    build = _build()
+    idx = tmp_path / 'index.rst'
+    idx.write_text('Cards\n\n* **sweep_a** — 2026-08-01\n  text\n'
+                   '* **sweep_b** — 2026-08-02\n\nnot a card: **sweep_c**\n')
+    assert build.landing_sweeps(idx) == {'sweep_a', 'sweep_b'}
+    assert build.missing_from_board(['sweep_a'], 'new', idx) == ['sweep_b']
+    assert build.missing_from_board(['sweep_a', 'sweep_b'], 'new', idx) == []
+    assert build.landing_sweeps(tmp_path / 'absent.rst') == set()
+    # the committed landing page parses, and carries sweeps this laptop lacks
+    assert build.landing_sweeps()

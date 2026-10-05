@@ -9,7 +9,8 @@ LS2 ``a`` and ``bb`` coefficients re-derived from L23
    figure on this page); model code ``ocpy.ls2.refit``
 :Table: ``ocpy/data/LS2/LS2_LUT_L23_v1.npz`` — the published ``LS2_LUT`` keys, so
    ``ocpy.ls2.ls2_main.ls2_invert`` takes it unchanged, plus the smooth model
-   and its provenance.  κ is still the published one (task 13).
+   and its provenance.  Its κ is the published one; task 13's refit κ is
+   in ``LS2_LUT_L23_abk_v1.npz`` (:ref:`ls2_refit_kappa`).
 :Corpus: L23 X=1 (elastic: no Raman to confound the fit), θs = 0, 30, 60°,
    400–750 nm; 2324 training scenarios
    (492,336 cells), split by IOP scenario with the split
@@ -129,8 +130,8 @@ Limits
 ------
 
 * Fitted on L23 X=1 with true inputs.  It removes the coefficient part of
-  LS2's error on L23.  Task 14 measures what is left with real inputs
-  (Kd from a network, b_p from OC4v4), and with Raman via task 13's κ.
+  LS2's error on L23.  What is left with real inputs (Kd from a network, b_p
+  from OC4v4), and with Raman via task 13's κ, is measured in :ref:`ls2_ours`.
 * It is fitted to L23's ocean.  Task 11 found real water attenuating more
   than L23 predicts from the same Rrs (PANGAEA).  An L23-fitted table is as
   transferable as L23 is realistic.

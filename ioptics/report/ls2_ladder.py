@@ -741,8 +741,9 @@ def build(sweep_id, *, root=None, docs_root=None, compare_sweep=None,
             + (f'the comparator sweep ``{compare_sweep}`` has no metrics on this '
                f'machine.' if compare_sweep is not None else
                'no comparator sweep was supplied to this build.')
-            + ' The LS2-versus-BING head-to-head is read against MCMC BING on '
-              'the same spectra (ls2 Q23) and lands with ls2 task 14.')
+            + ' The LS2-versus-BING head-to-head, against MCMC BING on the '
+              'same spectra (ls2 Q23), is on the X=4 page and in '
+              ':ref:`ls2_ours`.')
 
     # ---- published vs re-derived (ls2 task 14) ---------------------------------
     rd = rederived_table(sweep)

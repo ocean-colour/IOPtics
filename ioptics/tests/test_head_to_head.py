@@ -317,3 +317,17 @@ def test_a_one_horse_race_is_not_a_standing(tmp_path):
     ranked = leaderboard.ranked(solo)
     only = ranked[(ranked['component'] == 'a') & (ranked['algorithm'] == 'expb_pow')]
     assert only['rank'].isna().all(), 'one measured competitor is not a rank-1 win'
+
+
+def test_rows_folded_before_pool_existed_join_their_contest():
+    """ls2 task 15: an old board (no pool) plus a new sweep (pool set) must not
+    leave the old rows in a NaN pool that groups with nothing."""
+    old = pd.DataFrame({'sweep_id': 's_old', 'dataset': 'L23', 'algorithm': 'giop',
+                        'fit_method': 'chisq', 'pool': [np.nan], 'stratum': 'all',
+                        'component': 'a', 'ref_wave': 440.0, 'win_frac': 0.4,
+                        'abs_bias': 0.1, 'mae': 0.2})
+    new = old.assign(sweep_id='s_new', algorithm='ls2_iii', pool='chisq',
+                     win_frac=0.6, mae=0.1)
+    r = leaderboard.ranked(pd.concat([old, new], ignore_index=True))
+    assert set(r['pool']) == {'chisq'}
+    assert r.groupby(['dataset', 'component', 'ref_wave', 'stratum', 'pool']).size().max() == 2

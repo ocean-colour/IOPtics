@@ -223,6 +223,29 @@ def test_mcmc_one_warms_the_fit_imports_before_seeding(tmp_path, monkeypatch):
 # serial vs pooled equivalence (real, tiny, emcee fits)
 # ---------------------------------------------------------------------------
 
+#: Tolerance for "the same chain" (ls2 Q40).  This test used ``array_equal``
+#: and failed intermittently in full-suite runs only (about 4 in 10 with
+#: ``$OS_COLOR``), never in isolation.  An earlier JAX computation in the same
+#: process was ruled out: a serial run before and after one is bit-identical.
+#: The failure was never captured.  Per JXP's fallback, the check is now
+#: ``allclose`` at a tolerance far below any seeding or ordering error, which
+#: would change the chain at O(1).  If it fails, the message says by how much,
+#: so the next occurrence explains itself.
+CHAIN_RTOL = 1e-10
+
+
+def _assert_chains_match(a, b, what):
+    a, b = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
+    assert a.shape == b.shape, f'{what}: shapes {a.shape} vs {b.shape}'
+    if np.allclose(a, b, rtol=CHAIN_RTOL, atol=0.0, equal_nan=True):
+        return
+    d = np.abs(a - b)
+    raise AssertionError(
+        f'{what}: {np.mean(d > 0):.2%} of entries differ; max |diff| {np.nanmax(d):.3e}, '
+        f'max rel {np.nanmax(d / np.maximum(np.abs(a), 1e-300)):.3e}; bitwise '
+        f'identical: {np.array_equal(a, b)}')
+
+
 @needs_l23
 def test_mcmc_subset_pooled_and_reordered_match_serial(tmp_path):
     """``n_cores=2`` and a reversed record order both reproduce the serial
@@ -261,8 +284,8 @@ def test_mcmc_subset_pooled_and_reordered_match_serial(tmp_path):
         cs = io.load_chain(rs.chain_file)
         cp = io.load_chain(rp.chain_file)
         cr = io.load_chain(rev[rs.obs_id].chain_file)
-        assert np.array_equal(cs['chains'], cp['chains'])
-        assert np.array_equal(cs['chains'], cr['chains'])
+        _assert_chains_match(cs['chains'], cp['chains'], 'serial vs pooled')
+        _assert_chains_match(cs['chains'], cr['chains'], 'serial vs reversed')
         # persisted burned + thinned, and the trim is recorded
         assert int(cs['nsteps_production']) == 120
         assert int(cs['nburn_sampler']) == 30
@@ -270,4 +293,5 @@ def test_mcmc_subset_pooled_and_reordered_match_serial(tmp_path):
         assert int(cs['thin']) == io.CHAIN_THIN
         assert cs['chains'].shape[0] == len(range(30, 120, io.CHAIN_THIN))
         # the evaluated result is likewise identical
-        assert np.array_equal(rs.components['a'].med, rp.components['a'].med)
+        _assert_chains_match(rs.components['a'].med, rp.components['a'].med,
+                             'evaluated a (serial vs pooled)')

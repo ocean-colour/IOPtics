@@ -19,6 +19,13 @@ Usage (one stage per call)::
     1  run     the L23 sweeps (X=4, then X=2, then X=1) -> results + provenance
     2  metrics the L23 sweeps                          -> metrics parquets
     3  report  the ls2_ladder page, one per sweep (ls2 task 9)
+    4  leaderboard PREVIEW: fold the board sweep (ls2_iii only, ls2 Q41) into
+       a scratch copy of the board and print where LS2 ranks; writes nothing
+       that is published
+    5  leaderboard FOLD: fold it into the real board and rebuild the landing
+       page.  Guarded: refuses unless every sweep the committed landing page
+       carries is on this machine's board, since rebuilding with a partial
+       board would drop them (run it where the full board lives)
     9  summary of a sweep that has run (status, NaN reasons, kappa) -- printed
        automatically after stage 1, and callable on its own
 
@@ -42,6 +49,7 @@ from the repository root is needed unless ``pip install -e .`` has been run.
 
 import collections
 import os
+from pathlib import Path
 import time
 import warnings
 
@@ -53,14 +61,16 @@ CONFIGS = {
     'x1': os.path.join(HERE, 'run_ls2_l23_x1.yaml'),
     'smoke': os.path.join(HERE, 'run_smoke.yaml'),
     'heldout': os.path.join(HERE, 'run_ls2_l23_x4_heldout.yaml'),
+    'board': os.path.join(HERE, 'run_ls2_l23_x1_board.yaml'),
 }
 
 #: Default config(s) per stage; a tuple runs each in order. X=4 first: it is
 #: the realization the BING comparison (RT-A) used, and the one the smoke
 #: mirrors, so a problem shows up on the sweep that matters most.
-STAGE_CONFIG = {1: ('x4', 'x2', 'x1', 'heldout'),
-                2: ('x4', 'x2', 'x1', 'heldout'),
+STAGE_CONFIG = {1: ('x4', 'x2', 'x1', 'heldout', 'board'),
+                2: ('x4', 'x2', 'x1', 'heldout', 'board'),
                 3: ('x4', 'x2', 'x1', 'heldout'),
+                4: ('board',), 5: ('board',),
                 9: ('x4', 'x2', 'x1', 'heldout')}
 
 #: BING sweep each LS2 sweep is set beside on its page (ls2 Q23: the headline
@@ -223,6 +233,81 @@ def _report(config_name):
     return out
 
 
+LANDING = os.path.join(HERE, '..', '..', '..', '..', 'docs', 'source', 'reports',
+                       'index.rst')
+
+
+def landing_sweeps(index_rst=LANDING):
+    """Sweep ids the committed landing page carries a card for."""
+    import re
+    if not os.path.isfile(index_rst):
+        return set()
+    text = open(index_rst, encoding='utf-8').read()
+    return set(re.findall(r'^\* \*\*([A-Za-z0-9_]+)\*\*', text, flags=re.M))
+
+
+def missing_from_board(board_sweeps, sweep_id, index_rst=LANDING):
+    """Sweeps the committed landing page carries that the board would lack.
+
+    Stage 5 refuses to rebuild the landing page unless this is empty: a
+    rebuild from a partial board silently drops every sweep it lacks.
+    """
+    return sorted(landing_sweeps(index_rst) - set(board_sweeps) - {sweep_id})
+
+
+def _board(config_name='board', *, apply=False):
+    """Stage 4 (preview) / 5 (fold + landing) for the leaderboard sweep.
+
+    Returns the ranked rows of the board sweep's algorithm.
+    """
+    import shutil
+    import tempfile
+
+    from ioptics import config, io
+    from ioptics.report import leaderboard
+
+    _register()
+    sid = config.load(CONFIGS[config_name]).sweep_id
+    runs_root = io.runs_root()
+    if not (runs_root / sid / 'metrics_scalar.parquet').is_file():
+        raise RuntimeError(f'{sid} has no metrics: run stages 1 and 2 with '
+                           f'--config {config_name} first')
+    real = leaderboard._default_out(runs_root)
+    if apply:
+        have = set(leaderboard.pd.read_parquet(real)['sweep_id']) if real.is_file() \
+            else set()
+        missing = missing_from_board(have, sid)
+        if missing:
+            raise RuntimeError(
+                f'refusing to rebuild the landing page: this machine\'s board '
+                f'lacks {missing}, which the committed page carries. '
+                'Rebuilding here would drop them. Run stage 5 on the machine '
+                'that holds the full board (JXP\'s workstation).')
+        board = leaderboard.update(runs_root=runs_root, sweep_ids=[sid])
+        from ioptics.report import standard
+        idx, full = standard.build_landing(board=board, runs_root=runs_root)
+        print(f'[{config_name}] folded {sid}; wrote {idx} and {full}')
+    else:
+        tmp = Path(tempfile.mkdtemp()) / 'leaderboard.parquet'
+        if real.is_file():
+            shutil.copy2(real, tmp)
+        board = leaderboard.update(runs_root=runs_root, out=tmp, sweep_ids=[sid])
+        print(f'[{config_name}] PREVIEW only (scratch board {tmp}); nothing published')
+    r = leaderboard.ranked(board, stratum='all')
+    direct = [a for a in config.load(CONFIGS[config_name]).algorithms
+              if a.name.startswith('ls2')]
+    mine = r[(r['sweep_id'] == sid) & r['algorithm'].isin([a.name for a in direct])]
+    sizes = r.groupby(['dataset', 'component', 'ref_wave', 'pool']).size()
+    mine = mine.assign(n_in_contest=[sizes.get((d, c, w, p), 0) for d, c, w, p in
+                                     mine[['dataset', 'component', 'ref_wave',
+                                           'pool']].itertuples(index=False)])
+    cols = [c for c in ('algorithm', 'dataset', 'component', 'ref_wave', 'pool',
+                        'rank', 'ranking', 'n_in_contest', 'mae', 'bias', 'win_frac')
+            if c in mine.columns]
+    print(mine[cols].to_string(index=False))
+    return mine[cols]
+
+
 def main(flg, *, n_cores=1, strict=False, config_name=None):
     """Run one stage. ``config_name`` overrides the stage's default config(s)."""
     flg = int(flg)
@@ -235,6 +320,10 @@ def main(flg, *, n_cores=1, strict=False, config_name=None):
             _metrics(name)
         elif flg == 3:
             _report(name)
+        elif flg == 4:
+            _board(name, apply=False)
+        elif flg == 5:
+            _board(name, apply=True)
         elif flg == 9:
             from ioptics import config
             summary(config.load(CONFIGS[name]).sweep_id)
@@ -246,7 +335,8 @@ def _cli(argv=None):
 
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument('flg', nargs='?', type=int, default=0,
-                   help='stage: 1 run, 2 metrics, 3 report, 9 summary (0 = no-op)')
+                   help='stage: 1 run, 2 metrics, 3 report, 4 board preview, '
+                        '5 board fold, 9 summary (0 = no-op)')
     p.add_argument('--n-cores', type=int, default=1,
                    help='parallel workers for prep and the LS2 pass')
     p.add_argument('--strict', default='false',

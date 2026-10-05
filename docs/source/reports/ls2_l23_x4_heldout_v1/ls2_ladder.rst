@@ -216,4 +216,4 @@ Not shown for this sweep
 
 The figure set is derived from what this sweep actually measured, so a panel with no data behind it is omitted rather than published blank. For the record, this page leaves out:
 
-* BING beside LS2 — no comparator sweep was supplied to this build. The LS2-versus-BING head-to-head is read against MCMC BING on the same spectra (ls2 Q23) and lands with ls2 task 14.
+* BING beside LS2 — no comparator sweep was supplied to this build. The LS2-versus-BING head-to-head, against MCMC BING on the same spectra (ls2 Q23), is on the X=4 page and in :ref:`ls2_ours`.

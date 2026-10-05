@@ -387,7 +387,11 @@ def build(docs_root=None, save=True):
         df.to_csv(out / nm, index=False)
     fig_heldout(spectra, out / 'kdl23_heldout.png')
     fig_pangaea(cells, kw, out / 'kdl23_pangaea.png')
-    page = _page(geometry, geo_summary, seed_spread, held, abl, pang, nets, hists)
+    # The page is written from the tables exactly as published (4 decimals), so a
+    # full build and ``--page-only`` (which reads the CSVs back) give the same
+    # text -- found by verify_reports.py (ls2 task 15).
+    page = _page(geometry, tables['kdl23_geometry_summary.csv'],
+                 tables['kdl23_seed_spread.csv'], held, abl, pang, nets, hists)
     path = out / f'{SID}.rst'
     path.write_text(page, encoding='utf-8')
     print(f'wrote {path}')

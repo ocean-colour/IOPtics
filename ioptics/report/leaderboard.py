@@ -373,6 +373,12 @@ def ranked(board, *, stratum=None):
     df = board if stratum is None else board[board['stratum'] == stratum]
     if 'pool' not in df.columns and 'fit_method' in df.columns:
         df = df.assign(pool=df['fit_method'])
+    elif 'pool' in df.columns and 'fit_method' in df.columns \
+            and df['pool'].isna().any():
+        # Rows folded before the column existed sit beside newer rows once a
+        # new sweep is folded in; they are pool = fit_method too, or they drop
+        # out of every contest (NaN never groups) -- found by ls2 task 15.
+        df = df.assign(pool=df['pool'].fillna(df['fit_method']))
     # An empty or un-scored board is a legitimate state (stage 3 before stage 2, a
     # fresh machine), not a crash: the sort keys simply do not exist yet.
     missing = [c for c in _CONTEST + _RANK_BY if c not in df.columns]

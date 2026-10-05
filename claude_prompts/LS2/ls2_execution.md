@@ -454,6 +454,28 @@ also become rung (iii)'s Kd on L23**, replacing the MODIS-band network.
     side-chains cost, and what the re-derivation changed.  Full `pytest -q` both
     modes; `sphinx-build -W` green. Q&A, Log.
 
+15a. **Workstation: fold published LS2 into the leaderboard** (run on JXP's
+     workstation, which holds the full board; needs task 15 committed).
+     The laptop cannot rebuild the landing page: its board lacks
+     `expb_giop_L23_mcmc_full` and `pangaea_fits_v2`, which the committed
+     page carries, and `build_v1.py` stage 5 refuses for exactly that reason.
+     - Pull the repo.  Run, from the repository root with `PYTHONPATH=.`:
+       `build_v1.py 1 --config board --n-cores N`, then `2 --config board`.
+       This is `ls2_l23_x1_board_v1`: `ls2_iii` on L23 X=1 beside `expb_pow`
+       and `giop` χ², about 2 min on 12 cores.
+     - `build_v1.py 4`: the preview.  Check that `ls2_iii` lands in the L23
+       χ² contests beside the other entries, not in a pool of its own, and is
+       "not applicable" on `a_ph`/`a_dg`.
+     - `build_v1.py 5`: fold and rebuild the landing page.  If it refuses,
+       report the sweeps it names; do not work around the guard.
+     - `sphinx-build -W` green.  Commit `docs/source/reports/` (landing page,
+       full grid, profiles) and log the new ranks in this file.
+
+16. **Report** Write a seperate report on all of your activities for LS2 that  
+    you performed with this doc, as well as the results of the tasks.
+    Put it in `reports/LS2/ls2_report.md`.  Include figures.
+    Use Opus 5.5.  Log your work
+
 **Ordering rationale.**  Tasks 1–3 are upstream in `ocpy` and independent of each
 other; 1 gates everything that runs LS2, 2 gates rungs (ii)/(iii), 3 gates rung
 (iii) and gives task 11 its baseline.  Tasks 4–6 are IOPtics core and independent
@@ -796,7 +818,119 @@ the only data our LS2 has been tested on: task 11 found real water
 *Recommended:* (a).  It earns its place on `a`/`a_nw`/`bb`/`bb_p` as an
 honest operational entry; ours waits for an off-L23 test.  Which do you want?
 
+>A. (a) Published only.  *(Answered in session, 2026-10-04.)*
+
 ## Logs
+
+### 2026-10-04 (Q41 answered; task 15 — cleanup and debrief)
+
+**New answers.**  *Q41*, asked in session: **(a)**, only the published
+operational LS2 on the board.  A follow-up, also asked in session: the
+board's L23 contests are elastic (X=1), and a direct-only sweep can't be
+ranked (the board ranks by within-sweep head-to-heads), so JXP chose **X=1
+with BING in the same sweep**.
+
+**Leaderboard: built and previewed here; the fold itself is prompt 15a.**
+- New `run_ls2_l23_x1_board.yaml` (`ls2_l23_x1_board_v1`): `ls2_iii` with
+  Raman off, beside `expb_pow` and `giop` χ², PACE noise, 400–750 nm,
+  `leaderboard: true`.  It ran here in 77 s.
+- `build_v1.py` stage 4 previews the fold on a scratch board, and stage 5
+  folds and rebuilds the landing page.
+- **Stage 5 is guarded.**  The committed landing page carries
+  `expb_giop_L23_mcmc_full` and `pangaea_fits_v2`, which this laptop's board
+  lacks, so a rebuild here would silently drop them.  `missing_from_board`
+  makes stage 5 refuse; the fold goes to the workstation as **prompt 15a**.
+- **Preview** (laptop board): `ls2_iii` joins the L23 χ² contests (8
+  entries).
+  - Ranked last on `bb(670)`, `bb_p(555)` and `bb_p(670)`.
+  - "Indistinguishable" on `a`/`bb(555)`, where the contest separates
+    nobody.
+  - Ranked 3 of 3 on `a_nw(443)`.
+  - "Not applicable" on `a_ph`/`a_dg`.
+- **Bug found on the way and fixed** (`leaderboard.ranked`): rows folded
+  before the `pool` column existed got `pool = NaN` once a newer sweep was
+  folded beside them, and dropped out of every contest.  They now take
+  `pool = fit_method`, as the docstring always said.  New test in
+  `test_head_to_head.py`.
+
+**Q40 (time-boxed; fell back to (b)).**  Hypothesis tested and rejected: a
+serial MCMC run before and after a JAX/Flax training in the same process is
+bit-identical (and after numpy RNG use too).  Two further full-suite runs
+with full tracebacks did not reproduce the failure; it has failed in 4 of
+about 10 full runs, never alone.  `test_mcmc_scale` now compares chains with
+`allclose(rtol=1e-10)`, far below any seeding or ordering error, which would
+change a chain at O(1).  The assertion message gives the share of differing
+entries, the max abs/rel difference, and whether they are bitwise identical,
+so the next occurrence explains itself.
+
+**Pruned / refreshed.**
+- Stale cross-references to "task 14 will…" now point at the pages that
+  exist: the X=1/X=2 ladder pages' no-comparator note, and the `refit_ab`
+  page's κ and limits notes.
+- The trial X=4 board sweep and config made earlier in this task were
+  removed (superseded by the X=1 one).
+- Nothing else was left behind: every prototype script is referenced, or
+  regenerates a page or table.  `verify_context.py` still runs and is cited
+  by `ioptics.kd`.
+
+**Every number regenerates, confirmed.**  New `verify_reports.py` rebuilds
+each LS2 page with its committed script into a scratch root and compares
+every CSV cell by cell and the page text exactly.  The full run (16 min,
+including retraining both Kd networks) gave:
+- **0 differing CSV cells on all 10 LS2 pages**;
+- identical page text on 9;
+- RT-A: "ALL PUBLISHED NUMBERS REPRODUCED".
+
+The tenth page, `ls2_kd_l23`, differed in one figure: "5.3%" against
+"5.2%".  A full build formatted the unrounded geometry summary, while
+`--page-only` read the 4-decimal CSV.  The build now writes the page from
+the published (rounded) tables, so both paths agree.  Re-verified after the fix: `ls2_kd_l23` OK (6 CSVs, 0 cells, page text
+identical), so **ALL LS2 PAGES REGENERATE**.  The debrief page's wording
+was tightened afterwards; it is written by `debrief.py`, so it regenerates by
+construction.
+
+**The debrief** (`docs/source/reports/ls2_debrief/ls2_debrief.rst`, written
+by `debrief.py`; numbers on held-out L23 X=4):
+- **Totals vs decomposition.**
+  - Absorption: our LS2 with true inputs scores `a(440)` 1.2% against
+    BING's 5.9%, and 4.1% vs 5.8% operationally with our network.
+  - Backscattering: BING wins by far, `bb(555)` 4.7% against LS2's 11.2%,
+    because LS2 is band-by-band and inherits each band's Rrs noise.
+  - Decomposition: BING's own `a_ph(440)` 84.6% and `a_dg(440)` 26.1%,
+    against 5.9% for its total `a`.  The split is where BING's error lives.
+    LS2 declines to split, and its `a_nw` (BING's `a_dg + a_ph` without the
+    split) is 1.6% vs 7.4%.
+- **Side chains.**
+  - The Chl/b_p chain is cheap in absolute terms: −0.1 pp on `a(440)` with
+    the published tables, +1.1 pp with ours (1.2% → 2.3%).  The re-derived
+    tables are more sensitive to a wrong η.
+  - The Kd chain is the expensive one, and network-dependent: +13.2 pp with
+    PACE v2.3, +6.3 with MODIS v1.3, +1.8 with our L23 network.
+- **The re-derivation.**
+  - Rung (i) `a` +2.9% → −0.4% (illumination bookkeeping).
+  - `bb` +8.9% → +3.9%: the a/bb refit removed 1.9 points, κ 3.1; 3.9
+    remain at θs = 0°.
+  - κ unavailable 25.3% → 0.2%.
+  - Operational `a(440)` 15.2% → 14.8% (our tables) → 4.1% (and our
+    network).
+  - Unchanged: the band-by-band noise sensitivity of `bb`, and the absence
+    of a decomposition.
+
+**Tests.**  New `test_verify_reports.py` (verifier comparison; every LS2
+page has a generator).  `test_ls2_build.py`: the board config, and the
+landing guard naming what a rebuild would drop.  `test_head_to_head.py`: the
+pool fix.  `test_mcmc_scale.py`: the Q40 change.  `pytest -q` without `$OS_COLOR`: 632 passed, 80 skipped, 3 failed; with
+it: 704 passed, 6 skipped, 5 failed.  These are only the known five
+(`test_spec` ×3, `test_rt_backends` ×2, from bing on `rob_rt`); the Q40 test
+passed.  ocpy: 150 passed, 4 failed (the known `test_plot_oc_scene`).
+`sphinx-build -W` green.
+
+**Files.**  New: `ioptics/runs/prototypes/ls2/{verify_reports,debrief}.py`,
+`run_ls2_l23_x1_board.yaml`, `ioptics/tests/test_verify_reports.py`, and
+`docs/source/reports/ls2_debrief/`.  Changed: `ioptics/report/{leaderboard,
+ls2_ladder}.py`, `ioptics/runs/prototypes/ls2/{build_v1,refit_ab,
+train_kd_l23}.py`, the tests above, and the `ls2_l23_x{1,2}_v1` and
+`ls2_refit_ab` pages.  Prompt **15a** was added above.
 
 ### 2026-10-04 (Task 14 — "our own LS2": run, report, and the final summary)
 

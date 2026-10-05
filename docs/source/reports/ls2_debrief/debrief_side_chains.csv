@@ -1,0 +1,7 @@
+side_chain,tables,from,to,a_440_mae_before,a_440_mae_after,a_440_cost_pp,a_nw_440_mae_before,a_nw_440_mae_after,a_nw_440_cost_pp,bb_555_mae_before,bb_555_mae_after,bb_555_cost_pp,bb_p_555_mae_before,bb_p_555_mae_after,bb_p_555_cost_pp
+Chl/b_p,published,ls2_i,ls2_ii,0.0213,0.0206,-0.07,0.0268,0.0268,-0.0,0.1277,0.1355,0.77,0.2693,0.2927,2.34
+Chl/b_p,re-derived,ls2r_i,ls2r_ii,0.0119,0.023,1.11,0.0157,0.0305,1.48,0.1115,0.1264,1.49,0.2541,0.2797,2.56
+Kd (PACE v2.3),published,ls2_ii,ls2_iii,0.0206,0.1523,13.18,0.0268,0.2031,17.63,0.1355,0.1497,1.43,0.2927,0.3278,3.51
+Kd (MODIS v1.3),published,ls2_ii,ls2_iii_modis,0.0206,0.0832,6.26,0.0268,0.1084,8.16,0.1355,0.1429,0.74,0.2927,0.3062,1.35
+Kd (PACE v2.3),re-derived,ls2r_ii,ls2r_iii,0.023,0.1484,12.54,0.0305,0.1986,16.81,0.1264,0.1458,1.94,0.2797,0.3262,4.66
+Kd (our L23 network),re-derived,ls2r_ii,ls2r_iii_l23,0.023,0.0411,1.81,0.0305,0.054,2.35,0.1264,0.1284,0.21,0.2797,0.285,0.54
