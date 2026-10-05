@@ -5,7 +5,7 @@ Algorithm profile — giop
 In one paragraph
 ----------------
 
-``giop`` has scoreable results on **L23, PANGAEA** across 4 sweep(s). Its best contest is bb(555) on L23, at mae 0.0278 (2.8% multiplicative error); its worst is a_dg(440) on PANGAEA at 7.21. It produced a usable fit for 22%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
+``giop`` has scoreable results on **L23, PANGAEA** across 5 sweep(s). Its best contest is bb(555) on L23, at mae 0.0278 (2.8% multiplicative error); its worst is a_dg(440) on PANGAEA at 7.21. It produced a usable fit for 22%-100% of the spectra it was given, depending on the dataset — read that together with the accuracy, since a good score over few spectra is not a better algorithm than a fair score over all of them.
 
 What it parameterizes
 ---------------------
@@ -41,7 +41,7 @@ Where it has been evaluated
      - L23
      - PANGAEA
    * - ``giop``
-     - scored (n=6576)
+     - scored (n=9853)
      - scored (n=1020)
 
 Accuracy, by dataset and contest
@@ -72,6 +72,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - chisq
      - —
      - indistinguishable
+     - 0.097
+     - 0.0918
+     - 0.523
+     - 0.987
+     - 
+   * - L23
+     - a
+     - 440
+     - all
+     - chisq
+     - —
+     - indistinguishable
      - 0.0958
      - 0.0901
      - 0.425
@@ -94,7 +106,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 440
      - all
      - chisq
-     - 3
+     - 4
      - ranked
      - 0.183
      - 0.183
@@ -128,6 +140,30 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - L23
      - a
      - 440
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - 0.367
+     - 0.367
+     - 0.523
+     - 0.944
+     - 
+   * - L23
+     - a
+     - 440
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - 0.0881
+     - 0.0824
+     - 0.537
+     - 1
+     - 
+   * - L23
+     - a
+     - 440
      - mesotrophic
      - chisq
      - —
@@ -154,12 +190,24 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 440
      - mesotrophic
      - chisq
-     - 3
+     - 4
      - ranked
      - 0.191
      - 0.191
      - 0.0447
      - 0.997
+     - 
+   * - L23
+     - a
+     - 440
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - 0.0677
+     - 0.0637
+     - 0.465
+     - 0.951
      - 
    * - L23
      - a
@@ -190,12 +238,24 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 440
      - oligotrophic
      - chisq
-     - 3
+     - 4
      - ranked
      - 0.133
      - 0.133
      - 0.00942
      - 0.983
+     - 
+   * - L23
+     - a
+     - 443
+     - all
+     - chisq
+     - —
+     - indistinguishable
+     - 0.0938
+     - 0.0887
+     - 0.519
+     - 0.987
      - 
    * - L23
      - a
@@ -226,7 +286,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 443
      - all
      - chisq
-     - 3
+     - 4
      - ranked
      - 0.179
      - 0.179
@@ -260,6 +320,30 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - L23
      - a
      - 443
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - 0.336
+     - 0.335
+     - 0.526
+     - 0.944
+     - 
+   * - L23
+     - a
+     - 443
+     - mesotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - 0.0856
+     - 0.0799
+     - 0.536
+     - 1
+     - 
+   * - L23
+     - a
+     - 443
      - mesotrophic
      - chisq
      - —
@@ -286,12 +370,24 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 443
      - mesotrophic
      - chisq
-     - 3
+     - 4
      - ranked
      - 0.187
      - 0.187
      - 0.0664
      - 0.997
+     - 
+   * - L23
+     - a
+     - 443
+     - oligotrophic
+     - chisq
+     - —
+     - indistinguishable
+     - 0.0682
+     - 0.0645
+     - 0.444
+     - 0.951
      - 
    * - L23
      - a
@@ -322,7 +418,7 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 443
      - oligotrophic
      - chisq
-     - 3
+     - 4
      - ranked
      - 0.132
      - 0.132
@@ -340,6 +436,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - -0.0282
      - 0.694
      - 0.985
+     - 
+   * - L23
+     - a_dg
+     - 440
+     - all
+     - chisq
+     - 2
+     - ranked
+     - 0.202
+     - -0.0307
+     - 0.691
+     - 0.987
      - 
    * - L23
      - a_dg
@@ -392,9 +500,33 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - L23
      - a_dg
      - 440
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - 0.792
+     - -0.0465
+     - 0.629
+     - 0.944
+     - 
+   * - L23
+     - a_dg
+     - 440
      - mesotrophic
      - chisq
      - 1
+     - ranked
+     - 0.184
+     - -0.0319
+     - 0.698
+     - 1
+     - 
+   * - L23
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - 2
      - ranked
      - 0.181
      - -0.0294
@@ -435,6 +567,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.146
      - -0.0222
      - 0.706
+     - 0.951
+     - 
+   * - L23
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - 2
+     - ranked
+     - 0.143
+     - -0.0215
+     - 0.68
      - 0.951
      - 
    * - L23
@@ -490,6 +634,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 443
      - all
      - chisq
+     - 3
+     - ranked
+     - 0.213
+     - -0.0531
+     - 0.688
+     - 0.987
+     - 
+   * - L23
+     - a_dg
+     - 443
+     - all
+     - chisq
      - —
      - indistinguishable
      - 0.177
@@ -524,6 +680,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
    * - L23
      - a_dg
      - 443
+     - eutrophic
+     - chisq
+     - 3
+     - ranked
+     - 0.8
+     - -0.0705
+     - 0.605
+     - 0.944
+     - 
+   * - L23
+     - a_dg
+     - 443
      - mesotrophic
      - chisq
      - 1
@@ -531,6 +699,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.191
      - -0.0518
      - 0.698
+     - 1
+     - 
+   * - L23
+     - a_dg
+     - 443
+     - mesotrophic
+     - chisq
+     - 2
+     - ranked
+     - 0.195
+     - -0.0542
+     - 0.694
      - 1
      - 
    * - L23
@@ -586,6 +766,18 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 443
      - oligotrophic
      - chisq
+     - 3
+     - ranked
+     - 0.156
+     - -0.0434
+     - 0.687
+     - 0.951
+     - 
+   * - L23
+     - a_dg
+     - 443
+     - oligotrophic
+     - chisq
      - —
      - indistinguishable
      - 0.159
@@ -593,200 +785,8 @@ One row per contest **and trophic stratum** — ``all`` is the pooled population
      - 0.512
      - 0.983
      - 
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - chisq
-     - —
-     - indistinguishable
-     - 0.325
-     - 0.305
-     - 0.6
-     - 1
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - chisq
-     - 2
-     - ranked
-     - 0.369
-     - 0.264
-     - 0.545
-     - 0.985
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - chisq
-     - 3
-     - ranked
-     - 0.599
-     - 0.594
-     - 0.157
-     - 0.989
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - 1.29
-     - 0.142
-     - 0.516
-     - 0.91
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - eutrophic
-     - chisq
-     - 2
-     - ranked
-     - 0.664
-     - 0.635
-     - 0.46
-     - 0.904
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - 1
-     - ranked
-     - 0.326
-     - 0.262
-     - 0.547
-     - 1
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - —
-     - indistinguishable
-     - 0.319
-     - 0.288
-     - 0.462
-     - 1
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - chisq
-     - 3
-     - ranked
-     - 0.592
-     - 0.59
-     - 0.144
-     - 0.997
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - 1
-     - ranked
-     - 0.338
-     - 0.338
-     - 0.857
-     - 1
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - 2
-     - ranked
-     - 0.363
-     - 0.305
-     - 0.547
-     - 0.951
-     - 
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - chisq
-     - 3
-     - ranked
-     - 0.61
-     - 0.599
-     - 0.14
-     - 0.983
-     - 
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - chisq
-     - —
-     - indistinguishable
-     - 0.355
-     - 0.346
-     - 0.6
-     - 1
-     - 
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - chisq
-     - 2
-     - ranked
-     - 0.386
-     - 0.29
-     - 0.516
-     - 0.985
-     - 
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - chisq
-     - 3
-     - ranked
-     - 0.63
-     - 0.626
-     - 0.142
-     - 0.989
-     - 
-   * - L23
-     - a_ph
-     - 443
-     - eutrophic
-     - chisq
-     - 1
-     - ranked
-     - 0.625
-     - 0.593
-     - 0.62
-     - 0.904
-     - 
-   * - L23
-     - a_ph
-     - 443
-     - eutrophic
-     - chisq
-     - —
-     - indistinguishable
-     - 1.26
-     - 0.115
-     - 0.503
-     - 0.91
-     - 
 
-(110 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(158 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Are its uncertainties honest?
 -----------------------------
@@ -804,6 +804,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - coverage68
      - coverage95
      - coverage_n
+   * - L23
+     - a
+     - 440
+     - all
+     - 0.22
+     - 0.425
+     - 3.27e+03
    * - L23
      - a
      - 440
@@ -842,6 +849,20 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - L23
      - a
      - 440
+     - eutrophic
+     - 0.025
+     - 0.0938
+     - 160
+   * - L23
+     - a
+     - 440
+     - mesotrophic
+     - 0.232
+     - 0.444
+     - 2.49e+03
+   * - L23
+     - a
+     - 440
      - mesotrophic
      - 0.227
      - 0.452
@@ -864,6 +885,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - a
      - 440
      - oligotrophic
+     - 0.221
+     - 0.432
+     - 616
+   * - L23
+     - a
+     - 440
+     - oligotrophic
      - 0.211
      - 0.474
      - 616
@@ -881,6 +909,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 0.00314
      - 0.00785
      - 637
+   * - L23
+     - a
+     - 443
+     - all
+     - 0.221
+     - 0.428
+     - 3.27e+03
    * - L23
      - a
      - 443
@@ -919,6 +954,20 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - L23
      - a
      - 443
+     - eutrophic
+     - 0.0312
+     - 0.125
+     - 160
+   * - L23
+     - a
+     - 443
+     - mesotrophic
+     - 0.235
+     - 0.448
+     - 2.49e+03
+   * - L23
+     - a
+     - 443
      - mesotrophic
      - 0.227
      - 0.456
@@ -937,6 +986,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 0
      - 0.00121
      - 2.49e+03
+   * - L23
+     - a
+     - 443
+     - oligotrophic
+     - 0.213
+     - 0.424
+     - 616
    * - L23
      - a
      - 443
@@ -969,6 +1025,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - a_dg
      - 440
      - all
+     - 0.351
+     - 0.627
+     - 3.28e+03
+   * - L23
+     - a_dg
+     - 440
+     - all
      - 0.35
      - 0.75
      - 20
@@ -996,6 +1059,20 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - L23
      - a_dg
      - 440
+     - eutrophic
+     - 0.428
+     - 0.717
+     - 166
+   * - L23
+     - a_dg
+     - 440
+     - mesotrophic
+     - 0.356
+     - 0.642
+     - 2.49e+03
+   * - L23
+     - a_dg
+     - 440
      - mesotrophic
      - 0.367
      - 0.66
@@ -1019,6 +1096,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - 440
      - oligotrophic
      - 0.284
+     - 0.542
+     - 616
+   * - L23
+     - a_dg
+     - 440
+     - oligotrophic
+     - 0.31
      - 0.542
      - 616
    * - L23
@@ -1053,6 +1137,13 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - a_dg
      - 443
      - all
+     - 0.334
+     - 0.597
+     - 3.28e+03
+   * - L23
+     - a_dg
+     - 443
+     - all
      - 0.337
      - 0.611
      - 3.28e+03
@@ -1073,9 +1164,23 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
    * - L23
      - a_dg
      - 443
+     - eutrophic
+     - 0.404
+     - 0.711
+     - 166
+   * - L23
+     - a_dg
+     - 443
      - mesotrophic
      - 0.346
      - 0.622
+     - 2.49e+03
+   * - L23
+     - a_dg
+     - 443
+     - mesotrophic
+     - 0.34
+     - 0.611
      - 2.49e+03
    * - L23
      - a_dg
@@ -1109,123 +1214,18 @@ A retrieval can be the most accurate and still be over-confident: the verdict co
      - a_dg
      - 443
      - oligotrophic
+     - 0.292
+     - 0.51
+     - 616
+   * - L23
+     - a_dg
+     - 443
+     - oligotrophic
      - 0.356
      - 0.647
      - 637
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - 0.3
-     - 0.5
-     - 20
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - 0.283
-     - 0.513
-     - 3.27e+03
-   * - L23
-     - a_ph
-     - 440
-     - all
-     - 0.0341
-     - 0.107
-     - 3.28e+03
-   * - L23
-     - a_ph
-     - 440
-     - eutrophic
-     - 0.217
-     - 0.369
-     - 157
-   * - L23
-     - a_ph
-     - 440
-     - eutrophic
-     - 0.0187
-     - 0.0625
-     - 160
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - 0.292
-     - 0.529
-     - 2.49e+03
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - 0.385
-     - 0.538
-     - 13
-   * - L23
-     - a_ph
-     - 440
-     - mesotrophic
-     - 0.0301
-     - 0.0993
-     - 2.49e+03
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - 0.143
-     - 0.429
-     - 7
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - 0.263
-     - 0.484
-     - 616
-   * - L23
-     - a_ph
-     - 440
-     - oligotrophic
-     - 0.0534
-     - 0.146
-     - 637
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - 0.3
-     - 0.4
-     - 20
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - 0.27
-     - 0.483
-     - 3.27e+03
-   * - L23
-     - a_ph
-     - 443
-     - all
-     - 0.0244
-     - 0.0834
-     - 3.28e+03
-   * - L23
-     - a_ph
-     - 443
-     - eutrophic
-     - 0.0187
-     - 0.075
-     - 160
-   * - L23
-     - a_ph
-     - 443
-     - eutrophic
-     - 0.248
-     - 0.369
-     - 157
 
-(110 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(158 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 Head-to-head against the others
 -------------------------------
@@ -1906,7 +1906,7 @@ Head-to-head against the others
      - 0.206
      - underpowered
 
-(205 further rows are on the :doc:`/reports/leaderboard_full` page.)
+(285 further rows are on the :doc:`/reports/leaderboard_full` page.)
 
 What varied between sweeps
 --------------------------
@@ -1950,11 +1950,17 @@ not strictly like-for-like:
      - 0.0.dev0@039c2b2
      - 0.0.dev0@f242b0e
      - da6dff9
+   * - ls2_l23_x1_board_v1
+     - 3a2b4a921aeb
+     - 4
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
 
 
 .. note::
 
-   These sweeps were recorded under **different provenance schemas** (2, 3; current is 4). A block written under an earlier schema could not record ``maxfev`` or the MCMC settings, so a digest difference here may reflect what was *written down* rather than what was configured — and, in the other direction, two blocks can agree while one of them silently ran a raised iteration budget.
+   These sweeps were recorded under **different provenance schemas** (2, 3, 4; current is 4). A block written under an earlier schema could not record ``maxfev`` or the MCMC settings, so a digest difference here may reflect what was *written down* rather than what was configured — and, in the other direction, two blocks can agree while one of them silently ran a raised iteration budget.
 
 Per-spectrum behaviour
 ----------------------

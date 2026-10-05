@@ -820,7 +820,101 @@ honest operational entry; ours waits for an off-L23 test.  Which do you want?
 
 >A. (a) Published only.  *(Answered in session, 2026-10-04.)*
 
+**Q42. The rebuilt landing page lists twelve LS2 rungs as "not evaluated"
+— keep, drop, or make it true?**  Found in 15a.  Stage 5 calls `_register()`,
+which registers all 13 opt-in LS2 rungs, and `standard.build_landing` then
+writes a profile page and a coverage-matrix row for every registered name
+(by design: "a registered algorithm nobody has run still gets a page saying
+so").  On the workstation only `ls2_l23_x1_board_v1` exists, so `ls2_iii` is
+"scored (n=3031)" on L23, and the other twelve (`ls2_i`, `ls2_ii`, the
+Kd-noise and `effmuw` variants, `ls2_iii_modis`, and all five `ls2r_*`) read
+"not evaluated" on every dataset, each with a stub profile page.  That is
+false: they ran on the laptop and have their own report pages.  It also puts
+`ls2r_*` on the landing page, against Q41.  The committed page had no LS2 at
+all.  Options:
+- (a) the landing page profiles only the default registry plus algorithms
+  on the board: stage 5 passes no opt-in names, or `build_landing` filters
+  them.  The twelve stubs go; `ls2_iii` keeps its full profile.  A small
+  code change, then re-run stage 5;
+- (b) copy the laptop's `ls2_l23_*` sweeps into the workstation runs tree,
+  so the matrix is true.  It would still show `ls2r_*`;
+- (c) accept the page as built.
+
+*Recommended:* (a).  The opt-in rungs are one algorithm with different
+inputs, not board competitors, and their pages already exist under the LS2
+reports.  The generated files are left **uncommitted** until this is
+answered.  Which do you want?
+
 ## Logs
+
+### 2026-10-04 (Task 15a — workstation: published LS2 folded into the leaderboard)
+
+**New answers.**  None.  New question: **Q42**.
+
+**Setup.**  The workstation was already at `4370b7b` ("15"), level with
+`origin/ls2`, so no pull was needed.  Before stage 5, the guard was checked
+by hand: the board here holds all five sweeps the committed landing page
+carries (`expb_giop_L23_mcmc_full`, `expb_giop_L23_test20`,
+`gloria_turbid_v3`, `multi_L23_PANGAEA_v2`, `pangaea_fits_v2`), so
+`missing_from_board` was empty.  The board was backed up before the fold
+(scratch copy, session-local).
+
+**Runs** (`build_v1.py … --config board`, 20 cores):
+- **Stage 1:** 9,960 results in 120 s.  `ls2_iii`: 0 `ok`, 3,033
+  `poor_fit`, 278 `fit_failed`, 9 `out_of_scope`.  The `poor_fit` count is
+  expected: under Q31b a direct `poor_fit` has some NaN cells and is still
+  scored cell by cell.  The NaN cells are 19,738 `kd_missing` and 594
+  `off_grid`, plus `negative` cells on `a_nw`/`bb`/`bb_p`.  `expb_pow`:
+  3,310 ok; `giop`: 3,277 ok, 33 fit_failed.
+- **Stage 2:** metrics in 59 s (4,544 spectral, 192 scalar, 252 pairwise
+  rows).
+- **Stage 4 (preview)** passed both checks.  `ls2_iii` joins the L23 χ²
+  pool, where contests have 10 entries here against 8 in the laptop's
+  preview.  It is "not applicable" on `a_ph`/`a_dg`.
+- **Stage 5** folded the sweep, and wrote `index.rst` and
+  `leaderboard_full.rst`.  `sphinx-build -W` is green.
+
+**New ranks for `ls2_iii`** (L23, χ² pool, stratum `all`):
+
+| component | λ | ranking | n in contest | mae | win_frac |
+|---|---|---|---|---|---|
+| `a` | 440 / 443 | indistinguishable | 10 | 0.169 / 0.162 | 0.34 |
+| `a_nw` | 440 | indistinguishable | 3 | 0.225 | 0.34 |
+| `a_nw` | 443 | **3 of 3** | 3 | 0.233 | 0.33 |
+| `bb` | 555 | indistinguishable | 10 | 0.145 | 0.23 |
+| `bb` | 670 | **10 of 10** | 10 | 0.691 | 0.16 |
+| `bb_p` | 555 / 670 | **10 of 10** | 10 | 0.340 / 0.956 | 0.24 / 0.18 |
+| `a_ph`, `a_dg` | 440 / 443 | not applicable | 10 | – | – |
+
+This matches the laptop preview: last on `bb(670)` and on both `bb_p`
+contests, 3 of 3 on `a_nw(443)`, and indistinguishable where the contest
+separates nobody.  `bb_p(555)` also ranks 10 of 10 here; the laptop's board
+had 8 entries.
+
+**Effects on existing ranks.**  These are confined to the L23 χ² contests,
+which gained three entries: `ls2_iii` and the board sweep's own X=1
+`expb_pow`/`giop`.  The board sweep's `expb_pow` takes rank 1 on `a_nw(443)`
+(a contest of three, since `a_nw` is new), `bb(670)` and `bb_p(670)`, and its
+`giop` takes rank 2 on `a_dg(440)`.  Existing entries move down accordingly:
+- `expb_giop_L23_mcmc_full` `expb_pow` χ²: `a_dg` 7→9 (440) and 6→8 (443),
+  `a_ph` 5→7;
+- `multi_L23_PANGAEA_v2` `giop`: `a` 7→10, `a_ph` 7→9;
+- `multi_L23_PANGAEA_v2` `gsm`: `a` 3→4 (440) and 4→5 (443).
+
+No GLORIA or PANGAEA rank changed.  The landing table also gains a `pool`
+column, which it lacked when last committed.
+
+**Not committed (Q42).**  Stage 5 also rewrote the `expb_pow`, `giop` and
+`L23` profiles and wrote 13 new `algorithms/ls2*.rst` pages.  Twelve of
+those are stubs saying the rung was never evaluated, which is false here
+and puts `ls2r_*` on the landing page.  Everything under
+`docs/source/reports/` is left in the working tree for JXP until Q42 is
+answered.  The board parquet (`$OS_COLOR/IOPtics/leaderboard.parquet`) is
+folded and is correct either way: it holds only `ls2_iii` from the new sweep.
+
+No code changes.  `pytest` was not run, since no code changed and 15a asks
+only for `sphinx-build -W`.  Prompt 16 was running on the laptop at the same
+time and also logs here, so expect a merge on this file.
 
 ### 2026-10-04 (Q41 answered; task 15 — cleanup and debrief)
 

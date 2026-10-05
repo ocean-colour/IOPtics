@@ -15,6 +15,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - component
      - ref_wave
      - stratum
+     - pool
      - fit_method
      - rank
      - ranking
@@ -46,6 +47,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow2
@@ -75,6 +77,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -106,6 +109,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -135,6 +139,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -166,6 +171,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_powflex
@@ -195,6 +201,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -226,6 +233,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -255,6 +263,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -286,6 +295,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow2
@@ -315,6 +325,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -346,6 +357,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -375,6 +387,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -406,6 +419,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow2
@@ -435,6 +449,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -466,6 +481,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow2flat
@@ -495,6 +511,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -526,6 +543,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -555,6 +573,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -586,7 +605,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
-     - 3
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.63
+     - 0.0449
+     - 0.0981
+     - 0.443
+     - 0.935
+     - 3.19e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 440
+     - all
+     - chisq
+     - chisq
+     - 4
      - ranked
      - gsm
      - 0.578
@@ -615,6 +666,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -646,6 +698,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.523
+     - 0.0918
+     - 0.097
+     - 0.22
+     - 0.425
+     - 3.27e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 440
+     - all
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -675,6 +759,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - all
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.34
+     - 0.00398
+     - 0.169
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 440
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -706,7 +822,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
-     - 7
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.0744
@@ -735,6 +852,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -766,6 +884,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -795,6 +914,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - eutrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -826,6 +946,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -856,7 +977,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - direct
      - 3
+     - ranked
+     - ls2_iii
+     - 0.699
+     - 0.0559
+     - 0.274
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.523
+     - 0.367
+     - 0.367
+     - 0.025
+     - 0.0938
+     - 160
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 5
      - ranked
      - expb_pow
      - 0.41
@@ -886,7 +1070,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
-     - 4
+     - chisq
+     - 6
      - ranked
      - expb_pow
      - 0.28
@@ -916,7 +1101,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 7
+     - ranked
+     - expb_pow
+     - 0.279
+     - 0.571
+     - 0.575
+     - 0.116
+     - 0.451
+     - 164
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 8
      - ranked
      - gsm
      - 0.241
@@ -945,6 +1162,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -976,6 +1194,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -1005,6 +1224,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - mesotrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.631
+     - 0.0217
+     - 0.0835
+     - 0.497
+     - 0.96
+     - 2.4e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 440
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -1036,7 +1287,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
-     - 3
+     - chisq
+     - 4
      - ranked
      - gsm
      - 0.57
@@ -1065,6 +1317,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -1096,6 +1349,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.537
+     - 0.0824
+     - 0.0881
+     - 0.232
+     - 0.444
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 440
+     - mesotrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -1125,6 +1410,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -1156,7 +1442,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
-     - 7
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.326
+     - 0.00124
+     - 0.17
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 440
+     - mesotrophic
+     - chisq
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.0447
@@ -1185,6 +1503,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -1216,6 +1535,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -1246,6 +1566,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -1275,6 +1596,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -1306,6 +1628,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -1336,7 +1659,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.728
+     - 0.0255
+     - 0.0534
+     - 0.322
+     - 0.968
+     - 625
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
      - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
+     - 5
      - ranked
      - gsm
      - 0.682
@@ -1365,6 +1720,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - oligotrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.465
+     - 0.0637
+     - 0.0677
+     - 0.221
+     - 0.432
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 440
+     - oligotrophic
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.289
+     - 4.44e-05
+     - 0.132
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 440
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -1396,6 +1814,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -1426,7 +1845,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
-     - 7
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.00942
@@ -1455,6 +1875,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 440
      - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -1486,6 +1907,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -1515,6 +1937,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -1546,6 +1969,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -1575,6 +1999,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - all
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.639
+     - 0.0438
+     - 0.0944
+     - 0.435
+     - 0.933
+     - 3.19e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 443
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -1606,7 +2062,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
-     - 4
+     - chisq
+     - 5
      - ranked
      - gsm
      - 0.535
@@ -1635,6 +2092,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - all
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.519
+     - 0.0887
+     - 0.0938
+     - 0.221
+     - 0.428
+     - 3.27e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 443
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -1666,6 +2155,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.336
+     - -0.00468
+     - 0.162
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 443
+     - all
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -1696,7 +2217,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
-     - 7
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.0905
@@ -1725,6 +2247,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -1756,6 +2279,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -1785,6 +2309,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - eutrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -1816,6 +2341,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -1846,7 +2372,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - direct
      - 3
+     - ranked
+     - ls2_iii
+     - 0.699
+     - 0.0522
+     - 0.25
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.526
+     - 0.335
+     - 0.336
+     - 0.0312
+     - 0.125
+     - 160
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 5
      - ranked
      - expb_pow
      - 0.465
@@ -1876,7 +2465,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
-     - 4
+     - chisq
+     - 6
      - ranked
      - expb_pow
      - 0.28
@@ -1906,7 +2496,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 7
+     - ranked
+     - expb_pow
+     - 0.276
+     - 0.531
+     - 0.537
+     - 0.128
+     - 0.482
+     - 164
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 8
      - ranked
      - gsm
      - 0.19
@@ -1935,6 +2557,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -1966,6 +2589,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -1995,6 +2619,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - mesotrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.639
+     - 0.0218
+     - 0.0809
+     - 0.491
+     - 0.958
+     - 2.4e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 443
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2026,6 +2682,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -2056,7 +2713,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.536
+     - 0.0799
+     - 0.0856
+     - 0.235
+     - 0.448
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
      - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 6
      - ranked
      - gsm
      - 0.522
@@ -2085,6 +2774,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2116,6 +2806,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -2146,7 +2837,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
-     - 7
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.319
+     - -0.00622
+     - 0.163
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.0664
@@ -2175,6 +2898,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -2206,6 +2930,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -2235,6 +2960,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2266,6 +2992,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - expb_pow
@@ -2295,6 +3022,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2326,7 +3054,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.742
+     - 0.0263
+     - 0.0516
+     - 0.299
+     - 0.954
+     - 625
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
      - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a
+     - 443
+     - oligotrophic
+     - chisq
+     - chisq
+     - 5
      - ranked
      - gsm
      - 0.662
@@ -2355,6 +3115,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - oligotrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.444
+     - 0.0645
+     - 0.0682
+     - 0.213
+     - 0.424
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a
+     - 443
+     - oligotrophic
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.295
+     - -0.0153
+     - 0.131
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a
+     - 443
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2386,6 +3209,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -2416,7 +3240,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
-     - 7
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.00863
@@ -2445,6 +3270,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a
      - 443
      - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -2476,6 +3302,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -2505,6 +3332,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -2536,6 +3364,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.691
+     - -0.0307
+     - 0.202
+     - 0.351
+     - 0.627
+     - 3.28e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 440
+     - all
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -2565,6 +3425,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2596,6 +3457,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -2625,6 +3487,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -2656,6 +3519,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -2686,7 +3550,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
-     - 7
+     - chisq
+     - 8
+     - ranked
+     - expb_pow
+     - 0.309
+     - 0.0568
+     - 0.333
+     - 0.934
+     - 0.993
+     - 3.31e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 440
+     - all
+     - chisq
+     - chisq
+     - 9
      - ranked
      - expb_pow
      - 0.306
@@ -2715,6 +3611,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 440
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -2746,6 +3674,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -2775,6 +3704,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -2806,6 +3736,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -2836,7 +3767,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - 3
+     - ranked
+     - giop
+     - 0.629
+     - -0.0465
+     - 0.792
+     - 0.428
+     - 0.717
+     - 166
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
      - ranked
      - gsm
      - 0.424
@@ -2866,7 +3829,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.371
+     - 0.302
+     - 0.994
+     - 0.759
+     - 0.898
+     - 166
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
      - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 6
      - ranked
      - expb_pow
      - 0.354
@@ -2896,7 +3891,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.352
@@ -2925,6 +3921,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 440
+     - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -2956,7 +3984,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 1
+     - ranked
+     - giop
+     - 0.698
+     - -0.0319
+     - 0.184
+     - 0.356
+     - 0.642
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - chisq
+     - 2
      - ranked
      - giop
      - 0.694
@@ -2985,6 +4045,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3016,6 +4077,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -3045,6 +4107,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3076,6 +4139,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -3105,6 +4169,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3136,7 +4201,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
-     - 7
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.306
@@ -3165,6 +4231,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
+     - chisq
+     - 9
+     - ranked
+     - expb_pow
+     - 0.302
+     - 0.0522
+     - 0.32
+     - 0.933
+     - 0.998
+     - 2.5e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 440
+     - mesotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 440
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -3196,6 +4325,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -3225,6 +4355,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -3256,6 +4387,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.68
+     - -0.0215
+     - 0.143
+     - 0.31
+     - 0.542
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -3285,6 +4448,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3316,6 +4480,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -3345,6 +4510,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3376,6 +4542,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -3406,7 +4573,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
-     - 7
+     - chisq
+     - 8
+     - ranked
+     - expb_pow
+     - 0.32
+     - 0.0184
+     - 0.247
+     - 0.978
+     - 1
+     - 648
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
+     - 9
      - ranked
      - expb_pow
      - 0.294
@@ -3435,6 +4634,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 440
+     - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -3466,6 +4697,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -3495,6 +4727,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3526,6 +4759,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -3555,6 +4789,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.688
+     - -0.0531
+     - 0.213
+     - 0.334
+     - 0.597
+     - 3.28e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 443
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3586,6 +4852,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -3615,6 +4882,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3646,7 +4914,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
-     - 6
+     - chisq
+     - 7
+     - ranked
+     - expb_pow
+     - 0.312
+     - 0.0452
+     - 0.351
+     - 0.934
+     - 0.993
+     - 3.31e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 443
+     - all
+     - chisq
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.302
@@ -3675,6 +4975,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -3705,6 +5006,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 443
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -3735,6 +5068,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - mcmc
      - mcmc
      - 2
      - ranked (no head-to-head)
@@ -3766,6 +5100,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -3795,6 +5130,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - eutrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -3826,7 +5162,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 3
+     - ranked
+     - giop
+     - 0.605
+     - -0.0705
+     - 0.8
+     - 0.404
+     - 0.711
+     - 166
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
      - ranked
      - gsm
      - 0.479
@@ -3856,7 +5224,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
+     - 5
+     - ranked
+     - expb_pow
+     - 0.395
+     - 0.274
+     - 0.983
+     - 0.765
+     - 0.904
+     - 166
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
      - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 6
      - ranked
      - expb_pow
      - 0.373
@@ -3886,7 +5286,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.332
@@ -3915,6 +5316,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - eutrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 443
+     - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -3946,6 +5379,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -3975,6 +5409,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.694
+     - -0.0542
+     - 0.195
+     - 0.34
+     - 0.611
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 443
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4006,6 +5472,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -4035,6 +5502,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4066,6 +5534,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -4095,6 +5564,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4126,7 +5596,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
-     - 7
+     - chisq
+     - 8
+     - ranked
+     - expb_pow
+     - 0.306
+     - 0.0418
+     - 0.339
+     - 0.934
+     - 0.998
+     - 2.5e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 9
      - ranked
      - expb_pow
      - 0.302
@@ -4155,6 +5657,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 443
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -4186,6 +5720,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -4215,6 +5750,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -4246,6 +5782,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -4275,6 +5812,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.687
+     - -0.0434
+     - 0.156
+     - 0.292
+     - 0.51
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_dg
+     - 443
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4306,6 +5875,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -4335,6 +5905,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4366,6 +5937,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
+     - 7
+     - ranked
+     - expb_pow
+     - 0.313
+     - 0.00581
+     - 0.266
+     - 0.98
+     - 1
+     - 648
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_dg
+     - 443
+     - oligotrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -4396,7 +5999,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - expb_pow
      - 0.282
@@ -4425,6 +6029,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_dg
+     - 443
+     - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -4456,6 +6092,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -4482,9 +6119,754 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 2
      - expb_giop_L23_test20#expb_pow
    * - L23
+     - a_nw
+     - 440
+     - all
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.629
+     - 0.0521
+     - 0.123
+     - 0.443
+     - 0.935
+     - 3.19e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 440
+     - all
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.527
+     - 0.118
+     - 0.125
+     - 0.22
+     - 0.425
+     - 3.27e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 440
+     - all
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.337
+     - -0.0031
+     - 0.225
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 440
+     - eutrophic
+     - chisq
+     - direct
+     - 1
+     - ranked
+     - ls2_iii
+     - 0.699
+     - 0.056
+     - 0.285
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.523
+     - 0.38
+     - 0.381
+     - 0.025
+     - 0.0938
+     - 160
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.279
+     - 0.591
+     - 0.595
+     - 0.116
+     - 0.451
+     - 164
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 440
+     - mesotrophic
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.631
+     - 0.0244
+     - 0.105
+     - 0.497
+     - 0.96
+     - 2.4e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 440
+     - mesotrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.54
+     - 0.104
+     - 0.112
+     - 0.232
+     - 0.444
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 440
+     - mesotrophic
+     - chisq
+     - direct
+     - 3
+     - ranked
+     - ls2_iii
+     - 0.323
+     - -0.00527
+     - 0.22
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.725
+     - 0.048
+     - 0.092
+     - 0.322
+     - 0.968
+     - 625
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.472
+     - 0.109
+     - 0.116
+     - 0.221
+     - 0.432
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 440
+     - oligotrophic
+     - chisq
+     - direct
+     - 3
+     - ranked
+     - ls2_iii
+     - 0.284
+     - -0.0117
+     - 0.228
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 443
+     - all
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.638
+     - 0.0527
+     - 0.124
+     - 0.435
+     - 0.933
+     - 3.19e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 443
+     - all
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.525
+     - 0.121
+     - 0.128
+     - 0.221
+     - 0.428
+     - 3.27e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 443
+     - all
+     - chisq
+     - direct
+     - 3
+     - ranked
+     - ls2_iii
+     - 0.33
+     - -0.0193
+     - 0.233
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 443
+     - eutrophic
+     - chisq
+     - direct
+     - 1
+     - ranked
+     - ls2_iii
+     - 0.69
+     - 0.0525
+     - 0.262
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.532
+     - 0.351
+     - 0.352
+     - 0.0312
+     - 0.125
+     - 160
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.279
+     - 0.554
+     - 0.56
+     - 0.128
+     - 0.482
+     - 164
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.638
+     - 0.0252
+     - 0.106
+     - 0.491
+     - 0.958
+     - 2.4e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.541
+     - 0.106
+     - 0.114
+     - 0.235
+     - 0.448
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 443
+     - mesotrophic
+     - chisq
+     - direct
+     - 3
+     - ranked
+     - ls2_iii
+     - 0.314
+     - -0.0179
+     - 0.225
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_nw
+     - 443
+     - oligotrophic
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.741
+     - 0.0546
+     - 0.0976
+     - 0.299
+     - 0.954
+     - 625
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_nw
+     - 443
+     - oligotrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.452
+     - 0.122
+     - 0.128
+     - 0.213
+     - 0.424
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_nw
+     - 443
+     - oligotrophic
+     - chisq
+     - direct
+     - 3
+     - ranked
+     - ls2_iii
+     - 0.288
+     - -0.0471
+     - 0.257
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
      - a_ph
      - 440
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -4516,6 +6898,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 2
      - ranked
      - expb_pow
@@ -4546,6 +6929,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -4575,6 +6959,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - all
+     - chisq
      - chisq
      - 4
      - ranked
@@ -4606,7 +6991,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 5
+     - ranked
+     - giop
+     - 0.541
+     - 0.255
+     - 0.386
+     - 0.273
+     - 0.507
+     - 3.27e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 440
+     - all
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.459
+     - -0.347
+     - 1.07
+     - 0.963
+     - 0.992
+     - 3.19e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 440
+     - all
+     - chisq
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.455
@@ -4635,6 +7083,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4666,7 +7115,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - giop
      - 0.157
@@ -4695,6 +7145,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - all
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 440
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -4726,6 +7208,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -4755,6 +7238,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - eutrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -4786,6 +7270,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -4815,6 +7300,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - eutrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.509
+     - 0.332
+     - 0.94
+     - 0.624
+     - 0.867
+     - 165
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 440
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.491
+     - -0.0987
+     - 1.81
+     - 0.255
+     - 0.373
+     - 161
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 440
+     - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -4846,7 +7394,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
-     - 4
+     - chisq
+     - 6
      - ranked
      - giop
      - 0.46
@@ -4876,7 +7425,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 7
      - ranked
      - gsm
      - 0.455
@@ -4905,6 +7455,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - eutrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 440
+     - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -4936,6 +7518,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -4965,6 +7548,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -4996,6 +7580,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -5025,6 +7610,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - mesotrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.546
+     - 0.271
+     - 0.33
+     - 0.276
+     - 0.514
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 440
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -5056,6 +7673,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -5086,7 +7704,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
-     - 6
+     - chisq
+     - 7
+     - ranked
+     - expb_pow
+     - 0.454
+     - -0.393
+     - 1.1
+     - 0.98
+     - 0.998
+     - 2.4e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 440
+     - mesotrophic
+     - chisq
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.453
@@ -5116,7 +7766,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - giop
      - 0.144
@@ -5145,6 +7796,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - mesotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 440
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -5176,6 +7859,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -5206,6 +7890,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -5235,6 +7920,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -5266,6 +7952,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - expb_pow
@@ -5295,6 +7982,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -5326,7 +8014,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 5
+     - ranked
+     - giop
+     - 0.536
+     - 0.304
+     - 0.352
+     - 0.266
+     - 0.511
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.464
+     - -0.28
+     - 0.959
+     - 0.987
+     - 1
+     - 625
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 440
+     - oligotrophic
+     - chisq
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.453
@@ -5356,7 +8107,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
-     - 6
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.143
@@ -5386,7 +8138,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - giop
      - 0.14
@@ -5415,6 +8168,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - oligotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 440
+     - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -5446,6 +8231,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -5475,6 +8261,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -5506,6 +8293,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 2
      - ranked
      - expb_pow
@@ -5535,6 +8323,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -5566,6 +8355,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 4
      - ranked
      - giop
@@ -5596,7 +8386,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 5
+     - ranked
+     - giop
+     - 0.51
+     - 0.281
+     - 0.404
+     - 0.253
+     - 0.475
+     - 3.27e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 443
+     - all
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.49
+     - -0.331
+     - 1.03
+     - 0.963
+     - 0.992
+     - 3.19e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 443
+     - all
+     - chisq
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.484
@@ -5625,6 +8478,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -5656,7 +8510,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - giop
      - 0.142
@@ -5685,6 +8540,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 443
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -5716,6 +8603,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -5746,6 +8634,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -5775,6 +8664,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - eutrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -5806,6 +8696,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.515
+     - 0.302
+     - 0.903
+     - 0.642
+     - 0.873
+     - 165
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -5835,6 +8757,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -5866,7 +8789,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 0.485
+     - -0.122
+     - 1.78
+     - 0.248
+     - 0.385
+     - 161
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 443
+     - eutrophic
+     - chisq
+     - chisq
+     - 7
      - ranked
      - gsm
      - 0.197
@@ -5895,6 +8850,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - eutrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 443
+     - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -5926,6 +8913,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -5955,6 +8943,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -5986,6 +8975,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -6015,6 +9005,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -6046,7 +9037,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 5
+     - ranked
+     - giop
+     - 0.514
+     - 0.296
+     - 0.345
+     - 0.26
+     - 0.486
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.486
+     - -0.378
+     - 1.06
+     - 0.979
+     - 0.998
+     - 2.4e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 443
+     - mesotrophic
+     - chisq
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.481
@@ -6075,6 +9129,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6106,7 +9161,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - giop
      - 0.123
@@ -6135,6 +9191,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 443
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -6166,6 +9254,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -6196,6 +9285,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -6225,6 +9315,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -6256,6 +9347,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - expb_pow
@@ -6285,6 +9377,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -6316,7 +9409,70 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 5
+     - ranked
+     - expb_pow
+     - 0.5
+     - -0.254
+     - 0.94
+     - 0.984
+     - 1
+     - 625
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - a_ph
+     - 443
+     - oligotrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 0.5
+     - 0.354
+     - 0.389
+     - 0.227
+     - 0.458
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - a_ph
+     - 443
+     - oligotrophic
+     - chisq
+     - chisq
+     - 7
      - ranked
      - expb_pow
      - 0.495
@@ -6346,7 +9502,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
-     - 6
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.143
@@ -6376,7 +9533,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
-     - 7
+     - chisq
+     - 9
      - ranked
      - giop
      - 0.104
@@ -6405,6 +9563,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - oligotrophic
+     - chisq
+     - direct
+     - —
+     - not applicable
+     - ls2_iii
+     - —
+     - —
+     - —
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - not_applicable
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - a_ph
+     - 443
+     - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -6436,6 +9626,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -6465,6 +9656,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6496,6 +9688,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.63
+     - -0.0213
+     - 0.0515
+     - 0.428
+     - 0.729
+     - 3.28e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 555
+     - all
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.626
+     - 0.0102
+     - 0.0549
+     - 0.817
+     - 0.961
+     - 3.31e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 555
+     - all
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -6525,6 +9780,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6556,6 +9812,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -6585,6 +9842,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6616,6 +9874,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -6645,6 +9904,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - all
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.233
+     - -0.034
+     - 0.145
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 555
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6676,6 +9967,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - mcmc
+     - mcmc
      - 1
      - ranked (no head-to-head)
      - expb_pow
@@ -6705,6 +9997,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - all
+     - mcmc
      - mcmc
      - 2
      - ranked (no head-to-head)
@@ -6736,6 +10029,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -6765,6 +10059,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6796,7 +10091,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
-     - 3
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.652
+     - 0.0929
+     - 0.122
+     - 0.311
+     - 0.491
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 555
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
      - ranked
      - giop
      - 0.593
@@ -6825,6 +10152,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - eutrophic
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.542
+     - -0.0946
+     - 0.143
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 555
+     - eutrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.306
+     - 0.193
+     - 0.217
+     - 0.425
+     - 0.707
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 555
+     - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6856,7 +10246,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.158
@@ -6885,6 +10276,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -6916,6 +10308,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -6945,6 +10338,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - mesotrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - expb_pow
+     - 0.655
+     - -0.00585
+     - 0.0471
+     - 0.874
+     - 0.988
+     - 2.5e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 555
+     - mesotrophic
+     - chisq
+     - chisq
+     - —
+     - indistinguishable
+     - giop
+     - 0.609
+     - -0.0355
+     - 0.05
+     - 0.424
+     - 0.725
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 555
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -6976,6 +10432,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -7005,6 +10462,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7036,6 +10494,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7065,6 +10524,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7096,6 +10556,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7125,6 +10586,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - mesotrophic
+     - chisq
+     - direct
+     - —
+     - indistinguishable
+     - ls2_iii
+     - 0.227
+     - -0.0322
+     - 0.139
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 555
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -7156,6 +10649,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -7185,6 +10679,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7216,6 +10711,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7245,6 +10741,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - oligotrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.714
+     - 0.00763
+     - 0.0395
+     - 0.477
+     - 0.81
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 555
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7276,6 +10804,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7305,6 +10834,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - oligotrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.598
+     - 0.0293
+     - 0.0462
+     - 0.699
+     - 0.921
+     - 648
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 555
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7336,6 +10897,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -7365,6 +10927,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - oligotrophic
+     - chisq
+     - direct
+     - 9
+     - ranked
+     - ls2_iii
+     - 0.163
+     - -0.0223
+     - 0.173
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 555
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7396,6 +10990,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - mcmc
+     - mcmc
      - 1
      - ranked (no head-to-head)
      - expb_pow
@@ -7425,6 +11020,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 555
      - oligotrophic
+     - mcmc
      - mcmc
      - 2
      - ranked (no head-to-head)
@@ -7456,6 +11052,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.789
+     - 0.0258
+     - 0.0878
+     - 0.766
+     - 0.958
+     - 3.31e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 670
+     - all
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -7485,6 +11113,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7516,6 +11145,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -7545,6 +11175,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - all
+     - chisq
+     - chisq
+     - 5
+     - ranked
+     - giop
+     - 0.524
+     - -0.0943
+     - 0.127
+     - 0.152
+     - 0.31
+     - 3.28e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 670
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7576,6 +11238,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7605,6 +11268,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7636,6 +11300,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7665,6 +11330,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - all
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.159
+     - -0.143
+     - 0.691
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 670
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -7696,6 +11393,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -7725,6 +11423,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7756,6 +11455,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -7785,6 +11485,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - eutrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.568
+     - 0.138
+     - 0.147
+     - 0.257
+     - 0.563
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 670
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.511
+     - 0.124
+     - 0.148
+     - 0.24
+     - 0.407
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 670
+     - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7816,6 +11579,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - chisq
+     - direct
+     - 6
+     - ranked
+     - ls2_iii
+     - 0.422
+     - -0.172
+     - 0.277
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 670
+     - eutrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -7845,6 +11640,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7876,6 +11672,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - mcmc
+     - mcmc
      - —
      - sole competitor
      - expb_pow
@@ -7905,6 +11702,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - mesotrophic
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.827
+     - 0.0127
+     - 0.083
+     - 0.79
+     - 0.978
+     - 2.5e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 670
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7936,6 +11765,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -7965,6 +11795,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -7996,6 +11827,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -8025,6 +11857,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - mesotrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 0.495
+     - -0.117
+     - 0.137
+     - 0.113
+     - 0.247
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 670
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8056,6 +11920,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8086,6 +11951,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8115,6 +11981,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - mesotrophic
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.152
+     - -0.143
+     - 0.682
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 670
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -8146,6 +12044,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -8175,6 +12074,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8206,6 +12106,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8235,6 +12136,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - oligotrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.694
+     - 0.0496
+     - 0.0916
+     - 0.802
+     - 0.981
+     - 648
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb
+     - 670
+     - oligotrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.652
+     - -0.0523
+     - 0.0822
+     - 0.284
+     - 0.539
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb
+     - 670
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8266,6 +12230,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8295,6 +12260,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8326,6 +12292,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -8356,6 +12323,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8385,6 +12353,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - oligotrophic
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.0957
+     - -0.131
+     - 0.917
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb
+     - 670
+     - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -8415,6 +12415,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb
      - 670
      - oligotrophic
+     - mcmc
      - mcmc
      - 2
      - ranked (no head-to-head)
@@ -8446,6 +12447,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -8475,6 +12477,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - giop
+     - 0.627
+     - -0.0369
+     - 0.104
+     - 0.428
+     - 0.729
+     - 3.28e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 555
+     - all
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.626
+     - 0.0224
+     - 0.108
+     - 0.817
+     - 0.961
+     - 3.31e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 555
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8506,6 +12571,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8535,6 +12601,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8566,6 +12633,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -8595,6 +12663,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8626,6 +12695,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8655,6 +12725,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.236
+     - -0.0775
+     - 0.34
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 555
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -8686,6 +12788,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -8715,6 +12818,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - eutrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -8746,6 +12850,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -8776,7 +12881,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
+     - chisq
      - 3
+     - ranked
+     - giop
+     - 0.649
+     - 0.105
+     - 0.145
+     - 0.311
+     - 0.491
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 555
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
      - ranked
      - giop
      - 0.593
@@ -8805,6 +12942,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - eutrophic
+     - chisq
+     - direct
+     - 5
+     - ranked
+     - ls2_iii
+     - 0.539
+     - -0.117
+     - 0.184
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 555
+     - eutrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.312
+     - 0.224
+     - 0.257
+     - 0.425
+     - 0.707
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 555
+     - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8836,7 +13036,8 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
-     - 5
+     - chisq
+     - 8
      - ranked
      - expb_pow
      - 0.158
@@ -8865,6 +13066,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - eutrophic
+     - mcmc
      - mcmc
      - —
      - sole competitor
@@ -8896,6 +13098,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -8925,6 +13128,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
+     - chisq
+     - 2
+     - ranked
+     - expb_pow
+     - 0.655
+     - -0.00862
+     - 0.0912
+     - 0.874
+     - 0.988
+     - 2.5e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 555
+     - mesotrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - giop
+     - 0.605
+     - -0.0635
+     - 0.0989
+     - 0.424
+     - 0.725
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 555
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -8956,6 +13222,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -8985,6 +13252,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9016,6 +13284,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -9045,6 +13314,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9076,6 +13346,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -9105,6 +13376,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.23
+     - -0.0649
+     - 0.298
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 555
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -9136,6 +13439,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -9165,6 +13469,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -9196,6 +13501,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -9226,7 +13532,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - 3
+     - ranked
+     - giop
+     - 0.712
+     - 0.0393
+     - 0.116
+     - 0.477
+     - 0.81
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 555
+     - oligotrophic
+     - chisq
+     - chisq
+     - 4
      - ranked
      - expb_pow
      - 0.707
@@ -9255,6 +13593,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9286,6 +13625,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
+     - 6
+     - ranked
+     - expb_pow
+     - 0.598
+     - 0.0988
+     - 0.139
+     - 0.699
+     - 0.921
+     - 648
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 555
+     - oligotrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -9315,6 +13686,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9346,7 +13718,39 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
-     - 7
+     - direct
+     - 9
+     - ranked
+     - ls2_iii
+     - 0.163
+     - -0.118
+     - 0.603
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 555
+     - oligotrophic
+     - chisq
+     - chisq
+     - 10
      - ranked
      - giop
      - 0.0549
@@ -9375,6 +13779,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -9406,6 +13811,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -9435,6 +13841,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.783
+     - 0.047
+     - 0.147
+     - 0.766
+     - 0.958
+     - 3.31e+03
+     - 0.997
+     - 3.32e+03
+     - 0.0106
+     - 0.000301
+     - 0.00271
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 670
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9466,6 +13904,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -9495,6 +13934,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9526,6 +13966,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -9555,6 +13996,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 0.492
+     - -0.145
+     - 0.21
+     - 0.152
+     - 0.31
+     - 3.28e+03
+     - 0.987
+     - 3.32e+03
+     - 0.00702
+     - 0.000301
+     - 0.00271
+     - 0.00994
+     - 1.02
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 670
+     - all
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9586,6 +14059,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -9616,6 +14090,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -9645,6 +14120,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.181
+     - -0.0605
+     - 0.956
+     - —
+     - —
+     - 0
+     - 0
+     - 3.32e+03
+     - —
+     - 0.914
+     - 0.00271
+     - 0.0837
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 670
+     - all
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -9676,6 +14183,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -9705,6 +14213,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9736,6 +14245,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -9765,6 +14275,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - eutrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.569
+     - 0.154
+     - 0.164
+     - 0.257
+     - 0.563
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.03
+     - 0.111
+     - 0.112
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 670
+     - eutrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.509
+     - 0.135
+     - 0.165
+     - 0.24
+     - 0.407
+     - 167
+     - 0.944
+     - 177
+     - 0.00599
+     - 0.00565
+     - 0.0508
+     - 0
+     - 1.09
+     - 0.117
+     - 0.117
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 670
+     - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9796,6 +14369,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - chisq
+     - direct
+     - 6
+     - ranked
+     - ls2_iii
+     - 0.421
+     - -0.187
+     - 0.315
+     - —
+     - —
+     - 0
+     - 0
+     - 177
+     - —
+     - 0.944
+     - 0.0508
+     - 0.00565
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 670
+     - eutrophic
+     - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -9825,6 +14430,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9856,6 +14462,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - mcmc
+     - mcmc
      - —
      - sole competitor
      - expb_pow
@@ -9885,6 +14492,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - mesotrophic
+     - chisq
+     - chisq
+     - 1
+     - ranked
+     - expb_pow
+     - 0.825
+     - 0.0233
+     - 0.134
+     - 0.79
+     - 0.978
+     - 2.5e+03
+     - 1
+     - 2.5e+03
+     - 0.01
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.107
+     - 0.107
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 670
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9916,6 +14555,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -9945,6 +14585,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -9976,6 +14617,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -10005,6 +14647,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - mesotrophic
+     - chisq
+     - chisq
+     - 6
+     - ranked
+     - giop
+     - 0.463
+     - -0.175
+     - 0.223
+     - 0.113
+     - 0.247
+     - 2.49e+03
+     - 1
+     - 2.5e+03
+     - 0.00561
+     - 0
+     - 0
+     - 0.000401
+     - 1.03
+     - 0.113
+     - 0.113
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 670
+     - mesotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -10036,6 +14710,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -10066,6 +14741,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -10095,6 +14771,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - mesotrophic
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.172
+     - -0.0958
+     - 0.962
+     - —
+     - —
+     - 0
+     - 0
+     - 2.5e+03
+     - —
+     - 0.931
+     - 0
+     - 0.0693
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 670
+     - mesotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -10126,6 +14834,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -10155,6 +14864,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -10186,6 +14896,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -10215,6 +14926,69 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
+     - chisq
+     - 3
+     - ranked
+     - expb_pow
+     - 0.667
+     - 0.115
+     - 0.197
+     - 0.802
+     - 0.981
+     - 648
+     - 1
+     - 648
+     - 0.0139
+     - 0
+     - 0
+     - 0
+     - 1.01
+     - 0.106
+     - 0.106
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 7b92d31846e5
+     - 4
+     - ls2_l23_x1_board_v1#expb_pow
+   * - L23
+     - bb_p
+     - 670
+     - oligotrophic
+     - chisq
+     - chisq
+     - 4
+     - ranked
+     - giop
+     - 0.619
+     - -0.083
+     - 0.171
+     - 0.284
+     - 0.539
+     - 616
+     - 0.951
+     - 648
+     - 0.013
+     - 0
+     - 0
+     - 0.0494
+     - 1
+     - 0.108
+     - 0.108
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 3a2b4a921aeb
+     - 4
+     - ls2_l23_x1_board_v1#giop
+   * - L23
+     - bb_p
+     - 670
+     - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -10246,6 +15020,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -10275,6 +15050,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -10306,6 +15082,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -10336,6 +15113,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -10365,6 +15143,38 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
+     - direct
+     - 10
+     - ranked
+     - ls2_iii
+     - 0.12
+     - 0.219
+     - 1.3
+     - —
+     - —
+     - 0
+     - 0
+     - 648
+     - —
+     - 0.84
+     - 0
+     - 0.16
+     - —
+     - —
+     - —
+     - 
+     - 0.0.dev0@4370b7b
+     - 0.0.dev0@bf56f6d
+     - 0.1.0@8d6396a
+     - 4bf208e69f4b
+     - 4
+     - ls2_l23_x1_board_v1#ls2_iii
+   * - L23
+     - bb_p
+     - 670
+     - oligotrophic
+     - mcmc
      - mcmc
      - 1
      - ranked (no head-to-head)
@@ -10396,6 +15206,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - mcmc
+     - mcmc
      - 2
      - ranked (no head-to-head)
      - expb_pow
@@ -10426,6 +15237,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -10455,6 +15267,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - 2
      - ranked
@@ -10486,6 +15299,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 3
      - ranked
      - expb_pow
@@ -10515,6 +15329,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - 4
      - ranked
@@ -10546,6 +15361,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -10575,6 +15391,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - all
+     - chisq
      - chisq
      - 6
      - ranked
@@ -10606,6 +15423,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -10635,6 +15453,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -10666,6 +15485,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - expb_pow
@@ -10695,6 +15515,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -10726,6 +15547,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -10755,6 +15577,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - eutrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -10786,6 +15609,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -10815,6 +15639,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -10846,6 +15671,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -10875,6 +15701,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -10906,6 +15733,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - expb_pow
@@ -10935,6 +15763,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -10966,6 +15795,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -10995,6 +15825,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -11026,6 +15857,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -11055,6 +15887,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -11086,6 +15919,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -11115,6 +15949,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -11146,6 +15981,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -11175,6 +16011,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - unknown
+     - chisq
      - chisq
      - 2
      - ranked
@@ -11206,6 +16043,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -11235,6 +16073,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - unknown
+     - chisq
      - chisq
      - 4
      - ranked
@@ -11266,6 +16105,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -11295,6 +16135,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 440
      - unknown
+     - chisq
      - chisq
      - 6
      - ranked
@@ -11326,6 +16167,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -11355,6 +16197,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
      - chisq
      - 2
      - ranked
@@ -11386,6 +16229,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 3
      - ranked
      - expb_pow
@@ -11415,6 +16259,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
      - chisq
      - 4
      - ranked
@@ -11446,6 +16291,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -11475,6 +16321,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - all
+     - chisq
      - chisq
      - 6
      - ranked
@@ -11506,6 +16353,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -11535,6 +16383,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - eutrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -11566,6 +16415,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - expb_pow
@@ -11595,6 +16445,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - eutrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -11626,6 +16477,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -11655,6 +16507,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - eutrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -11686,6 +16539,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -11715,6 +16569,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -11746,6 +16601,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -11775,6 +16631,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -11806,6 +16663,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - expb_pow
@@ -11835,6 +16693,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -11866,6 +16725,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -11895,6 +16755,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -11926,6 +16787,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -11955,6 +16817,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -11986,6 +16849,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -12015,6 +16879,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -12046,6 +16911,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - unknown
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -12075,6 +16941,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - unknown
+     - chisq
      - chisq
      - 2
      - ranked
@@ -12106,6 +16973,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - unknown
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -12135,6 +17003,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - unknown
+     - chisq
      - chisq
      - 4
      - ranked
@@ -12166,6 +17035,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - unknown
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -12195,6 +17065,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_dg
      - 443
      - unknown
+     - chisq
      - chisq
      - 6
      - ranked
@@ -12225,6 +17096,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -12256,6 +17128,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -12285,6 +17158,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - all
+     - chisq
      - chisq
      - 3
      - ranked
@@ -12316,6 +17190,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 4
      - ranked
      - expb_pow
@@ -12345,6 +17220,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - all
+     - chisq
      - chisq
      - 5
      - ranked
@@ -12376,6 +17252,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - all
      - chisq
+     - chisq
      - 6
      - ranked
      - gsm
@@ -12405,6 +17282,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -12436,6 +17314,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -12465,6 +17344,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -12496,6 +17376,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -12525,6 +17406,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -12556,6 +17438,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -12585,6 +17468,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -12616,6 +17500,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - expb_pow
@@ -12645,6 +17530,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 3
      - ranked
@@ -12676,6 +17562,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 4
      - ranked
      - giop
@@ -12705,6 +17592,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - mesotrophic
+     - chisq
      - chisq
      - 5
      - ranked
@@ -12736,6 +17624,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - mesotrophic
      - chisq
+     - chisq
      - 6
      - ranked
      - gsm
@@ -12765,6 +17654,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -12796,6 +17686,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - expb_pow
@@ -12825,6 +17716,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 3
      - ranked
@@ -12856,6 +17748,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 4
      - ranked
      - giop
@@ -12885,6 +17778,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - oligotrophic
+     - chisq
      - chisq
      - 5
      - ranked
@@ -12916,6 +17810,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - oligotrophic
      - chisq
+     - chisq
      - 6
      - ranked
      - gsm
@@ -12945,6 +17840,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -12976,6 +17872,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -13005,6 +17902,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13036,6 +17934,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -13066,6 +17965,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 440
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -13095,6 +17995,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 440
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13126,6 +18027,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -13155,6 +18057,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
      - chisq
      - 2
      - ranked
@@ -13186,6 +18089,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -13215,6 +18119,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
      - chisq
      - 4
      - ranked
@@ -13246,6 +18151,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - all
      - chisq
+     - chisq
      - 5
      - ranked
      - gsm
@@ -13275,6 +18181,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - all
+     - chisq
      - chisq
      - 6
      - ranked
@@ -13306,6 +18213,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -13335,6 +18243,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13366,6 +18275,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -13395,6 +18305,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13426,6 +18337,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - eutrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -13455,6 +18367,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13486,6 +18399,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -13515,6 +18429,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -13546,6 +18461,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -13575,6 +18491,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -13606,6 +18523,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - mesotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - gsm
@@ -13635,6 +18553,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - mesotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -13666,6 +18585,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - expb_pow
@@ -13695,6 +18615,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -13726,6 +18647,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -13755,6 +18677,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -13786,6 +18709,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - oligotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - gsm
@@ -13815,6 +18739,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - oligotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -13846,6 +18771,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -13875,6 +18801,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13906,6 +18833,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -13935,6 +18863,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -13966,6 +18895,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 443
      - unknown
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -13995,6 +18925,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - a_ph
      - 443
      - unknown
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -14025,6 +18956,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -14056,6 +18988,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - 2
      - ranked
      - gsm
@@ -14085,6 +19018,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
      - chisq
      - 3
      - ranked
@@ -14116,6 +19050,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - 4
      - ranked
      - giop
@@ -14145,6 +19080,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - all
+     - chisq
      - chisq
      - 5
      - ranked
@@ -14176,6 +19112,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - all
      - chisq
+     - chisq
      - 6
      - ranked
      - expb_pow
@@ -14205,6 +19142,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - eutrophic
+     - chisq
      - chisq
      - 1
      - ranked
@@ -14236,6 +19174,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - gsm
@@ -14265,6 +19204,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - eutrophic
+     - chisq
      - chisq
      - 3
      - ranked
@@ -14296,6 +19236,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - eutrophic
      - chisq
+     - chisq
      - 4
      - ranked
      - expb_pow
@@ -14325,6 +19266,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - eutrophic
+     - chisq
      - chisq
      - 5
      - ranked
@@ -14356,6 +19298,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -14385,6 +19328,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -14416,6 +19360,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - gsm
@@ -14445,6 +19390,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -14476,6 +19422,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - mesotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - expb_pow
@@ -14505,6 +19452,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - mesotrophic
+     - chisq
      - chisq
      - 6
      - ranked
@@ -14536,6 +19484,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - gsm
@@ -14565,6 +19514,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -14596,6 +19546,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -14625,6 +19576,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -14656,6 +19608,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - oligotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - giop
@@ -14685,6 +19638,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -14716,6 +19670,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - unknown
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -14745,6 +19700,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - unknown
+     - chisq
      - chisq
      - 2
      - ranked
@@ -14776,6 +19732,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - unknown
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -14805,6 +19762,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 555
      - unknown
+     - chisq
      - chisq
      - 4
      - ranked
@@ -14836,6 +19794,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 555
      - unknown
      - chisq
+     - chisq
      - 5
      - ranked
      - expb_pow
@@ -14865,6 +19824,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
      - chisq
      - 1
      - ranked
@@ -14896,6 +19856,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - 2
      - ranked
      - gsm
@@ -14925,6 +19886,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
      - chisq
      - 3
      - ranked
@@ -14956,6 +19918,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - 4
      - ranked
      - expb_pow
@@ -14985,6 +19948,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - all
+     - chisq
      - chisq
      - 5
      - ranked
@@ -15016,6 +19980,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - all
      - chisq
+     - chisq
      - 6
      - ranked
      - gsm
@@ -15045,6 +20010,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -15076,6 +20042,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -15105,6 +20072,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - eutrophic
+     - chisq
      - chisq
      - 3
      - ranked
@@ -15136,6 +20104,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - eutrophic
      - chisq
+     - chisq
      - 4
      - ranked
      - expb_pow
@@ -15165,6 +20134,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - eutrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -15196,6 +20166,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - 1
      - ranked
      - giop
@@ -15225,6 +20196,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - mesotrophic
+     - chisq
      - chisq
      - 2
      - ranked
@@ -15256,6 +20228,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - 3
      - ranked
      - giop
@@ -15285,6 +20258,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - mesotrophic
+     - chisq
      - chisq
      - 4
      - ranked
@@ -15316,6 +20290,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - mesotrophic
      - chisq
+     - chisq
      - 5
      - ranked
      - expb_pow
@@ -15345,6 +20320,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -15376,6 +20352,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - giop
@@ -15405,6 +20382,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -15436,6 +20414,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - expb_pow
@@ -15465,6 +20444,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - oligotrophic
+     - chisq
      - chisq
      - —
      - indistinguishable
@@ -15496,6 +20476,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - oligotrophic
      - chisq
+     - chisq
      - —
      - indistinguishable
      - gsm
@@ -15525,6 +20506,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - unknown
+     - chisq
      - chisq
      - 1
      - ranked
@@ -15556,6 +20538,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - unknown
      - chisq
+     - chisq
      - 2
      - ranked
      - giop
@@ -15585,6 +20568,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - unknown
+     - chisq
      - chisq
      - 3
      - ranked
@@ -15616,6 +20600,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - 670
      - unknown
      - chisq
+     - chisq
      - 4
      - ranked
      - expb_pow
@@ -15645,6 +20630,7 @@ The landing page shows the ``stratum="all"`` headline. This is the complete fold
      - bb_p
      - 670
      - unknown
+     - chisq
      - chisq
      - 5
      - ranked
