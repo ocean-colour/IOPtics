@@ -289,3 +289,54 @@ def test_pure_water_delta_is_pinned():
     assert abs(d['a_w']['summary']['min']) < 1e-6
     assert d['b_w']['summary']['median'] == pytest.approx(-0.00271, abs=1e-4)
     assert d['b_w']['summary']['max'] - d['b_w']['summary']['min'] < 2e-4
+
+
+# --- our own LS2: the re-derived rungs (ls2 task 14) ------------------------------
+
+@pytest.fixture(scope='module')
+def ours():
+    return registry.register_direct_l23()
+
+
+def test_each_rederived_twin_differs_only_in_its_tables(rungs, ours):
+    """A published rung and its twin see identical inputs; only spec.lut moves."""
+    rec = _record()
+    for pub, red in (('ls2_i', 'ls2r_i'), ('ls2_i', 'ls2r_i_ab'),
+                     ('ls2_ii', 'ls2r_ii'), ('ls2_iii', 'ls2r_iii')):
+        assert _diff(rungs[pub], ours[red], rec) == set(), red
+        assert rungs[pub].lut == 'published' and ours[red].lut != 'published'
+    assert ours['ls2r_i_ab'].lut == 'L23_v1' and ours['ls2r_i'].lut == 'L23_abk_v1'
+    # the L23-network rung differs from ls2r_iii in Kd alone -- and in where
+    # Kd is missing: our network's output stops at 400 nm, this record starts
+    # at 350 nm, and those bands come back kd_missing
+    assert _diff(ours['ls2r_iii'], ours['ls2r_iii_l23'], rec) == {'Kd', 'kd_missing'}
+    x = ls2.inputs(ours['ls2r_iii_l23'], rec)
+    assert x['kd_missing'][WAVE < 400].all() and not x['kd_missing'][WAVE >= 400].any()
+
+
+def test_the_tables_load_by_name_and_differ():
+    pub, ab, abk = (ls2._lut(n) for n in ('published', 'L23_v1', 'L23_abk_v1'))
+    assert ab['a'].shape == pub['a'].shape == (21, 8, 4)
+    assert not np.allclose(ab['a'], pub['a'])
+    np.testing.assert_array_equal(ab['kappa'], pub['kappa'])     # published kappa
+    np.testing.assert_array_equal(abk['a'], ab['a'])            # same a/bb refit
+    assert abk['kappa'][0, 0] == 350. and abk['kappa'][-1, 0] == 750.
+
+
+def test_the_rederived_rungs_run_and_kappa_covers_more(rungs, ours):
+    rec = _record()
+    for name, spec in ours.items():
+        res = run.run_algorithm(spec, rec)
+        assert np.isfinite(res.components['a'].med).any(), name
+    pub = ls2.invert(rungs['ls2_i'], rec)['scalars']['frac_kappa_oor'][0]
+    red = ls2.invert(ours['ls2r_i'], rec)['scalars']['frac_kappa_oor'][0]
+    assert red < pub                    # no 702 nm stop, no 502 nm hole
+
+
+def test_an_unknown_lut_or_l23_network_is_refused():
+    with pytest.raises(ValueError, match='lut'):
+        DirectSpec(name='x', label='x', lut='L23_v9')
+    with pytest.raises(ValueError, match='kd_source'):
+        DirectSpec(name='x', label='x', kd_source='l23:L23_nope')
+    spec = DirectSpec(name='x', label='x').with_overrides({'lut': 'L23_abk_v1'})
+    assert spec.lut == 'L23_abk_v1'

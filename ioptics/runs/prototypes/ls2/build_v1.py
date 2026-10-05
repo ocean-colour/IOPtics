@@ -29,7 +29,9 @@ before the real sweeps are launched::
     python build_v1.py 1 --config smoke
     python build_v1.py 2 --config smoke
 
-``--config x4`` (or ``x2``, ``x1``) runs one realization.
+``--config x4`` (or ``x2``, ``x1``) runs one realization.  ``--config
+heldout`` runs every rung -- published, re-derived and ``ls2r_iii_l23`` -- on
+L23 X=4's 498 held-out scenarios only (ls2 task 14, Q39).
 
 The rungs are **opt-in** (they are one algorithm with different inputs, not
 competing retrievals), so every stage that resolves a name calls
@@ -50,13 +52,16 @@ CONFIGS = {
     'x2': os.path.join(HERE, 'run_ls2_l23_x2.yaml'),
     'x1': os.path.join(HERE, 'run_ls2_l23_x1.yaml'),
     'smoke': os.path.join(HERE, 'run_smoke.yaml'),
+    'heldout': os.path.join(HERE, 'run_ls2_l23_x4_heldout.yaml'),
 }
 
 #: Default config(s) per stage; a tuple runs each in order. X=4 first: it is
 #: the realization the BING comparison (RT-A) used, and the one the smoke
 #: mirrors, so a problem shows up on the sweep that matters most.
-STAGE_CONFIG = {1: ('x4', 'x2', 'x1'), 2: ('x4', 'x2', 'x1'),
-                3: ('x4', 'x2', 'x1'), 9: ('x4', 'x2', 'x1')}
+STAGE_CONFIG = {1: ('x4', 'x2', 'x1', 'heldout'),
+                2: ('x4', 'x2', 'x1', 'heldout'),
+                3: ('x4', 'x2', 'x1', 'heldout'),
+                9: ('x4', 'x2', 'x1', 'heldout')}
 
 #: BING sweep each LS2 sweep is set beside on its page (ls2 Q23: the headline
 #: is quoted against MCMC BING on the same spectra). RT-A ran BING on L23 X=4
@@ -77,10 +82,18 @@ COMPARATOR_ALGORITHM = {'x4': 'expb_pow_hyb_ramfl'}
 SMOKE_L23_IDS = list(range(15)) + [75]
 
 
+def heldout_ids():
+    """The 498 held-out L23 scenarios (ls2 Q39): ``kd_net``'s test split."""
+    from ioptics import kd_net
+    return [int(i) for i in kd_net.split_scenarios()['test']]
+
+
 def bounded_obs_ids(config_name):
     """``{dataset: ids}`` for ``run_sweep``, or ``None`` to run in full."""
     if config_name == 'smoke':
         return {'L23': list(SMOKE_L23_IDS)}
+    if config_name == 'heldout':
+        return {'L23': heldout_ids()}
     if config_name in CONFIGS:
         return None
     raise KeyError(f'unknown config {config_name!r}; known: {sorted(CONFIGS)}')
@@ -89,7 +102,7 @@ def bounded_obs_ids(config_name):
 def _register():
     """Opt into the LS2 rungs; returns ``{name: DirectSpec}``."""
     from ioptics.algorithms import registry
-    return registry.register_direct()
+    return {**registry.register_direct(), **registry.register_direct_l23()}
 
 
 def _run(config_name, *, n_cores, strict):

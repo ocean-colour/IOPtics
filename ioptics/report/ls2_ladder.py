@@ -55,10 +55,11 @@ from ioptics.report.standard import (DEFAULT_DOCS_SRC, _fig_section,
 PAGE = 'ls2_ladder'
 
 #: Ladder order = insertion order of the registry seed.
-LADDER = tuple(registry.DIRECT_SEED)
+LADDER = tuple(registry.DIRECT_SEED) + tuple(registry.DIRECT_SEED_L23)
 
 #: Human labels per rung, from the registry seed.
-LABELS = {name: label for name, (label, _) in registry.DIRECT_SEED.items()}
+LABELS = {name: label for name, (label, _) in
+          {**registry.DIRECT_SEED, **registry.DIRECT_SEED_L23}.items()}
 
 #: The rung everything else is read against: LS2 with true inputs.
 BASE_RUNG = 'ls2_i'
@@ -84,6 +85,21 @@ NOT_APPLICABLE = 'not applicable'
 #: nearly all of ``a``, and a few-percent error in ``a`` becomes hundreds of
 #: percent in the small difference. The tables keep every band.
 ANW_SHARE_FLOOR = 0.10
+
+#: Published rung -> its re-derived twin (ls2 task 14).  ``ls2r_i_ab`` keeps
+#: the published kappa, so ``ls2_i -> ls2r_i_ab -> ls2r_i`` splits the gain
+#: between the a/bb tables and kappa.  ``ls2r_iii_l23`` swaps the Kd source
+#: as well (our L23 network) and appears only in the held-out sweep (Q39).
+REDERIVED_PAIRS = (('ls2_i', 'ls2r_i_ab'), ('ls2_i', 'ls2r_i'),
+                   ('ls2_ii', 'ls2r_ii'), ('ls2_iii', 'ls2r_iii'),
+                   ('ls2_iii', 'ls2r_iii_l23'))
+
+#: Rungs drawn on the accuracy-vs-wavelength figure: true inputs, the two
+#: operational Kd networks, the effective-muw diagnostic, and the re-derived
+#: twins.  The Kd-noise and intermediate rungs are in the tables; with every
+#: rung overlaid the palette repeats and the figure stops being readable.
+FIGURE_RUNGS = ('ls2_i', 'ls2_iii', 'ls2_iii_modis', 'ls2_i_effmuw',
+                'ls2r_i', 'ls2r_iii', 'ls2r_iii_l23')
 
 #: The BING population the LS2 headline is quoted against (ls2 Q23).
 COMPARATOR_FIT_METHOD = 'mcmc'
@@ -254,6 +270,42 @@ def comparator_rows(compare_sweep, *, root=None,
     return (f'BING {algo} ({fit_method}, {sw.sweep_id})', sub)
 
 
+def rederived_table(sweep, *, stratum='all', root=None, write=True):
+    """Published rung against its re-derived twin, cell by cell (ls2 task 14).
+
+    One row per :data:`REDERIVED_PAIRS` entry present in the sweep, with
+    ``median_ratio`` and ``mae`` for both rungs at every :data:`LADDER_CELLS`
+    cell.  Read from ``metrics_scalar`` (the same numbers as the ladder
+    table).  Writes ``rederived_<stratum>.csv`` when ``write``; empty when the
+    sweep carries no re-derived rung.
+    """
+    sweep = figures.resolve(sweep, root)
+    ms = sweep.metrics_scalar
+    if ms is None or ms.empty:
+        return pd.DataFrame()
+    sub = _in_pool(ms, _pool(sweep))
+    sub = sub[sub['stratum'] == stratum]
+    rows = []
+    for pub, red in REDERIVED_PAIRS:
+        gp, gr = sub[sub['algorithm'] == pub], sub[sub['algorithm'] == red]
+        if gp.empty or gr.empty:
+            continue
+        row = {'published': pub, 're_derived': red}
+        for comp, ref in LADDER_CELLS:
+            tag = f'{comp}_{int(ref)}'
+            for side, g in (('pub', gp), ('red', gr)):
+                got = _cell_values(g, comp, ref)
+                if got is not None and got[0] > 0:
+                    row[f'{tag}_ratio_{side}'] = got[3]
+                    row[f'{tag}_mae_{side}'] = got[1]
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    if write and not df.empty:
+        out = figures.subdir(sweep, 'tables') / f'rederived_{stratum}.csv'
+        df.round(4).to_csv(out, index=False)
+    return df
+
+
 def kd_noise_table(sweep, *, stratum='all', root=None, write=True):
     """LS2's accuracy against relative Kd noise, and the slope (ls2 Q15/Q33).
 
@@ -338,6 +390,8 @@ def accuracy_spectrum(sweep, *, pool, floor=ANW_SHARE_FLOOR, dataset=None):
     for comp in ('a', 'a_nw', 'bb', 'bb_p'):
         data = diagnostics.accuracy_spectrum_data(
             sweep.metrics_spectral, comp, dataset=dataset, fit_method=pool)
+        data['series'] = {k: v for k, v in data['series'].items()
+                          if k in FIGURE_RUNGS}
         if comp == 'a_nw':
             for algo, s in list(data['series'].items()):
                 mask = np.isin(np.asarray(s['wave'], dtype=float), list(kept))
@@ -690,6 +744,35 @@ def build(sweep_id, *, root=None, docs_root=None, compare_sweep=None,
             + ' The LS2-versus-BING head-to-head is read against MCMC BING on '
               'the same spectra (ls2 Q23) and lands with ls2 task 14.')
 
+    # ---- published vs re-derived (ls2 task 14) ---------------------------------
+    rd = rederived_table(sweep)
+    if not rd.empty:
+        held = 'heldout' in sweep_id
+        blocks.append(_table_section(
+            sweep, report_dir, 'Published tables against our own (re-derived)',
+            tables_dir / 'rederived_all.csv',
+            'Each published rung beside its re-derived twin.',
+            desc=('Each row pairs a rung run on the authors\' tables with the same '
+                  'rung on the L23 re-derivations: ``a``/``bb`` from ls2 task 12 '
+                  'and κ from task 13 (``ls2r_i_ab`` keeps the published κ, so '
+                  '``ls2_i`` → ``ls2r_i_ab`` → ``ls2r_i`` splits the gain '
+                  'between the two). ``_pub``/``_red`` columns are the median '
+                  'ratio and ``mae`` of the published and re-derived rung. '
+                  + ('These are the 498 held-out scenarios no re-derived piece '
+                     'was fitted to, and ``ls2r_iii_l23`` (Kd from our own L23 '
+                     'network) is scored here only (ls2 Q39). '
+                     if held else
+                     'The re-derivations were fitted on 70% of these scenarios; '
+                     'the like-for-like comparison on the held-out 498 is the '
+                     '``ls2_l23_x4_heldout_v1`` page. ')
+                  + '``frac_ok`` reads 0 for the re-derived rungs; that is not lost '
+                    'coverage.  An unbiased ``a`` makes ``a_nw = a − a_w`` go '
+                    'negative in the red on noisy spectra, where pure water is '
+                    'nearly all of ``a``, and one negative cell makes a spectrum '
+                    'not ``ok``.  The published tables\' positive ``a`` bias '
+                    'kept it positive.  The full analysis is :ref:`ls2_ours`.'),
+            published=published))
+
     # ---- Kd-noise sensitivity -------------------------------------------------
     kn = kd_noise_table(sweep)
     if not kn.empty:
@@ -734,7 +817,9 @@ def build(sweep_id, *, root=None, docs_root=None, compare_sweep=None,
         blocks.append(_fig_section(
             sweep, report_dir, 'Accuracy vs. wavelength', spec_pngs,
             caption=('Fractional multiplicative MAE against wavelength for ``a``, '
-                     '``a_nw``, ``bb`` and ``bb_p``, every rung overlaid; '
+                     '``a_nw``, ``bb`` and ``bb_p``, for the main rungs '
+                     '(true inputs, the Kd networks, the effective-μw diagnostic '
+                     'and the re-derived twins; the rest are in the tables); '
                      f'``a_nw`` only where truth ``a_nw/a`` ≥ {ANW_SHARE_FLOOR:.0%}.'),
             desc=('The same ``mae`` as the ladder table at every band the truth '
                   'covers. The ``a_nw`` panel stops where pure water takes over '

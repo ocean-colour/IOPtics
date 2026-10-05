@@ -14,8 +14,16 @@
 #   ls2_i_kdnoise10    (the Q15 sensitivity ladder, ls2 Q33)
 #   ls2_i_kdnoise20
 #
+# "Our own LS2" (ls2 task 14): the same ladder on the L23 re-derived tables
+# (a/bb from task 12, kappa from task 13), one twin per published rung:
+#   ls2r_i, ls2r_ii, ls2r_iii   lut L23_abk_v1
+#   ls2r_i_ab                   a/bb refit with the published kappa (splits the gain)
+#   (ls2r_iii_l23, Kd from our own L23 network, is NOT here: 70% of these
+#    spectra trained it. It runs in run_ls2_l23_x4_heldout.yaml, ls2 Q39.)
+#
 # The rungs are opt-in: the build script calls
-# ioptics.algorithms.registry.register_direct() before resolving these names.
+# ioptics.algorithms.registry.register_direct() and register_direct_l23()
+# before resolving these names.
 # This is one of three sweeps (X = 1, 2, 4), because a sweep carries one L23
 # realization; the inelastic variants are ls2 Q4.
 sweep_id: ls2_l23_x2_v1
@@ -45,6 +53,10 @@ algorithms:                    # Raman correction ON (kappa iterated, ls2 Q14/Q2
   - ls2_i_kdnoise05
   - ls2_i_kdnoise10
   - ls2_i_kdnoise20
+  - ls2r_i
+  - ls2r_i_ab
+  - ls2r_ii
+  - ls2r_iii
 
 fit_method: chisq              # sweep default, irrelevant here: a direct
                                #   algorithm always runs once as 'direct' and never

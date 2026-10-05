@@ -1,0 +1,52 @@
+# LS2 on L23 X=4, HELD-OUT scenarios only (ls2 task 14, Q39).
+#
+# The same configuration as run_ls2_l23_x4.yaml -- realization, Kd definition,
+# noise form and seed, window -- run on the 498 IOP scenarios that no L23-trained
+# product saw: the test split of ioptics.kd_net.split_scenarios (seed 11), shared
+# by the Kd networks (task 11), the a/bb refit (task 12) and the kappa refit
+# (task 13). The scenario ids are a run-time argument (build_v1.HELDOUT_IDS),
+# not a config key.
+#
+# Every rung is here, published and re-derived, plus ls2r_iii_l23 (Kd from our
+# own L23 network), which may be scored on these spectra only. A difference
+# between two rows of this sweep is therefore like-for-like, on spectra none of
+# the re-derived pieces were fitted to.
+sweep_id: ls2_l23_x4_heldout_v1
+datasets: [L23]
+
+dataset_opts:
+  L23:
+    X: 4                       # Raman + Chl fluorescence in the truth
+    kd1: ln_ratio              # attach <Kd>_1 from the profile files, canonical
+                               #   definition ln[Ed(0-)/Ed(z1)]/z1 (ls2 Q10)
+
+noise_model: pace              # the SAME noise FORM as RT-A, not the same draws
+                               #   (ls2 Q15); every rung sees the noised Rrs. Kd
+                               #   is not perturbed except on the kdnoise rungs.
+seed: 20260907                 # the RT-A seed family
+
+algorithms:                    # Raman correction ON (kappa iterated, ls2 Q14/Q22)
+  - ls2_i
+  - ls2_ii
+  - ls2_iii
+  - ls2_iii_modis
+  - ls2_i_effmuw
+  - ls2_i_kdnoise05
+  - ls2_i_kdnoise10
+  - ls2_i_kdnoise20
+  - ls2r_i
+  - ls2r_i_ab
+  - ls2r_ii
+  - ls2r_iii
+  - ls2r_iii_l23
+
+fit_method: chisq              # sweep default, irrelevant here: a direct
+                               #   algorithm always runs once as 'direct' and never
+                               #   enters an MCMC subset (ls2 task 4)
+
+wv_min: 400                    # 400-750 nm, RT-A's window, so the head-to-head
+wv_max: 750                    #   with BING is like-for-like. Above 702 nm the kappa
+                               #   table ends and those cells carry the reason
+                               #   kappa_out_of_range (ls2 Q22).
+
+leaderboard: false             # not until the report is trusted (ls2 task 8)

@@ -335,6 +335,32 @@ DIRECT_SEED = {
 }
 
 
+# "Our own LS2" (ls2 task 14): the same ladder on the L23 re-derived tables --
+# a/bb from task 12, kappa from task 13 (``lut='L23_abk_v1'``). Each rung is
+# the published rung of the same name without the ``r``, so a row-pair is the
+# cost of the published tables. ``ls2r_i_ab`` keeps the published kappa, which
+# splits the gain between a/bb and kappa. ``ls2r_iii_l23`` takes Kd from our
+# own L23 network (task 11) and, on L23, is scored only on the held-out test
+# scenarios (ls2 Q39) -- 70% of L23 is its training data.
+#
+# Muw stays Snell's: the a/bb refit already absorbs L23's illumination (its
+# c0 is 1/mu_eff, task 12), so the effective-muw diagnostic would count it
+# twice and has no re-derived twin.
+DIRECT_SEED_L23 = {
+    'ls2r_i': ('Our LS2 (i) Kd record, b_p truth', {
+        'kd_source': 'record', 'bp_source': 'truth', 'lut': 'L23_abk_v1'}),
+    'ls2r_i_ab': ('Our LS2 (i), a/bb refit, published kappa', {
+        'kd_source': 'record', 'bp_source': 'truth', 'lut': 'L23_v1'}),
+    'ls2r_ii': ('Our LS2 (ii) Kd record, b_p OC4v4', {
+        'kd_source': 'record', 'bp_source': 'oc4v4', 'lut': 'L23_abk_v1'}),
+    'ls2r_iii': ('Our LS2 (iii) Kd PACE-NN, b_p OC4v4', {
+        'kd_source': 'nn:PACE_v2.3', 'bp_source': 'oc4v4', 'lut': 'L23_abk_v1'}),
+    'ls2r_iii_l23': ('Our LS2 (iii) Kd L23-NN, b_p OC4v4 (held-out)', {
+        'kd_source': 'l23:L23_hyper_v1', 'bp_source': 'oc4v4',
+        'lut': 'L23_abk_v1'}),
+}
+
+
 def register_direct(*, overwrite=True):
     """Register the direct (non-fitting) algorithms and return their specs.
 
@@ -360,6 +386,22 @@ def register_direct(*, overwrite=True):
     """
     out = {}
     for name, (label, fields) in DIRECT_SEED.items():
+        spec = DirectSpec(name=name, label=label, **fields)
+        register(spec, overwrite=overwrite)
+        out[name] = spec
+    return out
+
+
+def register_direct_l23(*, overwrite=True):
+    """Register the re-derived LS2 rungs of :data:`DIRECT_SEED_L23` (ls2 task 14).
+
+    Separate from :func:`register_direct` so the published ladder's
+    registration is unchanged; the LS2 build script calls both.  Running them
+    needs ocpy's L23 tables (``LS2_LUT_L23_v1.npz``, ``LS2_LUT_L23_abk_v1.npz``)
+    and, for ``ls2r_iii_l23``, the L23 Kd network.
+    """
+    out = {}
+    for name, (label, fields) in DIRECT_SEED_L23.items():
         spec = DirectSpec(name=name, label=label, **fields)
         register(spec, overwrite=overwrite)
         out[name] = spec

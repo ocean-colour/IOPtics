@@ -25,6 +25,13 @@ The inputs, one at a time, which is what makes the ladder a ladder (ls2 Q2):
     observed Rrs, linearly interpolated onto the network's bands. An optional
     multiplicative Kd noise -- one draw per spectrum, fully correlated across
     bands -- is the Q15/Q33 sensitivity ladder (5, 10, 20%).
+``Kd`` (cont.)
+    ``'l23:<network>'``: our own L23-trained networks
+    (:mod:`ocpy.ls2.kd_l23`, ls2 task 11). On L23 they must be scored on the
+    held-out test scenarios only (ls2 Q39).
+the tables
+    ``spec.lut``: the published tables, or the L23 re-derivations of ls2
+    tasks 12 (a/bb) and 13 (kappa).
 ``b_p``
     ``bp_source='truth'``: the record's truth ``b_p`` (rung i, "nobody could
     reach this from orbit"). ``'oc4v4'``: OC4v4 chlorophyll from the observed
@@ -64,13 +71,27 @@ PURE_WATER_S = 35.0
 PURE_WATER_AW_TABLE = 'IOCCG'
 
 
-@functools.lru_cache(maxsize=1)
-def _lut():
-    """The LS2 look-up tables, materialised once per process."""
-    from ocpy.ls2.io import load_LUT
+@functools.lru_cache(maxsize=None)
+def _lut(name='published'):
+    """The LS2 look-up tables named ``name``, materialised once per process.
 
-    npz = load_LUT()
-    return {key: np.asarray(npz[key]) for key in npz.files}
+    ``'published'`` is the authors' ``LS2_LUT.npz``; the others are the L23
+    re-derivations (``ocpy/data/LS2/LS2_LUT_<name>.npz``, ls2 tasks 12/13),
+    read with :func:`ocpy.ls2.refit.load`.
+    """
+    if name == 'published':
+        from ocpy.ls2.io import load_LUT
+
+        npz = load_LUT()
+        return {key: np.asarray(npz[key]) for key in npz.files}
+    import os
+    from importlib import resources
+
+    from ocpy.ls2 import refit
+
+    path = os.path.join(resources.files('ocpy'), 'data', 'LS2',
+                        f'LS2_LUT_{name}.npz')
+    return refit.load(path)[0]
 
 
 def pure_water(wave):
@@ -120,6 +141,19 @@ def _kd(spec, record, theta_s):
         if on_band is not None:
             # ls2 Q32: only measured Kd, never one interpolated between bands
             kd = np.where(np.asarray(on_band, dtype=bool), kd, np.nan)
+    elif spec.kd_source.startswith('l23:'):
+        # Our own L23-trained networks (ls2 task 11). Rrs is put on the
+        # network's bands by linear interpolation (exact on L23's grid); a
+        # spectrum outside the network's trained domain is still evaluated,
+        # and a zenith beyond 70 degrees comes back NaN.
+        from ocpy.ls2 import kd_l23
+
+        net = kd_l23.load_network(spec.kd_source.split(':', 1)[1])
+        if net.bands.min() < wave.min() or net.bands.max() > wave.max():
+            kd = np.full(wave.shape, np.nan)
+        else:
+            rrs_bands = np.interp(net.bands, wave, np.asarray(record.Rrs, float))
+            kd = kd_l23.kd_l23(rrs_bands, theta_s, wave, network=net)[0]
     else:
         from ocpy.ls2 import kd_nn
 
@@ -222,7 +256,7 @@ def invert(spec, record):
     muw = None if x['muw'] is None else np.full((1, x['wave'].size), x['muw'])
     res = ls2_invert(x['Rrs'][None, :], x['Kd'][None, :], x['a_w'], x['b_w'],
                      x['b_p'][None, :], np.array([x['theta_s']]), x['wave'],
-                     _lut(), raman=bool(spec.raman), tol=spec.tol,
+                     _lut(spec.lut), raman=bool(spec.raman), tol=spec.tol,
                      max_iter=int(spec.max_iter), clip_negative=False, muw=muw)
     values = {'a': res.a[0], 'a_nw': res.anw[0], 'bb': res.bb[0],
               'bb_p': res.bbp[0]}

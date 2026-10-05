@@ -406,14 +406,21 @@ class AlgorithmSpec:
 #: ``'direct'``.
 DIRECT_OVERRIDABLE_FIELDS = frozenset({
     'kd_source', 'bp_source', 'raman', 'muw_mode', 'kd_noise', 'tol',
-    'max_iter', 'fits_turbid', 'outputs',
+    'max_iter', 'fits_turbid', 'outputs', 'lut',
 })
 
 #: ``kd_source`` values: the ``Kd`` carried on the record (for L23 the
 #: ``<Kd>_1`` derived from its own profile, for PANGAEA the measured value), or
 #: one of ocpy's neural networks (``ocpy.ls2.kd_nn.NETWORKS``) applied to the
 #: record's Rrs.
-KD_SOURCES = ('record', 'nn:MODIS_v1.1', 'nn:MODIS_v1.3', 'nn:PACE_v2.3')
+KD_SOURCES = ('record', 'nn:MODIS_v1.1', 'nn:MODIS_v1.3', 'nn:PACE_v2.3',
+              'l23:L23_hyper_v1', 'l23:L23_seawifs_v1')
+
+#: ``lut`` values: which coefficient tables LS2 runs on.  ``'published'`` is
+#: the authors' ``LS2_LUT.npz``; ``'L23_v1'`` is the a/bb refit of ls2 task 12
+#: with the published kappa; ``'L23_abk_v1'`` adds task 13's kappa refit --
+#: "our own LS2".  The two refits live in ``ocpy/data/LS2/LS2_LUT_<name>.npz``.
+LUTS = ('published', 'L23_v1', 'L23_abk_v1')
 
 #: ``bp_source`` values: the particulate scattering coefficient from the
 #: record's truth (input rung i), or ``b_p`` from chlorophyll via OC4v4 and
@@ -484,6 +491,9 @@ class DirectSpec:
         Components the algorithm returns, a subset of :data:`DIRECT_OUTPUTS`.
         The result's ``ok`` status requires every one of them to be finite and
         positive at every wavelength (ls2 Q5).
+    lut : str
+        One of :data:`LUTS`: the published tables (default) or the L23
+        re-derivations of ls2 tasks 12/13.
     """
 
     name:        str
@@ -499,6 +509,7 @@ class DirectSpec:
     max_iter:    int = 10
     fits_turbid: bool = False
     outputs:     tuple = DIRECT_OUTPUTS
+    lut:         str = 'published'
 
     def __post_init__(self):
         self.outputs = tuple(self.outputs)
@@ -512,7 +523,8 @@ class DirectSpec:
         for field_name, value, allowed in (
                 ('kd_source', self.kd_source, KD_SOURCES),
                 ('bp_source', self.bp_source, BP_SOURCES),
-                ('muw_mode', self.muw_mode, MUW_MODES)):
+                ('muw_mode', self.muw_mode, MUW_MODES),
+                ('lut', self.lut, LUTS)):
             if value not in allowed:
                 raise ValueError(f"{self.name}: {field_name} must be one of "
                                  f"{allowed}, got {value!r}")

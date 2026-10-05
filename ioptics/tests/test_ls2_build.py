@@ -34,6 +34,7 @@ def test_every_config_loads_and_resolves_to_direct_specs(name):
     build = _build()
     cfg = config.load(build.CONFIGS[name])
     registry.register_direct()
+    registry.register_direct_l23()
     for ac in cfg.algorithms:
         spec = registry.get(ac.name).with_overrides(ac.overrides)
         assert is_direct(spec)
@@ -42,8 +43,14 @@ def test_every_config_loads_and_resolves_to_direct_specs(name):
     assert cfg.noise_model == 'pace'                          # ls2 Q15
     assert (cfg.wv_min, cfg.wv_max) == (400.0, 750.0)         # RT-A's window
     assert cfg.leaderboard is False
-    # every rung in the seed is run
-    assert [a.name for a in cfg.algorithms] == list(registry.DIRECT_SEED)
+    # every published rung is run, then (not in the smoke) the re-derived twins
+    # of ls2 task 14 -- without ls2r_iii_l23, which is held-out only (Q39), and
+    # without ls2r_i_ab on the elastic sweep, where kappa is off and it would
+    # duplicate ls2r_i
+    twins = [n for n in registry.DIRECT_SEED_L23 if n != 'ls2r_iii_l23'
+             and not (name == 'x1' and n == 'ls2r_i_ab')]
+    expect = list(registry.DIRECT_SEED) + ([] if name == 'smoke' else twins)
+    assert [a.name for a in cfg.algorithms] == expect
 
 
 def test_the_three_realizations_and_raman():
@@ -75,3 +82,30 @@ def test_every_comparator_names_its_bing_rung():
     registry.register_rt_variants()
     for name in build.COMPARATOR_ALGORITHM.values():
         registry.get(name)                      # a registered RT-A rung
+
+
+def test_the_l23_network_rung_runs_only_on_held_out_spectra():
+    """ls2 Q39: 70% of L23 trained the Kd network, so ls2r_iii_l23 may appear
+    in the held-out sweep only, and that sweep is bounded to the test split."""
+    from ioptics import kd_net
+    build = _build()
+    registry.register_direct()
+    registry.register_direct_l23()
+    for name in ('x4', 'x2', 'x1', 'smoke'):
+        names = [ac.name for ac in config.load(build.CONFIGS[name]).algorithms]
+        assert 'ls2r_iii_l23' not in names, name
+    held = config.load(build.CONFIGS['heldout'])
+    assert 'ls2r_iii_l23' in [ac.name for ac in held.algorithms]
+    assert held.dataset_opts['L23']['X'] == 4
+    ids = build.bounded_obs_ids('heldout')['L23']
+    assert ids == [int(i) for i in kd_net.split_scenarios()['test']]
+    assert not set(ids) & set(kd_net.split_scenarios()['train'])
+
+
+def test_every_config_resolves_heldout_included():
+    build = _build()
+    registry.register_direct()
+    registry.register_direct_l23()
+    cfg = config.load(build.CONFIGS['heldout'])
+    for ac in cfg.algorithms:
+        assert is_direct(registry.get(ac.name).with_overrides(ac.overrides))

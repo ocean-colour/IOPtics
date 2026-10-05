@@ -3,10 +3,10 @@ LS2 ladder — ls2_l23_x4_v1
 ==========================
 
 :Sweep: ls2_l23_x4_v1
-:Generated: 2026-10-03T22:37:55Z
-:ioptics: 0.0.dev0@d1840f1
+:Generated: 2026-10-05T00:28:20Z
+:ioptics: 0.0.dev0@a4664cd
 :bing: 0.0.dev0@e849855
-:ocpy: 0.1.0@8d6396a
+:ocpy: 0.1.0@978b618
 :design_doc: 0.16
 :implementation_doc: 0.24
 
@@ -23,6 +23,10 @@ This is the **LS2 ladder** for sweep ``ls2_l23_x4_v1``: LS2 (Loisel et al. 2018)
 #. ``ls2_i_kdnoise05`` — LS2 (i) + 5% Kd noise (sensitivity)
 #. ``ls2_i_kdnoise10`` — LS2 (i) + 10% Kd noise (sensitivity)
 #. ``ls2_i_kdnoise20`` — LS2 (i) + 20% Kd noise (sensitivity)
+#. ``ls2r_i`` — Our LS2 (i) Kd record, b_p truth
+#. ``ls2r_i_ab`` — Our LS2 (i), a/bb refit, published kappa
+#. ``ls2r_ii`` — Our LS2 (ii) Kd record, b_p OC4v4
+#. ``ls2r_iii`` — Our LS2 (iii) Kd PACE-NN, b_p OC4v4
 
 ``ls2_i`` gives LS2 the truth for both side inputs — the most it can do, and a level nobody reaches from orbit. Its own error is the published tables' error. Pure water always comes from ocpy, never from the truth (ls2 Q21), and ``<Kd>_1`` is the ``ln_ratio`` definition (ls2 Q10). Every number on this page is regenerable from the persisted sweep artifacts under ``runs/``.
 
@@ -60,6 +64,16 @@ One row per rung, all strata. Coverage: ``frac_ok`` / ``frac_poor_fit`` / ``frac
 
 .. csv-table:: One row per LS2 rung.
    :file: ls2_ladder_all.csv
+   :header-rows: 1
+   :widths: auto
+
+Published tables against our own (re-derived)
+---------------------------------------------
+
+Each row pairs a rung run on the authors' tables with the same rung on the L23 re-derivations: ``a``/``bb`` from ls2 task 12 and κ from task 13 (``ls2r_i_ab`` keeps the published κ, so ``ls2_i`` → ``ls2r_i_ab`` → ``ls2r_i`` splits the gain between the two). ``_pub``/``_red`` columns are the median ratio and ``mae`` of the published and re-derived rung. The re-derivations were fitted on 70% of these scenarios; the like-for-like comparison on the held-out 498 is the ``ls2_l23_x4_heldout_v1`` page. ``frac_ok`` reads 0 for the re-derived rungs; that is not lost coverage.  An unbiased ``a`` makes ``a_nw = a − a_w`` go negative in the red on noisy spectra, where pure water is nearly all of ``a``, and one negative cell makes a spectrum not ``ok``.  The published tables' positive ``a`` bias kept it positive.  The full analysis is :ref:`ls2_ours`.
+
+.. csv-table:: Each published rung beside its re-derived twin.
+   :file: rederived_all.csv
    :header-rows: 1
    :widths: auto
 
@@ -146,9 +160,9 @@ The same ``mae`` as the ladder table at every band the truth covers. The ``a_nw`
 
 .. figure:: ls2_accuracy_vs_wavelength.png
    :width: 90%
-   :alt: Fractional multiplicative MAE against wavelength for ``a``, ``a_nw``, ``bb`` and ``bb_p``, every rung overlaid; ``a_nw`` only where truth ``a_nw/a`` ≥ 10%.
+   :alt: Fractional multiplicative MAE against wavelength for ``a``, ``a_nw``, ``bb`` and ``bb_p``, for the main rungs (true inputs, the Kd networks, the effective-μw diagnostic and the re-derived twins; the rest are in the tables); ``a_nw`` only where truth ``a_nw/a`` ≥ 10%.
 
-   Fractional multiplicative MAE against wavelength for ``a``, ``a_nw``, ``bb`` and ``bb_p``, every rung overlaid; ``a_nw`` only where truth ``a_nw/a`` ≥ 10%.
+   Fractional multiplicative MAE against wavelength for ``a``, ``a_nw``, ``bb`` and ``bb_p``, for the main rungs (true inputs, the Kd networks, the effective-μw diagnostic and the re-derived twins; the rest are in the tables); ``a_nw`` only where truth ``a_nw/a`` ≥ 10%.
 
 Where LS2 returns nothing, and why
 ----------------------------------
@@ -169,7 +183,7 @@ LS2 has **no likelihood**: it does not fit, so it has no χ², no BIC and no pos
 Head-to-head verdicts between rungs
 -----------------------------------
 
-Every pair of rungs on the spectra both retrieved: ``delta_mae`` = ``mae(A) − mae(B)`` with its paired-bootstrap 95 % interval, and a ``verdict`` naming a winner only when the interval excludes 0 **and** clears the practical floor of 10%. 168 of 224 pairs are indistinguishable — between rungs, that says the input made no material difference.
+Every pair of rungs on the spectra both retrieved: ``delta_mae`` = ``mae(A) − mae(B)`` with its paired-bootstrap 95 % interval, and a ``verdict`` naming a winner only when the interval excludes 0 **and** clears the practical floor of 10%. 383 of 528 pairs are indistinguishable — between rungs, that says the input made no material difference.
 
 .. csv-table:: Pairwise accuracy verdicts, all strata.
    :file: head_to_head_direct_all.csv

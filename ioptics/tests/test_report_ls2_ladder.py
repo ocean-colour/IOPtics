@@ -235,3 +235,32 @@ def test_a_derived_comparator_anw_is_stated_on_the_page(tmp_path):
     out = ls2_ladder.build(_SID, root=tmp_path, docs_root=docs,
                            compare_sweep=_BING)
     assert 'derived after the fit' in out.read_text(encoding='utf-8')
+
+
+def test_rederived_table_pairs_each_rung_with_its_twin(tmp_path):
+    """ls2 task 14: a published rung beside its re-derived twin, per cell."""
+    ours = registry.register_direct_l23()
+    pairs = []
+    for obs in range(4):
+        _, record = _make_pair(obs, 'expb_pow', 1.0, CHL[obs], 10)
+        anw = np.full(_WAVE.size, _BASE['a_nw'])
+        record.truth['a_nw'] = _Spec(anw)
+        truth = {c: np.asarray(record.truth[c].values, dtype=float)
+                 for c in ('a', 'a_nw', 'bb', 'bb_p')}
+        for spec, factor in ((SPECS['ls2_i'], 1.03), (ours['ls2r_i'], 1.002)):
+            out = {'components': {c: factor * truth[c] for c in truth}}
+            pairs.append((evaluate.assemble_direct(spec, record, out), record))
+    io.write_results('rederived_v1', pairs, root=tmp_path)
+    metrics.compute('rederived_v1', root=tmp_path)
+    sw = figures.load('rederived_v1', root=tmp_path)
+    df = ls2_ladder.rederived_table(sw)
+    assert list(zip(df['published'], df['re_derived'])) == [('ls2_i', 'ls2r_i')]
+    row = df.iloc[0]
+    assert row['a_440_ratio_pub'] == pytest.approx(1.03, rel=1e-3)
+    assert row['a_440_ratio_red'] == pytest.approx(1.002, rel=1e-3)
+    assert row['a_440_mae_red'] < row['a_440_mae_pub']
+    assert (figures.subdir(sw, 'tables') / 'rederived_all.csv').is_file()
+    # the main ladder lists the twin too, with its label
+    lad = ls2_ladder.ladder_table(sw)
+    assert list(lad['rung']) == ['ls2_i', 'ls2r_i']
+    assert lad.set_index('rung').loc['ls2r_i', 'label'].startswith('Our LS2')
