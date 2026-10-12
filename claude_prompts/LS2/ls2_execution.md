@@ -845,6 +845,8 @@ inputs, not board competitors, and their pages already exist under the LS2
 reports.  The generated files are left **uncommitted** until this is
 answered.  Which do you want?
 
+>A. Help me do option (b).  Copy what to where from my laptop?
+
 ## Logs
 
 ### 2026-10-04 (Task 16 — the LS2 report)
